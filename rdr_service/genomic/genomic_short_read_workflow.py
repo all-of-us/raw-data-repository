@@ -12,10 +12,11 @@ from rdr_service.genomic.genomic_mappings import array_file_types_attributes, wg
     genome_center_datafile_prefix_map, wgs_metrics_manifest_mapping
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.genomic_enums import GenomicWorkflowState, GenomicSubProcessResult, GenomicIncidentCode, GenomicJob, \
-    GenomicSetMemberStatus, GenomicContaminationCategory
+    GenomicSetMemberStatus, GenomicContaminationCategory, GenomicQcStatus
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicSampleContamination, \
     GenomicGCValidationMetrics
+# pylint: disable=broad-except
 
 
 class BaseGenomicShortReadWorkflow(ABC):
@@ -234,120 +235,125 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
         :param rows:
         :return: result code
         """
-        sample_dao = BiobankStoredSampleDao()
-        workflow_states = [GenomicWorkflowState.AW0, GenomicWorkflowState.EXTRACT_REQUESTED]
-        gc_site = self._get_site_from_aw1()
+        try:
+            sample_dao = BiobankStoredSampleDao()
+            workflow_states = [GenomicWorkflowState.AW0, GenomicWorkflowState.EXTRACT_REQUESTED]
+            gc_site = self._get_site_from_aw1()
 
-        for row in rows:
-            row_copy = self.file_ingester.clean_row_keys(row)
+            for row in rows:
+                row_copy = self.file_ingester.clean_row_keys(row)
 
-            row_copy['site_id'] = gc_site
-            # Skip rows if biobank_id is an empty string (row is empty well)
-            if row_copy['biobankid'] == "":
-                continue
-
-            # Check if this sample has a control sample parent tube
-            control_sample_parent = self.file_ingester.member_dao.get_control_sample_parent(
-                row_copy['genometype'],
-                int(row_copy['parentsampleid'])
-            )
-
-            # Create new set member record if the sample
-            # has the investigation genome type
-            if row_copy['genometype'] in GENOMIC_INVESTIGATION_GENOME_TYPES:
-                self.create_investigation_member_record_from_aw1(row_copy)
-
-                # Move to next row in file
-                continue
-
-            if control_sample_parent:
-                logging.warning(f"Control sample found: {row_copy['parentsampleid']}")
-
-                # Check if the control sample member exists for this GC, BID, collection tube, and sample ID
-                # Since the Biobank is reusing the sample and collection tube IDs (which are supposed to be unique)
-                cntrl_sample_member = self.file_ingester.member_dao.get_control_sample_for_gc_and_genome_type(
-                    gc_site,
-                    row_copy['genometype'],
-                    row_copy['biobankid'],
-                    row_copy['collectiontubeid'],
-                    row_copy['sampleid']
-                )
-
-                if not cntrl_sample_member:
-                    # Insert new GenomicSetMember record if none exists
-                    # for this control sample, genome type, and gc site
-                    self.create_new_member_from_aw1_control_sample(row_copy)
-                continue
-
-            # Find the existing GenomicSetMember
-            if self.file_ingester.controller.job_id == GenomicJob.AW1F_MANIFEST:
-                # Set the member based on collection tube ID will null sample
-                member = self.file_ingester.member_dao.get_member_from_collection_tube(
-                    row_copy['collectiontubeid'],
-                    row_copy['genometype'],
-                    state=GenomicWorkflowState.AW1
-                )
-            else:
-                # Set the member based on collection tube ID will null sample
-                member = self.file_ingester.member_dao.get_member_from_collection_tube_with_null_sample_id(
-                    row_copy['collectiontubeid'],
-                    row_copy['genometype'])
-
-            # Since member not found, and not a control sample,
-            # check if collection tube id was swapped by Biobank
-            if not member:
-                bid = row_copy['biobankid']
-
-                # Strip biobank prefix if it's there
-                if bid[0] in [get_biobank_id_prefix(), 'T']:
-                    bid = bid[1:]
-                member = self.file_ingester.member_dao.get_member_from_biobank_id_in_state(
-                    bid,
-                    row_copy['genometype'],
-                    workflow_states
-                )
-                # If member found, validate new collection tube ID, set collection tube ID
-                if member:
-                    if self.file_ingester.validate_collection_tube_id(row_copy['collectiontubeid'], bid):
-                        if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS]:
-                            if member.collectionTubeId:
-                                with self.file_ingester.member_dao.session() as session:
-                                    session.add(GenomicSampleContamination(
-                                        sampleId=member.collectionTubeId,
-                                        failedInJob=self.file_ingester.controller.job_id
-                                    ))
-
-                        member.collectionTubeId = row_copy['collectiontubeid']
-                else:
-                    # Couldn't find genomic set member based on either biobank ID or collection tube
-                    _message = f"{self.file_ingester.controller.job_id.name}: Cannot find genomic set member: " \
-                               f"collection_tube_id: {row_copy['collectiontubeid']}, " \
-                               f"biobank id: {bid}, " \
-                               f"genome type: {row_copy['genometype']}"
-
-                    self.file_ingester.controller.create_incident(
-                        source_job_run_id=self.file_ingester.controller.job_run.id,
-                        source_file_processed_id=self.file_ingester.file_obj.id,
-                        code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
-                        message=_message,
-                        biobank_id=bid,
-                        collection_tube_id=row_copy['collectiontubeid'],
-                        sample_id=row_copy['sampleid'],
-                    )
-                    # Skip rest of iteration and continue processing file
+                row_copy['site_id'] = gc_site
+                # Skip rows if biobank_id is an empty string (row is empty well)
+                if row_copy['biobankid'] == "":
                     continue
 
-            # Check for diversion pouch site
-            div_pouch_site_id = sample_dao.get_diversion_pouch_site_id(row_copy['collectiontubeid'])
-            if div_pouch_site_id:
-                member.diversionPouchSiteFlag = 1
+                # Check if this sample has a control sample parent tube
+                control_sample_parent = self.file_ingester.member_dao.get_control_sample_parent(
+                    row_copy['genometype'],
+                    int(row_copy['parentsampleid'])
+                )
 
-            # Process the attribute data
-            member_changed, member = self._process_aw1_attribute_data(row_copy, member)
-            if member_changed:
-                self.file_ingester.member_dao.update(member)
+                # Create new set member record if the sample
+                # has the investigation genome type
+                if row_copy['genometype'] in GENOMIC_INVESTIGATION_GENOME_TYPES:
+                    self.create_investigation_member_record_from_aw1(row_copy)
 
-        return GenomicSubProcessResult.SUCCESS
+                    # Move to next row in file
+                    continue
+
+                if control_sample_parent:
+                    logging.warning(f"Control sample found: {row_copy['parentsampleid']}")
+
+                    # Check if the control sample member exists for this GC, BID, collection tube, and sample ID
+                    # Since the Biobank is reusing the sample and collection tube IDs (which are supposed to be unique)
+                    cntrl_sample_member = self.file_ingester.member_dao.get_control_sample_for_gc_and_genome_type(
+                        gc_site,
+                        row_copy['genometype'],
+                        row_copy['biobankid'],
+                        row_copy['collectiontubeid'],
+                        row_copy['sampleid']
+                    )
+
+                    if not cntrl_sample_member:
+                        # Insert new GenomicSetMember record if none exists
+                        # for this control sample, genome type, and gc site
+                        self.create_new_member_from_aw1_control_sample(row_copy)
+                    continue
+
+                # Find the existing GenomicSetMember
+                if self.file_ingester.controller.job_id == GenomicJob.AW1F_MANIFEST:
+                    # Set the member based on collection tube ID will null sample
+                    member = self.file_ingester.member_dao.get_member_from_collection_tube(
+                        row_copy['collectiontubeid'],
+                        row_copy['genometype'],
+                        state=GenomicWorkflowState.AW1
+                    )
+                else:
+                    # Set the member based on collection tube ID will null sample
+                    member = self.file_ingester.member_dao.get_member_from_collection_tube_with_null_sample_id(
+                        row_copy['collectiontubeid'],
+                        row_copy['genometype'])
+
+                # Since member not found, and not a control sample,
+                # check if collection tube id was swapped by Biobank
+                if not member:
+                    bid = row_copy['biobankid']
+
+                    # Strip biobank prefix if it's there
+                    if bid[0] in [get_biobank_id_prefix(), 'T']:
+                        bid = bid[1:]
+                    member = self.file_ingester.member_dao.get_member_from_biobank_id_in_state(
+                        bid,
+                        row_copy['genometype'],
+                        workflow_states
+                    )
+                    # If member found, validate new collection tube ID, set collection tube ID
+                    if member:
+                        if self.file_ingester.validate_collection_tube_id(row_copy['collectiontubeid'], bid):
+                            if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS]:
+                                if member.collectionTubeId:
+                                    with self.file_ingester.member_dao.session() as session:
+                                        session.add(GenomicSampleContamination(
+                                            sampleId=member.collectionTubeId,
+                                            failedInJob=self.file_ingester.controller.job_id
+                                        ))
+
+                            member.collectionTubeId = row_copy['collectiontubeid']
+                    else:
+                        # Couldn't find genomic set member based on either biobank ID or collection tube
+                        _message = f"{self.file_ingester.controller.job_id.name}: Cannot find genomic set member: " \
+                                   f"collection_tube_id: {row_copy['collectiontubeid']}, " \
+                                   f"biobank id: {bid}, " \
+                                   f"genome type: {row_copy['genometype']}"
+
+                        self.file_ingester.controller.create_incident(
+                            source_job_run_id=self.file_ingester.controller.job_run.id,
+                            source_file_processed_id=self.file_ingester.file_obj.id,
+                            code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
+                            message=_message,
+                            biobank_id=bid,
+                            collection_tube_id=row_copy['collectiontubeid'],
+                            sample_id=row_copy['sampleid'],
+                        )
+                        # Skip rest of iteration and continue processing file
+                        continue
+
+                # Check for diversion pouch site
+                div_pouch_site_id = sample_dao.get_diversion_pouch_site_id(row_copy['collectiontubeid'])
+                if div_pouch_site_id:
+                    member.diversionPouchSiteFlag = 1
+
+                # Process the attribute data
+                member_changed, member = self._process_aw1_attribute_data(row_copy, member)
+                if member_changed:
+                    self.file_ingester.member_dao.update(member)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except Exception as e:
+            logging.warning(f'Error when ingesting AW1 manifest file: {self.file_ingester.file_obj.filePath}: {e}')
+            return GenomicSubProcessResult.ERROR
 
 
 class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
@@ -469,114 +475,216 @@ class GenomicAW2Workflow(BaseGenomicShortReadWorkflow):
         return row
 
     def run_ingestion(self, rows: List[OrderedDict]) -> str:
-        """ Since input files vary in column names,
-        this standardizes the field-names before passing to the bulk inserter
+        """ AW2 ingestion which create/updates a GenomicGCValidationMetrics obj
         :param rows:
         :return result code
         """
-        feedback_dao = GenomicManifestFeedbackDao()
-        members_to_update, cleaned_rows = [], [self.file_ingester.clean_row_keys(row) for row in
-                                               rows]
 
-        # All members connected to manifest via sample_ids
-        members: List[GenomicSetMember] = self.file_ingester.member_dao.get_member_subset_for_metrics_from_sample_ids(
-            [obj.get('sampleid') for obj in cleaned_rows]
-        )
+        try:
+            feedback_dao = GenomicManifestFeedbackDao()
+            members_to_update, cleaned_rows = [], [self.file_ingester.clean_row_keys(row) for row in
+                                                   rows]
 
-        # SET pipeline_id
-        pipeline_id = cleaned_rows[0].get('pipelineid')
-        if not pipeline_id and cleaned_rows[0].get('genometype') in (
-            GENOME_TYPE_WGS,
-            GENOME_TYPE_WGS_INVESTIGATION
-        ):
-            pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
-
-        # All metrics connected to manifest via member_ids
-        exisiting_metrics: List[
-            GenomicGCValidationMetrics] = self.file_ingester.metrics_dao.get_bulk_metrics_for_process_update(
-            member_ids=[obj.id for obj in members],
-            pipeline_id=pipeline_id
-        )
-
-        for row in cleaned_rows:
-            sample_id, biobank_id = row['sampleid'], row['biobankid']
-            row_member = list(filter(lambda x: x.sampleId == sample_id, members))
-            if not row_member:
-                if biobank_id[0] in [get_biobank_id_prefix(), 'T']:
-                    biobank_id = biobank_id[1:]
-                message = f"{self.file_ingester.controller.job_id.name}: Cannot find genomic set member for " \
-                          f"biobank_id, sample_id: " \
-                          f"{biobank_id}, {sample_id}"
-                self.file_ingester.controller.create_incident(
-                    source_job_run_id=self.file_ingester.controller.job_run.id,
-                    source_file_processed_id=self.file_ingester.file_obj.id,
-                    code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
-                    message=message,
-                    biobank_id=biobank_id,
-                    sample_id=sample_id,
-                )
-                continue
-
-            # MEMBER actions
-            row_member = row_member[0]
-            current_state = GenomicWorkflowState.GEM_READY \
-                if row['genometype'] == GENOME_TYPE_ARRAY else GenomicWorkflowState.CVL_READY
-
-            member_dict = {
-                'id': row_member.id,
-                'aw2FileProcessedId': self.file_ingester.file_obj.id,
-                'genomicWorkflowState': int(current_state),
-                'genomicWorkflowStateStr': str(current_state),
-                'genomicWorkflowStateModifiedTime': clock.CLOCK.now()
-            }
-            members_to_update.append(member_dict)
-
-            # METRIC actions
-            prepped_row = self.prep_aw2_row_attributes(
-                row=row,
-                member=row_member
-            )
-            if prepped_row == GenomicSubProcessResult.ERROR:
-                continue
-            prepped_row['pipelineid'] = pipeline_id
-            # set metric file paths
-            prepped_row = self.set_metrics_data_file_paths(
-                genome_type=row['genometype'],
-                row=prepped_row
+            # All members connected to manifest via sample_ids
+            members: List[
+                GenomicSetMember] = self.file_ingester.member_dao.get_member_subset_for_metrics_from_sample_ids(
+                [obj.get('sampleid') for obj in cleaned_rows]
             )
 
-            # MEMBER REPLATING actions - (conditional) based on existing metric record
-            existing_metric_obj: List[GenomicGCValidationMetrics] = list(
-                filter(lambda x: x.genomicSetMemberId == row_member.id, exisiting_metrics)
+            # SET pipeline_id
+            pipeline_id = cleaned_rows[0].get('pipelineid')
+            if not pipeline_id and cleaned_rows[0].get('genometype') in (
+                GENOME_TYPE_WGS,
+                GENOME_TYPE_WGS_INVESTIGATION
+            ):
+                pipeline_id = config.GENOMIC_DEPRECATED_WGS_DRAGEN
+
+            # All metrics connected to manifest via member_ids
+            exisiting_metrics: List[
+                GenomicGCValidationMetrics] = self.file_ingester.metrics_dao.get_bulk_metrics_for_process_update(
+                member_ids=[obj.id for obj in members],
+                pipeline_id=pipeline_id
             )
-            metric_id = None if not existing_metric_obj else existing_metric_obj[0].id
-            if not metric_id:
-                if row_member.genomeType in [
-                    GENOME_TYPE_ARRAY,
-                    GENOME_TYPE_WGS
-                ] and prepped_row[
-                    'contamination_category'] in [
-                    GenomicContaminationCategory.EXTRACT_WGS,
-                    GenomicContaminationCategory.EXTRACT_BOTH
-                ]:
-                    self.file_ingester.insert_member_for_replating(
-                        row_member.id,
-                        prepped_row['contamination_category']
+
+            for row in cleaned_rows:
+                sample_id, biobank_id = row['sampleid'], row['biobankid']
+                row_member = list(filter(lambda x: x.sampleId == sample_id, members))
+                if not row_member:
+                    if biobank_id[0] in [get_biobank_id_prefix(), 'T']:
+                        biobank_id = biobank_id[1:]
+                    message = f"{self.file_ingester.controller.job_id.name}: Cannot find genomic set member for " \
+                              f"biobank_id, sample_id: " \
+                              f"{biobank_id}, {sample_id}"
+                    self.file_ingester.controller.create_incident(
+                        source_job_run_id=self.file_ingester.controller.job_run.id,
+                        source_file_processed_id=self.file_ingester.file_obj.id,
+                        code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
+                        message=message,
+                        biobank_id=biobank_id,
+                        sample_id=sample_id,
                     )
+                    continue
 
-            # UPSERT cloud task for current metric
-            prepped_row['contamination_category'] = int(prepped_row['contamination_category'])
-            self.file_ingester.controller.execute_cloud_task({
-                'metric_id': metric_id,
-                'payload_dict': prepped_row,
-            }, 'genomic_gc_metrics_upsert')
+                # MEMBER actions
+                row_member = row_member[0]
+                current_state = GenomicWorkflowState.GEM_READY \
+                    if row['genometype'] == GENOME_TYPE_ARRAY else GenomicWorkflowState.CVL_READY
 
-            # MANIFEST/FEEDBACK actions - (conditional) based on existing manifest record
-            manifest_file = self.file_ingester.file_processed_dao.get(row_member.aw1FileProcessedId)
-            if manifest_file and not metric_id:
-                feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
+                member_dict = {
+                    'id': row_member.id,
+                    'aw2FileProcessedId': self.file_ingester.file_obj.id,
+                    'genomicWorkflowState': int(current_state),
+                    'genomicWorkflowStateStr': str(current_state),
+                    'genomicWorkflowStateModifiedTime': clock.CLOCK.now()
+                }
+                members_to_update.append(member_dict)
 
-        # BULK Update for ALL members
-        self.file_ingester.member_dao.bulk_update(members_to_update)
+                # METRIC actions
+                prepped_row = self.prep_aw2_row_attributes(
+                    row=row,
+                    member=row_member
+                )
+                if prepped_row == GenomicSubProcessResult.ERROR:
+                    continue
+                prepped_row['pipelineid'] = pipeline_id
+                # set metric file paths
+                prepped_row = self.set_metrics_data_file_paths(
+                    genome_type=row['genometype'],
+                    row=prepped_row
+                )
 
-        return GenomicSubProcessResult.SUCCESS
+                # MEMBER REPLATING actions - (conditional) based on existing metric record
+                existing_metric_obj: List[GenomicGCValidationMetrics] = list(
+                    filter(lambda x: x.genomicSetMemberId == row_member.id, exisiting_metrics)
+                )
+                metric_id = None if not existing_metric_obj else existing_metric_obj[0].id
+                if not metric_id:
+                    if row_member.genomeType in [
+                        GENOME_TYPE_ARRAY,
+                        GENOME_TYPE_WGS
+                    ] and prepped_row[
+                        'contamination_category'] in [
+                        GenomicContaminationCategory.EXTRACT_WGS,
+                        GenomicContaminationCategory.EXTRACT_BOTH
+                    ]:
+                        self.file_ingester.insert_member_for_replating(
+                            row_member.id,
+                            prepped_row['contamination_category']
+                        )
+
+                # UPSERT cloud task for current metric
+                prepped_row['contamination_category'] = int(prepped_row['contamination_category'])
+                self.file_ingester.controller.execute_cloud_task({
+                    'metric_id': metric_id,
+                    'payload_dict': prepped_row,
+                }, 'genomic_gc_metrics_upsert')
+
+                # MANIFEST/FEEDBACK actions - (conditional) based on existing manifest record
+                manifest_file = self.file_ingester.file_processed_dao.get(row_member.aw1FileProcessedId)
+                if manifest_file and not metric_id:
+                    feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
+
+            # BULK Update for ALL members
+            self.file_ingester.member_dao.bulk_update(members_to_update)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except Exception as e:
+            logging.warning(f'Error when ingesting AW2 manifest file: {self.file_ingester.file_obj.filePath}: {e}')
+            return GenomicSubProcessResult.ERROR
+
+
+class GenomicAW4Workflow(BaseGenomicShortReadWorkflow):
+
+    def get_gc_data(self):
+        ...
+
+    @classmethod
+    def get_qc_status_from_value(cls, *, value_to_check):
+        """
+        Returns the GenomicQcStatus enum value for
+        :param value_to_check: string from AW4 file (PASS/FAIL)
+        :return: GenomicQcStatus
+        """
+        if value_to_check.strip().lower() == 'pass':
+            return GenomicQcStatus.PASS
+        elif value_to_check.strip().lower() == 'fail':
+            return GenomicQcStatus.FAIL
+        else:
+            logging.warning(f'Value from AW4 "{value_to_check}" is not PASS/FAIL.')
+            return GenomicQcStatus.UNSET
+
+    def run_ingestion(self, rows: List[OrderedDict]) -> str:
+        """
+        AW4 ingestion updates GenomicSetMember and GenomicGCValidationMetrics objs
+        :param rows:
+        :return result code
+        """
+        try:
+            cleaned_rows: List[dict] = [self.file_ingester.clean_row_keys(row) for row in rows]
+            sample_ids = [obj.get('sampleid') for obj in cleaned_rows]
+            pipeline_id: str = cleaned_rows[0].get('pipelineid')
+
+            members: List = self.file_ingester.member_dao.get_member_ids_from_aw3_sample_ids(sample_ids=sample_ids)
+            metrics: List = self.file_ingester.metrics_dao.get_metrics_by_member_ids(
+                member_ids=[obj.id for obj in members],
+                pipeline_id=pipeline_id
+            )
+
+            updated_members, updated_metrics = [], []
+
+            for member in members:
+                # call enrollment cloud task
+                self.file_ingester.controller.execute_cloud_task(
+                    endpoint='update_enrollment_status',
+                    payload={
+                        'participant_id': member.participantId
+                    },
+                    task_queue='resource-tasks'
+                )
+
+                # get row from list
+                row_copy = list(filter(lambda x: x.get('sampleid') == member.sampleId, cleaned_rows))[0]
+
+                # build/append member dict
+                qc_status = self.get_qc_status_from_value(value_to_check=row_copy.get('qcstatus'))
+                updated_members.append({
+                    'id': member.id,
+                    'aw4ManifestJobRunID': self.file_ingester.controller.job_run.id,
+                    'qcStatus': qc_status,
+                    'qcStatusStr': qc_status.name
+                })
+
+                # get metrics from list
+                current_metric = list(filter(lambda x: x.genomicSetMemberId == member.id, metrics))
+
+                # build/append metric dict
+                if current_metric:
+                    current_metric = current_metric[0]
+
+                    metrics_dict = {
+                        'id': current_metric.id,
+                        'drcSexConcordance': row_copy.get('drcsexconcordance'),
+                        'aw4ManifestJobRunID': self.file_ingester.controller.job_run.id
+                    }
+                    if self.file_ingester.controller.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
+                        metrics_dict.update({'drcCallRate': row_copy.get('drccallrate')})
+                    elif self.file_ingester.controller.job_id == GenomicJob.AW4_WGS_WORKFLOW:
+                        metrics_dict.update(
+                            {
+                                'drcContamination': row_copy.get('drccontamination'),
+                                'drcMeanCoverage': row_copy.get('drcmeancoverage'),
+                                'drcFpConcordance': row_copy.get('drcfpconcordance'),
+                            })
+                    updated_metrics.append(metrics_dict)
+
+            # end with bulk update
+            self.file_ingester.member_dao.bulk_update(updated_members)
+            if updated_metrics:
+                self.file_ingester.metrics_dao.bulk_update(updated_metrics)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except Exception as e:
+            logging.warning(f'Error when ingesting AW4 manifest file: {self.file_ingester.file_obj.filePath}: {e}')
+            return GenomicSubProcessResult.ERROR
