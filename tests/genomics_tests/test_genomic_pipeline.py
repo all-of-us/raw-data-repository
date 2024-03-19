@@ -4585,7 +4585,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test for cloud task call to update enrollment status
         self.assertEqual(cloud_task.call_count, len(self.member_dao.get_all()))
-        self.assertEqual(cloud_task.kwargs.get('endpoint'), 'update_enrollment_status')
+        self.assertEqual(cloud_task.call_args_list[0].kwargs.get('endpoint'), 'update_enrollment_status')
 
         # Test AW4 manifest updated fields
         for member in self.member_dao.get_all():
@@ -4704,7 +4704,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test for cloud task call to update enrollment status
         self.assertEqual(cloud_task.call_count, len(self.member_dao.get_all()))
-        self.assertEqual(cloud_task.kwargs.get('endpoint'), 'update_enrollment_status')
+        self.assertEqual(cloud_task.call_args_list[0].kwargs.get('endpoint'), 'update_enrollment_status')
 
         # Test AW4 manifest updated fields
         for member in self.member_dao.get_all():
