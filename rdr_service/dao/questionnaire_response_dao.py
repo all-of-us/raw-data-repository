@@ -877,12 +877,13 @@ class QuestionnaireResponseDao(BaseDao):
                             if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED and \
                                 authored < participant_summary.ehrConsentExpireAuthored:
                                 ehr_consent = False
-                            EnrollmentDependenciesDao.set_intent_to_share_ehr_time(
-                                authored, participant_summary.participantId, session
-                            )
-                            EnrollmentDependenciesDao.set_full_ehr_consent_authored_time(
-                                authored, participant_summary.participantId, session
-                            )
+                            if config.getSettingJson('ENROLLMENT_STATUS_SKIP_VALIDATION', False):
+                                EnrollmentDependenciesDao.set_intent_to_share_ehr_time(
+                                    authored, participant_summary.participantId, session
+                                )
+                                EnrollmentDependenciesDao.set_full_ehr_consent_authored_time(
+                                    authored, participant_summary.participantId, session
+                                )
                     elif code.value == EHR_CONSENT_EXPIRED_QUESTION_CODE:
                         if answer.valueString and answer.valueString == EHR_CONSENT_EXPIRED_YES:
                             participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.EXPIRED
