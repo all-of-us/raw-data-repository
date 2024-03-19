@@ -3,7 +3,9 @@ import logging
 from typing import Optional
 
 from dateutil.parser import parse
+from sqlalchemy.exc import IntegrityError, InvalidRequestError
 
+from rdr_service import config
 from rdr_service.app_util import nonprod
 from rdr_service.clock import CLOCK
 from rdr_service.code_constants import (
@@ -22,6 +24,7 @@ from rdr_service.participant_enums import DeceasedStatus, RetentionType, Retenti
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from rdr_service.repository.etm import EtmResponseRepository
 from rdr_service.services.retention_calculation import Consent, RetentionEligibility, RetentionEligibilityDependencies
+from rdr_service.services.slack_utils import SlackMessageHandler
 from rdr_service.storage import GoogleCloudStorageCSVReader
 
 
@@ -43,34 +46,60 @@ def import_retention_eligible_metrics_file(task_data):
 
     batch_count = upsert_count = 0
     records = list()
+    failed_records_count = 0
     with dao.session() as session:
         for row in csv_reader:
-            if not row[RetentionEligibleMetricCsvColumns.PARTICIPANT_ID]:
-                continue
-            record = _create_retention_eligible_metrics_obj_from_row(row, upload_date)
+            try:
+                if not row[RetentionEligibleMetricCsvColumns.PARTICIPANT_ID]:
+                    continue
+                record = _create_retention_eligible_metrics_obj_from_row(row, upload_date)
 
-            existing_id, needs_update = RetentionEligibleMetricsDao.find_metric_with_session(
-                session=session,
-                metrics_obj=record
-            )
-            if existing_id:
-                record.id = existing_id
-            if needs_update:
-                _supplement_with_rdr_calculations(metrics_data=record, session=session)
-                records.append(record)
-                batch_count += 1
+                existing_id, needs_update = RetentionEligibleMetricsDao.find_metric_with_session(
+                    session=session,
+                    metrics_obj=record
+                )
+                if existing_id:
+                    record.id = existing_id
+                if needs_update:
+                    _supplement_with_rdr_calculations(metrics_data=record, session=session)
+                    records.append(record)
+                    batch_count += 1
 
-            if batch_count == _BATCH_SIZE:
-                upsert_count += dao.upsert_all_with_session(session, records)
+                if batch_count == _BATCH_SIZE:
+                    upsert_count += dao.upsert_all_with_session(session, records)
+                    records.clear()
+                    batch_count = 0
+            except (IntegrityError, InvalidRequestError):
+                failed_records_count += batch_count
                 records.clear()
                 batch_count = 0
+                continue
 
         if records:
-            upsert_count += dao.upsert_all_with_session(session, records)
+            try:
+                upsert_count += dao.upsert_all_with_session(session, records)
+            except (IntegrityError, InvalidRequestError):
+                failed_records_count += batch_count
+
+        _send_slack_alert(f'gs://{csv_file_cloud_path}', failed_records_count)
 
     logging.info(f"Updating participant summary retention eligible flags for {upsert_count} participants...")
     ParticipantSummaryDao().bulk_update_retention_eligible_flags(upload_date)
     logging.info(f"Import and update completed for gs://{csv_file_cloud_path}")
+
+
+def _send_slack_alert(file_name, failed_records):
+    slack_config = config.getSettingJson(config.RDR_SLACK_WEBHOOKS, {})
+    if slack_config.get(config.RDR_RETENTION_STATUS_WEBHOOK):
+        webhook_url = slack_config.get(config.RDR_RETENTION_STATUS_WEBHOOK)
+        slack_handler = SlackMessageHandler(webhook_url=webhook_url)
+        logging.info('Sending PTSC retention status file import error alert')
+        slack_handler.send_message_to_webhook(message_data={
+            'text': f'PTSC Retention File Import Status: File at file path - {file_name}, had {failed_records} '
+                    f'records fail to ingest'
+        })
+    else:
+        logging.warning('Webhook not found. Skipping slack notification for PTSC nightly retention status import.')
 
 
 @nonprod
