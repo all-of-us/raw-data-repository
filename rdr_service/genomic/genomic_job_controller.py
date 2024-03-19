@@ -1246,11 +1246,9 @@ class GenomicJobController:
         and ManifestCoupler components
         """
         self.biobank_coupler = GenomicBiobankSamplesCoupler(self.job_run.id, controller=self)
-
         try:
-            last_run_date = self._get_last_successful_run_time()
             logging.info(f'Running New Participant Workflow.')
-            self.job_result = self.biobank_coupler.create_new_genomic_participants(last_run_date)
+            self.job_result = self.biobank_coupler.create_new_genomic_participants()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 

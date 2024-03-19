@@ -169,6 +169,12 @@ class ParticipantSummary(Base):
     :ref:`Enumerated values <age_range>`
     """
 
+    ageAtConsentMonths = None
+    """
+    Whole number representing the age of the participant, in months, the first time
+    they signed the Primary consent.
+    """
+
     genderIdentityId = Column("gender_identity_id", Integer, ForeignKey("code.code_id"))
     genderIdentity = Column("gender_identity", Enum(GenderIdentity))
     """
@@ -525,6 +531,9 @@ class ParticipantSummary(Base):
             persisted=True
         )
     )
+    """
+    Provides whether EHR files have been or currently are available for the participant
+    """
 
     # If both ehrUpdateTime and latestParticipantMediatedEhrReceiptTime are null, result is null
     # If one is null, result is the non-null timestamp
@@ -543,6 +552,10 @@ class ParticipantSummary(Base):
             persisted=True
         )
     )
+    """
+    UTC timestamp indicating the most recent timestamp
+    between the ehrUpdateTime and latestParticipantMediatedEhrReceiptTime
+    """
 
     clinicPhysicalMeasurementsStatus = Column(
         "clinic_physical_measurements_status", Enum(PhysicalMeasurementsStatus),

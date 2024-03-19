@@ -5,7 +5,7 @@ from sqlalchemy.orm import Query, aliased
 from sqlalchemy.sql import functions
 
 from rdr_service.dao.base_dao import BaseDao
-from rdr_service.dao.genomics_dao import GenomicQueriesDao
+from rdr_service.dao.genomics_dao import GenomicCVLDao
 from rdr_service.model.genomics import GenomicInformingLoop, GenomicSetMember, GenomicCVLSecondSample, \
     GenomicGCValidationMetrics
 from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate, GenomicDataGenRun, \
@@ -216,7 +216,7 @@ class GenomicDataGenManifestSchemaDao(BaseDao):
             ).filter(GenomicSetMember.sampleId.in_(sample_ids))
 
             if cvl_id:
-                gc_site_id = GenomicQueriesDao.transform_cvl_site_id(cvl_id)
+                gc_site_id = GenomicCVLDao.transform_cvl_site_id(cvl_id)
                 query = query.filter(GenomicSetMember.gcSiteId == gc_site_id)
 
             return query.all()

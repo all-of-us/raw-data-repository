@@ -6,6 +6,7 @@ import threading
 import unittest
 
 from copy import deepcopy
+from dateutil.relativedelta import relativedelta
 from mock import patch
 from urllib.parse import urlencode
 
@@ -54,6 +55,7 @@ TIME_6 = datetime.datetime(2015, 1, 1)
 TEST_AGE_BUCKET_DOB_DATE_OBJ = datetime.date(1980, 10, 9)
 
 participant_summary_default_values = {
+    "ageAtConsentMonths": 0,
     "ageRange": "UNSET",
     "race": "PMI_Skip",
     "hpoId": "UNSET",
@@ -346,6 +348,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         if patient_statuses:
             expected["patientStatus"] = patient_statuses
 
+        age_at_consent_delta = relativedelta(TIME_1, dob)
         expected.update(
             {
                 "enrollmentStatus": "INTERESTED",
@@ -370,7 +373,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
                 "enrollmentStatusParticipantV3_2Time": TIME_1.isoformat(),
                 'enrollmentStatusEnrolledParticipantV3_2Time': TIME_1.isoformat(),
-                "isParticipantMediatedEhrDataAvailable": False
+                "isParticipantMediatedEhrDataAvailable": False,
+                "ageAtConsentMonths": age_at_consent_delta.years * 12 + age_at_consent_delta.months
             }
         )
 
@@ -4761,6 +4765,47 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.temporarily_override_config_setting(config.ENABLED_STATUS_FIELD_LIST, ['enrollmentStatusV3_2'])
         response = self.send_get(f'Participant/P{summary.participantId}/Summary')
         self.assertEqual('ENROLLED_PARTICIPANT', response['enrollmentStatusV3_2'])
+
+    def test_age_at_consent(self):
+        participant_summary = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollmentFirstYesAuthored=datetime.datetime(2021, 7, 17),
+            dateOfBirth=datetime.date(1978, 10, 9),
+        )
+        response = self.send_get(f"Participant/P{participant_summary.participantId}/Summary")
+        self.assertEqual(513, response['ageAtConsentMonths'])
+
+        filter_response = self.send_get(f"ParticipantSummary?ageAtConsentMonths=513")
+        self.assertEqual(1, len(filter_response['entry']))
+
+        younger_summary = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollmentFirstYesAuthored=datetime.datetime(2020, 9, 1),
+            dateOfBirth=datetime.date(2018, 7, 9),
+        )
+        older_summary = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollmentFirstYesAuthored=datetime.datetime(1998, 7, 1),
+            dateOfBirth=datetime.date(1923, 10, 1),
+        )
+
+        filter_response = self.send_get(f"ParticipantSummary?ageAtConsentMonths=ge513")
+        self.assertSetEqual(
+            {f'P{participant_summary.participantId}', f'P{older_summary.participantId}'},
+            {participant['resource']['participantId'] for participant in filter_response['entry']}
+        )
+        filter_response = self.send_get(f"ParticipantSummary?ageAtConsentMonths=lt513")
+        self.assertEqual(
+            [f'P{younger_summary.participantId}'],
+            [participant['resource']['participantId'] for participant in filter_response['entry']]
+        )
+
+        sort_response = self.send_get(f"ParticipantSummary?_sort:desc=ageAtConsentMonths&_sync=true")
+        self.assertEqual(
+            [
+                f'P{older_summary.participantId}',
+                f'P{participant_summary.participantId}',
+                f'P{younger_summary.participantId}'
+            ],
+            [participant['resource']['participantId'] for participant in sort_response['entry']]
+        )
 
     @classmethod
     def _get_summary_response_id_list(self, response):

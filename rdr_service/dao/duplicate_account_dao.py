@@ -1,9 +1,11 @@
 from datetime import datetime
+from typing import Iterable
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
 from rdr_service.model.duplicate_account import DuplicateAccount, DuplicationSource, DuplicationStatus
+from rdr_service.model.participant_summary import ParticipantSummary
 
 
 class DuplicateExistsException(Exception):
@@ -41,3 +43,29 @@ class DuplicateAccountDao:
                 source=source
             )
         )
+
+    @classmethod
+    def query_participant_duplication_data(cls, session) -> Iterable[ParticipantSummary]:
+        """Load participant summary data used for finding duplicate accounts"""
+        return session.query(
+            ParticipantSummary.participantId,
+            ParticipantSummary.firstName,
+            ParticipantSummary.lastName,
+            ParticipantSummary.dateOfBirth,
+            ParticipantSummary.email,
+            ParticipantSummary.loginPhoneNumber
+        ).yield_per(1000)
+
+    @classmethod
+    def query_participants_to_check(cls, since: datetime, session: Session) -> Iterable[ParticipantSummary]:
+        """Load participant summary data for accounts that should be checked for duplication"""
+        return session.query(
+            ParticipantSummary.participantId,
+            ParticipantSummary.firstName,
+            ParticipantSummary.lastName,
+            ParticipantSummary.dateOfBirth,
+            ParticipantSummary.email,
+            ParticipantSummary.loginPhoneNumber
+        ).filter(
+            ParticipantSummary.lastModified > since
+        ).all()
