@@ -15,7 +15,7 @@ coverage==7.2.5             # via -r requirements.in
 cryptography==42.0.4       # via oauthlib, pyopenssl, requests
 defusedxml==0.6.0         # via jira
 dictalchemy3==1.0.0       # via -r requirements.in
-dnspython==1.16.0         # via -r requirements.in
+dnspython==2.6.1         # via -r requirements.in
 faker==4.1.0              # via -r requirements.in
 fhirclient==3.2.0         # via -r requirements.in
 flask-basicauth==0.2.0    # via locust
