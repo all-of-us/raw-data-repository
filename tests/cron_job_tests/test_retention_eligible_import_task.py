@@ -6,6 +6,7 @@ from typing import Optional
 
 from rdr_service import config
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
+from rdr_service.dao.retention_status_import_failures_dao import RetentionStatusImportFailuresDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.offline import retention_eligible_import
@@ -19,6 +20,8 @@ class RetentionEligibleImportTest(BaseTestCase):
 
     def setUp(self, *args, **kwargs):
         super(RetentionEligibleImportTest, self).setUp(*args, **kwargs)
+
+        self.failures_dao = RetentionStatusImportFailuresDao()
 
         mock_slack_client_class = self.mock('rdr_service.offline.retention_eligible_import.SlackMessageHandler')
         self.slack_client_instance = mock_slack_client_class.return_value
@@ -294,6 +297,10 @@ class RetentionEligibleImportTest(BaseTestCase):
                 "upload_date": test_date.isoformat(),
                 "file_path": 'test_bucket/test_file.csv'
             })
+
+        # Check that failure count was inserted into table
+        self.assertEqual("gs://test_bucket/test_file.csv", self.failures_dao.get(1).file_path)
+        self.assertEqual(3, self.failures_dao.get(1).failure_count)
 
         # Check that Slack alert was sent with correct failure count
         self.slack_client_instance.send_message_to_webhook.assert_called_with(

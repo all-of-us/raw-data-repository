@@ -17,8 +17,10 @@ from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
+from rdr_service.dao.retention_status_import_failures_dao import RetentionStatusImportFailuresDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
+from rdr_service.model.retention_status_import_failures import RetentionStatusImportFailures
 from rdr_service.participant_enums import DeceasedStatus, RetentionType, RetentionStatus, WithdrawalStatus, \
     QuestionnaireResponseStatus
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
@@ -81,15 +83,22 @@ def import_retention_eligible_metrics_file(task_data):
             except (IntegrityError, InvalidRequestError):
                 failed_records_count += batch_count
 
-        if failed_records_count > 0:
-            _send_slack_alert(f'gs://{csv_file_cloud_path}', failed_records_count)
+        if failed_records_count:
+            retention_failures = RetentionStatusImportFailures(
+                created=datetime.datetime.utcnow(),
+                modified=datetime.datetime.utcnow(),
+                file_path=f'gs://{csv_file_cloud_path}',
+                failure_count=failed_records_count
+            )
+            RetentionStatusImportFailuresDao().insert(retention_failures)
+            send_slack_alert(f'gs://{csv_file_cloud_path}', failed_records_count)
 
     logging.info(f"Updating participant summary retention eligible flags for {upsert_count} participants...")
     ParticipantSummaryDao().bulk_update_retention_eligible_flags(upload_date)
     logging.info(f"Import and update completed for gs://{csv_file_cloud_path}")
 
 
-def _send_slack_alert(file_name, failed_records):
+def send_slack_alert(file_name, failed_records):
     slack_config = config.getSettingJson(config.RDR_SLACK_WEBHOOKS, {})
     if slack_config.get(config.RDR_RETENTION_STATUS_WEBHOOK):
         webhook_url = slack_config.get(config.RDR_RETENTION_STATUS_WEBHOOK)
