@@ -81,7 +81,8 @@ def import_retention_eligible_metrics_file(task_data):
             except (IntegrityError, InvalidRequestError):
                 failed_records_count += batch_count
 
-        _send_slack_alert(f'gs://{csv_file_cloud_path}', failed_records_count)
+        if failed_records_count > 0:
+            _send_slack_alert(f'gs://{csv_file_cloud_path}', failed_records_count)
 
     logging.info(f"Updating participant summary retention eligible flags for {upsert_count} participants...")
     ParticipantSummaryDao().bulk_update_retention_eligible_flags(upload_date)
