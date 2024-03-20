@@ -8,8 +8,6 @@ from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 _logger = logging.getLogger("rdr_logger")
 
-# Tool_cmd and tool_desc name are required.
-# Remember to add/update bash completion in 'tool_lib/tools.bash'
 tool_cmd = "qr_duplicate_fix"
 tool_desc = "Tool to run the questionnaire response duplicate detection logic over a long period of time."
 
@@ -17,15 +15,15 @@ tool_desc = "Tool to run the questionnaire response duplicate detection logic ov
 class ResponseDuplicateFix(ToolBase):
 
     def run(self):
-
         # Will end at year of oldest observed duplicates.
         end = datetime(2017, 1, 1, 0, 0, 0, 0, pytz.UTC)
         response_detector = ResponseDuplicationDetector()
         from_ts = datetime.now(tz=pytz.UTC)
         full_list = []
-        print(self.gcp_env)
+        k = 0
+
         with self.get_session() as session:
-            while end < from_ts:
+            while end < from_ts and k <= 30:
                 #days_in_month = monthrange(from_ts.year, from_ts.month)[1]
                 next_month = (from_ts.month - 1) if from_ts.month > 1 else 12
                 full_list.extend(response_detector._get_duplicate_responses(
@@ -35,8 +33,8 @@ class ResponseDuplicateFix(ToolBase):
                 )
                 #response_detector.flag_duplicate_responses(days_in_month + 1, from_ts, self.args.project)
                 from_ts = from_ts - timedelta(days=monthrange(from_ts.year, next_month)[1])
+                k += 1
             print(full_list)
-        return
 
 
 def run():
