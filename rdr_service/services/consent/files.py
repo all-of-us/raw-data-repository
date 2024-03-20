@@ -407,6 +407,7 @@ class CeConsentFactory(ConsentFileAbstractFactory):
             'All of Us WEAR\nStudy',
             'el Estudio WEAR de All of Us',
             'Estudio del uso desensores portátiles',
+            'Estudio del uso de sensores\nportátiles',
             'Estudio\ndel uso de sensores portátiles',
             'All of Us Wearable Study',
             'All of Us Wearable\nStudy'
