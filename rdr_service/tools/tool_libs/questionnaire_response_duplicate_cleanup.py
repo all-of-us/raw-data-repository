@@ -15,26 +15,37 @@ tool_desc = "Tool to run the questionnaire response duplicate detection logic ov
 class ResponseDuplicateFix(ToolBase):
 
     def run(self):
+        super(ResponseDuplicateFix, self).run()
+
         # Will end at year of oldest observed duplicates.
         end = datetime(2017, 1, 1, 0, 0, 0, 0, pytz.UTC)
         response_detector = ResponseDuplicationDetector()
         from_ts = datetime.now(tz=pytz.UTC)
-        full_list = []
+        all_qr_ids = []
         k = 0
 
         with self.get_session() as session:
-            while end < from_ts and k <= 30:
-                #days_in_month = monthrange(from_ts.year, from_ts.month)[1]
+            while end < from_ts and k < 3:
+                qr_ids = []
+                days_in_month = monthrange(from_ts.year, from_ts.month)[1]
                 next_month = (from_ts.month - 1) if from_ts.month > 1 else 12
-                full_list.extend(response_detector._get_duplicate_responses(
+
+                #get IDs ahead of resolution
+                response_data = response_detector._get_duplicate_responses(
                     session,
                     from_ts - timedelta(days=monthrange(from_ts.year, next_month)[1] + 1)
-                    )
                 )
-                #response_detector.flag_duplicate_responses(days_in_month + 1, from_ts, self.args.project)
+                for latest_duplicate_response_id, previous_duplicate_ids_str, duplication_count in response_data:
+                    if duplication_count >= 1:
+                        qr_ids.extend(previous_duplicate_ids_str.split(','))
+                all_qr_ids.extend(qr_ids)
+                _logger.info(msg=f"Currently resolving {len(qr_ids)} duplicates")
+
+                #run resolution logic
+                response_detector.flag_duplicate_responses(days_in_month + 1, from_ts, self.args.project)
                 from_ts = from_ts - timedelta(days=monthrange(from_ts.year, next_month)[1])
-                k += 1
-            print(full_list)
+                _logger.info(msg=f"Next timestamp is: {from_ts}")
+            _logger.info(f"resolved {len(all_qr_ids)} duplicates:\n{all_qr_ids}")
 
 
 def run():
