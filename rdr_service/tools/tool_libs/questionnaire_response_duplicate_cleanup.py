@@ -21,13 +21,21 @@ class ResponseDuplicateFix(ToolBase):
         # Will end at year of oldest observed duplicates.
         end = datetime(2017, 1, 1, 0, 0, 0, 0, pytz.UTC)
         response_detector = ResponseDuplicationDetector()
-        from_ts = datetime.now()
-        while end < from_ts:
-            days_in_month = monthrange(from_ts.year, from_ts.month)[1]
-            response_detector.flag_duplicate_responses(days_in_month + 1, from_ts, self.args.project)
-            next_month = from_ts.month - 1 if from_ts.month > 1 else 12
-            from_ts = from_ts - timedelta(days=monthrange(from_ts.year, next_month)[1])
-
+        from_ts = datetime.now(tz=pytz.UTC)
+        full_list = []
+        print(self.gcp_env)
+        with self.get_session() as session:
+            while end < from_ts:
+                #days_in_month = monthrange(from_ts.year, from_ts.month)[1]
+                next_month = (from_ts.month - 1) if from_ts.month > 1 else 12
+                full_list.extend(response_detector._get_duplicate_responses(
+                    session,
+                    from_ts - timedelta(days=monthrange(from_ts.year, next_month)[1] + 1)
+                    )
+                )
+                #response_detector.flag_duplicate_responses(days_in_month + 1, from_ts, self.args.project)
+                from_ts = from_ts - timedelta(days=monthrange(from_ts.year, next_month)[1])
+            print(full_list)
         return
 
 
