@@ -83,6 +83,7 @@ class ParticipantSummaryDataDump(ToolBase):
                 filename = f'chunk_{count + 1}_{chunk_end}.csv'
                 count += chunk_size
                 # Upload the chunk to Google Cloud Storage
+                logging.info(f'uploading {filename} to cloud bucket')
                 upload_to_gcs(df, filename)
             return summary_list
 
