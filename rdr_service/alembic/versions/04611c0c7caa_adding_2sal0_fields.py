@@ -42,7 +42,7 @@ def upgrade_rdr():
             sample_order_status_2sal0 smallint DEFAULT NULL,
             sample_order_status_2sal0_time datetime DEFAULT NULL,
             sample_status_2sal0 smallint DEFAULT NULL,
-            sample_status_2sal0_time datetime DEFAULT NULL,
+            sample_status_2sal0_time datetime DEFAULT NULL
         );
     """)
 
