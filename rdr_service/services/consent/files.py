@@ -712,14 +712,14 @@ class VibrentEhrConsentFile(EhrConsentFile):
     def _get_signature_elements(self):
         signature_page_number = self._get_signature_page_number()
         return self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=130, right=250, bottom=160, top=165),
+            self._get_signature_search_box(),
             page=signature_page_number
         )
 
     def _get_date_elements(self):
         signature_page_number = self._get_signature_page_number()
         return self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=130, right=250, bottom=110, top=115),
+            self._get_date_search_box(),
             page=signature_page_number
         )
 
@@ -731,10 +731,16 @@ class VibrentEhrConsentFile(EhrConsentFile):
         )
 
     def is_sensitive_form(self):
-        return self.pdf.get_page_number_of_text([(
-            'I agree to release sensitive information from my EHRs',
-            'Acepto compartir información confidencial de mis EHR'
-        )]) is not None
+        return (
+            self.pdf.get_page_number_of_text([(
+                'I agree to release sensitive information from my EHRs',
+                'Acepto compartir información confidencial de mis EHR'
+            )])
+            or self.pdf.get_page_number_of_text([(
+                'I agree to release sensitive information from my electronic',
+                'Acepto compartir información confidencial de mis registros'
+            )])
+        ) is not None
 
     def _get_signature_page_number(self):
         return self.pdf.get_page_number_of_text([(
@@ -774,6 +780,23 @@ class VibrentEhrConsentFile(EhrConsentFile):
                 return False
 
         return bool(initial_text_found)
+
+    def _get_signature_search_box(self):
+        if self._is_mar_24_version():
+            return Rect.from_edges(left=130, right=250, bottom=280, top=285)
+        else:
+            return Rect.from_edges(left=130, right=250, bottom=160, top=165)
+
+    def _get_date_search_box(self):
+        if self._is_mar_24_version():
+            return Rect.from_edges(left=130, right=250, bottom=100, top=105)
+        else:
+            return Rect.from_edges(left=130, right=250, bottom=110, top=115)
+
+    def _is_mar_24_version(self):
+        return self.pdf.get_page_number_of_text([(
+            'Relationship to the individual', 'Relación con el participante'
+        )]) is not None
 
 
 class VibrentGrorConsentFile(GrorConsentFile):
