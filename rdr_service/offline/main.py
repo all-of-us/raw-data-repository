@@ -3,6 +3,7 @@ import json
 import logging
 import traceback
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 from flask import Flask, got_request_exception, request
 from sqlalchemy.exc import DBAPIError
@@ -909,17 +910,13 @@ def nph_biobank_inventory_file_import():
 
 @app_util.auth_required_cron
 def ptsc_test_participant_cleanup_request():
-    date = datetime.today()
-    if date.month == 12:
-        month = 1
-    else:
-        month = date.month + 1
+    date = datetime.today() + relativedelta(months=1)
     email_message = (
         "Dear PTSC Team,\n\nPlease begin the quarterly Test Account Maintenance process to ensure that "
         "any existing test accounts are flagged in PTSC systems and communicated to DRC in time for this "
         "quarters EHR Submission Cycle and subsequent curation work.\n\nPer Scott’s request, we have been "
         "advised to provide one month’s notice for this process, making the target completion date "
-        f"{str(month)}/{date.strftime('%d/%Y')}.\n\nThanks,\nDRC Team"
+        f"{date.strftime('%m/%d/%Y')}.\n\nThanks,\nDRC Team"
     )
 
     email = Email(
