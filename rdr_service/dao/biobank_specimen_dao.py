@@ -1,12 +1,14 @@
 
 from sqlalchemy import or_, and_
 
+from rdr_service import config
 from rdr_service.api_util import dispatch_task, format_json_date
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.participant import Participant
 from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.database_utils import NamedLock
+from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.object_preloader import LoadingStrategy, ObjectPreloader
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot,\
@@ -345,6 +347,14 @@ class BiobankSpecimenDao(BiobankDaoBase):
                     disposed=specimen.disposalDate
                 )
             )
+            dna_sample_test_codes = config.getSettingList(config.DNA_SAMPLE_TEST_CODES)
+            if specimen.testCode in dna_sample_test_codes and specimen.confirmedDate:
+                participant_id = session.query(Participant.participantId).filter(
+                    Participant.biobankId == specimen.biobankId
+                ).scalar()
+                EnrollmentDependenciesDao.set_biobank_received_dna_time(
+                    specimen.confirmedDate, participant_id, session
+                )
         else:
             if specimen.biobankId is not None:
                 stored_sample.biobankId = specimen.biobankId

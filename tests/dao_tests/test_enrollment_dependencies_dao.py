@@ -83,11 +83,13 @@ class EnrollmentDependenciesDaoTest(BaseTestCase):
             EnrollmentDependenciesDao.set_gror_consent_authored_time(
                 authored_time, self.participant_id, self.session
             )
+            self.session.commit()  # committing to db within context to get faked time
 
         with FakeClock(datetime(2022, 1, 1)):
             EnrollmentDependenciesDao.set_gror_consent_authored_time(
                 datetime(2100, 1, 1), self.participant_id, self.session
             )
+            self.session.commit()
 
         db_obj = self.session.query(EnrollmentDependencies).filter(
             EnrollmentDependencies.participant_id == self.participant_id

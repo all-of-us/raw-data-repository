@@ -27,6 +27,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao,
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao, QuestionnaireResponseDao
 from rdr_service.model.code import Code, CodeType
@@ -142,13 +143,16 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         questionnaire_id_2 = self.create_questionnaire("questionnaire4.json")
         participant_1 = self.send_post("Participant", {})
         participant_id = participant_1["participantId"]
-        authored_1 = datetime.datetime(2019, 3, 16, 1, 39, 33, tzinfo=pytz.utc)
+        authored_1 = datetime.datetime(2019, 3, 16, 1, 39, 33)
         created = datetime.datetime(2019, 3, 16, 1, 51, 22)
         with FakeClock(created):
             self.send_consent(participant_id, authored=authored_1)
 
         self._submit_consent_questionnaire_response(
             participant_id, questionnaire_id_1, CONSENT_PERMISSION_YES_CODE, time=created
+        )
+        EnrollmentDependenciesDao.set_intent_to_share_ehr_time(
+            authored_1, from_client_participant_id(participant_id), self.session
         )
 
         # Send a biobank order for participant
@@ -180,11 +184,11 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             None,
             time=TIME_2,
         )
-        # completing the baseline PPI modules.
-        self._submit_empty_questionnaire_response(participant_id, questionnaire_id_2)
         # Store samples for DNA for participants
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_1)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_1)
+        # completing the baseline PPI modules.
+        self._submit_empty_questionnaire_response(participant_id, questionnaire_id_2)
         # Update participant summaries based on these changes
         # So it could trigger the participant_summary_dao.calculate_max_core_sample_time to compare the
         # clinicPhysicalMeasurementsFinalizedTime with other times to cover the bug scenario:
@@ -336,8 +340,8 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
 
         # send ConsentPermission_Yes questionnaire response
         with FakeClock(datetime.datetime(2020, 3, 12)):
-            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE, None,
-                                          datetime.datetime(2020, 2, 12))
+            authored = datetime.datetime(2020, 2, 12)
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE, None, authored)
             self._mark_ehr_valid_in_summary(from_client_participant_id(participant_id))
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-02-12T00:00:00')
@@ -454,7 +458,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         with FakeClock(datetime.datetime(2023, 3, 12)):
             self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE, None,
                                           datetime.datetime(2023, 2, 12))
-            self._mark_ehr_valid_in_summary(from_client_participant_id(participant_id))
 
         # Check that the enrollment status remains at INTERESTED
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
@@ -2457,6 +2460,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
                 confirmed=time,
             )
         )
+        if test_code in config.getSettingList(config.DNA_SAMPLE_TEST_CODES):
+            participant_id_int = from_client_participant_id(participant["participantId"])
+            EnrollmentDependenciesDao.set_biobank_received_dna_time(time, participant_id_int, self.session)
 
     def _create_codes(self, code_list):
         return {

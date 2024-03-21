@@ -1,3 +1,4 @@
+from datetime import datetime
 import mock
 from typing import List
 
@@ -54,6 +55,7 @@ class ConsentControllerTest(BaseTestCase):
         """The controller should find all recent participant summary consents authored and validate files for them"""
         primary_and_ehr_participant_id = 123
         cabor_participant_id = 456
+        arbitrary_date = datetime.now()
         self.consent_dao_mock.get_consent_responses_to_validate.return_value = (
             {
                 primary_and_ehr_participant_id: [
@@ -80,16 +82,34 @@ class ConsentControllerTest(BaseTestCase):
         )
 
         self.consent_validator_mock.get_primary_validation_results.return_value = [
-            ConsentFile(id=1, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_primary_1'),
-            ConsentFile(id=2, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_primary_2'),
-            ConsentFile(id=3, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_primary_3')
+            ConsentFile(
+                id=1, file_path='/invalid_primary_1',
+                sync_status=ConsentSyncStatus.NEEDS_CORRECTING, expected_sign_date=arbitrary_date
+            ),
+            ConsentFile(
+                id=2, file_path='/valid_primary_2',
+                sync_status=ConsentSyncStatus.READY_FOR_SYNC, expected_sign_date=arbitrary_date
+            ),
+            ConsentFile(
+                id=3, file_path='/valid_primary_3',
+                sync_status=ConsentSyncStatus.READY_FOR_SYNC, expected_sign_date=arbitrary_date
+            )
         ]
         self.consent_validator_mock.get_cabor_validation_results.return_value = [
-            ConsentFile(id=4, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_cabor_1')
+            ConsentFile(
+                id=4, file_path='/valid_cabor_1',
+                sync_status=ConsentSyncStatus.READY_FOR_SYNC, expected_sign_date=arbitrary_date
+            )
         ]
         self.consent_validator_mock.get_ehr_validation_results.return_value = [
-            ConsentFile(id=5, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_ehr_1'),
-            ConsentFile(id=6, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_ehr_2')
+            ConsentFile(
+                id=5, file_path='/invalid_ehr_1',
+                sync_status=ConsentSyncStatus.NEEDS_CORRECTING, expected_sign_date=arbitrary_date
+            ),
+            ConsentFile(
+                id=6, file_path='/invalid_ehr_2',
+                sync_status=ConsentSyncStatus.NEEDS_CORRECTING, expected_sign_date=arbitrary_date
+            )
         ]
 
         self.participant_summary_dao_mock.get_by_ids_with_session.return_value = [
@@ -101,10 +121,22 @@ class ConsentControllerTest(BaseTestCase):
         self.store_strategy.process_results()
         self.assertConsentValidationResultsUpdated(
             expected_updates=[
-                ConsentFile(id=2, file_path='/valid_primary_2', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
-                ConsentFile(id=5, file_path='/invalid_ehr_1', sync_status=ConsentSyncStatus.NEEDS_CORRECTING),
-                ConsentFile(id=6, file_path='/invalid_ehr_2', sync_status=ConsentSyncStatus.NEEDS_CORRECTING),
-                ConsentFile(id=4, file_path='/valid_cabor_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
+                ConsentFile(
+                    id=2, file_path='/valid_primary_2',
+                    sync_status=ConsentSyncStatus.READY_FOR_SYNC, expected_sign_date=arbitrary_date
+                ),
+                ConsentFile(
+                    id=5, file_path='/invalid_ehr_1',
+                    sync_status=ConsentSyncStatus.NEEDS_CORRECTING, expected_sign_date=arbitrary_date
+                ),
+                ConsentFile(
+                    id=6, file_path='/invalid_ehr_2',
+                    sync_status=ConsentSyncStatus.NEEDS_CORRECTING, expected_sign_date=arbitrary_date
+                ),
+                ConsentFile(
+                    id=4, file_path='/valid_cabor_1',
+                    sync_status=ConsentSyncStatus.READY_FOR_SYNC, expected_sign_date=arbitrary_date
+                ),
             ]
         )
         # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
@@ -114,6 +146,7 @@ class ConsentControllerTest(BaseTestCase):
     def test_validating_specific_consents(self):
         """Make sure only the provided consent types are validated when specified"""
         # Create a participant that has consented to the primary, ehr, and gror consents
+        arbitrary_date = datetime.now()
         summary = ParticipantSummary(
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
@@ -129,7 +162,8 @@ class ConsentControllerTest(BaseTestCase):
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
             file_path='/ehr',
             file_exists=True,
-            consent_response=ConsentResponse(id=1)
+            consent_response=ConsentResponse(id=1),
+            expected_sign_date=arbitrary_date
         )
         self.consent_validator_mock.get_ehr_validation_results.return_value = [ehr_file]
         gror_file = ConsentFile(
@@ -137,7 +171,8 @@ class ConsentControllerTest(BaseTestCase):
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
             file_path='/gror',
             file_exists=True,
-            consent_response=ConsentResponse(id=2)
+            consent_response=ConsentResponse(id=2),
+            expected_sign_date=arbitrary_date
         )
         self.consent_validator_mock.get_gror_validation_results.return_value = [gror_file]
 

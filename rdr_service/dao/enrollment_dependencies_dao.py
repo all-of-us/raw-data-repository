@@ -6,22 +6,32 @@ from sqlalchemy.orm import Session
 from rdr_service.model.enrollment_dependencies import EnrollmentDependencies
 from rdr_service.participant_enums import ParticipantCohortEnum
 
+cache = dict()
+
 
 class EnrollmentDependenciesDao:
+
     @classmethod
     def get_enrollment_dependencies(cls, participant_id: int, session: Session) -> Optional[EnrollmentDependencies]:
-        return session.query(EnrollmentDependencies).filter(
+        if participant_id in cache:
+            return cache[participant_id]
+
+        result = session.query(EnrollmentDependencies).filter(
             EnrollmentDependencies.participant_id == participant_id
-        ).one_or_none()
+        ).first()
+        if result:
+            cache[participant_id] = result
+        return result
 
     @classmethod
     def _set_field(cls, field_name: str, value, participant_id: int, session: Session):
         obj = cls.get_enrollment_dependencies(participant_id=participant_id, session=session)
         if not obj:
             obj = EnrollmentDependencies(participant_id=participant_id)
+            cache[participant_id] = obj
             session.add(obj)
 
-        if getattr(obj, field_name) is None:
+        if getattr(obj, field_name) is None or value is None:
             setattr(obj, field_name, value)
 
     @classmethod
