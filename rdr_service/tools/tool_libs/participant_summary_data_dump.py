@@ -42,7 +42,7 @@ class ParticipantSummaryDataDump(ToolBase):
                 participant_id_list = session.query(
                     ParticipantSummary.participantId,
                 ).filter(
-                    Participant.isTestParticipant == 1
+                    Participant.participantOrigin == "vibrent"
                 ).order_by(ParticipantSummary.participantId).all()
 
             count = 0
@@ -56,7 +56,7 @@ class ParticipantSummaryDataDump(ToolBase):
                     ParticipantSummary
                 ).filter(
                     ParticipantSummary.participantId.in_(id_list_subset),
-                    Participant.isTestParticipant == 1
+                    Participant.participantOrigin == "vibrent"
                 ).all()
                 results = [summary_dao.to_client_json(result) for result in summary_list]
                 ignored_columns = [
@@ -74,10 +74,10 @@ class ParticipantSummaryDataDump(ToolBase):
                     'email',
                     'dateOfBirth'
                 ]
-                for column in results:
+                for participant_dict in results:
                     for i in ignored_columns:
-                        if i in column:
-                            del column[i]
+                        if i in participant_dict:
+                            del participant_dict[i]
                 chunk_end = min(count + chunk_size, total_rows)
                 df = pd.DataFrame(results)
                 filename = f'chunk_{count + 1}_{chunk_end}.csv'
