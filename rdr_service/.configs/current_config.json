@@ -275,5 +275,13 @@
       "site"
     ]
   },
-  "ce_mediated_hpo_id": ["ce_id_1", "ce_id_2"]
+  "ce_mediated_hpo_id": ["ce_id_1", "ce_id_2"],
+  "participant_cleanup_cc_list": [
+    "heather.fullen@vumc.org",
+    "megan.morris@vumc.org",
+    "mara.a.porter@vumc.org",
+    "kayla.marginean@vumc.org",
+    "sundos.s.masri@vumc.org",
+    "mandy.roberts@vumc.org"
+  ]
 }

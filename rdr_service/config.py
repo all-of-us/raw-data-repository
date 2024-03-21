@@ -507,7 +507,6 @@ def getSetting(key, default=_NO_DEFAULT):
     if default != _NO_DEFAULT:
         default = [default]
     settings_list = getSettingList(key, default)
-
     if len(settings_list) != 1:
         raise InvalidConfigException("Config key {} has multiple entries in datastore.".format(key))
     return settings_list[0]
