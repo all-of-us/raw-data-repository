@@ -73,11 +73,6 @@ then
   CONFIG="config/config_test_ptsc_2.json"
   echo "Skipping JIRA tracker updates for PTSC Test 2."
   UPDATE_TRACKER=echo
-elif [ "${PROJECT}" == "all-of-us-rdr-ptsc-3-test" ]
-then
-  CONFIG="config/config_test_ptsc_3.json"
-  echo "Skipping JIRA tracker updates for PTSC Test 3."
-  UPDATE_TRACKER=echo
 elif [ "${PROJECT}" == "all-of-us-rdr-careevo-test" ]
 then
   CONFIG="config/config_test_careevo.json"

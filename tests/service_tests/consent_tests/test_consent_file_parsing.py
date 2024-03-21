@@ -458,7 +458,28 @@ class ConsentFileParsingTest(BaseTestCase):
             expected_to_be_va_file=True
         )
 
-        return [basic_ehr_case, va_ehr_case]
+        mar_24_ehr_pdf = self._build_pdf(pages=[
+            *six_empty_pages,
+            [
+                self._build_pdf_element(
+                    cls=LTTextLineHorizontal,
+                    text='You will have access to a signed copy of this form',
+                ),
+                self._build_pdf_element(
+                    cls=LTTextLineHorizontal,
+                    text='Relationship to the individual',
+                ),
+                self._build_form_element(text='March 2024 File', bbox=(125, 230, 450, 290)),
+                self._build_form_element(text='Nov 5 2024', bbox=(125, 95, 450, 108))
+            ]
+        ])
+        mar_24_ehr_case = EhrConsentTestData(
+            file=files.VibrentEhrConsentFile(pdf=mar_24_ehr_pdf, blob=mock.MagicMock()),
+            expected_signature='March 2024 File',
+            expected_sign_date=date(2024, 11, 5)
+        )
+
+        return [basic_ehr_case, va_ehr_case, mar_24_ehr_case]
 
     def _build_sensitive_ehr(self, with_initials: bool) -> files.EhrConsentFile:
         seven_empty_pages = [[], [], [], [], [], [], []]
