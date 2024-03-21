@@ -65,7 +65,7 @@ def aw3_array_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.AW3_ARRAY_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
+                              max_num=1000) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_ARRAY,
             genome_type=config.GENOME_TYPE_ARRAY,
@@ -85,7 +85,7 @@ def aw3_wgs_manifest_workflow(**kwargs):
     """
     with GenomicJobController(GenomicJob.AW3_WGS_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
+                              max_num=1000) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_WGS,
             genome_type=config.GENOME_TYPE_WGS,
@@ -106,7 +106,7 @@ def aw3_array_investigation_workflow():
     """
     with GenomicJobController(GenomicJob.AW3_ARRAY_INVESTIGATION_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
+                              max_num=1000) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_ARRAY,
             genome_type="aou_array_investigation",
@@ -126,7 +126,7 @@ def aw3_wgs_investigation_workflow(**kwargs):
     """
     with GenomicJobController(GenomicJob.AW3_WGS_INVESTIGATION_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
+                              max_num=1000) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_WGS,
             genome_type="aou_wgs_investigation",
