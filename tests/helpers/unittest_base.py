@@ -885,7 +885,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             print("Creation mock buckets failed")
 
     @staticmethod
-    def switch_auth_user(new_auth_user, client_id=None):
+    def switch_auth_user(new_auth_user, client_id=None, bypass_origin_check=False):
         config.LOCAL_AUTH_USER = new_auth_user
         if client_id:
             config_user_info = {
@@ -900,6 +900,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
                     'roles': api_util.ALL_ROLES,
                 }
             }
+        if bypass_origin_check:
+            config_user_info[new_auth_user]['bypassOriginCheck'] = 1
         config.override_setting("user_info", config_user_info)
 
     @classmethod

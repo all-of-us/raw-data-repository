@@ -4529,7 +4529,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
 
-    def test_aw4_array_manifest_ingest(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw4_array_manifest_ingest(self, cloud_task):
         # Create AW3 array manifest job run: id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW3_ARRAY_WORKFLOW,
                                               startTime=clock.CLOCK.now(),
@@ -4581,6 +4582,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Call pipeline function
         genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
+
+        # Test for cloud task call to update enrollment status
+        self.assertEqual(cloud_task.call_count, len(self.member_dao.get_all()))
+        self.assertEqual(cloud_task.call_args_list[0].kwargs.get('endpoint'), 'update_enrollment_status')
 
         # Test AW4 manifest updated fields
         for member in self.member_dao.get_all():
@@ -4642,7 +4647,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.clear_table_after_test('genomic_aw4_raw')
 
-    def test_aw4_wgs_manifest_ingest(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw4_wgs_manifest_ingest(self, cloud_task):
         pipeline_id = config.GENOMIC_UPDATED_WGS_DRAGEN
 
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW3_WGS_WORKFLOW,
@@ -4695,6 +4701,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Call pipeline function
         genomic_dispatch.execute_genomic_manifest_file_pipeline(task_data)
+
+        # Test for cloud task call to update enrollment status
+        self.assertEqual(cloud_task.call_count, len(self.member_dao.get_all()))
+        self.assertEqual(cloud_task.call_args_list[0].kwargs.get('endpoint'), 'update_enrollment_status')
 
         # Test AW4 manifest updated fields
         for member in self.member_dao.get_all():

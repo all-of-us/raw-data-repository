@@ -290,7 +290,7 @@ class ParticipantSummary(Base):
     Is the latest date from the list of:
 
     * The earliest date of sampleStatus...Time (any of the DNA sample tests:
-        ed10, 2ed02, 2ed04, 2ed10, 1ed04, 1sal, 1sal2)
+        ed10, 2ed02, 2ed04, 2ed10, 1ed04, 1sal, 1sal2, 2sal0)
     * enrollmentStatusMemberTime
     * questionnaireOnTheBasicsTime
     * questionnaireOnLifestyleTime
@@ -308,7 +308,7 @@ class ParticipantSummary(Base):
     Is the latest date from the list of:
 
     * The earliest date of sampleOrderStatus...Time (any of the DNA sample tests:
-        ed10, 2ed02, 2ed04, 2ed10, 1ed04, 1sal, 1sal2)
+        ed10, 2ed02, 2ed04, 2ed10, 1ed04, 1sal, 1sal2, 2sal0)
     * enrollmentStatusMemberTime
     * questionnaireOnTheBasicsTime
     * questionnaireOnLifestyleTime
@@ -1407,6 +1407,16 @@ class ParticipantSummary(Base):
     sampleStatus2ED04Time = Column("sample_status_2ed04_time", UTCDateTime)
     "The datetime in UTC in which the biobank processed the sample."
 
+    sampleStatus2SAL0 = Column("sample_status_2sal0", Enum(SampleStatus), default=SampleStatus.UNSET)
+    """
+    The result of biobank processing on sample 2SAL0.
+
+    :ref:`Enumerated values <sample_status>`
+    """
+
+    sampleStatus2SAL0Time = Column("sample_status_2sal0_time", UTCDateTime)
+    "The datetime in UTC in which the biobank processed the sample."
+
     sampleOrderStatusDV1SAL2 = Column("sample_order_status_dv_1sal2", Enum(OrderStatus), default=OrderStatus.UNSET)
     """
     The individual order status of sample DV1SAL2.
@@ -1607,6 +1617,16 @@ class ParticipantSummary(Base):
     sampleOrderStatus2ED04Time = Column("sample_order_status_2ed04_time", UTCDateTime)
     "The time the sample was marked as finalized by the processing site."
 
+    sampleOrderStatus2SAL0 = Column("sample_order_status_2sal0", Enum(OrderStatus), default=OrderStatus.UNSET)
+    """
+    The individual order status of sample 2SAL0.
+
+    :ref:`Enumerated values <sample_order_status>`
+    """
+
+    sampleOrderStatus2SAL0Time = Column("sample_order_status_2sal0_time", UTCDateTime)
+    "The time the sample was marked as finalized by the processing site."
+
     # The number of BiobankStoredSamples recorded for this participant, limited to those samples
     # where testCode is one of the baseline tests (listed in the config).
     numBaselineSamplesArrived = Column("num_baseline_samples_arrived", SmallInteger, default=0)
@@ -1632,6 +1652,7 @@ class ParticipantSummary(Base):
     * 1ED04
     * 1SAL
     * 1SAL2
+    * 2SAL0
     """
 
     participant = relationship("Participant", back_populates="participantSummary")
