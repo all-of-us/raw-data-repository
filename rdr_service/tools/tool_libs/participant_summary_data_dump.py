@@ -1,8 +1,8 @@
+import csv
 import logging
+import os
 from datetime import datetime
-import pandas as pd
 from google.cloud import storage
-from io import BytesIO
 
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -17,12 +17,19 @@ bucket_name = 'ptsc-metrics-all-of-us-rdr-prod'
 client = storage.Client()
 
 
-def upload_to_gcs(df, filename):
+def upload_to_gcs(results, filename):
     bucket = client.get_bucket(bucket_name)
     filename = f'ops_data_api/{filename}'
     blob = bucket.blob(filename)
-    df_csv = df.to_csv(index=False)
-    blob.upload_from_file(BytesIO(df_csv.encode('utf-8')), content_type='text/csv')
+    with open("filename", "w") as f:
+        writer = csv.DictWriter(f, fieldnames=results[0].keys())
+        writer.writeheader()
+        for row in results:
+            writer.writerow(row)
+        blob.upload_from_file(f, content_type='text/csv')
+        f.close()
+        os.remove(f.name)
+
 
 class ParticipantSummaryDataDump(ToolBase):
     logger_name = None
@@ -79,12 +86,11 @@ class ParticipantSummaryDataDump(ToolBase):
                         if i in participant_dict:
                             del participant_dict[i]
                 chunk_end = min(count + chunk_size, total_rows)
-                df = pd.DataFrame(results)
                 filename = f'chunk_{count + 1}_{chunk_end}.csv'
                 count += chunk_size
                 # Upload the chunk to Google Cloud Storage
                 logging.info(f'uploading {filename} to cloud bucket')
-                upload_to_gcs(df, filename)
+                upload_to_gcs(results, filename)
             return summary_list
 
 
