@@ -22,10 +22,9 @@ class ResponseDuplicateFix(ToolBase):
         response_detector = ResponseDuplicationDetector()
         from_ts = datetime.now(tz=pytz.UTC)
         all_qr_ids = []
-        k = 0
 
         with self.get_session() as session:
-            while end < from_ts and k < 3:
+            while end < from_ts:
                 qr_ids = []
                 days_in_month = monthrange(from_ts.year, from_ts.month)[1]
                 next_month = (from_ts.month - 1) if from_ts.month > 1 else 12
@@ -35,9 +34,10 @@ class ResponseDuplicateFix(ToolBase):
                     session,
                     from_ts - timedelta(days=monthrange(from_ts.year, next_month)[1] + 1)
                 )
-                for latest_duplicate_response_id, previous_duplicate_ids_str, duplication_count in response_data:
-                    if duplication_count >= 1:
-                        qr_ids.extend(previous_duplicate_ids_str.split(','))
+
+                for duplicate_entry in response_data:
+                    if duplicate_entry[2] >= 1:
+                        qr_ids.extend(duplicate_entry[1].split(','))
                 all_qr_ids.extend(qr_ids)
                 _logger.info(msg=f"Currently resolving {len(qr_ids)} duplicates")
 
