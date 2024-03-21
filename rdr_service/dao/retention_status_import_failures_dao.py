@@ -7,11 +7,7 @@ class RetentionStatusImportFailuresDao(BaseDao):
     def __init__(self):
         super(RetentionStatusImportFailuresDao, self).__init__(RetentionStatusImportFailures)
 
-    def insert(self, obj: RetentionStatusImportFailures):
-        with self.session() as session:
-            self.insert_with_session(session, obj)
-
-    def get(self, failure_id):
+    def get_retention_import_failure_by_id(self, failure_id):
         with self.session() as session:
             query = session.query(RetentionStatusImportFailures).filter(
                 RetentionStatusImportFailures.id == failure_id
