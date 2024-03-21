@@ -664,6 +664,26 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
         self.assertIsNotNone("biobankId", ps["entry"][0]["resource"])
 
+    @mock.patch('rdr_service.dao.biobank_order_dao.get_account_origin_id')
+    def test_2sal0_sample(self, origin_mock):
+        participant_summary = self.data_generator.create_database_participant_summary()
+        collection_date = datetime.datetime(2023, 1, 7, 18, 2)
+        finalized_date = collection_date + datetime.timedelta(minutes=10)
+        origin_mock.return_value = 'hpro'
+        order_json = load_biobank_order_json(participant_summary.participantId, filename="biobank_order_2.json")
+        order_json['samples'] = [{
+            'test': '2SAL0',
+            'description': 'testing dna check',
+            'processingRequired': False,
+            'collected': collection_date.isoformat(),
+            'finalized': finalized_date.isoformat()
+        }]
+        self.send_post(f'Participant/P{participant_summary.participantId}/BiobankOrder', order_json)
+
+        self.session.refresh(participant_summary)
+        self.assertEqual(OrderStatus.FINALIZED, participant_summary.sampleOrderStatus2SAL0)
+        self.assertEqual(finalized_date, participant_summary.sampleOrderStatus2SAL0Time)
+
     def _insert_measurements(self, now=None):
         measurements_1 = load_measurement_json(self.participant_id, now)
         path_1 = "Participant/%s/PhysicalMeasurements" % self.participant_id
