@@ -147,13 +147,13 @@ class SmsWorkflow:
         Main method for ingestion jobs.
         """
 
-        file_end = self.file_path.split(".")[-1]
+        file_extension = self.file_path.split(".")[-1].lower()
         # Ensure file is CSV
-        if not file_end == "csv":
+        if not file_extension == "csv":
             cloud_task = GCPCloudTask()
             message = {
                 "slack": True,
-                "message": f"Error ingesting nph file of type {file_end}. "
+                "message": f"Error ingesting nph file of type {file_extension}. "
                            f"File '{self.file_path}' does not conform to csv format."
             }
             cloud_task.execute(
