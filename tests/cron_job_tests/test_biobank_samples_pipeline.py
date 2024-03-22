@@ -12,6 +12,7 @@ from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
     BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
@@ -26,7 +27,6 @@ from rdr_service.offline import biobank_samples_pipeline
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value,\
     SampleCollectionMethod
-from rdr_service.services.system_utils import DateRange
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
@@ -164,12 +164,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         ps = self.summary_dao.get(participant.participantId)
         self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, ps.enrollmentStatus)
 
-    @mock.patch('rdr_service.dao.participant_summary_dao.QuestionnaireResponseRepository')
-    def test_end_to_end(self, response_repository):
-        response_repository.get_interest_in_sharing_ehr_ranges.return_value = [
-            DateRange(start=datetime(2016, 11, 29, 12, 16))
-        ]
-
+    def test_end_to_end(self):
         dao = BiobankStoredSampleDao()
         # Create 3 participants and pass their (random) IDs into sample rows.
         summary_dao = ParticipantSummaryDao()
@@ -178,6 +173,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         nids = 14  # equal to the number of parent rows in 'biobank_samples_1.csv'
         cids = 1  # equal to the number of child rows in 'biobank_samples_1.csv'
         biobank_pid_map = {}
+        arbitrary_date = datetime(2016, 11, 29, 12, 16)
 
         for _ in range(nids):
             participant = self.participant_dao.insert(Participant())
@@ -223,9 +219,18 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         core_minus_pm_summary.consentForStudyEnrollment = 1
         core_minus_pm_summary.consentForElectronicHealthRecords = 1
         core_minus_pm_summary.enrollmentStatusMemberTime = '2016-11-29 12:16:00'
-        core_minus_pm_summary.questionnaireOnTheBasicsAuthored = '2016-11-29 12:16:00'
-        core_minus_pm_summary.questionnaireOnOverallHealthAuthored = '2016-11-29 12:16:00'
-        core_minus_pm_summary.questionnaireOnLifestyleAuthored = '2016-11-29 12:16:00'
+        EnrollmentDependenciesDao.set_intent_to_share_ehr_time(
+            arbitrary_date, core_minus_pm_participant_id, self.session
+        )
+        EnrollmentDependenciesDao.set_basics_survey_authored_time(
+            arbitrary_date, core_minus_pm_participant_id, self.session
+        )
+        EnrollmentDependenciesDao.set_overall_health_survey_authored_time(
+            arbitrary_date, core_minus_pm_participant_id, self.session
+        )
+        EnrollmentDependenciesDao.set_lifestyle_survey_authored_time(
+            arbitrary_date, core_minus_pm_participant_id, self.session
+        )
         participant_summary_dao.update(core_minus_pm_summary)
 
         core_summary = participant_summary_dao.get(core_participant_id)
@@ -233,12 +238,24 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         core_summary.numCompletedBaselinePPIModules = 3
         core_summary.consentForStudyEnrollment = 1
         core_summary.consentForElectronicHealthRecords = 1
-        core_summary.enrollmentStatusMemberTime = '2016-11-29 12:16:00'
-        core_summary.questionnaireOnTheBasicsAuthored = '2016-11-29 12:16:00'
-        core_summary.questionnaireOnOverallHealthAuthored = '2016-11-29 12:16:00'
-        core_summary.questionnaireOnLifestyleAuthored = '2016-11-29 12:16:00'
+        core_summary.enrollmentStatusMemberTime = arbitrary_date
         core_summary.clinicPhysicalMeasurementsStatus = 1
-        core_summary.clinicPhysicalMeasurementsFinalizedTime = '2016-11-29 12:16:00'
+        core_summary.clinicPhysicalMeasurementsFinalizedTime = arbitrary_date
+        EnrollmentDependenciesDao.set_intent_to_share_ehr_time(
+            arbitrary_date, core_participant_id, self.session
+        )
+        EnrollmentDependenciesDao.set_basics_survey_authored_time(
+            arbitrary_date, core_participant_id, self.session
+        )
+        EnrollmentDependenciesDao.set_overall_health_survey_authored_time(
+            arbitrary_date, core_participant_id, self.session
+        )
+        EnrollmentDependenciesDao.set_lifestyle_survey_authored_time(
+            arbitrary_date, core_participant_id, self.session
+        )
+        EnrollmentDependenciesDao.set_physical_measurements_time(
+            arbitrary_date, core_participant_id, self.session
+        )
         participant_summary_dao.update(core_summary)
 
         samples_json = test_data.open_biobank_samples(biobank_ids=biobank_ids, tests=test_codes)
@@ -266,31 +283,23 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             )
 
         # Check that the 1SAL2 collection methods were set correctly
-        on_site_summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
-            ParticipantSummary.participantId == on_site_1sal2_participant_id
-        ).one()
+        dao = ParticipantSummaryDao()
+        self.session.expire_all()
+        on_site_summary: ParticipantSummary = dao.get(on_site_1sal2_participant_id)
         self.assertEqual(SampleCollectionMethod.ON_SITE, on_site_summary.sample1SAL2CollectionMethod)
 
-        mail_kit_summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
-            ParticipantSummary.participantId == mail_kit_1sal2_participant_id
-        ).one()
+        mail_kit_summary: ParticipantSummary = dao.get(mail_kit_1sal2_participant_id)
         self.assertEqual(SampleCollectionMethod.MAIL_KIT, mail_kit_summary.sample1SAL2CollectionMethod)
 
-        core_minus_pm_summary = self.session.query(ParticipantSummary).filter(
-            ParticipantSummary.participantId == core_minus_pm_participant_id
-        ).one()
+        core_minus_pm_summary = dao.get(core_minus_pm_participant_id)
         self.assertEqual(core_minus_pm_summary.enrollmentStatus, EnrollmentStatus.CORE_MINUS_PM)
         self.assertEqual(core_minus_pm_summary.enrollmentStatusCoreMinusPMTime, datetime(2017, 11, 29, 16, 10, 17))
 
-        core_summary = self.session.query(ParticipantSummary).filter(
-            ParticipantSummary.participantId == core_participant_id
-        ).one()
+        core_summary = dao.get(core_participant_id)
         self.assertEqual(core_summary.enrollmentStatus, EnrollmentStatus.FULL_PARTICIPANT)
         self.assertEqual(core_summary.enrollmentStatusCoreStoredSampleTime, datetime(2016, 11, 29, 12, 38, 58))
 
-        no_order_summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
-            ParticipantSummary.participantId == no_order_1sal2_participant_id
-        ).one()
+        no_order_summary: ParticipantSummary = dao.get(no_order_1sal2_participant_id)
         self.assertIsNone(no_order_summary.sample1SAL2CollectionMethod)
 
     def _check_summary(self, participant_id, test, date_formatted, status):
