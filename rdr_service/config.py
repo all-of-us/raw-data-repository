@@ -278,6 +278,7 @@ BIOBANK_DATA_COMPARISON_DOCUMENT_ID = "biobank_data_comparison_document_id"
 
 RDR_SLACK_WEBHOOKS = "rdr_slack_webhooks"
 RDR_VALIDATION_WEBHOOK = "rdr_validation_webhook"
+RDR_RETENTION_STATUS_WEBHOOK = "rdr_retention_status_webhook"
 
 NPH_SLACK_WEBHOOKS = "nph_slack_webhooks"
 
