@@ -671,18 +671,26 @@ class BiobankOrderApiTest(BaseTestCase):
         finalized_date = collection_date + datetime.timedelta(minutes=10)
         origin_mock.return_value = 'hpro'
         order_json = load_biobank_order_json(participant_summary.participantId, filename="biobank_order_2.json")
-        order_json['samples'] = [{
-            'test': '2SAL0',
-            'description': 'testing dna check',
-            'processingRequired': False,
-            'collected': collection_date.isoformat(),
-            'finalized': finalized_date.isoformat()
-        }]
-        self.send_post(f'Participant/P{participant_summary.participantId}/BiobankOrder', order_json)
+        sample_test_types = ['2SAL0', '1PS4A', '1PS4B', '2PS4A', '2PS4B']
+        order_num = 900000000
+        healthpro_order_id = 123900000000
+        for test in sample_test_types:
+            order_json['identifier'][1]['value'] = f'WEB1YLHV{order_num}'
+            order_json['identifier'][0]['value'] = f'healthpro-order-id-{healthpro_order_id}'
+            order_json['samples'] = [{
+                'test': test,
+                'description': 'testing dna check',
+                'processingRequired': False,
+                'collected': collection_date.isoformat(),
+                'finalized': finalized_date.isoformat()
+            }]
+            self.send_post(f'Participant/P{participant_summary.participantId}/BiobankOrder', order_json)
 
-        self.session.refresh(participant_summary)
-        self.assertEqual(OrderStatus.FINALIZED, participant_summary.sampleOrderStatus2SAL0)
-        self.assertEqual(finalized_date, participant_summary.sampleOrderStatus2SAL0Time)
+            self.session.refresh(participant_summary)
+            exec(f"self.assertEqual(OrderStatus.FINALIZED, participant_summary.sampleOrderStatus{test})")
+            exec(f"self.assertEqual(finalized_date, participant_summary.sampleOrderStatus{test}Time)")
+            order_num += 1
+            healthpro_order_id += 1
 
     def _insert_measurements(self, now=None):
         measurements_1 = load_measurement_json(self.participant_id, now)
