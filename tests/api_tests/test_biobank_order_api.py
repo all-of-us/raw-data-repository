@@ -687,8 +687,10 @@ class BiobankOrderApiTest(BaseTestCase):
             self.send_post(f'Participant/P{participant_summary.participantId}/BiobankOrder', order_json)
 
             self.session.refresh(participant_summary)
-            exec(f"self.assertEqual(OrderStatus.FINALIZED, participant_summary.sampleOrderStatus{test})")
-            exec(f"self.assertEqual(finalized_date, participant_summary.sampleOrderStatus{test}Time)")
+            sample_order_status_attr = f"sampleOrderStatus{test}"
+            sample_order_status_time_attr = f"sampleOrderStatus{test}Time"
+            self.assertEqual(OrderStatus.FINALIZED, getattr(participant_summary, sample_order_status_attr))
+            self.assertEqual(finalized_date, getattr(participant_summary, sample_order_status_time_attr))
             order_num += 1
             healthpro_order_id += 1
 
