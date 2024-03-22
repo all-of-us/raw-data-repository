@@ -678,9 +678,7 @@ class BiobankOrderApiTest(BaseTestCase):
         healthpro_order_id = 123900000000
         for test in sample_test_types:
             order_json["identifier"][1]["value"] = f"WEB1YLHV{order_num}"
-            order_json["identifier"][0][
-                "value"
-            ] = f"healthpro-order-id-{healthpro_order_id}"
+            order_json["identifier"][0]["value"] = f"healthpro-order-id-{healthpro_order_id}"
             order_json["samples"] = [
                 {
                     "test": test,
