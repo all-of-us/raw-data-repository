@@ -665,7 +665,7 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertIsNotNone("biobankId", ps["entry"][0]["resource"])
 
     @mock.patch('rdr_service.dao.biobank_order_dao.get_account_origin_id')
-    def test_2sal0_sample(self, origin_mock):
+    def test_participant_summary_sample_order_status_fields(self, origin_mock):
         participant_summary = self.data_generator.create_database_participant_summary()
         collection_date = datetime.datetime(2023, 1, 7, 18, 2)
         finalized_date = collection_date + datetime.timedelta(minutes=10)
