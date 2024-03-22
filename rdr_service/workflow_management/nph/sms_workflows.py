@@ -3,7 +3,6 @@ import logging
 
 from protorpc import messages
 
-from rdr_service import config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.study_nph_sms_dao import SmsJobRunDao, SmsSampleDao, SmsN0Dao, SmsN1Mc1Dao
