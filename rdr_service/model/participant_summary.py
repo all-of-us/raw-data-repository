@@ -1724,8 +1724,8 @@ class ParticipantSummary(Base):
     numBaselineSamplesArrived = Column("num_baseline_samples_arrived", SmallInteger, default=0)
     """
     The count of samples the biobank has recorded from baseline sample list [
-        1ED04, 1ED10, 1HEP4, 1PST8, 2PST8, 1SST8, 2SST8, 1PS08
-        1SS08, 1UR10, 1CFD9, 1PXR2, 1UR90, 2ED02, 2ED04, 2ED10
+        1ED04, 1ED10, 1HEP4, 1PST8, 2PST8, 1SST8, 2SST8, 1PS08, 1PS4A, 1PS4B,
+        2PS4A, 2PS4B, 1SS08, 1UR10, 1CFD9, 1PXR2, 1UR90, 2ED02, 2ED04, 2ED10
     ]
     """
 
