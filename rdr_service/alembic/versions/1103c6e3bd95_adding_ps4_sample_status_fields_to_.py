@@ -34,22 +34,22 @@ def upgrade_rdr():
     op.execute("""
         alter table participant_summary
         add column (
-            sample_order_status_1PS4A smallint DEFAULT NULL,
-            sample_order_status_1PS4A_time datetime DEFAULT NULL,
-            sample_order_status_1PS4B smallint DEFAULT NULL,
-            sample_order_status_1PS4B_time datetime DEFAULT NULL,
-            sample_order_status_2PS4A smallint DEFAULT NULL,
-            sample_order_status_2PS4A_time datetime DEFAULT NULL,
-            sample_order_status_2PS4B smallint DEFAULT NULL,
-            sample_order_status_2PS4B_time datetime DEFAULT NULL,
-            sample_status_1PS4A smallint DEFAULT NULL,
-            sample_status_1PS4A_time datetime DEFAULT NULL,
-            sample_status_1PS4B smallint DEFAULT NULL,
-            sample_status_1PS4B_time datetime DEFAULT NULL,
-            sample_status_2PS4A smallint DEFAULT NULL,
-            sample_status_2PS4A_time datetime DEFAULT NULL,
-            sample_status_2PS4B smallint DEFAULT NULL,
-            sample_status_2PS4B_time datetime DEFAULT NULL
+            sample_order_status_1ps4a smallint DEFAULT NULL,
+            sample_order_status_1ps4a_time datetime DEFAULT NULL,
+            sample_order_status_1ps4b smallint DEFAULT NULL,
+            sample_order_status_1ps4b_time datetime DEFAULT NULL,
+            sample_order_status_2ps4a smallint DEFAULT NULL,
+            sample_order_status_2ps4a_time datetime DEFAULT NULL,
+            sample_order_status_2ps4b smallint DEFAULT NULL,
+            sample_order_status_2ps4b_time datetime DEFAULT NULL,
+            sample_status_1ps4a smallint DEFAULT NULL,
+            sample_status_1ps4a_time datetime DEFAULT NULL,
+            sample_status_1ps4b smallint DEFAULT NULL,
+            sample_status_1ps4b_time datetime DEFAULT NULL,
+            sample_status_2ps4a smallint DEFAULT NULL,
+            sample_status_2ps4a_time datetime DEFAULT NULL,
+            sample_status_2ps4b smallint DEFAULT NULL,
+            sample_status_2ps4b_time datetime DEFAULT NULL
         );
     """)
     # ### end Alembic commands ###
