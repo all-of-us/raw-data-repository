@@ -457,8 +457,8 @@ class NphSmsWorkflowsTest(BaseTestCase):
                                      payload=data,
                                      queue='nph')
 
-
-    def test_sms_ingestion_filetype_failure(self):
+    @mock.patch('rdr_service.workflow_management.nph.sms_workflows.GCPCloudTask.execute')
+    def test_sms_ingestion_filetype_failure(self, mock_checker):
         # Create txt file to ingest
         self.create_cloud_csv("test_sample_list_fail.txt", "test_sample_list_fail.txt")
         ingestion_data = {
@@ -478,4 +478,5 @@ class NphSmsWorkflowsTest(BaseTestCase):
             )
             # Check that the logs contain a noticeable part of the warning indicating a slack message would be sent.
             self.assertIn('does not conform', slack_warning.output[0])
+            mock_checker.assert_called()
 

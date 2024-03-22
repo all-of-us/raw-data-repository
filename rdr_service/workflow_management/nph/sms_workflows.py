@@ -151,23 +151,18 @@ class SmsWorkflow:
         file_end = self.file_path.split(".")[-1]
         # Ensure file is CSV
         if not file_end == "csv":
-            if config.getSettingJson(config.NPH_SLACK_WEBHOOKS, {}):
-                cloud_task = GCPCloudTask()
-                message = {
-                    "slack": True,
-                    "message": f"Error ingesting nph file of type {file_end}. "
-                               f"File '{self.file_path}' does not conform to csv format."
-                }
-                cloud_task.execute(
-                    endpoint="nph_incident_task_api",
-                    payload=message,
-                    queue="nph"
-                )
-            else:
-                logging.warning(
-                    msg=f"Error ingesting nph file of type {file_end}. "
-                        f"File '{self.file_path}' does not conform to csv format."
-                )
+            cloud_task = GCPCloudTask()
+            message = {
+                "slack": True,
+                "message": f"Error ingesting nph file of type {file_end}. "
+                           f"File '{self.file_path}' does not conform to csv format."
+            }
+            cloud_task.execute(
+                endpoint="nph_incident_task_api",
+                payload=message,
+                queue="nph"
+            )
+            logging.warning(message["message"])
             return
 
         # Map a file type to a DAO
