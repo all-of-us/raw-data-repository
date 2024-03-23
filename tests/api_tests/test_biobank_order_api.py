@@ -13,6 +13,7 @@ from rdr_service.model.biobank_order import (
     BiobankOrderedSampleHistory,
 )
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
 from rdr_service.participant_enums import OrderStatus, UNSET_HPO_ID
 from tests.api_tests.test_participant_summary_api import _add_code_answer
@@ -692,17 +693,21 @@ class BiobankOrderApiTest(BaseTestCase):
                 f"Participant/P{participant_summary.participantId}/BiobankOrder",
                 order_json,
             )
-            self.session.flush()
-            self.session.refresh(participant_summary)
+            self.session.commit()
+            refreshed_participant_summary = (
+                self.session.query(ParticipantSummary)
+                .filter_by(participantId=participant_summary.participantId)
+                .one
+            )
             sample_order_status_attr = f"sampleOrderStatus{test}"
             sample_order_status_time_attr = f"sampleOrderStatus{test}Time"
             self.assertEqual(
                 OrderStatus.FINALIZED,
-                getattr(participant_summary, sample_order_status_attr),
+                getattr(refreshed_participant_summary, sample_order_status_attr),
             )
             self.assertEqual(
                 finalized_date,
-                getattr(participant_summary, sample_order_status_time_attr),
+                getattr(refreshed_participant_summary, sample_order_status_time_attr),
             )
             order_num += 1
             healthpro_order_id += 1
