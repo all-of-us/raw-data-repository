@@ -13,7 +13,6 @@ from rdr_service.model.biobank_order import (
     BiobankOrderedSampleHistory,
 )
 from rdr_service.model.participant import Participant
-from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
 from rdr_service.participant_enums import OrderStatus, UNSET_HPO_ID
 from tests.api_tests.test_participant_summary_api import _add_code_answer
@@ -696,8 +695,6 @@ class BiobankOrderApiTest(BaseTestCase):
             refreshed_participant_summary = self.send_get(
                 f"Participant/P{participant_summary.participantId}/Summary"
             )
-            sample_order_status_attr = f"sampleOrderStatus{test}"
-            sample_order_status_time_attr = f"sampleOrderStatus{test}Time"
             self.assertEqual(
                 OrderStatus.FINALIZED.name,
                 refreshed_participant_summary.get(f"sampleOrderStatus{test}"),
