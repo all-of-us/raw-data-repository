@@ -692,7 +692,7 @@ class BiobankOrderApiTest(BaseTestCase):
                 f"Participant/P{participant_summary.participantId}/BiobankOrder",
                 order_json,
             )
-
+            self.session.flush()
             self.session.refresh(participant_summary)
             sample_order_status_attr = f"sampleOrderStatus{test}"
             sample_order_status_time_attr = f"sampleOrderStatus{test}Time"
