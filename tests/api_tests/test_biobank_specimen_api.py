@@ -1220,7 +1220,11 @@ class BiobankOrderApiTest(BaseTestCase):
         )
         self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
 
-    def test_update_participant_summary_with_sample_status(self):
+    def test_update_participant_summary_with_sample_status(self) -> None:
+        """
+        Checking to see if the sampleStatus updates to RECEIVED with the confirmation time
+        using the participant summary fields: sampleStatus1PS4A & sampleStatus1PS4ATime
+        """
         collection_date = datetime.datetime(2023, 1, 7, 18, 2)
         confirmation_date = collection_date + datetime.timedelta(minutes=10)
         payload = self.get_minimal_specimen_json()
