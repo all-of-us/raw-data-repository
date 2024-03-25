@@ -719,7 +719,7 @@ class BiobankOrderApiTest(BaseTestCase):
         )
 
     @mock.patch("rdr_service.dao.biobank_order_dao.get_account_origin_id")
-    def test_participant_summary_sample_order_status_fields(self, origin_mock: Mock):
+    def test_update_participant_summary_with_order_status(self, origin_mock: Mock):
         participant = self.data_generator.create_database_participant_summary()
         origin_mock.return_value = "hpro"
         sample_test_types = ["2SAL0", "1PS4A", "1PS4B", "2PS4A", "2PS4B"]
