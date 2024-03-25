@@ -1,6 +1,8 @@
 import datetime
 import http.client
 import mock
+from unittest.mock import Mock
+from typing import Dict, Any
 
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, RACE_NONE_OF_THESE_CODE
@@ -666,13 +668,13 @@ class BiobankOrderApiTest(BaseTestCase):
 
     @staticmethod
     def create_biobank_order_for_tests(
-        participant_id,
-        sample_test_type,
-        healthpro_order_id,
-        order_num,
-        collection_date,
-        finalized_date,
-    ):
+        participant_id: int,
+        sample_test_type: str,
+        healthpro_order_id: int,
+        order_num: int,
+        collection_date: datetime,
+        finalized_date: datetime,
+    ) -> Dict[str, Any]:
         order_json = load_biobank_order_json(
             participant_id, filename="biobank_order_2.json"
         )
@@ -691,20 +693,33 @@ class BiobankOrderApiTest(BaseTestCase):
         ]
         return order_json
 
-    def post_biobank_order_and_verify_sample_order_status(self, participant_id, sample_test_type, order_json, finalized_date):
-        self.send_post(f"Participant/P{participant_id}/BiobankOrder", request_data=order_json)
+    def post_biobank_order_and_verify_sample_order_status(
+        self,
+        participant_id: int,
+        sample_test_type: str,
+        order_json: Dict[str, Any],
+        finalized_date: datetime,
+    ) -> None:
+        self.send_post(
+            f"Participant/P{participant_id}/BiobankOrder", request_data=order_json
+        )
         refreshed_participant_summary = self.summary_dao.get(participant_id)
         self.assertEqual(
             OrderStatus.FINALIZED,
-            getattr(refreshed_participant_summary, f"sampleOrderStatus{sample_test_type}"),
+            getattr(
+                refreshed_participant_summary, f"sampleOrderStatus{sample_test_type}"
+            ),
         )
         self.assertEqual(
             finalized_date,
-            getattr(refreshed_participant_summary,f"sampleOrderStatus{sample_test_type}Time"),
+            getattr(
+                refreshed_participant_summary,
+                f"sampleOrderStatus{sample_test_type}Time",
+            ),
         )
 
     @mock.patch("rdr_service.dao.biobank_order_dao.get_account_origin_id")
-    def test_participant_summary_sample_order_status_fields(self, origin_mock):
+    def test_participant_summary_sample_order_status_fields(self, origin_mock: Mock):
         participant = self.data_generator.create_database_participant_summary()
         origin_mock.return_value = "hpro"
         sample_test_types = ["2SAL0", "1PS4A", "1PS4B", "2PS4A", "2PS4B"]
@@ -720,13 +735,13 @@ class BiobankOrderApiTest(BaseTestCase):
                     healthpro_order_id,
                     order_num,
                     collection_date,
-                    finalized_date
+                    finalized_date,
                 )
                 self.post_biobank_order_and_verify_sample_order_status(
                     participant.participantId,
                     sample_test_type,
                     order_json,
-                    finalized_date
+                    finalized_date,
                 )
 
                 order_num += 1
