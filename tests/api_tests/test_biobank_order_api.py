@@ -675,6 +675,9 @@ class BiobankOrderApiTest(BaseTestCase):
         collection_date: datetime,
         finalized_date: datetime,
     ) -> Dict[str, Any]:
+        """
+        loads a test biobank order and updates it with the appropriate biobank order information
+        """
         order_json = load_biobank_order_json(
             participant_id, filename="biobank_order_2.json"
         )
@@ -700,6 +703,10 @@ class BiobankOrderApiTest(BaseTestCase):
         order_json: Dict[str, Any],
         finalized_date: datetime,
     ) -> None:
+        """
+        Posts a biobank order to the Biobank Order Endpoint and checks the Participant Summary table to see if
+        the sampleStatus and sampleOrderStatus fields will update appropriately
+        """
         self.send_post(
             f"Participant/P{participant_id}/BiobankOrder", request_data=order_json
         )
@@ -732,13 +739,22 @@ class BiobankOrderApiTest(BaseTestCase):
         )
 
     @mock.patch("rdr_service.dao.biobank_order_dao.get_account_origin_id")
-    def test_update_participant_summary_with_order_status(self, origin_mock: Mock):
+    def test_update_participant_summary_with_order_status(self, origin_mock: Mock) -> None:
+        """
+        Goes through a series of new sample status test types, and ensures that after posting
+        to the biobank endpoint, the newly posted information will update and
+        save this information to the appropriate participant summary fields.
+        """
+
         origin_mock.return_value = "hpro"
         sample_test_types = ["2SAL0", "1PS4A", "1PS4B", "2PS4A", "2PS4B"]
+        # biobank order info
         order_num = 900000001
         healthpro_order_id = 123900000001
         collection_date = datetime.datetime(2023, 1, 7, 18, 2)
         finalized_date = collection_date + datetime.timedelta(minutes=10)
+        # loops through each sample test types to create a biobank order for that test type, and asserts
+        # the new information saves appropriately
         for sample_test_type in sample_test_types:
             sample_status_fields = {
                 f"sampleStatus{sample_test_type}": SampleStatus.RECEIVED,
