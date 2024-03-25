@@ -16,7 +16,7 @@ from rdr_service.model.biobank_order import (
 )
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
-from rdr_service.participant_enums import OrderStatus, UNSET_HPO_ID
+from rdr_service.participant_enums import OrderStatus, UNSET_HPO_ID, SampleStatus
 from tests.api_tests.test_participant_summary_api import _add_code_answer
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import load_biobank_order_json, load_measurement_json
@@ -717,10 +717,22 @@ class BiobankOrderApiTest(BaseTestCase):
                 f"sampleOrderStatus{sample_test_type}Time",
             ),
         )
+        self.assertEqual(
+            SampleStatus.RECEIVED,
+            getattr(
+                refreshed_participant_summary, f"sampleStatus{sample_test_type}"
+            ),
+        )
+        self.assertEqual(
+            finalized_date,
+            getattr(
+                refreshed_participant_summary,
+                f"sampleStatus{sample_test_type}Time",
+            ),
+        )
 
     @mock.patch("rdr_service.dao.biobank_order_dao.get_account_origin_id")
     def test_update_participant_summary_with_order_status(self, origin_mock: Mock):
-        participant = self.data_generator.create_database_participant_summary()
         origin_mock.return_value = "hpro"
         sample_test_types = ["2SAL0", "1PS4A", "1PS4B", "2PS4A", "2PS4B"]
         order_num = 900000001
@@ -728,6 +740,12 @@ class BiobankOrderApiTest(BaseTestCase):
         collection_date = datetime.datetime(2023, 1, 7, 18, 2)
         finalized_date = collection_date + datetime.timedelta(minutes=10)
         for sample_test_type in sample_test_types:
+            sample_status_fields = {
+                f"sampleStatus{sample_test_type}": SampleStatus.RECEIVED,
+                f"sampleStatus{sample_test_type}Time": finalized_date,
+                "samplesToIsolateDNA": SampleStatus.RECEIVED,
+            }
+            participant = self.data_generator.create_database_participant_summary(**sample_status_fields)
             with self.subTest(sample_test_type=sample_test_type):
                 order_json = self.create_biobank_order_for_tests(
                     participant.participantId,
