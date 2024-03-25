@@ -1254,7 +1254,53 @@ class ParticipantSummary(Base):
     sampleStatus1PS08Time = Column("sample_status_1ps08_time", UTCDateTime)
     "The datetime in UTC in which the biobank processed the sample."
 
-    sampleStatus1HEP4 = Column("sample_status_1hep4", Enum(SampleStatus), default=SampleStatus.UNSET)
+    sampleStatus1PS4A = Column(
+        "sample_status_1ps4a", Enum(SampleStatus), default=SampleStatus.UNSET
+    )
+    """
+    The result of biobank processing on sample 1PS4A.
+
+    :ref:`Enumerated values <sample_status>`
+    """
+    sampleStatus1PS4ATime = Column("sample_status_1ps4a_time", UTCDateTime)
+    "The datetime in UTC in which the biobank processed the sample."
+
+    sampleStatus1PS4B = Column(
+        "sample_status_1ps4b", Enum(SampleStatus), default=SampleStatus.UNSET
+    )
+    """
+    The result of biobank processing on sample 1PS4B.
+
+    :ref:`Enumerated values <sample_status>`
+    """
+    sampleStatus1PS4BTime = Column("sample_status_1ps4b_time", UTCDateTime)
+    "The datetime in UTC in which the biobank processed the sample."
+
+    sampleStatus2PS4A = Column(
+        "sample_status_2ps4a", Enum(SampleStatus), default=SampleStatus.UNSET
+    )
+    """
+    The result of biobank processing on sample 2PS4A.
+
+    :ref:`Enumerated values <sample_status>`
+    """
+    sampleStatus2PS4ATime = Column("sample_status_2ps4a_time", UTCDateTime)
+    "The datetime in UTC in which the biobank processed the sample."
+
+    sampleStatus2PS4B = Column(
+        "sample_status_2ps4b", Enum(SampleStatus), default=SampleStatus.UNSET
+    )
+    """
+    The result of biobank processing on sample 2PS4B.
+
+    :ref:`Enumerated values <sample_status>`
+    """
+    sampleStatus2PS4BTime = Column("sample_status_2ps4b_time", UTCDateTime)
+    "The datetime in UTC in which the biobank processed the sample."
+
+    sampleStatus1HEP4 = Column(
+        "sample_status_1hep4", Enum(SampleStatus), default=SampleStatus.UNSET
+    )
     """
     The result of biobank processing on sample 1HEP4.
 
@@ -1487,7 +1533,53 @@ class ParticipantSummary(Base):
     sampleOrderStatus1PS08Time = Column("sample_order_status_1ps08_time", UTCDateTime)
     "The time the sample was marked as finalized by the processing site."
 
-    sampleOrderStatus1HEP4 = Column("sample_order_status_1hep4", Enum(OrderStatus), default=OrderStatus.UNSET)
+    sampleOrderStatus1PS4A = Column(
+        "sample_order_status_1ps4a", Enum(OrderStatus), default=OrderStatus.UNSET
+    )
+    """
+    The result of biobank processing on sample 1PS4A.
+
+    :ref:`Enumerated values <sample_status>`
+    """
+    sampleOrderStatus1PS4ATime = Column("sample_order_status_1ps4a_time", UTCDateTime)
+    "The datetime in UTC in which the biobank processed the sample."
+
+    sampleOrderStatus1PS4B = Column(
+        "sample_order_status_1ps4b", Enum(OrderStatus), default=OrderStatus.UNSET
+    )
+    """
+    The result of biobank processing on sample 1PS4B.
+
+    :ref:`Enumerated values <sample_status>`
+    """
+    sampleOrderStatus1PS4BTime = Column("sample_order_status_1ps4b_time", UTCDateTime)
+    "The datetime in UTC in which the biobank processed the sample."
+
+    sampleOrderStatus2PS4A = Column(
+        "sample_order_status_2ps4a", Enum(OrderStatus), default=OrderStatus.UNSET
+    )
+    """
+    The result of biobank processing on sample 2PS4A.
+
+    :ref:`Enumerated values <sample_status>`
+    """
+    sampleOrderStatus2PS4ATime = Column("sample_order_status_2ps4a_time", UTCDateTime)
+    "The datetime in UTC in which the biobank processed the sample."
+
+    sampleOrderStatus2PS4B = Column(
+        "sample_order_status_2ps4b", Enum(OrderStatus), default=OrderStatus.UNSET
+    )
+    """
+    The result of biobank processing on sample 2PS4B.
+
+    :ref:`Enumerated values <sample_status>`
+    """
+    sampleOrderStatus2PS4BTime = Column("sample_order_status_2ps4b_time", UTCDateTime)
+    "The datetime in UTC in which the biobank processed the sample."
+
+    sampleOrderStatus1HEP4 = Column(
+        "sample_order_status_1hep4", Enum(OrderStatus), default=OrderStatus.UNSET
+    )
     """
     The individual order status of sample 1HEP4.
 
@@ -1632,8 +1724,8 @@ class ParticipantSummary(Base):
     numBaselineSamplesArrived = Column("num_baseline_samples_arrived", SmallInteger, default=0)
     """
     The count of samples the biobank has recorded from baseline sample list [
-        1ED04, 1ED10, 1HEP4, 1PST8, 2PST8, 1SST8, 2SST8, 1PS08
-        1SS08, 1UR10, 1CFD9, 1PXR2, 1UR90, 2ED02, 2ED04, 2ED10
+        1ED04, 1ED10, 1HEP4, 1PST8, 2PST8, 1SST8, 2SST8, 1PS08, 1PS4A, 1PS4B,
+        2PS4A, 2PS4B, 1SS08, 1UR10, 1CFD9, 1PXR2, 1UR90, 2ED02, 2ED04, 2ED10
     ]
     """
 
