@@ -4,6 +4,7 @@ import logging
 from protorpc import messages
 
 from rdr_service.api_util import open_cloud_file
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.study_nph_sms_dao import SmsJobRunDao, SmsSampleDao, SmsN0Dao, SmsN1Mc1Dao
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.workflow_management.general_job_controller import JobController
@@ -145,6 +146,23 @@ class SmsWorkflow:
         """
         Main method for ingestion jobs.
         """
+
+        file_extension = self.file_path.split(".")[-1].lower()
+        # Ensure file is CSV
+        if not file_extension == "csv":
+            cloud_task = GCPCloudTask()
+            message = {
+                "slack": True,
+                "message": f"Error ingesting nph file of type {file_extension}. "
+                           f"File '{self.file_path}' does not conform to csv format."
+            }
+            cloud_task.execute(
+                endpoint="nph_incident_task_api",
+                payload=message,
+                queue="nph"
+            )
+            logging.warning(message["message"])
+            return
 
         # Map a file type to a DAO
         if self.file_type == SmsFileTypes.SAMPLE_LIST:

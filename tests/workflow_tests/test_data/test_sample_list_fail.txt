@@ -1,0 +1,4 @@
+sample_id,lims_sample_id,plate_number,position,labware_type,blank,sample_identifier,diet,sex_at_birth,bmi,age,race,ethnicity,destination
+10001,5847307831,1,A1,Matrix96_Blue,"",C_S_5847307831_M1_L_TP1,LMT,Intersex,38,21,"Native Hawaiian or other Pacific Islander","Black, African American or African",UNC_META
+10002,6470739164,1,B1,Matrix96_Blue,"",C_S_6470739164_M1_L_TP3,LMT,Intersex,38,21,"American Indian or Alaska Native","African",UNC_META
+10003,7013747926,1,C1,Matrix96_Blue,"",C_S_7013747926_M1_L_TP4,LMT,Intersex,38,21,"Black, African American or African","Asian",UNC_META

@@ -457,3 +457,26 @@ class NphSmsWorkflowsTest(BaseTestCase):
                                      payload=data,
                                      queue='nph')
 
+    @mock.patch('rdr_service.workflow_management.nph.sms_workflows.GCPCloudTask.execute')
+    def test_sms_ingestion_filetype_failure(self, mock_checker):
+        # Create txt file to ingest
+        self.create_cloud_csv("test_sample_list_fail.txt", "test_sample_list_fail.txt")
+        ingestion_data = {
+            "job": "FILE_INGESTION",
+            "file_type": "SAMPLE_LIST",
+            "file_path": f"{self.test_bucket}/test_sample_list_fail.txt"
+        }
+
+        # Run nph ingestion workflow, expect to fail without error generation.
+        from rdr_service.resource import main as resource_main
+        with self.assertLogs(level="WARNING") as slack_warning:
+            self.send_post(
+                local_path='NphSmsIngestionTaskApi',
+                request_data=ingestion_data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+            # Check that the logs contain a noticeable part of the warning indicating a slack message would be sent.
+            self.assertIn('does not conform', slack_warning.output[0])
+            mock_checker.assert_called()
+
