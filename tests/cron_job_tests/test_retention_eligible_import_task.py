@@ -1,9 +1,12 @@
 from datetime import datetime, timedelta
 import mock
 import pytz
+from sqlalchemy.exc import InvalidRequestError
 from typing import Optional
 
+from rdr_service import config
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
+from rdr_service.dao.retention_status_import_failures_dao import RetentionStatusImportFailuresDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.offline import retention_eligible_import
@@ -14,6 +17,18 @@ TIME_1 = datetime(2020, 4, 1)
 
 
 class RetentionEligibleImportTest(BaseTestCase):
+
+    def setUp(self, *args, **kwargs):
+        super(RetentionEligibleImportTest, self).setUp(*args, **kwargs)
+
+        self.failures_dao = RetentionStatusImportFailuresDao()
+
+        mock_slack_client_class = self.mock('rdr_service.offline.retention_eligible_import.SlackMessageHandler')
+        self.slack_client_instance = mock_slack_client_class.return_value
+
+        self.temporarily_override_config_setting(config.RDR_SLACK_WEBHOOKS, {
+            'rdr_retention_status_webhook': 'aou1234'
+        })
 
     @mock.patch('rdr_service.offline.retention_eligible_import.GoogleCloudStorageCSVReader')
     def test_retention_eligible_import(self, csv_reader):
@@ -194,6 +209,104 @@ class RetentionEligibleImportTest(BaseTestCase):
         ps = self.send_get("ParticipantSummary?retentionType=UNSET&retentionEligibleStatus=NOT_ELIGIBLE"
                            "&_includeTotal=TRUE")
         self.assertEqual(len(ps['entry']), 1)
+
+    @mock.patch('rdr_service.offline.retention_eligible_import.GoogleCloudStorageCSVReader')
+    def test_retention_eligible_import_exception_slack_alerts(self, csv_reader):
+        ps1 = self.data_generator.create_database_participant_summary()
+        ps2 = self.data_generator.create_database_participant_summary()
+        ps3 = self.data_generator.create_database_participant_summary()
+        ps4 = self.data_generator.create_database_participant_summary()
+        ps5 = self.data_generator.create_database_participant_summary()
+
+        csv_reader.return_value = [
+            self._build_csv_row(
+                participant_id=ps1.participantId,
+                retention_eligible='1',
+                retention_eligible_date='2020-02-20',
+                actively_retained='1',
+                last_active_retention_activity_date='2020-02-10',
+                passively_retained='0'
+            ),
+            self._build_csv_row(
+                participant_id=ps2.participantId,
+                retention_eligible='1',
+                retention_eligible_date='2020-02-20',
+                actively_retained='0',
+                last_active_retention_activity_date='2020-02-10',
+                passively_retained='1'
+            ),
+            self._build_csv_row(
+                participant_id=ps2.participantId,
+                retention_eligible='1',
+                retention_eligible_date='2020-02-20',
+                actively_retained='1',
+                last_active_retention_activity_date='2020-02-10',
+                passively_retained='1'
+            ),
+            self._build_csv_row(
+                participant_id=ps3.participantId,
+                retention_eligible='1',
+                retention_eligible_date='2020-02-20',
+                actively_retained='1',
+                last_active_retention_activity_date='2020-02-10',
+                passively_retained='1'
+            ),
+            self._build_csv_row(
+                participant_id=ps4.participantId,
+                retention_eligible='0',
+                retention_eligible_date='NULL',
+                actively_retained='0',
+                last_active_retention_activity_date='NULL',
+                passively_retained='0'
+            ),
+            self._build_csv_row(
+                participant_id=ps5.participantId,
+                retention_eligible='1',
+                retention_eligible_date='2020-02-20',
+                actively_retained='1',
+                last_active_retention_activity_date='2020-02-10',
+                passively_retained='0'
+            ),
+        ]
+
+        test_date = datetime(2020, 10, 13)
+        pytz.timezone('US/Central').localize(test_date)
+
+        # Check that exception is thrown with small batch size
+        with (self.assertRaises(InvalidRequestError),
+              mock.patch("rdr_service.offline.retention_eligible_import._BATCH_SIZE", 3)):
+            retention_eligible_import.import_retention_eligible_metrics_file({
+                "bucket": 'test_bucket',
+                "upload_date": test_date.isoformat(),
+                "file_path": 'test_bucket/test_file.csv'
+            })
+
+        # Check that Slack alert was sent with correct failure count
+        self.slack_client_instance.send_message_to_webhook.assert_called_with(
+            message_data={'text': 'PTSC Retention File Import Status: File at file path - '
+                                  'gs://test_bucket/test_file.csv, had 3 records fail to ingest'}
+        )
+
+        # closing anything the session has open to prep for the next phase of the test
+        self.session.commit()
+
+        # Check that exception is thrown with large batch size
+        with self.assertRaises(InvalidRequestError):
+            retention_eligible_import.import_retention_eligible_metrics_file({
+                "bucket": 'test_bucket',
+                "upload_date": test_date.isoformat(),
+                "file_path": 'test_bucket/test_file.csv'
+            })
+
+        # Check that failure count was inserted into table
+        self.assertEqual("gs://test_bucket/test_file.csv", self.failures_dao.get(1).file_path)
+        self.assertEqual(3, self.failures_dao.get(1).failure_count)
+
+        # Check that Slack alert was sent with correct failure count
+        self.slack_client_instance.send_message_to_webhook.assert_called_with(
+            message_data={'text': 'PTSC Retention File Import Status: File at file path - '
+                                  'gs://test_bucket/test_file.csv, had 6 records fail to ingest'}
+        )
 
     @mock.patch('rdr_service.offline.retention_eligible_import.GoogleCloudStorageCSVReader')
     @mock.patch('rdr_service.offline.retention_eligible_import._supplement_with_rdr_calculations')

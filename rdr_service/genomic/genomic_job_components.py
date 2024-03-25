@@ -19,7 +19,7 @@ from rdr_service import clock, config
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_manifest_mappings import GENOMIC_FULL_INGESTION_MAP
-from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow
+from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow, GenomicAW4Workflow
 from rdr_service.genomic.genomic_sub_workflow import GenomicSubWorkflow, GenomicSubLongReadWorkflow
 from rdr_service.genomic_enums import ResultsModuleType
 from rdr_service.genomic.genomic_data import GenomicQueryClass
@@ -48,7 +48,7 @@ from rdr_service.participant_enums import (
     ParticipantCohort)
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
     GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
-    GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode
+    GenomicContaminationCategory, GenomicIncidentCode
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -275,48 +275,6 @@ class GenomicFileIngester:
         logging.info(f'Ingesting data from {self.file_obj.fileName}')
         logging.info("Validating file.")
 
-        workflow_map = {
-            GenomicJob.AW1_MANIFEST: GenomicAW1Workflow,
-            GenomicJob.AW1F_MANIFEST: GenomicAW1Workflow,
-            GenomicJob.METRICS_INGESTION: GenomicAW2Workflow,
-        }
-
-        current_ingestion_map = {
-            GenomicJob.GEM_A2_MANIFEST: self._ingest_gem_a2_manifest,
-            GenomicJob.GEM_METRICS_INGEST: self._ingest_gem_metrics_manifest,
-            GenomicJob.AW4_ARRAY_WORKFLOW: self._ingest_aw4_manifest,
-            GenomicJob.AW4_WGS_WORKFLOW: self._ingest_aw4_manifest,
-            GenomicJob.AW1C_INGEST: self._ingest_aw1c_manifest,
-            GenomicJob.AW1CF_INGEST: self._ingest_aw1c_manifest,
-            GenomicJob.AW5_ARRAY_MANIFEST: self._ingest_aw5_manifest,
-            GenomicJob.AW5_WGS_MANIFEST: self._ingest_aw5_manifest,
-            GenomicJob.CVL_W2SC_WORKFLOW: self._ingest_cvl_w2sc_manifest,
-            GenomicJob.CVL_W3NS_WORKFLOW: self._ingest_cvl_w3ns_manifest,
-            GenomicJob.CVL_W3SS_WORKFLOW: self._ingest_cvl_w3ss_manifest,
-            GenomicJob.CVL_W3SC_WORKFLOW: self._ingest_cvl_w3sc_manifest,
-            GenomicJob.CVL_W4WR_WORKFLOW: self._ingest_cvl_w4wr_manifest,
-            GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
-            GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L1_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L1F_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L2_ONT_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L2_PB_CCS_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L4_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L4F_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L5_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L6_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.LR_L6F_WORKFLOW: self._ingest_lr_manifest,
-            GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
-            GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
-            GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
-            GenomicJob.RNA_RR_WORKFLOW: self._ingest_rna_manifest,
-            GenomicJob.RNA_R1_WORKFLOW: self._ingest_rna_manifest,
-            GenomicJob.RNA_R2_WORKFLOW: self._ingest_rna_manifest
-        }
-
-        current_ingestion_workflow = (current_ingestion_map.get(self.job_id) or
-                                      workflow_map.get(self.job_id)(file_ingester=self).run_ingestion)
-
         self.file_validator.valid_schema = None
 
         validation_result = self.file_validator.validate_ingestion_file(
@@ -332,9 +290,54 @@ class GenomicFileIngester:
         )
 
         try:
-            ingestions = self._set_data_ingest_iterations(data_to_ingest['rows'])
-            for row in ingestions:
+            workflow_map = {
+                GenomicJob.AW1_MANIFEST: GenomicAW1Workflow,
+                GenomicJob.AW1F_MANIFEST: GenomicAW1Workflow,
+                GenomicJob.METRICS_INGESTION: GenomicAW2Workflow,
+                GenomicJob.AW4_ARRAY_WORKFLOW: GenomicAW4Workflow,
+                GenomicJob.AW4_WGS_WORKFLOW: GenomicAW4Workflow,
+            }
+
+            current_ingestion_map = {
+                GenomicJob.GEM_A2_MANIFEST: self._ingest_gem_a2_manifest,
+                GenomicJob.GEM_METRICS_INGEST: self._ingest_gem_metrics_manifest,
+                GenomicJob.AW1C_INGEST: self._ingest_aw1c_manifest,
+                GenomicJob.AW1CF_INGEST: self._ingest_aw1c_manifest,
+                GenomicJob.AW5_ARRAY_MANIFEST: self._ingest_aw5_manifest,
+                GenomicJob.AW5_WGS_MANIFEST: self._ingest_aw5_manifest,
+                GenomicJob.CVL_W2SC_WORKFLOW: self._ingest_cvl_w2sc_manifest,
+                GenomicJob.CVL_W3NS_WORKFLOW: self._ingest_cvl_w3ns_manifest,
+                GenomicJob.CVL_W3SS_WORKFLOW: self._ingest_cvl_w3ss_manifest,
+                GenomicJob.CVL_W3SC_WORKFLOW: self._ingest_cvl_w3sc_manifest,
+                GenomicJob.CVL_W4WR_WORKFLOW: self._ingest_cvl_w4wr_manifest,
+                GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest,
+                GenomicJob.LR_LR_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L1_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L1F_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L2_ONT_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L2_PB_CCS_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L4_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L4F_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L5_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L6_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.LR_L6F_WORKFLOW: self._ingest_lr_manifest,
+                GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
+                GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
+                GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
+                GenomicJob.RNA_RR_WORKFLOW: self._ingest_rna_manifest,
+                GenomicJob.RNA_R1_WORKFLOW: self._ingest_rna_manifest,
+                GenomicJob.RNA_R2_WORKFLOW: self._ingest_rna_manifest
+            }
+
+            current_ingestion_workflow = current_ingestion_map.get(self.job_id)
+            if not current_ingestion_workflow:
+                current_workflow = workflow_map.get(self.job_id)(file_ingester=self)
+                current_ingestion_workflow = current_workflow.run_ingestion
+
+            manifest_ingestions = self._set_data_ingest_iterations(data_to_ingest['rows'])
+            for row in manifest_ingestions:
                 current_ingestion_workflow(row)
+
             self._set_manifest_file_resolved()
             return GenomicSubProcessResult.SUCCESS
         # pylint: disable=broad-except
@@ -521,62 +524,6 @@ class GenomicFileIngester:
                 self.member_dao.update(member)
 
             return GenomicSubProcessResult.SUCCESS
-        except (RuntimeError, KeyError):
-            return GenomicSubProcessResult.ERROR
-
-    def _ingest_aw4_manifest(self, rows):
-        """
-        Processes the AW4 manifest file data
-        :param rows:
-        :return:
-        """
-        try:
-            for row in rows:
-                row_copy = self.clean_row_keys(row)
-
-                pipeline_id = row_copy.get('pipelineid')
-                sample_id = row_copy.get('sampleid')
-
-                member = self.member_dao.get_member_from_aw3_sample(sample_id)
-                if member is None:
-                    logging.warning(f'Invalid sample ID: {sample_id}')
-                    continue
-
-                member.aw4ManifestJobRunID = self.job_run_id
-                member.qcStatus = self._get_qc_status_from_value(row_copy['qcstatus'])
-                member.qcStatusStr = member.qcStatus.name
-
-                metrics = self.metrics_dao.get_metrics_by_member_id(
-                    member_id=member.id,
-                    pipeline_id=pipeline_id
-                )
-
-                if metrics:
-                    metrics.drcSexConcordance = row_copy['drcsexconcordance']
-                    metrics.aw4ManifestJobRunID = self.job_run_id
-
-                    if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
-                        metrics.drcCallRate = row_copy['drccallrate']
-
-                    elif self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
-                        metrics.drcContamination = row_copy['drccontamination']
-                        metrics.drcMeanCoverage = row_copy['drcmeancoverage']
-                        metrics.drcFpConcordance = row_copy['drcfpconcordance']
-
-                    self.metrics_dao.upsert(metrics)
-
-                self.member_dao.update(member)
-
-                self.controller.execute_cloud_task(
-                    endpoint='update_enrollment_status',
-                    payload={
-                        'participant_id': member.participantId
-                    },
-                    task_queue='resource-tasks'
-                )
-
-            return GenomicSubProcessResult.SUCCESS
-
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
@@ -1233,21 +1180,6 @@ class GenomicFileIngester:
         if not sample:
             return False
         return int(sample.biobankId) == int(bid)
-
-    @staticmethod
-    def _get_qc_status_from_value(aw4_value):
-        """
-        Returns the GenomicQcStatus enum value for
-        :param aw4_value: string from AW4 file (PASS/FAIL)
-        :return: GenomicQcStatus
-        """
-        if aw4_value.strip().lower() == 'pass':
-            return GenomicQcStatus.PASS
-        elif aw4_value.strip().lower() == 'fail':
-            return GenomicQcStatus.FAIL
-        else:
-            logging.warning(f'Value from AW4 "{aw4_value}" is not PASS/FAIL.')
-            return GenomicQcStatus.UNSET
 
     @staticmethod
     def _participant_has_potentially_clean_samples(session, biobank_id):

@@ -15,6 +15,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.enrollment_dependencies import EnrollmentDependencies
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -28,7 +29,6 @@ from rdr_service.participant_enums import (
     SelfReportedPhysicalMeasurementsStatus
 )
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
-from rdr_service.services.system_utils import DateRange
 from tests.test_data import load_measurement_json
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.mysql_helper_data import PITT_HPO_ID
@@ -73,21 +73,11 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.hpo_id_order_query = Query([], OrderBy("hpoId", True), 2, None)
         self.first_name_order_query = Query([], OrderBy("firstName", True), 2, None)
 
-        response_dao_patch = mock.patch(
-            'rdr_service.dao.participant_summary_dao.QuestionnaireResponseRepository'
+        self.mock_enrollment_data = EnrollmentDependencies()
+        self.enrollment_dependency_mock = self.mock(
+            'rdr_service.dao.enrollment_dependencies_dao.EnrollmentDependenciesDao.get_enrollment_dependencies'
         )
-        response_dao_mock = response_dao_patch.start()
-        self.mock_ehr_interest_ranges = response_dao_mock.get_interest_in_sharing_ehr_ranges
-        self.mock_ehr_interest_ranges.return_value = []
-        self.addCleanup(response_dao_patch.stop)
-
-        sample_dao_patch = mock.patch(
-            'rdr_service.dao.participant_summary_dao.BiobankStoredSampleDao'
-        )
-        sample_dao_mock = sample_dao_patch.start()
-        self.received_samples_mock = sample_dao_mock.get_earliest_confirmed_dna_sample_timestamp
-        self.received_samples_mock.return_value = None
-        self.addCleanup(sample_dao_patch.stop)
+        self.enrollment_dependency_mock.return_value = self.mock_enrollment_data
 
     def assert_no_results(self, query):
         results = self.dao.query(query)
@@ -459,9 +449,8 @@ class ParticipantSummaryDaoTest(BaseTestCase):
 
     def testUpdateEnrollmentStatus(self):
         ehr_consent_authored_time = datetime.datetime(2018, 3, 1)
-        self.mock_ehr_interest_ranges.return_value = [
-            DateRange(start=ehr_consent_authored_time)
-        ]
+        self.mock_enrollment_data.intent_to_share_ehr_time=ehr_consent_authored_time
+
         summary = ParticipantSummary(
             participantId=1,
             biobankId=2,
@@ -477,19 +466,16 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(ehr_consent_authored_time, summary.enrollmentStatusParticipantPlusEhrV3_2Time)
 
         sample_time = datetime.datetime(2019, 3, 1)
-        self.received_samples_mock.return_value = sample_time
+        self.mock_enrollment_data.biobank_received_dna_time = sample_time
+        self.mock_enrollment_data.basics_survey_authored_time = ehr_consent_authored_time
+        self.mock_enrollment_data.lifestyle_survey_authored_time = ehr_consent_authored_time
+        self.mock_enrollment_data.overall_health_survey_authored_time = ehr_consent_authored_time
 
         summary = ParticipantSummary(
             participantId=1,
             biobankId=2,
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
-            consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
-            consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
-            numCompletedBaselinePPIModules=NUM_BASELINE_PPI_MODULES,
             samplesToIsolateDNA=SampleStatus.RECEIVED,
-            questionnaireOnTheBasicsAuthored=ehr_consent_authored_time,
-            questionnaireOnLifestyleAuthored=ehr_consent_authored_time,
-            questionnaireOnOverallHealthAuthored=ehr_consent_authored_time,
             clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
             selfReportedPhysicalMeasurementsStatus=SelfReportedPhysicalMeasurementsStatus.UNSET,
             enrollmentStatus=EnrollmentStatus.MEMBER,
@@ -515,9 +501,12 @@ class ParticipantSummaryDaoTest(BaseTestCase):
 
         # Set up a summary that has everything but mediated EHR files
         ehr_consent_authored_time = datetime.datetime(2018, 3, 1)
-        self.mock_ehr_interest_ranges.return_value = [
-            DateRange(start=ehr_consent_authored_time)
-        ]
+        self.mock_enrollment_data.intent_to_share_ehr_time = ehr_consent_authored_time
+
+        self.mock_enrollment_data.basics_survey_authored_time = ehr_consent_authored_time
+        self.mock_enrollment_data.overall_health_survey_authored_time = ehr_consent_authored_time
+        self.mock_enrollment_data.lifestyle_survey_authored_time = ehr_consent_authored_time
+
         physical_measurements_time = datetime.datetime(2022, 7, 12)
         wgs_pass_date_mock.return_value = physical_measurements_time
         core_measurements_mock.return_value = [PhysicalMeasurements(
@@ -531,9 +520,6 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
             consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
-            questionnaireOnTheBasicsAuthored=ehr_consent_authored_time,
-            questionnaireOnLifestyleAuthored=ehr_consent_authored_time,
-            questionnaireOnOverallHealthAuthored=ehr_consent_authored_time,
             samplesToIsolateDNA=SampleStatus.RECEIVED,
             clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.COMPLETED,
             clinicPhysicalMeasurementsFinalizedTime=physical_measurements_time,
@@ -553,11 +539,13 @@ class ParticipantSummaryDaoTest(BaseTestCase):
 
     def testUpdateEnrollmentStatusSelfReportedPm(self):
         ehr_consent_authored_time = datetime.datetime(2018, 3, 1)
-        self.mock_ehr_interest_ranges.return_value = [
-            DateRange(start=ehr_consent_authored_time)
-        ]
+        self.mock_enrollment_data.intent_to_share_ehr_time = ehr_consent_authored_time
+        self.mock_enrollment_data.biobank_received_dna_time = datetime.datetime(2019, 3, 1)
 
-        self.received_samples_mock.return_value = datetime.datetime(2019, 3, 1)
+        self.mock_enrollment_data.basics_survey_authored_time = ehr_consent_authored_time
+        self.mock_enrollment_data.lifestyle_survey_authored_time = ehr_consent_authored_time
+        self.mock_enrollment_data.overall_health_survey_authored_time = ehr_consent_authored_time
+
         summary = ParticipantSummary(
             participantId=1,
             biobankId=2,
@@ -569,9 +557,6 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             clinicPhysicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
             selfReportedPhysicalMeasurementsStatus=SelfReportedPhysicalMeasurementsStatus.UNSET,
             enrollmentStatus=EnrollmentStatus.MEMBER,
-            questionnaireOnTheBasicsAuthored=ehr_consent_authored_time,
-            questionnaireOnLifestyleAuthored=ehr_consent_authored_time,
-            questionnaireOnOverallHealthAuthored=ehr_consent_authored_time,
             enrollmentStatusV3_0=EnrollmentStatusV30.PARTICIPANT,
             enrollmentStatusV3_2=EnrollmentStatusV32.PARTICIPANT
         )
@@ -586,7 +571,6 @@ class ParticipantSummaryDaoTest(BaseTestCase):
     def testDowngradeCoreMinusPm(self):
         """Check that a participant that has achieved CORE_MINUS_PM status isn't downgraded from it"""
         sample_time = datetime.datetime(2019, 3, 1)
-        self.mock_ehr_interest_ranges.return_value = []
 
         summary = ParticipantSummary(
             participantId=1,
@@ -632,9 +616,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
                 self.dao.update(summary)
 
         ## Test Step 1: Validate update_from_biobank_stored_samples() changes lastModified.
-        self.mock_ehr_interest_ranges.return_value = [
-            DateRange(start=datetime.datetime(2018, 10, 3))
-        ]
+        self.mock_enrollment_data.intent_to_share_ehr_time = datetime.datetime(2018, 10, 3)
         reset_summary()
 
         # Update and reload summary record

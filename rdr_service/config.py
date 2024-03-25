@@ -278,6 +278,7 @@ BIOBANK_DATA_COMPARISON_DOCUMENT_ID = "biobank_data_comparison_document_id"
 
 RDR_SLACK_WEBHOOKS = "rdr_slack_webhooks"
 RDR_VALIDATION_WEBHOOK = "rdr_validation_webhook"
+RDR_RETENTION_STATUS_WEBHOOK = "rdr_retention_status_webhook"
 
 NPH_SLACK_WEBHOOKS = "nph_slack_webhooks"
 
@@ -507,7 +508,6 @@ def getSetting(key, default=_NO_DEFAULT):
     if default != _NO_DEFAULT:
         default = [default]
     settings_list = getSettingList(key, default)
-
     if len(settings_list) != 1:
         raise InvalidConfigException("Config key {} has multiple entries in datastore.".format(key))
     return settings_list[0]

@@ -59,13 +59,13 @@ def ingest_genomic_centers_metrics_files(provider=None):
         controller.ingest_gc_metrics()
 
 
-def aw3_array_manifest_workflow():
+def aw3_array_manifest_workflow(max_num: int = 1000):
     """
     Entrypoint for AW3 Array Workflow
     """
     with GenomicJobController(GenomicJob.AW3_ARRAY_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
+                              max_num=max_num) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_ARRAY,
             genome_type=config.GENOME_TYPE_ARRAY,
@@ -79,13 +79,13 @@ def aw3_array_manifest_workflow():
             load_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
-def aw3_wgs_manifest_workflow(**kwargs):
+def aw3_wgs_manifest_workflow(max_num: int = 1000, **kwargs):
     """
     Entrypoint for AW3 WGS Workflow
     """
     with GenomicJobController(GenomicJob.AW3_WGS_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
+                              max_num=max_num) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_WGS,
             genome_type=config.GENOME_TYPE_WGS,
@@ -100,13 +100,13 @@ def aw3_wgs_manifest_workflow(**kwargs):
             load_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
-def aw3_array_investigation_workflow():
+def aw3_array_investigation_workflow(max_num: int = 1000):
     """
     Entrypoint for AW3 Array Workflow
     """
     with GenomicJobController(GenomicJob.AW3_ARRAY_INVESTIGATION_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
+                              max_num=max_num) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_ARRAY,
             genome_type="aou_array_investigation",
@@ -120,13 +120,13 @@ def aw3_array_investigation_workflow():
             load_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
-def aw3_wgs_investigation_workflow(**kwargs):
+def aw3_wgs_investigation_workflow(max_num: int = 1000, **kwargs):
     """
     Entrypoint for AW3 WGS Workflow
     """
     with GenomicJobController(GenomicJob.AW3_WGS_INVESTIGATION_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
+                              max_num=max_num) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_WGS,
             genome_type="aou_wgs_investigation",
