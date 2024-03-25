@@ -742,7 +742,6 @@ class BiobankOrderApiTest(BaseTestCase):
         healthpro_order_id = 123900000001
         collection_date = datetime.datetime(2023, 1, 7, 18, 2)
         finalized_date = collection_date + datetime.timedelta(minutes=10)
-        processed_date = collection_date + datetime.timedelta(minutes=50)
 
         # loops through each sample test types to create a biobank order for that test type, and asserts
         # the new information saves appropriately
@@ -756,7 +755,6 @@ class BiobankOrderApiTest(BaseTestCase):
                     order_num,
                     collection_date,
                     finalized_date,
-                    processed_date
                 )
                 self.post_biobank_order_and_verify_sample_order_status(
                     participant.participantId,
