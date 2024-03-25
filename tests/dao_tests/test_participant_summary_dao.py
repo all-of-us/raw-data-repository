@@ -388,7 +388,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertNotEqual(init_last_modified, summary.lastModified)
 
     def test_only_update_dna_sample(self):
-        dna_tests = ["1ED10", "1SAL2"]
+        dna_tests = ["1ED10", "1SAL2", "1PS4A"]
 
         self.temporarily_override_config_setting(config.DNA_SAMPLE_TEST_CODES, dna_tests)
         self.dao.update_from_biobank_stored_samples()  # safe noop
@@ -414,6 +414,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
 
         confirmed_time_0 = datetime.datetime(2018, 3, 1)
         add_sample(p_dna_samples, dna_tests[0], "11111", confirmed_time_0)
+        add_sample(p_dna_samples, dna_tests[-1], "11112", confirmed_time_0)
 
         self.dao.update_from_biobank_stored_samples()
 
@@ -421,6 +422,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         # only update dna sample will not update enrollmentStatusCoreStoredSampleTime
         self.assertEqual(self.dao.get(p_dna_samples.participantId).enrollmentStatusCoreStoredSampleTime, None)
         self.assertEqual(self.dao.get(p_dna_samples.participantId).enrollmentStatusCoreOrderedSampleTime, None)
+        self.assertEqual(self.dao.get(p_dna_samples.participantId).sampleStatus1PS4A, SampleStatus.RECEIVED)
 
     def test_sample_time_with_missing_status(self):
         """
