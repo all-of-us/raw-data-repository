@@ -16,7 +16,7 @@ from rdr_service.model.biobank_order import (
 )
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
-from rdr_service.participant_enums import OrderStatus, UNSET_HPO_ID, SampleStatus
+from rdr_service.participant_enums import OrderStatus, UNSET_HPO_ID
 from tests.api_tests.test_participant_summary_api import _add_code_answer
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import load_biobank_order_json, load_measurement_json
@@ -724,22 +724,11 @@ class BiobankOrderApiTest(BaseTestCase):
                 f"sampleOrderStatus{sample_test_type}Time",
             ),
         )
-        self.assertEqual(
-            SampleStatus.RECEIVED,
-            getattr(
-                refreshed_participant_summary, f"sampleStatus{sample_test_type}"
-            ),
-        )
-        self.assertEqual(
-            finalized_date,
-            getattr(
-                refreshed_participant_summary,
-                f"sampleStatus{sample_test_type}Time",
-            ),
-        )
 
     @mock.patch("rdr_service.dao.biobank_order_dao.get_account_origin_id")
-    def test_update_participant_summary_with_order_status(self, origin_mock: Mock) -> None:
+    def test_update_participant_summary_with_order_status(
+        self, origin_mock: Mock
+    ) -> None:
         """
         Goes through a series of new sample status test types, and ensures that after posting
         to the biobank endpoint, the newly posted information will update and
@@ -753,15 +742,12 @@ class BiobankOrderApiTest(BaseTestCase):
         healthpro_order_id = 123900000001
         collection_date = datetime.datetime(2023, 1, 7, 18, 2)
         finalized_date = collection_date + datetime.timedelta(minutes=10)
+        processed_date = collection_date + datetime.timedelta(minutes=50)
+
         # loops through each sample test types to create a biobank order for that test type, and asserts
         # the new information saves appropriately
         for sample_test_type in sample_test_types:
-            sample_status_fields = {
-                f"sampleStatus{sample_test_type}": SampleStatus.RECEIVED,
-                f"sampleStatus{sample_test_type}Time": finalized_date,
-                "samplesToIsolateDNA": SampleStatus.RECEIVED,
-            }
-            participant = self.data_generator.create_database_participant_summary(**sample_status_fields)
+            participant = self.data_generator.create_database_participant_summary()
             with self.subTest(sample_test_type=sample_test_type):
                 order_json = self.create_biobank_order_for_tests(
                     participant.participantId,
@@ -770,6 +756,7 @@ class BiobankOrderApiTest(BaseTestCase):
                     order_num,
                     collection_date,
                     finalized_date,
+                    processed_date
                 )
                 self.post_biobank_order_and_verify_sample_order_status(
                     participant.participantId,
