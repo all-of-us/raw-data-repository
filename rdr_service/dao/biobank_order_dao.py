@@ -824,6 +824,11 @@ class BiobankOrderDao(UpdatableDao):
             order.restoredSiteId = get_site(resource["restoredInfo"])
             order.restoredTime = clock.CLOCK.now()
             order.orderStatus = BiobankOrderStatus.UNSET
+        elif resource["status"].lower() == "re-pairing":
+            order.sourceSiteId = get_site(resource.get("createdInfo", ""))
+            order.collectedSiteId = get_site(resource.get("collectedInfo", ""))
+            order.processedSiteId = get_site(resource.get("processedInfo", ""))
+            order.finalizedSiteId = get_site(resource.get("finalizedInfo", ""))
         else:
             raise BadRequest("status must be restored or cancelled for patch request.")
 

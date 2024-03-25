@@ -3,7 +3,7 @@
 Usage:
 ./rdr_client/run_client.sh --project all-of-us-rdr-prod --account $USER@pmi-ops.org \
   pairing_assigner.py file.csv --pairing [site|organization|awardee] \
-  [--dry_run] [--override_site]
+  [--dry_run] [--override_site] [--biospecimen] [--physical_measurements]
 
 Where site = google_group, organization = external_id, awardee = name.
 
@@ -27,16 +27,23 @@ import sys
 
 from rdr_service.main_util import configure_logging, get_parser
 from rdr_service.rdr_client.client import Client, HttpException, client_log
-
+from rdr_service.dao.physical_measurements_dao import _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION
 
 def main(client):
     num_no_change = 0
     num_updates = 0
     num_errors = 0
-    pairing_list = ["site", "organization", "awardee"]
+    pair_list = ["site", "organization", "awardee"]
+    biospecimen_fields = [
+        "createdInfo",
+        "collectedInfo",
+        "processedInfo",
+        "finalizedInfo"
+    ]
+
     pairing_key = client.args.pairing
 
-    if client.args.pairing not in pairing_list:
+    if client.args.pairing not in pair_list:
         sys.exit("Pairing must be one of site|organization|awardee")
 
     with open(client.args.file) as csvfile:
@@ -48,6 +55,7 @@ def main(client):
                 logging.error("Skipping invalid line %d (parsed as %r): %s.", reader.line_num, line, e)
                 num_errors += 1
                 continue
+
             if not (new_pairing and participant_id):
                 logging.warning(
                     "Skipping invalid line %d: missing new_pairing (%r) or participant (%r).",
@@ -57,21 +65,44 @@ def main(client):
                 )
                 num_errors += 1
                 continue
+
             if not participant_id.startswith("P"):
                 logging.error(
-                    "Malformed participant ID from line %d: %r does not start with P.", reader.line_num, participant_id
+                    "Malformed participant ID from line %d: %r does not start with P.",
+                    reader.line_num,
+                    participant_id
                 )
                 num_errors += 1
                 continue
 
+            if client.args.biospecimen:
+                biobank_url = "Participant/%s/BiobankOrder" % participant_id
+                try:
+                    biobank_orders = client.request_json(biobank_url)
+                except HttpException as e:
+                    logging.error("Skipping %s: %s", participant_id, e)
+                    num_errors += 1
+                    continue
+
+            if client.args.physical_measurements:
+                pm_url = "Participant/%s/PhysicalMeasurements" % participant_id
+                try:
+                    physical_measurements = client.request_json(pm_url)
+                except HttpException as e:
+                    logging.error("Skipping %s: %s", participant_id, e)
+                    num_errors += 1
+                    continue
+
+            request_url = "Participant/%s" % participant_id
             try:
-                participant = client.request_json("Participant/%s" % participant_id)
+                participant = client.request_json(request_url)
             except HttpException as e:
                 logging.error("Skipping %s: %s", participant_id, e)
                 num_errors += 1
                 continue
 
             old_pairing = _get_old_pairing(participant, pairing_key)
+
             if new_pairing == old_pairing:
                 num_no_change += 1
                 logging.info("%s unchanged (already %s)", participant_id, old_pairing)
@@ -93,21 +124,52 @@ def main(client):
                         )
                         continue
             logging.info("%s %s => %s", participant_id, old_pairing, new_pairing)
+
             if new_pairing == "UNSET":
-                for i in pairing_list:
-                    participant[i] = "UNSET"
+                participant[pairing_key] = "UNSET"
                 participant["providerLink"] = []
             else:
-                for i in pairing_list:
-                    del participant[i]
+                if client.args.biospecimen:
+                    for order in biobank_orders['data']:
+                        order['status'] = "re-pairing"
+                        for i in biospecimen_fields:
+                            order[i]['site']['value'] = new_pairing
+
+                if client.args.physical_measurements:
+                    for result in physical_measurements['entry']:
+                        result['resource']['status'] = 're-pairing'
+                        for entry in result['resource']['entry']:
+                            if entry['resource']['resourceType'] == 'Composition':
+                                for extension in entry['resource']['extension']:
+                                    if (extension.get('url', "") == _CREATED_LOC_EXTENSION or
+                                            extension.get('url', "") == _FINALIZED_LOC_EXTENSION):
+                                        if 'valueString' in extension:
+                                            extension['valueString'] = 'Location/%s' % new_pairing
+                                        elif 'valueReference' in extension:
+                                            extension['valueReference'] = 'Location/%s' % new_pairing
+
+                del participant[pairing_key]
                 participant[pairing_key] = new_pairing
 
             if client.args.dry_run:
                 logging.info("Dry run, would update participant[%r] to %r.", pairing_key, new_pairing)
             else:
                 client.request_json(
-                    "Participant/%s" % participant_id, "PUT", participant, headers={"If-Match": client.last_etag}
+                    request_url, "PUT", participant, headers={"If-Match": client.last_etag}
                 )
+
+                if client.args.biospecimen:
+                    for resource in biobank_orders['data']:
+                        id_url = biobank_url + '/%s' % resource['id']
+                        client.request_json(id_url)
+                        client.request_json(id_url, "PATCH", resource, headers={"If-Match": client.last_etag})
+
+                if client.args.physical_measurements:
+                    for entry in physical_measurements['entry']:
+                        id_url = entry['fullUrl'].split('rdr/v1/')[1]
+                        client.request_json(id_url)
+                        client.request_json(id_url, "PATCH", entry['resource'], headers={"If-Match": client.last_etag})
+
             num_updates += 1
     logging.info(
         "%s %d participants, %d unchanged, %d errors.",
@@ -132,7 +194,9 @@ if __name__ == "__main__":
     arg_parser.add_argument("file", help="The name of file containing the list of HPOs and participant IDs")
     arg_parser.add_argument("--dry_run", action="store_true")
     arg_parser.add_argument(
-        "--pairing", help="set level of pairing as one of" "[site|organization|awardee]", required=True
+        "--pairing",
+        help="set level of pairing as one of" "[site|organization|awardee]",
+        required=True
     )
     arg_parser.add_argument(
         "--override_site", help="Update pairings on participants that have a site pairing already", action="store_true"
@@ -141,5 +205,15 @@ if __name__ == "__main__":
         "--no_awardee_change",
         help="Do not re-pair participants if the awardee is changing; " + "just log that it happened",
         action="store_true",
+    )
+    arg_parser.add_argument(
+        "--biospecimen",
+        help="Attempt to re-pair the biobank_order site of the given participant",
+        action="store_true"
+    )
+    arg_parser.add_argument(
+        "--physical_measurements",
+        help="Attempt to re-pair the physical_measurements site of the given participant",
+        action="store_true"
     )
     main(Client(parser=arg_parser))
