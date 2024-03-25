@@ -664,8 +664,8 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
         self.assertIsNotNone("biobankId", ps["entry"][0]["resource"])
 
+    @staticmethod
     def create_biobank_order_for_tests(
-        self,
         participant_id,
         sample_test_type,
         healthpro_order_id,
