@@ -664,47 +664,73 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
         self.assertIsNotNone("biobankId", ps["entry"][0]["resource"])
 
+    def create_biobank_order_for_tests(
+        self,
+        participant_id,
+        sample_test_type,
+        healthpro_order_id,
+        order_num,
+        collection_date,
+        finalized_date,
+    ):
+        order_json = load_biobank_order_json(
+            participant_id, filename="biobank_order_2.json"
+        )
+        order_json["identifier"][1]["value"] = f"WEB1YLHV{order_num}"
+        order_json["identifier"][0][
+            "value"
+        ] = f"healthpro-order-id-{healthpro_order_id}"
+        order_json["samples"] = [
+            {
+                "test": sample_test_type,
+                "description": "testing dna check",
+                "processingRequired": False,
+                "collected": collection_date.isoformat(),
+                "finalized": finalized_date.isoformat(),
+            }
+        ]
+        return order_json
+
+    def post_biobank_order_and_verify_sample_order_status(self, participant_id, sample_test_type, order_json, finalized_date):
+        self.send_post(f"Participant/P{participant_id}/BiobankOrder", request_data=order_json)
+        refreshed_participant_summary = self.summary_dao.get(participant_id)
+        self.assertEqual(
+            OrderStatus.FINALIZED,
+            getattr(refreshed_participant_summary, f"sampleOrderStatus{sample_test_type}"),
+        )
+        self.assertEqual(
+            finalized_date,
+            getattr(refreshed_participant_summary,f"sampleOrderStatus{sample_test_type}Time"),
+        )
+
     @mock.patch("rdr_service.dao.biobank_order_dao.get_account_origin_id")
     def test_participant_summary_sample_order_status_fields(self, origin_mock):
-        participant_summary = self.data_generator.create_database_participant_summary()
+        participant = self.data_generator.create_database_participant_summary()
+        origin_mock.return_value = "hpro"
+        sample_test_types = ["2SAL0", "1PS4A", "1PS4B", "2PS4A", "2PS4B"]
+        order_num = 900000001
+        healthpro_order_id = 123900000001
         collection_date = datetime.datetime(2023, 1, 7, 18, 2)
         finalized_date = collection_date + datetime.timedelta(minutes=10)
-        origin_mock.return_value = "hpro"
-        order_json = load_biobank_order_json(
-            participant_summary.participantId, filename="biobank_order_2.json"
-        )
-        sample_test_types = ["2SAL0", "1PS4A", "1PS4B", "2PS4A", "2PS4B"]
-        order_num = 900000000
-        healthpro_order_id = 123900000000
-        for test in sample_test_types:
-            order_json["identifier"][1]["value"] = f"WEB1YLHV{order_num}"
-            order_json["identifier"][0]["value"] = f"healthpro-order-id-{healthpro_order_id}"
-            order_json["samples"] = [
-                {
-                    "test": test,
-                    "description": "testing dna check",
-                    "processingRequired": False,
-                    "collected": collection_date.isoformat(),
-                    "finalized": finalized_date.isoformat(),
-                }
-            ]
-            self.send_post(
-                f"Participant/P{participant_summary.participantId}/BiobankOrder",
-                order_json,
-            )
-            refreshed_participant_summary = self.send_get(
-                f"Participant/P{participant_summary.participantId}/Summary"
-            )
-            self.assertEqual(
-                OrderStatus.FINALIZED.name,
-                refreshed_participant_summary.get(f"sampleOrderStatus{test}"),
-            )
-            self.assertEqual(
-                finalized_date.strftime("%Y-%m-%dT%H:%M:%S"),
-                refreshed_participant_summary.get(f"sampleOrderStatus{test}Time"),
-            )
-            order_num += 1
-            healthpro_order_id += 1
+        for sample_test_type in sample_test_types:
+            with self.subTest(sample_test_type=sample_test_type):
+                order_json = self.create_biobank_order_for_tests(
+                    participant.participantId,
+                    sample_test_type,
+                    healthpro_order_id,
+                    order_num,
+                    collection_date,
+                    finalized_date
+                )
+                self.post_biobank_order_and_verify_sample_order_status(
+                    participant.participantId,
+                    sample_test_type,
+                    order_json,
+                    finalized_date
+                )
+
+                order_num += 1
+                healthpro_order_id += 1
 
     def _insert_measurements(self, now=None):
         measurements_1 = load_measurement_json(self.participant_id, now)
