@@ -5,6 +5,9 @@
 #
 # Calculator for calculating Participant UBR values.
 #
+# Note: This UBR code is no longer used in the RDR.  This code is for research purposes only.
+#
+import math
 import re
 
 from enum import IntEnum
@@ -25,16 +28,21 @@ class UBRValueEnum(IntEnum):
 
 class ParticipantUBRCalculator:
     """
-    Calculate various UBR values from participant answers.
+    Calculate various UBR values from participant answers.  Some methods may be overridden by the child
+    PedParticipantUBRCalculator class.
+
     Note: Currently UBR should be calculated from the first participant response after consent. Do not use the most
           recent responses.
     """
+
     @staticmethod
     def ubr_sex(answer: (str, None)):
         """
         Diversity Category #3 - Biological Sex at Birth
         Calculate the sex UBR value.
-        :param answer: Answer code to BiologicalSexAtBirth_SexAtBirth question in "TheBasics" survey.
+        :param answer: Answer code to BiologicalSexAtBirth_SexAtBirth question in "TheBasics" survey,
+                       or biologicalsexatbirth_sexatbirth_ped for pediatric ped_basics survey.  The answer code
+                       options are the same for both the adult and pediatric question codes
         :return: UBRValueEnum
         """
         if answer in [None, 'PMI_Skip', 'PMI_PreferNotToAnswer']:
@@ -46,15 +54,15 @@ class ParticipantUBRCalculator:
     @staticmethod
     def ubr_sexual_orientation(answer: (str, None)):
         """
-        Diversity Category #4 part (SO) : Sexual Orientation
+        Diversity Category #4 part (SO) : Sexual Orientation (does not apply to pediatric 0-6 participants)
         Calculate the sexual orientation UBR value. Value can be a comma delimited list of multiple choice values.
         :param answer: Answer code to TheBasics_SexualOrientation question in "TheBasics" survey.
         :return: UBRValueEnum
         """
         # NOTE:
         # Analysis of RDR data shows it has been possible for participants to submit surveys where they answered
-        # the child GenderIdentity_SexualityCloserDescription question from the sexual orientation questions even if
-        # they did not answer the expected SexualOrientation_None response to the parent TheBasics_SexualOrientation
+        # the branched GenderIdentity_SexualityCloserDescription question even if they did not answer the
+        # expected SexualOrientation_None response to the initial TheBasics_SexualOrientation
         # question first.  This is not  consistent with the documented survey branching logic.  Therefore, UBR/RBR
         # calculations are still based only on the response to the TheBasics_SexualOrientation question alone
         if answer in [None, 'PMI_Skip', 'PMI_PreferNotToAnswer']:
@@ -66,7 +74,7 @@ class ParticipantUBRCalculator:
     @staticmethod
     def ubr_gender_identity(birth_sex, gender_ident, gender_ident_closer):
         """
-        Diversity Category #4 part (GI) : Gender Identity
+        Diversity Category #4 part (GI) : Gender Identity (does not apply to pediatric 0-6 participants)
         Calculate the  UBR value.
         :param birth_sex: Answer code to BiologicalSexAtBirth_SexAtBirth question in "TheBasics" survey.
         :param gender_ident: Comma delimited str of answers codes to Gender_GenderIdentity question in "TheBasics"
@@ -103,16 +111,16 @@ class ParticipantUBRCalculator:
             if answer in [None, 'PMI_Skip', 'PMI_PreferNotToAnswer', 'GenderIdentity_PreferNotToAnswer']:
                 return UBRValueEnum.NotAnswer_Skip
             if (answer == 'GenderIdentity_Man' and
-                        birth_sex in ['SexAtBirth_Male', 'PMI_Skip', 'PMI_PreferNotToAnswer', None]) or \
+                birth_sex in ['SexAtBirth_Male', 'PMI_Skip', 'PMI_PreferNotToAnswer', None]) or \
                     (answer == 'GenderIdentity_Woman' and
-                        birth_sex in ['SexAtBirth_Female', 'PMI_Skip', 'PMI_PreferNotToAnswer', None]):
+                     birth_sex in ['SexAtBirth_Female', 'PMI_Skip', 'PMI_PreferNotToAnswer', None]):
                 return UBRValueEnum.RBR
         return UBRValueEnum.UBR
 
     @staticmethod
     def ubr_sexual_gender_minority(ubr_sexual_orientation, ubr_gender_identity):
         """
-        Diversity Category #4 : Sexual Gender Minority
+        Diversity Category #4 : Sexual Gender Minority (does not apply to pediatric 0-6 participants)
         Calculate the "sexual gender minority" UBR value. If only one of the two args is NotAnswer_Skip, we convert the
         arg NotAnswer_Skip value to RBR so we can ignore it.
         :param ubr_sexual_orientation: Value returned from self.ubr_sexual_orientation().
@@ -132,9 +140,11 @@ class ParticipantUBRCalculator:
     @staticmethod
     def ubr_ethnicity(answers):
         """
-        Diversity Category #1 - Age
+        Diversity Category: Ethnicity
         Calculate the ethnicity UBR value.
-        :param answers: Comma delimited str of answer codes to Race_WhatRaceEthnicity questions in "TheBasics" survey.
+        :param answers: Comma delimited str of answer codes to Race_WhatRaceEthnicity questions in "TheBasics" survey
+                        (or race_whatraceethnicity_ped for pediatric ped_basics survey).  The answer code options
+                        are the same for both the adult and pediatric question code.
         :return: UBRValueEnum
         """
         if answers is None:
@@ -155,8 +165,9 @@ class ParticipantUBRCalculator:
         """
         Diversity Category #7 - Geography
         Calculate the geography UBR value.
-        :param consent_date: Date original consent was submitted.
-        :param answer: Answer code to StreetAddress_PIIZIP question in "ConsentPII" survey.
+        :param consent_date: Date original consent was submitted
+        :param answer: Answer for the participant StreetAddressPIIZipCode question in the adult ConsentPII or
+                       childpermission_info_zipcode question in "consentpii_0to6" survey
         :return: UBRValueEnum
         """
         if answer is None:
@@ -174,7 +185,7 @@ class ParticipantUBRCalculator:
     @staticmethod
     def ubr_education(answer: (str, None)):
         """
-        Diversity Category #6 - Educational Attainment
+        Diversity Category #6 - Educational Attainment (does not apply to pediatric 0-6 participants)
         Calculate the education UBR value.
         :param answer: Answer code to EducationLevel_HighestGrade question in "TheBasics" survey.
         :return: UBRValueEnum
@@ -190,26 +201,79 @@ class ParticipantUBRCalculator:
         return UBRValueEnum.RBR
 
     @staticmethod
-    def ubr_income(answer: (str, None)):
+    def ubr_income(howmanypeople, income, addr_state, year_completed_thebasics, income_mapping):
         """
         Diversity Category #5 - Income
         Calculate the income UBR value.
-        :param answer: Answer code to Income_AnnualIncome question in "TheBasics" survey.
+
+        Example of config income mapping structure:
+
+
+        {
+          "AK": {
+              "2023_2024": {
+                  "1_2": ["less10k", "10k25k", "25k35k", "35k50k"],
+                  "3": ["less10k", "10k25k", "25k35k", "35k50k", "50k75k"],
+                  "4_5": ["less10k", "10k25k", "25k35k", "35k50k", "50k75k", "75k100k"],
+                  "6_7_8_9": ["less10k", "10k25k", "25k35k", "35k50k", "50k75k", "75k100k", "100k150k"],
+                  "10_11": ["less10k", "10k25k", "25k35k", "35k50k", "50k75k", "75k100k", "100k150k", "150k200k"]
+              }
+          },
+          "HI": {
+              "2023_2024": {
+                  "1": ["less10k", "10k25k", "25k35k"],
+                  "2": ["less10k", "10k25k", "25k35k", "35k50k"],
+                  "3_4": ["less10k", "10k25k", "25k35k", "35k50k", "50k75k"],
+                  "5_6": ["less10k", "10k25k", "25k35k", "35k50k", "50k75k", "75k100k"],
+                  "7_8_9_10": ["less10k", "10k25k", "25k35k", "35k50k", "50k75k", "75k100k", "100k150k"],
+                  "11": ["less10k", "10k25k", "25k35k", "35k50k", "50k75k", "75k100k", "100k150k", "150k200k"]
+              }
+          },
+          "Other": {
+              "2023_2024": {
+                  "1": ["less10k", "10k25k", "25k35k"],
+                  "2_3": ["less10k", "10k25k", "25k35k", "35k50k"],
+                  "4_5": ["less10k", "10k25k", "25k35k", "35k50k", "50k75k"],
+                  "6_7": ["less10k", "10k25k", "25k35k", "35k50k", "50k75k", "75k100k"],
+                  "7_8_9_10_11": ["less10k", "10k25k", "25k35k", "35k50k", "50k75k", "75k100k", "100k150k", "150k200k"]
+              }
+        }
+        :param howmanypeople: Answer for livingsituation_howmanypeople to know number of people in the household
+        :param income: Answer for income_annualincome
+        :param addr_state: State of residence from ConsentPii
+        :param year_completed_thebasics: The authored date from theBasics (can also be the created date in lower envs)
+        :param income_mapping: dict containing income ubr guidelines
         :return: UBRValueEnum
         """
-        if answer in [None, 'PMI_Skip', 'PMI_PreferNotToAnswer']:
+
+        if income in ('PMI_PreferNotToAnswer', 'PMI_Skip', None):
             return UBRValueEnum.NotAnswer_Skip
-        if answer in (
-                'AnnualIncome_less10k',
-                'AnnualIncome_10k25k'):
+
+        income = income.replace('AnnualIncome_', '')
+
+        # ensure howmanypeople is numeric or PMI_Skip or PMI_PreferNotToAnswer
+        howmanypeople = howmanypeople or '0'
+        # Number of people should be the answer + 1 (for survey taker). If non-numeric answer default to 1
+        people = str(math.ceil(abs(float(howmanypeople))) + 1) if howmanypeople.isdigit() else '1'
+        # If number of people is more than 10 default value to 11
+        people = '11' if int(people) > 10 else people
+
+        state = addr_state if addr_state in income_mapping.keys() else 'Other'
+        year = next((y for y in income_mapping[state].keys() if str(year_completed_thebasics) in y), None)
+        if year is None:
+            raise ValueError
+        num_people = next(n for n in income_mapping[state][year].keys() if people in n)
+
+        if income not in income_mapping[state][year][num_people]:
+            return UBRValueEnum.RBR
+        else:
             return UBRValueEnum.UBR
-        return UBRValueEnum.RBR
 
     @staticmethod
     def ubr_disability(survey_responses: List[Dict]):
         """
         Diversity Category #9 - Disability
-        Calculate the disability UBR value.
+        Calculate the disability UBR value.   Overriden in PedParticipantUBRCalculator class
         :param survey_responses: Ordered list of Dicts with keys and answer codes for 'Disability_Blind',
                         'Disability_WalkingClimbing', 'Disability_DressingBathing', 'Disability_ErrandsAlone',
                         'Disability_Deaf' and 'Disability_DifficultyConcentrating' from "TheBasics" and/or "lfs"
@@ -220,7 +284,7 @@ class ParticipantUBRCalculator:
          'ErrandsAlone_PreferNotToAnswer', 'Deaf_PreferNotToAnswer', 'DifficultyConcentrating_PreferNotToAnswer'
         :return: UBRValueEnum
         """
-        ret = UBRValueEnum.RBR   # Default return value
+        ret = UBRValueEnum.RBR  # Default return value
         for answers in survey_responses:
             # PDR-658:  The Employment_EmploymentStatus/EmploymentStatus_UnableToWork answer check was removed from
             # the UBR Disability calculations per program decision
@@ -236,7 +300,7 @@ class ParticipantUBRCalculator:
             # Check and see if all question answers are either Null, 'Prefer Not To Answer' or PMI_Skip.
             null_skip = True
             for k in ['Disability_Blind', 'Disability_WalkingClimbing', 'Disability_DressingBathing',
-                       'Disability_ErrandsAlone', 'Disability_Deaf' and 'Disability_DifficultyConcentrating']:
+                      'Disability_ErrandsAlone', 'Disability_Deaf' and 'Disability_DifficultyConcentrating']:
                 if answers.get(k, None) not in \
                         [None, 'PMI_Skip', 'Blind_PreferNotToAnswer', 'WalkingClimbing_PreferNotToAnswer',
                          'DressingBathing_PreferNotToAnswer', 'ErrandsAlone_PreferNotToAnswer',
@@ -255,7 +319,7 @@ class ParticipantUBRCalculator:
     def ubr_age_at_consent(consent_time, answer: (str, None)):
         """
         Diversity Category #2 - Age
-        Calculate the "age at consent" UBR value.
+        Calculate the "age at consent" UBR value (does not apply to pediatric participants)
         :param consent_time: Timestamp of primary consent.
         :param answer: Answer to the PIIBirthInformation_BirthDate question in the ConsentPII survey.
         :return: UBRValueEnum
@@ -270,8 +334,8 @@ class ParticipantUBRCalculator:
         # When calculating 'Age At Consent', ensure that leap years are accounted for. A date subtraction
         # function that is "leap year" aware must be used.
         rd = relativedelta(consent_time, answer)
-        # PDR-2105 - Due to Pediatric rollout, participants under 18 will no longer count as UBR.
-        if rd.years < 65:
+        # RBR if age is between 18 and 64, else UBR.
+        if 18 <= rd.years < 65:
             return UBRValueEnum.RBR
         return UBRValueEnum.UBR
 
@@ -290,3 +354,175 @@ class ParticipantUBRCalculator:
             if k.startswith('ubr_') and v == UBRValueEnum.UBR:
                 return UBRValueEnum.UBR
         return result
+
+    @staticmethod
+    def ubr_access_to_care(answers):
+        """
+        Diversity Category - Access to Care
+        Calculate the Access to Care UBR value for participants
+        This can be calculated on the response to the Basics 'insurance_healthinsurance' question alone
+        :param answers: Dict with keys and answer codes for thebasics and access to care questions
+        :return: UBRValueEnum
+        """
+        # if answers or True:
+        #     return None
+
+        # Questions on access to care.
+        if answers.get('insurance_healthinsurance', None) == 'HealthInsurance_No':
+            return UBRValueEnum.UBR
+        if answers.get('healthadvice_placeforhealthadvice', None) == 'PlaceforHealthAdvice_No':
+            return UBRValueEnum.UBR
+
+        if answers.get('healthadvice_whatkindofplace', None) == 'WhatKindOfPlace_EmergencyRoom':
+            return UBRValueEnum.UBR
+
+        if (answers.get('delayedmedicalcare_cantaffordcopay', None) == 'CantAffordCoPay_Yes'
+                or answers.get('delayedmedicalcare_deductibletoohigh', None) == 'DeductibleTooHigh_Yes'
+                or answers.get('delayedmedicalcare_hadtopayoutofpocket', None) == 'HadToPayOutOfPocket_Yes'
+                or answers.get('delayedmedicalcare_ruralarea', None) == 'RuralArea_Yes'):
+            return UBRValueEnum.UBR
+
+        if (answers.get('cantaffordcare_prescriptionmedicines', None) == 'PrescriptionMedicines_Yes'
+                or answers.get('cantaffordcare_mentalhealthcounseling', None) == 'MentalHealthCounseling_Yes'
+                or answers.get('cantaffordcare_emergencycare', None) == 'EmergencyCare_Yes'
+                or answers.get('cantaffordcare_dentalcare', None) == 'DentalCare_Yes'
+                or answers.get('cantaffordcare_eyeglasses', None) == 'Eyeglasses_Yes'
+                or answers.get('cantaffordcare_healthcareprovider', None) == 'HealthcareProvider_Yes'
+                or answers.get('cantaffordcare_specialist', None) == 'Specialist_Yes'
+                or answers.get('cantaffordcare_followupcare', None) == 'FollowupCare_Yes'):
+            return UBRValueEnum.UBR
+
+        if (answers.get('cantaffordcare_skippedmedtosavemoney', None) == 'SkippedMedToSaveMoney_Yes'
+                or answers.get('cantaffordcare_tooklessmedtosavemoney', None) == 'TookLessMedToSaveMoney_Yes'
+                or answers.get('cantaffordcare_delayedfillingrxtosavemoney',
+                               None) == 'DelayedFillingRxToSaveMoney_Yes'):
+            return UBRValueEnum.UBR
+
+        answer_count = 0
+        for k in ['delayedmedicalcare_transportation', 'delayedmedicalcare_timeoffwork', 'delayedmedicalcare_childcare',
+                  'delayedmedicalcare_elderlycare', 'healthproviderracereligion_delayedornocare']:
+
+            if k == 'healthproviderracereligion_delayedornocare' and answers.get(k, None) in \
+                    ('DelayedOrNoCare_Always', 'DelayedOrNoCare_MostOfTheTime', 'DelayedOrNoCare_SomeOfTheTime'):
+                answer_count += 1
+
+            if answers.get(k, None) in ('Transportation_Yes', 'TimeOffWork_Yes', 'ChildCare_Yes', 'ElderlyCare_Yes'):
+                answer_count += 1
+
+        if answer_count >= 2:
+            return UBRValueEnum.UBR
+
+        # TODO:   Confirm PMI_DontKnow answers should resolve to RBR
+        # There is a possibility that someone who has skipped a lot of questions needs to be re calculated
+        null_skip = True
+        for k in ['insurance_healthinsurance', 'healthadvice_placeforhealthadvice']:
+            if answers.get(k, None) not in [None, 'PMI_Skip', 'PMI_PreferNotToAnswer']:
+                null_skip = False
+                break
+        if null_skip is True:
+            return UBRValueEnum.NotAnswer_Skip
+        else:
+            return UBRValueEnum.RBR
+
+
+class PedParticipantUBRCalculator(ParticipantUBRCalculator):
+    """
+    A UBR calculator specific to peds participants, that will override the UBR calculations which differ from
+    the adult UBR calculations.
+    """
+
+    @staticmethod
+    def ubr_disability(answers):
+        """
+        Diversity Category #9 - Disability
+        Calculate the disability UBR value.
+        :param answers: Dict with keys and answer codes for ped_basics disability questions
+        :return: UBRValueEnum
+        """
+        # nsch_2 series of questions on whether child uses more medical care mental health/educational services
+        # ped_basics1 = "Yes" response;  all three must be yes
+        if (answers.get('nsch_2', None) == 'ped_basics1'
+                and answers.get('nsch_2_condition', None) == 'ped_basics1'
+                and answers.get('nsch_2_condition_12months', None) == 'ped_basics1'):
+            return UBRValueEnum.UBR
+
+        # nsch_3 series of questions on whether child is limited/prevented from doing things other children can
+        # All must be "Yes"/ped_basics1
+        if (answers.get('nsch_3', None) == 'ped_basics1'
+                and answers.get('nsch_3_condition', None) == 'ped_basics1'
+                and answers.get('nsch_3_condition_12months', None) == 'ped_basics1'):
+            return UBRValueEnum.UBR
+
+        # nsch_4 series of questions on whether child needs/gets specialized therapy
+        # All must be "Yes"/ped_basics1
+        if (answers.get('nsch_4', None) == 'ped_basics1'
+                and answers.get('nsch_4_condition', None) == 'ped_basics1'
+                and answers.get('nsch_4_condition_12months', None) == 'ped_basics1'):
+            return UBRValueEnum.UBR
+
+        # nsch_5 questions on whether child has developmental/behavioral problems needing treatment
+        # Both must be "Yes"/ped_basics1
+        if (answers.get('nsch_5', None) == 'ped_basics1'
+                and answers.get('nsch_5_condition_12months', None) == 'ped_basics1'):
+            return UBRValueEnum.UBR
+
+        # aou_1 questions on hearing/vision/speech/cognitive/physical impairments
+        # Both must be "Yes"/ped_basics1
+        if answers.get('aou_1', None) == 'ped_basics1' and answers.get('aou_1_12months', None) == 'ped_basics1':
+            return UBRValueEnum.UBR
+
+        # Check and see if all question answers are either Null, 'Prefer Not To Answer' or PMI_Skip.
+        # TODO:  What does PMI_DontKnow answer map to for aou_1 answer(s)?
+        null_skip = True
+        for k in ['nsch_1', 'nsch_2', 'nsch_3', 'nsch_4', 'nsch_5', 'aou_1']:
+            if answers.get(k, None) not in [None, 'PMI_Skip']:
+                null_skip = False
+                break
+        if null_skip is True:
+            return UBRValueEnum.NotAnswer_Skip
+        else:
+            return UBRValueEnum.RBR
+
+    @staticmethod
+    def ubr_access_to_care(answers):
+        """
+        Diversity Category - Access to Care
+        Calculate the Access to Care UBR value for pediactric participants
+        :param answers: Dict with keys and answer codes for ped_basics access to care questions
+        :return: UBRValueEnum
+        """
+        # if answers or True:
+        #     return None
+
+        # Questions on access to care.
+        if answers.get('insurance_healthinsurance_ped', None) == 'HealthInsurance_No':
+            return UBRValueEnum.UBR
+        if answers.get('healthadvice_placeforhealthadvice_ped', None) == 'PlaceforHealthAdvice_No':
+            return UBRValueEnum.UBR
+
+        if answers.get('healthadvice_whatkindofplace_ped', None) in ('WhatKindOfPlace_UrgentCare',
+                                                                     'WhatKindOfPlace_EmergencyRoom'):
+            return UBRValueEnum.UBR
+
+        if (answers.get('delaydmedicalcare_ped', None) == 'DelayedCare_Yes'
+                and (answers.get('cantaffordcare_skippedmedtosavemoney_ped', None) == 'SkippedMedToSaveMoney_Yes'
+                     or answers.get('cantaffordcare_tooklessmedtosavemoney_pd', None) == 'TookLessMedToSaveMoney_Yes'
+                     or answers.get('cantaffordcare_delayedfillingfxtosavemoney_ped',
+                                    None) == 'DelayedFillingRxToSaveMoney_Yes'
+                     or answers.get('cantaffordcare_pharmacy_ped', None) == 'Pharmacy_Yes'
+                     or answers.get('CantAffordCare_LowerCostRxToSaveMoney', None) == 'LowerCostRxToSaveMoney_Yes'
+                     or answers.get('CantAffordCare_BoughtRxFromOtherCountry', None) == 'BoughtRxFromOtherCountry_Yes'
+                     or answers.get('CantAffordCare_AlternativeTherapies', None) == 'AlternativeTherapies_Yes')
+        ):
+            return UBRValueEnum.UBR
+
+        # TODO:   Confirm PMI_DontKnow answers should resolve to RBR
+        null_skip = True
+        for k in ['insurance_healthinsurance_ped', 'healthadvice_placeforhealthadvice_ped', 'delayedmedicalcare_ped']:
+            if answers.get(k, None) not in [None, 'PMI_Skip']:
+                null_skip = False
+                break
+        if null_skip is True:
+            return UBRValueEnum.NotAnswer_Skip
+        else:
+            return UBRValueEnum.RBR
