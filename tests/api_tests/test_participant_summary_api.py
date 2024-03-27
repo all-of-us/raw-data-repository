@@ -21,6 +21,7 @@ from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERM
 from rdr_service.concepts import Concept
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.pediatric_data_log_dao import PediatricDataLogDao
@@ -117,9 +118,14 @@ participant_summary_default_values = {
     "sampleOrderStatus1HEP4": "UNSET",
     "sampleOrderStatus1PST8": "UNSET",
     "sampleOrderStatus1PS08": "UNSET",
+    "sampleOrderStatus1PS4A": "UNSET",
+    "sampleOrderStatus1PS4B": "UNSET",
+    "sampleOrderStatus2PS4A": "UNSET",
+    "sampleOrderStatus2PS4B": "UNSET",
     "sampleOrderStatus2PST8": "UNSET",
     "sampleOrderStatus1SAL": "UNSET",
     "sampleOrderStatus1SAL2": "UNSET",
+    "sampleOrderStatus2SAL0": "UNSET",
     "sampleOrderStatus1SST8": "UNSET",
     "sampleOrderStatus2SST8": "UNSET",
     "sampleOrderStatus1SS08": "UNSET",
@@ -138,8 +144,13 @@ participant_summary_default_values = {
     "sampleStatus1PST8": "UNSET",
     "sampleStatus2PST8": "UNSET",
     "sampleStatus1PS08": "UNSET",
+    "sampleStatus1PS4A": "UNSET",
+    "sampleStatus1PS4B": "UNSET",
+    "sampleStatus2PS4A": "UNSET",
+    "sampleStatus2PS4B": "UNSET",
     "sampleStatus1SAL": "UNSET",
     "sampleStatus1SAL2": "UNSET",
+    "sampleStatus2SAL0": "UNSET",
     "sampleStatus1SST8": "UNSET",
     "sampleStatus2SST8": "UNSET",
     "sampleStatus1SS08": "UNSET",
@@ -1933,6 +1944,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 confirmed=time,
             )
         )
+        if test_code in config.getSettingList(config.DNA_SAMPLE_TEST_CODES):
+            participant_id_int = from_client_participant_id(participant["participantId"])
+            EnrollmentDependenciesDao.set_biobank_received_dna_time(
+                time, participant_id_int, self.session
+            )
 
     def testQuery_ehrConsent(self):
         questionnaire_id = self.create_questionnaire("all_consents_questionnaire.json")

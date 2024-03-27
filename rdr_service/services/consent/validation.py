@@ -14,6 +14,7 @@ from rdr_service.config import MissingConfigException
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.account_link_dao import AccountLinkDao
 from rdr_service.dao.consent_dao import ConsentDao
+from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
@@ -62,14 +63,31 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
         for participant_id, result_list in ehr_consents_by_participant.items():
             self._update_status(
                 participant_id=participant_id,
-                has_valid_file=self._list_has_valid_consent(result_list)
+                has_valid_file=self._list_has_valid_consent(result_list),
+                authored_time=self._valid_authored_date(result_list)
             )
 
     @classmethod
     def _list_has_valid_consent(cls, result_list: List[ParsingResult]):
-        return any([result.sync_status == ConsentSyncStatus.READY_FOR_SYNC for result in result_list])
+        return any([
+            result.sync_status in [ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE]
+            for result in result_list
+        ])
 
-    def _update_status(self, participant_id, has_valid_file, status_check=QuestionnaireStatus.SUBMITTED_NOT_VALIDATED):
+    @classmethod
+    def _valid_authored_date(cls, result_list: List[ParsingResult]):
+        valid_files = [
+            result for result in result_list
+            if result.sync_status in [ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE]
+        ]
+        if not valid_files:
+            return None
+
+        return min(result.expected_sign_date for result in valid_files)
+
+    def _update_status(
+        self, participant_id, has_valid_file, authored_time, status_check=QuestionnaireStatus.SUBMITTED_NOT_VALIDATED
+    ):
         participant_summary = ParticipantSummaryDao.get_for_update_with_linked_data(
             participant_id=participant_id,
             session=self._session
@@ -81,6 +99,12 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
             new_status = QuestionnaireStatus.SUBMITTED if has_valid_file else QuestionnaireStatus.SUBMITTED_INVALID
             participant_summary.consentForElectronicHealthRecords = new_status
             did_modify_status = True
+            EnrollmentDependenciesDao.set_intent_to_share_ehr_time(
+                authored_time, participant_summary.participantId, self._session
+            )
+            EnrollmentDependenciesDao.set_full_ehr_consent_authored_time(
+                authored_time, participant_summary.participantId, self._session
+            )
         elif (
             participant_summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED_INVALID
             and has_valid_file

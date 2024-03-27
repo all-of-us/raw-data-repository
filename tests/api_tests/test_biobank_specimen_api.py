@@ -12,6 +12,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrderedSample, BiobankOrder, BiobankAliquot
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import from_client_biobank_id
+from rdr_service.participant_enums import SampleStatus
 from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2020, 4, 1)
@@ -198,38 +199,39 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
     @staticmethod
-    def _add_specimen_data_to_payload(payload):
-        payload.update({
-            'repositoryID': 'repo id',
-            'studyID': 'study id',
-            'cohortID': 'cohort id',
-            'sampleType': 'sample',
-            'status': {
-                'status': 'Disposed',
-                'freezeThawCount': 1,
-                'location': 'Greendale',
-                'quantity': '1',
-                'quantityUnits': 'some units',
-                'processingCompleteDate': TIME_2.isoformat(),
-                'deviations': 'no deviation'
-            },
-            'disposalStatus': {
-                'reason': 'contaminated',
-                'disposalDate': TIME_2.isoformat()
-            },
-            'attributes': [
-                {
-                    'name': 'attr_one',
-                    'value': '1'
+    def _add_specimen_data_to_payload(
+        payload,
+        sample_type="sample",
+        collection_date=TIME_1.isoformat(),
+        confirmation_date=TIME_2.isoformat(),
+    ):
+        payload.update(
+            {
+                "repositoryID": "repo id",
+                "studyID": "study id",
+                "cohortID": "cohort id",
+                "sampleType": sample_type,
+                "status": {
+                    "status": "Disposed",
+                    "freezeThawCount": 1,
+                    "location": "Greendale",
+                    "quantity": "1",
+                    "quantityUnits": "some units",
+                    "processingCompleteDate": confirmation_date,
+                    "deviations": "no deviation",
                 },
-                {
-                    'name': 'attr_two',
-                    'value': 'two'
-                }
-            ],
-            'collectionDate': TIME_1.isoformat(),
-            'confirmationDate': TIME_2.isoformat()
-        })
+                "disposalStatus": {
+                    "reason": "contaminated",
+                    "disposalDate": confirmation_date,
+                },
+                "attributes": [
+                    {"name": "attr_one", "value": "1"},
+                    {"name": "attr_two", "value": "two"},
+                ],
+                "collectionDate": collection_date,
+                "confirmationDate": confirmation_date,
+            }
+        )
 
     def test_put_new_specimen_all_data(self):
         payload = self.get_minimal_specimen_json()
@@ -1212,6 +1214,57 @@ class BiobankOrderApiTest(BaseTestCase):
         stored samples that already existed. This ensures that issue was fixed.
         """
         payload = self.get_minimal_specimen_json()
-        rlims_id = payload['rlimsID']
-        self.data_generator.create_database_biobank_stored_sample(biobankStoredSampleId=rlims_id)
-        self.send_put(f'Biobank/specimens/{rlims_id}', request_data=payload)
+        rlims_id = payload["rlimsID"]
+        self.data_generator.create_database_biobank_stored_sample(
+            biobankStoredSampleId=rlims_id
+        )
+        self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
+
+    def test_update_participant_summary_with_sample_status(self) -> None:
+        """
+        Checking to see if the sampleStatus updates to RECEIVED with the confirmation time
+        using the participant summary fields: sampleStatus1PS4A & sampleStatus1PS4ATime
+        """
+        collection_date = datetime.datetime(2023, 1, 7, 18, 2)
+        confirmation_date = collection_date + datetime.timedelta(minutes=10)
+        payload = self.get_minimal_specimen_json()
+        rlims_id = payload["rlimsID"]
+        self._add_specimen_data_to_payload(
+            payload,
+            sample_type="Plasma"
+        )
+        payload.update({
+            "status": {
+                "status": "In Circulation",
+                "location": "Test_Location",
+                "quantity": "4",
+                "quantityUnits": "mL",
+                "freezeThawCount": 0,
+            },
+            "orderID": self.bio_order.biobankOrderId,
+            "rlimsID": rlims_id,
+            "aliquots": [],
+            "testcode": "1PS4A",
+            "attributes": [],
+            "participantID": config_utils.to_client_biobank_id(
+                self.participant.biobankId
+            ),
+            "collectionDate": collection_date.isoformat(),
+            "disposalStatus": {"reason": "", "disposalDate": ""},
+            "confirmationDate": confirmation_date.isoformat(),
+        })
+        self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
+        refreshed_participant_summary = self.summary_dao.get(
+            self.participant.participantId
+        )
+        self.assertEqual(
+            SampleStatus.RECEIVED,
+            getattr(refreshed_participant_summary, f"sampleStatus1PS4A"),
+        )
+        self.assertEqual(
+            confirmation_date,
+            getattr(
+                refreshed_participant_summary,
+                f"sampleStatus1PS4ATime",
+            ),
+        )

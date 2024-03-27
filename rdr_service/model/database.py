@@ -76,6 +76,7 @@ from rdr_service.model.pediatric_data_log import PediatricDataLog
 from rdr_service.model.ppi_validation_errors import PpiValidationErrors
 from rdr_service.model.profile_update import ProfileUpdate
 from rdr_service.model.participant_data_to_tactis import ParticipantDataToTactis
+from rdr_service.model.retention_status_import_failures import RetentionStatusImportFailures
 
 from rdr_service.model.study_nph import Participant
 from rdr_service.model.study_nph_sms import SmsSample, SmsJobRun

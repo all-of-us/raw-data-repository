@@ -30,7 +30,9 @@ from rdr_service.dao.bq_code_dao import BQCodeGenerator
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.enrollment_dependencies_dao import cache as enrollment_cache, EnrollmentDependenciesDao
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrder, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.bigquery_sync import BigQuerySync
@@ -536,6 +538,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             config.override_setting(key, original_data)
         self.config_data_to_reset = {}
 
+        enrollment_cache.clear()  # Remove any enrollment dependency data created by the test
+
     def setup_storage(self):
         temp_folder_path = mkdtemp()
         self.addCleanup(shutil.rmtree, temp_folder_path)
@@ -925,6 +929,11 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             ParticipantSummary.participantId == participant_id
         ).one()
         summary.consentForElectronicHealthRecords = participant_enums.QuestionnaireStatus.SUBMITTED
+        EnrollmentDependenciesDao.set_intent_to_share_ehr_time(
+            summary.consentForElectronicHealthRecordsAuthored, participant_id, self.session
+        )
+        dao = ParticipantSummaryDao()
+        dao.update_enrollment_status(summary, self.session)
         self.session.commit()
 
 

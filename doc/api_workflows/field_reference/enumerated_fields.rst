@@ -130,8 +130,8 @@ biospecimenStatus
 
 samplesToIsolateDNA, sampleStatus\*
 ------------------------------------------------------------
-Below are the available options for samplesToIsolateDNA and sampleStatus[1SS08, 1SST8, 2SST8, 1PS08, 1PST8, 2PST8, 1HEP4,
-1ED04, 1ED10, 2ED10, 1UR10, 1UR90, 1ED02, 1CFD9, 1PXR2, 1SAL, 1SAL2, DV1SAL2]
+Below are the available options for samplesToIsolateDNA and sampleStatus[1SS08, 1SST8, 2SST8, 1PS08, 1PS4A, 1PS4B,
+2SP4A, 2PS4B, 1PST8, 2PST8, 1HEP4, 1ED04, 1ED10, 2ED10, 1UR10, 1UR90, 1ED02, 1CFD9, 1PXR2, 1SAL, 1SAL2, DV1SAL2]
 
   * UNSET
   * RECEIVED
@@ -149,7 +149,8 @@ Below are the available options for samplesToIsolateDNA and sampleStatus[1SS08, 
 
 sampleOrderStatus\*
 ------------------------------------------------------------
-Below are the available options for sampleOrderStatus[1SST8, 1PST8, 1HEP4, 1ED04, 1ED10, 2ED10, 1UR10, 1UR90, 1ED02, 1CFD9, 1PXR2, 1SAL, 1SAL2]
+Below are the available options for sampleOrderStatus[1SST8, 1PST8, 1PS4A, 1PS4B, 2PS4A, 2PS4B, 1HEP4, 1ED04, 1ED10,
+2ED10, 1UR10, 1UR90, 1ED02, 1CFD9, 1PXR2, 1SAL, 1SAL2]
 
   * UNSET
   * CREATED
