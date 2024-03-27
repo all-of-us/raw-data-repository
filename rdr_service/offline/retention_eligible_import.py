@@ -7,7 +7,7 @@ from dateutil.parser import parse
 from rdr_service.app_util import nonprod
 from rdr_service.clock import CLOCK
 from rdr_service.code_constants import (
-    COHORT_1_REVIEW_CONSENT_YES_CODE, COPE_MODULE, COPE_NOV_MODULE, COPE_DEC_MODULE, COPE_FEB_MODULE,
+    COPE_MODULE, COPE_NOV_MODULE, COPE_DEC_MODULE, COPE_FEB_MODULE,
     COPE_VACCINE_MINUTE_1_MODULE_CODE, COPE_VACCINE_MINUTE_2_MODULE_CODE, COPE_VACCINE_MINUTE_3_MODULE_CODE,
     COPE_VACCINE_MINUTE_4_MODULE_CODE, PRIMARY_CONSENT_UPDATE_MODULE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 )
@@ -253,10 +253,11 @@ def _create_retention_eligible_metrics_obj_from_row(row, upload_date) -> Retenti
     )
 
 
-def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, session):
+def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, session, ehr_validation=True):
     """Fill in the rdr eligibility calculations for comparison"""
 
-    retention_data = build_retention_data(participant_id=metrics_data.participantId, session=session)
+    retention_data = build_retention_data(participant_id=metrics_data.participantId, session=session,
+                                          ehr_validation=ehr_validation)
     if retention_data:
         metrics_data.rdr_retention_eligible = retention_data.is_eligible
         metrics_data.rdr_retention_eligible_time = retention_data.retention_eligible_date
@@ -265,7 +266,7 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
         metrics_data.rdr_is_passively_retained = retention_data.is_passively_retained
 
 
-def build_retention_data(participant_id, session) -> Optional[RetentionEligibility]:
+def build_retention_data(participant_id, session, ehr_validation=True) -> Optional[RetentionEligibility]:
     summary_dao = ParticipantSummaryDao()
     summary: ParticipantSummary = summary_dao.get_with_session(
         session=session,
@@ -284,7 +285,8 @@ def build_retention_data(participant_id, session) -> Optional[RetentionEligibili
         ),
         first_ehr_consent=_get_earliest_intent_for_ehr(
             session=session,
-            participant_id=summary.participantId
+            participant_id=summary.participantId,
+            needs_validation=ehr_validation
         ),
         is_deceased=summary.deceasedStatus == DeceasedStatus.APPROVED,
         is_withdrawn=summary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
@@ -322,7 +324,8 @@ def build_retention_data(participant_id, session) -> Optional[RetentionEligibili
             aggregate_function=min  # Get the earliest cohort 1 reconsent response
         ),
         gror_response_timestamp=summary.consentForGenomicsRORAuthored,
-        # Additions for DA-3705 (only NPH module consent info currently available is NPH1)
+        # Per DA-3884:  NPH activity included for active retention calculations is limited to the initial NPH consent
+        # submission sent by PTSC to Participant endpoint (before eligibility or opt-ins are sent to NPH endpoints)
         nph_consent_timestamp=summary.consentForNphModule1Authored,
         etm_consent_timestamp=summary.consentForEtMAuthored,
         wear_consent_timestamp=summary.consentForWearStudyAuthored,
@@ -333,11 +336,11 @@ def build_retention_data(participant_id, session) -> Optional[RetentionEligibili
     return RetentionEligibility(dependencies)
 
 
-def _get_earliest_intent_for_ehr(session, participant_id) -> Optional[Consent]:
+def _get_earliest_intent_for_ehr(session, participant_id, needs_validation=False) -> Optional[Consent]:
     date_range_list = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
         participant_id=participant_id,
         session=session,
-        validation_not_required=True
+        validation_not_required=(not needs_validation)
     )
     if not date_range_list:
         return None
@@ -363,7 +366,8 @@ def _aggregate_response_timestamps(session, participant_id, survey_code_list, ag
             # NOTE: This may need more extensive changes when VA/Non-VA reconsent modules go live?
             if response.survey_code == PRIMARY_CONSENT_UPDATE_MODULE:
                 reconsent_answer = response.get_single_answer_for(PRIMARY_CONSENT_UPDATE_QUESTION_CODE)
-                if reconsent_answer and reconsent_answer.value.lower() == COHORT_1_REVIEW_CONSENT_YES_CODE.lower():
+                # Per DA-3884 and information from NIH, any reconsent response qualifies (yes/no)
+                if reconsent_answer:
                     authored_timestamp_list.append(response.authored_datetime)
             elif response.status == QuestionnaireResponseStatus.COMPLETED:
                 # Assume for other modules, we can use the authored date as long as it's a COMPLETED response
