@@ -449,6 +449,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 ParticipantSummary.firstName,
                 ParticipantSummary.lastName
             ),
+            joinedload(ParticipantSummary.duplicationData)
         ]
 
     def get_by_hpo(self, hpo, session, yield_batch_size=1000):
@@ -1517,6 +1518,18 @@ class ParticipantSummaryDao(UpdatableDao):
             result['questionnaireOnEnvironmentalExposures'] = str(QuestionnaireStatus.SUBMITTED)
             result['questionnaireOnEnvironmentalExposuresTime'] = env_exposures_data.created
             result['questionnaireOnEnvironmentalExposuresAuthored'] = env_exposures_data.value
+
+        duplicate_data = []
+        for duplicate in obj.duplicationData:
+            primary_account_id = duplicate.get_primary_id()
+            duplicate_data.append({
+                'duplicateId': to_client_participant_id(duplicate.get_other_participant_id(obj.participantId)),
+                'primaryAccount': to_client_participant_id(primary_account_id) if primary_account_id else 'UNSET',
+                'status': duplicate.status.name,
+                'timestamp': duplicate.authored.isoformat(),
+                'origin': duplicate.source.name
+            })
+        result['duplicationInfo'] = duplicate_data
 
         # Format other responses to default to UNSET when none
         field_names = [
