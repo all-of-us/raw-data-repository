@@ -39,6 +39,19 @@ class DuplicateAccount(Base):
     status = sa.Column(sa.Enum(DuplicationStatus), nullable=False)
     source = sa.Column(sa.Enum(DuplicationSource), nullable=False)
 
+    def get_other_participant_id(self, participant_id: int):
+        """Convenience method for getting the other participant id from the pair."""
+        return self.participant_a_id if self.participant_a_id != participant_id else self.participant_b_id
+
+    def get_primary_id(self):
+        """Convenience method for getting the participant id of the primary account"""
+        if self.primary_participant is None:
+            return None
+        elif self.primary_participant == PrimaryParticipantIndication.PARTICIPANT_A:
+            return self.participant_a_id
+        elif self.primary_participant == PrimaryParticipantIndication.PARTICIPANT_B:
+            return self.participant_b_id
+
 
 sa.event.listen(DuplicateAccount, 'before_insert', model_insert_listener)
 sa.event.listen(DuplicateAccount, 'before_update', model_update_listener)
