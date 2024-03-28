@@ -193,7 +193,7 @@ class GenomicRNAPipelineTest(BaseTestCase):
             model_type=GenomicRRRaw
         )
 
-        manifest_type = 'rr'
+        manifest_type = GenomicJob.RNA_RR_WORKFLOW
         rr_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -228,7 +228,7 @@ class GenomicRNAPipelineTest(BaseTestCase):
         )
 
         self.assertEqual(cloud_task_mock.called, True)
-        self.assertEqual(cloud_task_mock.call_count, 1)
+        self.assertEqual(cloud_task_mock.call_count, 2)
 
         # manifest type
         self.assertTrue(len(cloud_task_mock.call_args[1]), 1)
@@ -419,7 +419,7 @@ class GenomicRNAPipelineTest(BaseTestCase):
             model_type=GenomicR1Raw
         )
 
-        manifest_type = 'r1'
+        manifest_type = GenomicJob.RNA_R1_WORKFLOW
         r1_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -476,7 +476,7 @@ class GenomicRNAPipelineTest(BaseTestCase):
             model_type=GenomicR2Raw
         )
 
-        manifest_type = 'r2'
+        manifest_type = GenomicJob.RNA_R2_WORKFLOW
         r2_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(

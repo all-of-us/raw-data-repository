@@ -18,6 +18,7 @@ import sqlalchemy
 from rdr_service import clock, config
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.genomic.genomic_manifest_mappings import GENOMIC_FULL_INGESTION_MAP
 from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow, GenomicAW4Workflow
 from rdr_service.genomic.genomic_sub_workflow import GenomicSubWorkflow, GenomicSubLongReadWorkflow
 from rdr_service.genomic_enums import ResultsModuleType
@@ -55,8 +56,6 @@ from rdr_service.dao.genomics_dao import (
     GenomicSetDao,
     GenomicJobRunDao,
     GenomicManifestFileDao,
-    GenomicAW1RawDao,
-    GenomicAW2RawDao,
     GenomicIncidentDao,
     UserEventMetricsDao,
     GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao, GenomicPRDao, GenomicRNADao,
@@ -284,12 +283,11 @@ class GenomicFileIngester:
         )
 
         if validation_result != GenomicSubProcessResult.SUCCESS:
-            # delete raw records
-            if self.job_id == GenomicJob.AW1_MANIFEST:
-                GenomicAW1RawDao().delete_from_filepath(file_obj.filePath)
-            if self.job_id == GenomicJob.METRICS_INGESTION:
-                GenomicAW2RawDao().delete_from_filepath(file_obj.filePath)
             return validation_result
+
+        self.send_file_path_to_raw_ingestion_task(
+            file_path=self.file_obj.filePath
+        )
 
         try:
             workflow_map = {
@@ -381,6 +379,17 @@ class GenomicFileIngester:
             [obj.id for obj in has_failed_validation],
             _type='resolved'
         )
+
+    def send_file_path_to_raw_ingestion_task(self, *, file_path):
+        current_raw_ingestions = {k: v.get('raw') for k, v in GENOMIC_FULL_INGESTION_MAP.items() if v.get('raw')}
+        if self.job_id in current_raw_ingestions:
+            self.controller.execute_cloud_task(
+                endpoint='load_awn_raw_data_task',
+                payload={
+                    'file_path': file_path,
+                    'file_type': self.job_id.name
+                }
+            )
 
     def load_raw_manifest_file(self, raw_dao, **kwargs):
         """
@@ -3635,12 +3644,15 @@ class ManifestCompiler:
 
         # Updates job run field on set member
         if self.manifest_def.job_run_field and all_member_ids:
-            self.controller.execute_cloud_task({
-                'member_ids': list(set(all_member_ids)),
-                'field': self.manifest_def.job_run_field,
-                'value': self.run_id,
-                'is_job_run': True
-            }, 'genomic_set_member_update_task')
+            self.controller.execute_cloud_task(
+                payload={
+                    'member_ids': list(set(all_member_ids)),
+                    'field': self.manifest_def.job_run_field,
+                    'value': self.run_id,
+                    'is_job_run': True
+                },
+                endpoint='genomic_set_member_update_task'
+            )
 
         return {"code": GenomicSubProcessResult.SUCCESS}
 

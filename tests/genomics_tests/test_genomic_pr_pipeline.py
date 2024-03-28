@@ -193,7 +193,7 @@ class GenomicPRPipelineTest(BaseTestCase):
             model_type=GenomicPRRaw
         )
 
-        manifest_type = 'pr'
+        manifest_type = GenomicJob.PR_PR_WORKFLOW
         pr_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -228,7 +228,7 @@ class GenomicPRPipelineTest(BaseTestCase):
         )
 
         self.assertEqual(cloud_task_mock.called, True)
-        self.assertEqual(cloud_task_mock.call_count, 1)
+        self.assertEqual(cloud_task_mock.call_count, 2)
 
         # manifest type
         self.assertTrue(len(cloud_task_mock.call_args[1]), 1)
@@ -420,7 +420,7 @@ class GenomicPRPipelineTest(BaseTestCase):
             model_type=GenomicP1Raw
         )
 
-        manifest_type = 'p1'
+        manifest_type = GenomicJob.PR_P1_WORKFLOW
         p1_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -473,7 +473,7 @@ class GenomicPRPipelineTest(BaseTestCase):
             model_type=GenomicP2Raw
         )
 
-        manifest_type = 'p2'
+        manifest_type = GenomicJob.PR_P2_WORKFLOW
         p2_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(

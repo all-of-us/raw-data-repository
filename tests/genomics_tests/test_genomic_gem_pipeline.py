@@ -107,7 +107,7 @@ class GenomicGEMPipelineTest(BaseTestCase):
             model_type=GenomicA2Raw
         )
 
-        manifest_type = 'a2'
+        manifest_type = GenomicJob.GEM_A2_MANIFEST
         gem_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
