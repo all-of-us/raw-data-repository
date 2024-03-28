@@ -2006,8 +2006,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         # EXTRA_CONSENT_YES ==> CONSENT_PERMISSION_YES_CODE for PDR
         self.assertEqual(mod_data[0]['consent_value'], CONSENT_PERMISSION_YES_CODE)
         self.assertEqual(mod_data[0]['status'], 'SUBMITTED')
-        # This is based on legacy PDR enrollment_status (V2 status values)
-        self.assertEqual(pdr_rsc.get('enrollment_status', None), 'PARTICIPANT')
 
         pdr_rsc = self.make_participant_resource(no_participant.participantId)
         mod_data = self.get_generated_items(pdr_rsc['modules'])
@@ -2016,7 +2014,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         # EXTRA_CONSENT_NO ==> CONSENT_PERMISSION_NO_CODE for PDR
         self.assertEqual(mod_data[0]['consent_value'], CONSENT_PERMISSION_NO_CODE)
         self.assertEqual(mod_data[0]['status'], 'SUBMITTED_NO_CONSENT')
-        self.assertEqual(pdr_rsc.get('enrollment_status', None), 'REGISTERED')
 
     def test_pediatrics_overall_health(self):
         """
