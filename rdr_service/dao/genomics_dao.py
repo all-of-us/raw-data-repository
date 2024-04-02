@@ -4993,7 +4993,7 @@ class GenomicLongReadDao(GenomicSubDao):
     def get_new_pipeline_members(self, *, biobank_ids: List[str], **kwargs) -> List:
         with self.session() as session:
             collection_tube_ids = kwargs.get('parent_tube_ids')
-            return session.query(
+            records = session.query(
                 BiobankStoredSample.biobankId.label('biobank_id'),
                 BiobankStoredSample.biobankStoredSampleId.label('collection_tube_id')
             ).join(
@@ -5005,7 +5005,8 @@ class GenomicLongReadDao(GenomicSubDao):
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
                 BiobankStoredSample.biobankId.in_(biobank_ids),
                 BiobankStoredSample.biobankStoredSampleId.in_(collection_tube_ids)
-            ).distinct().all()
+            )
+            return records.distinct().all()
 
     def get_manifest_zero_records_from_max_set(self):
         with self.session() as session:

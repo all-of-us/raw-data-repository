@@ -83,7 +83,8 @@ from rdr_service.config import (
     CVL_W1IL_PGX_MANIFEST_SUBFOLDER,
     CVL_W2W_MANIFEST_SUBFOLDER,
     CVL_W3SR_MANIFEST_SUBFOLDER,
-    LR_L0_MANIFEST_SUBFOLDER, PR_P0_MANIFEST_SUBFOLDER, RNA_R0_MANIFEST_SUBFOLDER, LR_L3_MANIFEST_SUBFOLDER
+    LR_L0_MANIFEST_SUBFOLDER, PR_P0_MANIFEST_SUBFOLDER, RNA_R0_MANIFEST_SUBFOLDER, LR_L3_MANIFEST_SUBFOLDER,
+    PR_P3_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
@@ -3437,6 +3438,12 @@ class ManifestDefinitionProvider:
                     f'{PR_P0_MANIFEST_SUBFOLDER}/Proteomics-Manifest-AoU-{self.kwargs.get("pr_max_set")}'
                     f'-{now_formatted}.csv',
                 'query': self.pr_dao.get_manifest_zero_records_from_max_set
+            },
+            GenomicManifestTypes.PR_P3: {
+                'output_filename':
+                    f'{PR_P3_MANIFEST_SUBFOLDER}/AoU_P3_'
+                    f'{now_formatted}.csv',
+                'query': self.pr_dao.get_manifest_three_records
             },
             GenomicManifestTypes.RNA_R0: {
                 'output_filename':

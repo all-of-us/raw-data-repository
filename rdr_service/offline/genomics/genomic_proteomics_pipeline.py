@@ -28,3 +28,24 @@ def pr_p0_manifest_workflow():
                 manifest['file_path'],
                 "p0",
             )
+
+
+def pr_p3_manifest_workflow():
+    with GenomicJobController(
+        GenomicJob.PR_P3_WORKFLOW,
+        bucket_name=config.DRC_BROAD_BUCKET_NAME,
+        max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)
+    ) as controller:
+        controller.generate_manifest(
+            manifest_type=GenomicManifestTypes.PR_P3,
+            genome_type=config.GENOME_TYPE_PR,
+        )
+        for manifest in controller.manifests_generated:
+            logging.info(
+                f"Loading P3 Manifest Raw Data: {manifest['file_path']}"
+            )
+            # Call pipeline function to load raw
+            load_manifest_into_raw_table(
+                manifest['file_path'],
+                "p3",
+            )
