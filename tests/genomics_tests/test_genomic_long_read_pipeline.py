@@ -340,7 +340,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                 genomicSetId=self.gen_set.id,
                 participantId=participant_summary.participantId,
                 biobankId=f"100{num}",
-                genomeType="aou_array",
+                genomeType="aou_wgs",
                 collectionTubeId=num
             )
             if num < 3:
@@ -363,6 +363,16 @@ class GenomicLongReadPipelineTest(BaseTestCase):
                     long_read_platform=GenomicLongReadPlatform.PACBIO_CCS,
                     long_read_set=1
                 )
+                # SHOULD NOT add sample_id to long_read member w/ different lr site id
+                self.data_generator.create_database_genomic_long_read(
+                    genomic_set_member_id=genomic_set_member.id,
+                    biobank_id=genomic_set_member.biobankId,
+                    collection_tube_id=f'{num}11111',
+                    genome_type="aou_long_read",
+                    lr_site_id="uw",
+                    long_read_platform=GenomicLongReadPlatform.PACBIO_CCS,
+                    long_read_set=1
+                )
 
         self.execute_base_lr_ingestion(
             test_file='RDR_AoU_LR_PKG-0101-123456.csv',
@@ -373,15 +383,20 @@ class GenomicLongReadPipelineTest(BaseTestCase):
 
         long_read_members = self.long_read_dao.get_all()
 
-        self.assertEqual(len(long_read_members), 4)
+        self.assertEqual(len(long_read_members), 6)
+
         self.assertTrue(all(obj.sample_id is not None for obj in long_read_members if
-                            obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS))
+                            obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS and obj.lr_site_id == 'bi'))
         self.assertTrue(all(obj.sample_id in ['1111', '1112'] for obj in long_read_members  if
-                            obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS))
+                            obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS and obj.lr_site_id == 'bi'))
 
         # ONT platform does not get updated
         self.assertTrue(all(obj.sample_id is None for obj in long_read_members if
                             obj.long_read_platform == GenomicLongReadPlatform.ONT))
+
+        # Different LR site id does not get updated
+        self.assertTrue(all(obj.sample_id is None for obj in long_read_members if
+                            obj.long_read_platform == GenomicLongReadPlatform.PACBIO_CCS and obj.lr_site_id == 'uw'))
 
         # check job run record
         l1_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LR_L1_WORKFLOW, self.job_run_dao.get_all()))

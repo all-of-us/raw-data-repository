@@ -192,11 +192,15 @@ class GenomicSubLongReadWorkflow(GenomicBaseSubWorkflow):
         row_long_read_platform = self.row_data[0].get(attribute_name)
         return GenomicLongReadPlatform.lookup_by_name(row_long_read_platform.upper())
 
+    def get_lr_site_id(self):
+        return self.row_data[0].get('lr_site_id').lower()
+
     def get_members_for_sample_update(self):
         return self.dao.get_pipeline_members_missing_sample_id(
             biobank_ids=[row.get('biobank_id')[1:] for row in self.row_data if row.get('sample_id')],
             collection_tube_ids=[row.get('collection_tubeid') for row in self.row_data if row.get('sample_id')],
-            long_read_platform=self.get_platform_value()
+            long_read_platform=self.get_platform_value(),
+            lr_site_id=self.get_lr_site_id()
         )
 
     def set_default_base_attributes(self) -> dict:

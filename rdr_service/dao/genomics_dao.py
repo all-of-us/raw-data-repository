@@ -5045,7 +5045,8 @@ class GenomicLongReadDao(GenomicSubDao):
         self,
         *, biobank_ids: List[str],
         collection_tube_ids: List[str],
-        long_read_platform: GenomicLongReadPlatform
+        long_read_platform: GenomicLongReadPlatform,
+        lr_site_id: str
     ):
         with self.session() as session:
             return session.query(
@@ -5055,7 +5056,8 @@ class GenomicLongReadDao(GenomicSubDao):
                 self.model_type.sample_id.is_(None),
                 self.model_type.biobank_id.in_(biobank_ids),
                 self.model_type.collection_tube_id.in_(collection_tube_ids),
-                self.model_type.long_read_platform == long_read_platform
+                self.model_type.long_read_platform == long_read_platform,
+                self.model_type.lr_site_id == lr_site_id
             ).distinct().all()
 
     def get_manifest_three_records(self):
