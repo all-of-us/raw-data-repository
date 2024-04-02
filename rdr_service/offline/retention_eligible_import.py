@@ -292,11 +292,11 @@ def _create_retention_eligible_metrics_obj_from_row(row, upload_date) -> Retenti
     )
 
 
-def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, session, ehr_validation=True):
+def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, session, check_consent_validation=True):
     """Fill in the rdr eligibility calculations for comparison"""
 
     retention_data = build_retention_data(participant_id=metrics_data.participantId, session=session,
-                                          ehr_validation=ehr_validation)
+                                          check_consent_validation=check_consent_validation)
     if retention_data:
         metrics_data.rdr_retention_eligible = retention_data.is_eligible
         metrics_data.rdr_retention_eligible_time = retention_data.retention_eligible_date
@@ -305,7 +305,7 @@ def _supplement_with_rdr_calculations(metrics_data: RetentionEligibleMetrics, se
         metrics_data.rdr_is_passively_retained = retention_data.is_passively_retained
 
 
-def build_retention_data(participant_id, session, ehr_validation=True) -> Optional[RetentionEligibility]:
+def build_retention_data(participant_id, session, check_consent_validation=True) -> Optional[RetentionEligibility]:
     summary_dao = ParticipantSummaryDao()
     summary: ParticipantSummary = summary_dao.get_with_session(
         session=session,
@@ -325,7 +325,7 @@ def build_retention_data(participant_id, session, ehr_validation=True) -> Option
         first_ehr_consent=_get_earliest_intent_for_ehr(
             session=session,
             participant_id=summary.participantId,
-            needs_validation=ehr_validation
+            needs_validation=check_consent_validation
         ),
         is_deceased=summary.deceasedStatus == DeceasedStatus.APPROVED,
         is_withdrawn=summary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
@@ -375,11 +375,11 @@ def build_retention_data(participant_id, session, ehr_validation=True) -> Option
     return RetentionEligibility(dependencies)
 
 
-def _get_earliest_intent_for_ehr(session, participant_id, needs_validation=False) -> Optional[Consent]:
+def _get_earliest_intent_for_ehr(session, participant_id, needs_validation=True) -> Optional[Consent]:
     date_range_list = QuestionnaireResponseRepository.get_interest_in_sharing_ehr_ranges(
         participant_id=participant_id,
         session=session,
-        validation_not_required=(not needs_validation)
+        validation_required=needs_validation
     )
     if not date_range_list:
         return None
