@@ -4821,6 +4821,31 @@ class ParticipantSummaryApiTest(BaseTestCase):
             [participant['resource']['participantId'] for participant in sort_response['entry']]
         )
 
+    def test_is_pediatric_filter(self):
+        pediatric_summary = self.data_generator.create_database_participant_summary()
+        self.session.add(
+            PediatricDataLog(
+                participant_id=pediatric_summary.participantId,
+                data_type=PediatricDataType.AGE_RANGE,
+                value='test'
+            )
+        )
+        adult_summary = self.data_generator.create_database_participant_summary()
+
+        adult_response = self.send_get(f"ParticipantSummary?isPediatric=UNSET")
+        self.assertEqual(1, len(adult_response['entry']))
+        self.assertEqual(
+            adult_summary.participantId,
+            from_client_participant_id(adult_response['entry'][0]['resource']['participantId'])
+        )
+
+        pediatric_response = self.send_get(f"ParticipantSummary?isPediatric=TRUE")
+        self.assertEqual(1, len(pediatric_response['entry']))
+        self.assertEqual(
+            pediatric_summary.participantId,
+            from_client_participant_id(pediatric_response['entry'][0]['resource']['participantId'])
+        )
+
     @classmethod
     def _get_summary_response_id_list(self, response):
         return [from_client_participant_id(entry['resource']['participantId']) for entry in response['entry']]

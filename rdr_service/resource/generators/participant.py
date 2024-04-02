@@ -8,7 +8,7 @@ import re
 from collections import OrderedDict
 from dateutil import parser, tz
 from dateutil.parser import ParserError
-from dateutil.relativedelta import relativedelta
+# from dateutil.relativedelta import relativedelta
 from sqlalchemy import func, desc, exc, inspect, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
@@ -56,11 +56,11 @@ from rdr_service.participant_enums import (EnrollmentStatusV2, WithdrawalStatus,
                                            QuestionnaireResponseStatus, OrderStatus, WithdrawalAIANCeremonyStatus,
                                            TEST_HPO_NAME, TEST_LOGIN_PHONE_NUMBER_PREFIX, SampleCollectionMethod)
 from rdr_service.resource import generators, schemas
-from rdr_service.resource.calculators import EnrollmentStatusCalculator, ParticipantUBRCalculator as ubr
+# from rdr_service.resource.calculators import EnrollmentStatusCalculator, ParticipantUBRCalculator as ubr
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
     PDREnrollmentStatusEnum, PDRPhysicalMeasurementsStatus
-from rdr_service.resource.schemas.participant import StreetAddressTypeEnum, BIOBANK_UNIQUE_TEST_IDS
-from rdr_service.resource.calculators.participant_enrollment_status_v30 import EnrollmentStatusCalculator_v3_0
+from rdr_service.resource.schemas.participant import BIOBANK_UNIQUE_TEST_IDS
+# from rdr_service.resource.calculators.participant_enrollment_status_v30 import EnrollmentStatusCalculator_v3_0
 
 
 class ModuleLookupEnum(enum.Enum):
@@ -256,11 +256,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # prep patient status history
             summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
             # calculate enrollment status for participant
-            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary, p_id))
+            # summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary, p_id))
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
             # calculate UBR flags
-            summary = self._merge_schema_dicts(summary, self._calculate_ubr(p_id, summary, ro_session))
+            # summary = self._merge_schema_dicts(summary, self._calculate_ubr(p_id, summary, ro_session))
             # calculate test participant status (if it was not already set by _prep_participant() )
             if summary['test_participant'] == 0:
                 summary = self._merge_schema_dicts(summary, self._check_for_test_credentials(summary))
@@ -1445,68 +1445,68 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return data
 
-    # Leaving PDR calculations for EnrollmentStatusV2 enabled temporarily during Goal 1 transition, for QC/debugging
-    # See _prep_participant_profile() for integration of RDR-calculated fields into the PDR participant_data record
-    def _calculate_enrollment_status(self, summary, p_id):
-        """
-        Calculate the participant's enrollment status
-        :param summary: summary data
-        :param p_id:  (int) participant ID
-        :return: dict
-        """
-        # Verify activity timestamps are correct.
-        activity = self.validate_activity_timestamps(summary['activity'], p_id)
-        # Make sure activity has been sorted by timestamp before we run the enrollment status calculator.
-        esc = EnrollmentStatusCalculator()
-        esc.run(activity)
-
-        esc_v3_0 = EnrollmentStatusCalculator_v3_0()
-        esc_v3_0.run(activity)
-
-        # Support depreciated enrollment status field values.
-        status = EnrollmentStatusV2.REGISTERED
-        if esc.status == PDREnrollmentStatusEnum.Participant:
-            status = EnrollmentStatusV2.PARTICIPANT
-        elif esc.status == PDREnrollmentStatusEnum.ParticipantPlusEHR:
-            status = EnrollmentStatusV2.FULLY_CONSENTED
-        elif esc.status == PDREnrollmentStatusEnum.CoreParticipantMinusPM:
-            status = EnrollmentStatusV2.CORE_MINUS_PM
-        elif esc.status == PDREnrollmentStatusEnum.CoreParticipant:
-            status = EnrollmentStatusV2.CORE_PARTICIPANT
-
-        data = {
-            # Fields from EnrollmentStatusCalculator results.
-            'enrl_status': esc.status.name,
-            'enrl_status_id': esc.status.value,
-            'enrl_registered_time': esc.registered_time,
-            'enrl_participant_time': esc.participant_time,
-            'enrl_participant_plus_ehr_time': esc.participant_plus_ehr_time,
-            'enrl_core_participant_minus_pm_time': esc.core_participant_minus_pm_time,
-            'enrl_core_participant_time': esc.core_participant_time,
-            # Version 3.0 Enrollment Calculations
-            'enrl_v3_0_status': esc_v3_0.status.name,
-            'enrl_v3_0_status_id': esc_v3_0.status.value,
-            'enrl_v3_0_registered_time': esc_v3_0.registered_time,
-            'enrl_v3_0_participant_time': esc_v3_0.participant_time,
-            'enrl_v3_0_participant_plus_ehr_time': esc_v3_0.participant_plus_ehr_time,
-            'enrl_v3_0_participant_pmb_eligible_time': esc_v3_0.participant_pmb_eligible_time,
-            'enrl_v3_0_core_participant_minus_pm_time': esc_v3_0.core_participant_minus_pm_time,
-            'enrl_v3_0_core_participant_time': esc_v3_0.core_participant_time,
-
-            # TODO: PDR-calculated fields that can be deprecated / moved to _prep_participant_profile after goal 1 QC
-            'enrollment_status': str(status),
-            'enrollment_status_id': int(status),
-            'enrollment_member': esc.participant_time,
-            'enrollment_core_minus_pm': esc.core_participant_minus_pm_time
-        }
-
-        # Calculate age at consent.
-        if isinstance(data['enrl_participant_time'], datetime.datetime) and \
-                    'date_of_birth' in summary and isinstance(summary['date_of_birth'], datetime.date):
-            rd = relativedelta(data['enrl_participant_time'], summary['date_of_birth'])
-            data['age_at_consent'] = rd.years
-
-        return data
+    # # Leaving PDR calculations for EnrollmentStatusV2 enabled temporarily during Goal 1 transition, for QC/debugging
+    # # See _prep_participant_profile() for integration of RDR-calculated fields into the PDR participant_data record
+    # def _calculate_enrollment_status(self, summary, p_id):
+    #     """
+    #     Calculate the participant's enrollment status
+    #     :param summary: summary data
+    #     :param p_id:  (int) participant ID
+    #     :return: dict
+    #     """
+    #     # Verify activity timestamps are correct.
+    #     activity = self.validate_activity_timestamps(summary['activity'], p_id)
+    #     # Make sure activity has been sorted by timestamp before we run the enrollment status calculator.
+    #     esc = EnrollmentStatusCalculator()
+    #     esc.run(activity)
+    #
+    #     esc_v3_0 = EnrollmentStatusCalculator_v3_0()
+    #     esc_v3_0.run(activity)
+    #
+    #     # Support depreciated enrollment status field values.
+    #     status = EnrollmentStatusV2.REGISTERED
+    #     if esc.status == PDREnrollmentStatusEnum.Participant:
+    #         status = EnrollmentStatusV2.PARTICIPANT
+    #     elif esc.status == PDREnrollmentStatusEnum.ParticipantPlusEHR:
+    #         status = EnrollmentStatusV2.FULLY_CONSENTED
+    #     elif esc.status == PDREnrollmentStatusEnum.CoreParticipantMinusPM:
+    #         status = EnrollmentStatusV2.CORE_MINUS_PM
+    #     elif esc.status == PDREnrollmentStatusEnum.CoreParticipant:
+    #         status = EnrollmentStatusV2.CORE_PARTICIPANT
+    #
+    #     data = {
+    #         # Fields from EnrollmentStatusCalculator results.
+    #         'enrl_status': esc.status.name,
+    #         'enrl_status_id': esc.status.value,
+    #         'enrl_registered_time': esc.registered_time,
+    #         'enrl_participant_time': esc.participant_time,
+    #         'enrl_participant_plus_ehr_time': esc.participant_plus_ehr_time,
+    #         'enrl_core_participant_minus_pm_time': esc.core_participant_minus_pm_time,
+    #         'enrl_core_participant_time': esc.core_participant_time,
+    #         # Version 3.0 Enrollment Calculations
+    #         'enrl_v3_0_status': esc_v3_0.status.name,
+    #         'enrl_v3_0_status_id': esc_v3_0.status.value,
+    #         'enrl_v3_0_registered_time': esc_v3_0.registered_time,
+    #         'enrl_v3_0_participant_time': esc_v3_0.participant_time,
+    #         'enrl_v3_0_participant_plus_ehr_time': esc_v3_0.participant_plus_ehr_time,
+    #         'enrl_v3_0_participant_pmb_eligible_time': esc_v3_0.participant_pmb_eligible_time,
+    #         'enrl_v3_0_core_participant_minus_pm_time': esc_v3_0.core_participant_minus_pm_time,
+    #         'enrl_v3_0_core_participant_time': esc_v3_0.core_participant_time,
+    #
+    #         # TODO: PDR-calculated fields that can be deprecated / moved to _prep_participant_profile after goal 1 QC
+    #         'enrollment_status': str(status),
+    #         'enrollment_status_id': int(status),
+    #         'enrollment_member': esc.participant_time,
+    #         'enrollment_core_minus_pm': esc.core_participant_minus_pm_time
+    #     }
+    #
+    #     # Calculate age at consent.
+    #     if isinstance(data['enrl_participant_time'], datetime.datetime) and \
+    #                 'date_of_birth' in summary and isinstance(summary['date_of_birth'], datetime.date):
+    #         rd = relativedelta(data['enrl_participant_time'], summary['date_of_birth'])
+    #         data['age_at_consent'] = rd.years
+    #
+    #     return data
 
     def _calculate_distinct_visits(self, summary):  # pylint: disable=unused-argument
         """
@@ -1827,91 +1827,91 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return qr_ids
 
-    def _calculate_ubr(self, p_id, summary, ro_session):
-        """
-        Calculate the UBR values for this participant
-        :param p_id: participant id.
-        :param summary: summary data
-        :param ro_session: Readonly DAO session object
-        :return: dict
-        """
-        data = dict()
-        basics_qnan, lfs_qnan = None, None
-        ubr_disability_responses = []
-        # Return if participant has not yet submitted a primary consent response.
-        if summary.get('enrl_status_id', 0) < PDREnrollmentStatusEnum.Participant:
-            return data
-
-        #### ConsentPII UBR calculations.
-        # ubr_geography
-        addresses = summary.get('addresses', [])
-        consent_date = summary.get('enrl_participant_time', None)
-        if addresses and consent_date:
-            zip_code = None
-            for addr in addresses:
-                if addr['addr_type_id'] == StreetAddressTypeEnum.RESIDENCE.value:
-                    zip_code = addr.get('addr_zip', None)
-                    break
-            data['ubr_geography'] = ubr.ubr_geography(consent_date.date(), zip_code)
-        # ubr_age_at_consent
-        data['ubr_age_at_consent'] = \
-            ubr.ubr_age_at_consent(summary.get('enrl_participant_time', None), summary.get('date_of_birth', None))
-        # ubr_overall - This should be calculated here in case there is no TheBasics response available.
-        data['ubr_overall'] = ubr.ubr_overall(data)
-
-        #### TheBasics / lfs UBR calculations.
-        # Note: Due to PDR-484 we can't rely on the summary having a record for each valid submission so we
-        #       are going to do our own query to get the first TheBasics submission after consent.
-        # As of RDR 1.113.1, can filter on new classification_type to filter on full (COMPLETE) TheBasics surveys
-        basics_qr_id = self.find_questionnaire_response_id(
-            ro_session, p_id, "TheBasics", QuestionnaireResponseClassificationType.COMPLETE, ModuleLookupEnum.FIRST)
-        # PDR-1438: lfs survey released in 9/2022 for participants whose early version of TheBasics may not have
-        # included physical disability questions.  lfs presents the same 6 questions (e.g., Disability_Blind) and
-        # needs to be factored into UBR disability calculation
-        lfs_qr_id = self.find_questionnaire_response_id(
-            ro_session, p_id, "lfs", QuestionnaireResponseClassificationType.COMPLETE, ModuleLookupEnum.FIRST)
-
-        if basics_qr_id:
-            basics_qnan = self.get_module_answers(self.ro_dao, 'TheBasics', p_id=p_id, qr_id=basics_qr_id)
-        if lfs_qr_id:
-            lfs_qnan = self.get_module_answers(self.ro_dao, 'lfs', p_id=p_id, qr_id=lfs_qr_id)
-
-        # Add the response to the list for the ubr_disability calculator if it has content.
-        for qnan in [basics_qnan, lfs_qnan]:
-            if qnan:
-                ubr_disability_responses.append(qnan)
-
-        # Most UBR categories determined only from TheBasics data (+ lfs data for ubr_disability)
-        if basics_qnan:
-            # ubr_sex
-            data['ubr_sex'] = ubr.ubr_sex(basics_qnan.get('BiologicalSexAtBirth_SexAtBirth', None))
-            # ubr_sexual_orientation
-            data['ubr_sexual_orientation'] = ubr.ubr_sexual_orientation(basics_qnan.get('TheBasics_SexualOrientation',
-                                                                                        None))
-            # ubr_gender_identity
-            data['ubr_gender_identity'] = ubr.ubr_gender_identity(
-                basics_qnan.get('BiologicalSexAtBirth_SexAtBirth', None),
-                basics_qnan.get('Gender_GenderIdentity', None),
-                basics_qnan.get('Gender_CloserGenderDescription', None)
-            )
-            # ubr_sexual_gender_minority
-            data['ubr_sexual_gender_minority'] = \
-                ubr.ubr_sexual_gender_minority(data['ubr_sexual_orientation'], data['ubr_gender_identity'])
-            # ubr_ethnicity
-            data['ubr_ethnicity'] = ubr.ubr_ethnicity(basics_qnan.get('Race_WhatRaceEthnicity', None))
-            # ubr_education
-            data['ubr_education'] = ubr.ubr_education(basics_qnan.get('EducationLevel_HighestGrade', None))
-            # ubr_income
-            data['ubr_income'] = ubr.ubr_income(basics_qnan.get('Income_AnnualIncome', None))
-
-            # PDR-1572:  Still require TheBasics before calculating ubr_disability. Otherwise we can prematurely set
-            # RBR.
-            data['ubr_disability'] = ubr.ubr_disability(ubr_disability_responses)
-
-        # ubr_overall
-        data['ubr_overall'] = ubr.ubr_overall(data)
-
-        return data
+    # def _calculate_ubr(self, p_id, summary, ro_session):
+    #     """
+    #     Calculate the UBR values for this participant
+    #     :param p_id: participant id.
+    #     :param summary: summary data
+    #     :param ro_session: Readonly DAO session object
+    #     :return: dict
+    #     """
+    #     data = dict()
+    #     basics_qnan, lfs_qnan = None, None
+    #     ubr_disability_responses = []
+    #     # Return if participant has not yet submitted a primary consent response.
+    #     if summary.get('enrl_status_id', 0) < PDREnrollmentStatusEnum.Participant:
+    #         return data
+    #
+    #     #### ConsentPII UBR calculations.
+    #     # ubr_geography
+    #     addresses = summary.get('addresses', [])
+    #     consent_date = summary.get('enrl_participant_time', None)
+    #     if addresses and consent_date:
+    #         zip_code = None
+    #         for addr in addresses:
+    #             if addr['addr_type_id'] == StreetAddressTypeEnum.RESIDENCE.value:
+    #                 zip_code = addr.get('addr_zip', None)
+    #                 break
+    #         data['ubr_geography'] = ubr.ubr_geography(consent_date.date(), zip_code)
+    #     # ubr_age_at_consent
+    #     data['ubr_age_at_consent'] = \
+    #         ubr.ubr_age_at_consent(summary.get('enrl_participant_time', None), summary.get('date_of_birth', None))
+    #     # ubr_overall - This should be calculated here in case there is no TheBasics response available.
+    #     data['ubr_overall'] = ubr.ubr_overall(data)
+    #
+    #     #### TheBasics / lfs UBR calculations.
+    #     # Note: Due to PDR-484 we can't rely on the summary having a record for each valid submission so we
+    #     #       are going to do our own query to get the first TheBasics submission after consent.
+    #     # As of RDR 1.113.1, can filter on new classification_type to filter on full (COMPLETE) TheBasics surveys
+    #     basics_qr_id = self.find_questionnaire_response_id(
+    #         ro_session, p_id, "TheBasics", QuestionnaireResponseClassificationType.COMPLETE, ModuleLookupEnum.FIRST)
+    #     # PDR-1438: lfs survey released in 9/2022 for participants whose early version of TheBasics may not have
+    #     # included physical disability questions.  lfs presents the same 6 questions (e.g., Disability_Blind) and
+    #     # needs to be factored into UBR disability calculation
+    #     lfs_qr_id = self.find_questionnaire_response_id(
+    #         ro_session, p_id, "lfs", QuestionnaireResponseClassificationType.COMPLETE, ModuleLookupEnum.FIRST)
+    #
+    #     if basics_qr_id:
+    #         basics_qnan = self.get_module_answers(self.ro_dao, 'TheBasics', p_id=p_id, qr_id=basics_qr_id)
+    #     if lfs_qr_id:
+    #         lfs_qnan = self.get_module_answers(self.ro_dao, 'lfs', p_id=p_id, qr_id=lfs_qr_id)
+    #
+    #     # Add the response to the list for the ubr_disability calculator if it has content.
+    #     for qnan in [basics_qnan, lfs_qnan]:
+    #         if qnan:
+    #             ubr_disability_responses.append(qnan)
+    #
+    #     # Most UBR categories determined only from TheBasics data (+ lfs data for ubr_disability)
+    #     if basics_qnan:
+    #         # ubr_sex
+    #         data['ubr_sex'] = ubr.ubr_sex(basics_qnan.get('BiologicalSexAtBirth_SexAtBirth', None))
+    #         # ubr_sexual_orientation
+    #         data['ubr_sexual_orientation'] = ubr.ubr_sexual_orientation(basics_qnan.get('TheBasics_SexualOrientation',
+    #                                                                                     None))
+    #         # ubr_gender_identity
+    #         data['ubr_gender_identity'] = ubr.ubr_gender_identity(
+    #             basics_qnan.get('BiologicalSexAtBirth_SexAtBirth', None),
+    #             basics_qnan.get('Gender_GenderIdentity', None),
+    #             basics_qnan.get('Gender_CloserGenderDescription', None)
+    #         )
+    #         # ubr_sexual_gender_minority
+    #         data['ubr_sexual_gender_minority'] = \
+    #             ubr.ubr_sexual_gender_minority(data['ubr_sexual_orientation'], data['ubr_gender_identity'])
+    #         # ubr_ethnicity
+    #         data['ubr_ethnicity'] = ubr.ubr_ethnicity(basics_qnan.get('Race_WhatRaceEthnicity', None))
+    #         # ubr_education
+    #         data['ubr_education'] = ubr.ubr_education(basics_qnan.get('EducationLevel_HighestGrade', None))
+    #         # ubr_income
+    #         data['ubr_income'] = ubr.ubr_income(basics_qnan.get('Income_AnnualIncome', None))
+    #
+    #         # PDR-1572:  Still require TheBasics before calculating ubr_disability. Otherwise we can prematurely set
+    #         # RBR.
+    #         data['ubr_disability'] = ubr.ubr_disability(ubr_disability_responses)
+    #
+    #     # ubr_overall
+    #     data['ubr_overall'] = ubr.ubr_overall(data)
+    #
+    #     return data
 
     @staticmethod
     def get_consent_pdf_validation_status(p_id, consent_response_rec,
