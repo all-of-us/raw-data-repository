@@ -84,7 +84,7 @@ from rdr_service.participant_enums import (
     PhysicalMeasurementsCollectType
 )
 from rdr_service.model.code import Code
-from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
+from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType, QueryMutatingFilter
 from rdr_service.repository.obfuscation_repository import ObfuscationRepository
 from rdr_service.services.retention_calculation import RetentionEligibility
 from rdr_service.services.system_utils import min_or_none
@@ -659,6 +659,15 @@ class ParticipantSummaryDao(UpdatableDao):
                 ),
                 value,
                 PropertyType.DATETIME,
+                'dateOfBirth'
+            )
+        if field_name == 'isPediatric':
+            return QueryMutatingFilter(
+                lambda query_to_filter: query_to_filter.outerjoin(
+                    ParticipantSummary.pediatricData
+                ).filter(
+                    PediatricDataLog.id.is_(None) if value.lower() == 'unset' else PediatricDataLog.id.isnot(None)
+                ),
                 'dateOfBirth'
             )
 
