@@ -12,9 +12,7 @@ from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicL
     GenomicSubProcessStatus, GenomicSubProcessResult
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import GenomicLRRaw, GenomicL0Raw, GenomicL1Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, \
-    GenomicL4Raw, GenomicL3Raw, GenomicL5Raw, GenomicL6Raw, GenomicL1FRaw, GenomicL4FRaw, GenomicL6FRaw, \
-    GenomicSetMember
-from rdr_service.model.participant_summary import ParticipantSummary
+    GenomicL4Raw, GenomicL3Raw, GenomicL5Raw, GenomicL6Raw, GenomicL1FRaw, GenomicL4FRaw, GenomicL6FRaw
 
 from rdr_service.offline.genomics import genomic_dispatch, genomic_long_read_pipeline
 from rdr_service.participant_enums import QuestionnaireStatus
@@ -144,11 +142,6 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         self.assertEqual(len(lr_job_runs), 1)
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in lr_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in lr_job_runs))
-
-        # remove stored data for next iteration
-        with self.long_read_dao.session() as session:
-            session.query(ParticipantSummary).delete()
-            session.query(GenomicSetMember).delete()
 
         # rerun job should increment set correctly
         self.execute_base_lr_ingestion(
