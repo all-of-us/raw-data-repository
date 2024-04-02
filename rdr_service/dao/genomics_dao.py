@@ -4992,19 +4992,24 @@ class GenomicLongReadDao(GenomicSubDao):
 
     def get_new_pipeline_members(self, *, biobank_ids: List[str], **kwargs) -> List:
         with self.session() as session:
-            collection_tube_ids = kwargs.get('parent_tube_ids')
             return session.query(
-                BiobankStoredSample.biobankId.label('biobank_id'),
-                BiobankStoredSample.biobankStoredSampleId.label('collection_tube_id')
+                GenomicSetMember.id.label('genomic_set_member_id'),
+                GenomicSetMember.biobankId.label('biobank_id'),
+                GenomicSetMember.collectionTubeId.label('collection_tube_id')
             ).join(
                 ParticipantSummary,
-                ParticipantSummary.biobankId == BiobankStoredSample.biobankId
+                ParticipantSummary.participantId == GenomicSetMember.participantId
             ).filter(
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
-                BiobankStoredSample.biobankId.in_(biobank_ids),
-                BiobankStoredSample.biobankStoredSampleId.in_(collection_tube_ids)
+                GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
+                GenomicSetMember.diversionPouchSiteFlag != 1,
+                GenomicSetMember.blockResults != 1,
+                GenomicSetMember.blockResearch != 1,
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.biobankId.in_(biobank_ids)
             ).distinct().all()
 
     def get_manifest_zero_records_from_max_set(self):
@@ -5027,7 +5032,7 @@ class GenomicLongReadDao(GenomicSubDao):
             ).join(
                 GenomicSetMember,
                 and_(
-                    GenomicSetMember.biobankId == GenomicLongRead.biobank_id,
+                    GenomicSetMember.id == GenomicLongRead.genomic_set_member_id,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.ignoreFlag != 1
                 )

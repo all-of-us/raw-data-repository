@@ -133,7 +133,6 @@ class GenomicBaseSubWorkflow(ABC):
 
         new_pipeline_members = self.dao.get_new_pipeline_members(
             biobank_ids=request_biobank_ids,
-            parent_tube_ids=[row.get('parent_tube_id') for row in self.row_data]
         )
 
         returned_biobank_ids = [obj.biobank_id for obj in new_pipeline_members]
@@ -209,11 +208,4 @@ class GenomicSubLongReadWorkflow(GenomicBaseSubWorkflow):
             'sample_id': None,
             'ignore_flag': 0,
             'long_read_platform': self.get_platform_value()
-        }
-
-    @classmethod
-    def get_base_member_attributes(cls, new_member) -> dict:
-        return {
-            'biobank_id': new_member.biobank_id,
-            'collection_tube_id': new_member.collection_tube_id
         }
