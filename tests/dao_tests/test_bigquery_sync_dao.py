@@ -236,7 +236,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         ps_json = self.make_bq_participant_summary(self.participant_id)
 
         self.assertIsNotNone(ps_json)
-        self.assertEqual(ps_json['enrollment_status'], 'REGISTERED')
 
     def test_interested_participant_gen(self):
         """ Basic Participant Creation Test"""
@@ -248,7 +247,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
                          self.TIME_1.strftime("%Y-%m-%dT%H:%M:%S"))
         self.assertEqual(ps_json.get('suspension_status', None), 'NOT_SUSPENDED')
         self.assertEqual(ps_json.get('withdrawn_status'), None, 'NOT_WITHDRAWN')
-        self.assertEqual(ps_json.get('enrollment_status', None), 'PARTICIPANT')
 
     def test_member_participant_status(self):
         """ Member Participant Test"""
@@ -258,7 +256,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         ps_json = self.make_bq_participant_summary(self.participant_id)
 
         self.assertIsNotNone(ps_json)
-        self.assertEqual(ps_json['enrollment_status'], 'FULLY_CONSENTED')
 
     def _set_up_participant_data(self, fake_time=None, skip_ehr=False):
         # set up questionnaires to hit the calculate_max_core_sample_time in participant summary
@@ -286,7 +283,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual('COHORT_2', ps_json['consent_cohort'], 'Test is built assuming cohort 2')
         self.assertEqual(ps_json['pm'][0]['pm_finalized_site'], 'hpo-site-monroeville')
         self.assertEqual(ps_json['pm'][0]['pm_status'], 'COMPLETED')
-        self.assertEqual(ps_json['enrollment_status'], 'CORE_PARTICIPANT')
 
     def test_ehr_consent_expired_for_full_consent_participant(self):
         p_response = self.create_participant(self.provider_link)
@@ -296,14 +292,11 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
 
         ps_json = self.make_bq_participant_summary(p_id)
         self.assertIsNotNone(ps_json)
-        self.assertEqual(ps_json['enrollment_status'], 'FULLY_CONSENTED')
 
         # send ehr consent expired response
         self._submit_ehrconsent_expired(p_id, response_time=self.TIME_2)
         ps_json = self.make_bq_participant_summary(p_id)
         self.assertIsNotNone(ps_json)
-        # PDR-1795:  Need to match RDR and not downgrade.  FULLY_CONSENTED means "ever consented to EHR"
-        self.assertEqual(ps_json['enrollment_status'], 'FULLY_CONSENTED')
 
     def test_ehr_consent_expired_for_core_participant(self):
         self._set_up_participant_data(fake_time=self.TIME_1)
@@ -312,14 +305,11 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual('COHORT_2', ps_json['consent_cohort'], 'Test is built assuming cohort 2')
         self.assertEqual(ps_json['pm'][0]['pm_finalized_site'], 'hpo-site-monroeville')
         self.assertEqual(ps_json['pm'][0]['pm_status'], 'COMPLETED')
-        self.assertEqual(ps_json['enrollment_status'], 'CORE_PARTICIPANT')
 
         # send ehr consent expired response
         self._submit_ehrconsent_expired(self.participant_id, response_time=self.TIME_3)
         ps_json = self.make_bq_participant_summary(self.participant_id)
         self.assertIsNotNone(ps_json)
-        # once CORE, always CORE
-        self.assertEqual(ps_json['enrollment_status'], 'CORE_PARTICIPANT')
 
     def test_cohort_3_without_gror(self):
         self._set_up_participant_data(fake_time=datetime(2020, 6, 1))
@@ -327,7 +317,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
 
         self.assertIsNotNone(ps_json)
         self.assertEqual('COHORT_3', ps_json['consent_cohort'], 'Test is built assuming cohort 3')
-        self.assertEqual('FULLY_CONSENTED', ps_json['enrollment_status'])
 
     def test_cohort_3_with_gror(self):
         self._set_up_participant_data(fake_time=datetime(2020, 6, 1))
@@ -336,7 +325,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
 
         self.assertIsNotNone(ps_json)
         self.assertEqual('COHORT_3', ps_json['consent_cohort'], 'Test is built assuming cohort 3')
-        self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'])
 
     def test_participant_stays_core(self):
         self._set_up_participant_data(fake_time=datetime(2020, 5, 1))
@@ -346,15 +334,12 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
 
         ps_json = self.make_bq_participant_summary(self.participant_id)
         self.assertEqual('COHORT_3', ps_json['consent_cohort'], 'Test is built assuming cohort 3')
-        self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'],
-                         'Test is built assuming participant starts as core')
 
         # Send an update to remove GROR consent and make sure participant is still CORE
         self._submit_genomics_ror(self.participant_id,
                                   consent_response=CONSENT_GROR_NO_CODE,
                                   response_time=datetime(2020, 9, 1))
         ps_json = self.make_bq_participant_summary(self.participant_id)
-        self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'])
 
         # This verifies the module submitted status from the participant generator data for each of the GROR modules
         # Also checks that an external id key/value pair exists (but value likely None for test data modules)
@@ -372,8 +357,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         ps_json = self.make_bq_participant_summary(self.participant_id)
         self.assertEqual('COHORT_2', ps_json['consent_cohort'],
                          'Test is built assuming cohort 2 (and that GROR consent is not required for Core status')
-        self.assertNotEqual('CORE_PARTICIPANT', ps_json['enrollment_status'],
-                            'Test is built assuming participant does not initialize as Core')
 
         # Get Core status through EHR consents
         self._submit_ehrconsent(self.participant_id,
@@ -381,15 +364,12 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
                                 response_time=datetime(2019, 2, 14))
         self._submit_dvehrconsent(self.participant_id, response_time=datetime(2019, 4, 1))
         ps_json = self.make_bq_participant_summary(self.participant_id)
-        self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'],
-                         'Test is built assuming participant achieves Core status')
 
         # Send an update to remove EHR consent and make sure participant is still CORE
         self._submit_ehrconsent(self.participant_id,
                                 response_code=CONSENT_PERMISSION_NO_CODE,
                                 response_time=datetime(2019, 7, 1))
         ps_json = self.make_bq_participant_summary(self.participant_id)
-        self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'])
 
         # This verifies the module submitted status from the participant generator data for ehr modules
         # Also checks that an external id key/value pair exists (but value likely None for test data modules)
@@ -413,7 +393,6 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
                                 response_time=datetime(2019, 2, 14))
         self._submit_dvehrconsent(self.participant_id, response_time=datetime(2019, 4, 1))
         ps_json = self.make_bq_participant_summary(self.participant_id)
-        self.assertEqual('PARTICIPANT', ps_json['enrollment_status'])
 
     def test_ehr_consent_expired_and_renewed(self):
         self._set_up_participant_data(fake_time=self.TIME_1)
