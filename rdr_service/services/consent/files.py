@@ -783,20 +783,29 @@ class VibrentEhrConsentFile(EhrConsentFile):
         return bool(initial_text_found)
 
     def _get_signature_search_box(self):
-        if self._is_mar_24_version():
+        if self._is_english_mar_24_version():
+            return Rect.from_edges(left=130, right=250, bottom=255, top=260)
+        elif self._is_spanish_mar_24_version():
             return Rect.from_edges(left=130, right=250, bottom=280, top=285)
         else:
             return Rect.from_edges(left=130, right=250, bottom=160, top=165)
 
     def _get_date_search_box(self):
-        if self._is_mar_24_version():
+        if self._is_english_mar_24_version():
             return Rect.from_edges(left=130, right=250, bottom=100, top=105)
+        elif self._is_spanish_mar_24_version():
+            return Rect.from_edges(left=130, right=250, bottom=120, top=125)
         else:
             return Rect.from_edges(left=130, right=250, bottom=110, top=115)
 
-    def _is_mar_24_version(self):
+    def _is_english_mar_24_version(self):
         return self.pdf.get_page_number_of_text([(
-            'Relationship to the individual', 'Relación con el participante'
+            'Relationship to the individual'
+        )]) is not None
+
+    def _is_spanish_mar_24_version(self):
+        return self.pdf.get_page_number_of_text([(
+            'Relación con el participante'
         )]) is not None
 
 
