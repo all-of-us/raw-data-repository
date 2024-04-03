@@ -13,6 +13,7 @@ from sqlalchemy import (
     func,
     Index,
     Integer,
+    or_,
     SmallInteger,
     String,
     UnicodeText,
@@ -25,6 +26,7 @@ from sqlalchemy.sql import expression
 from rdr_service import clock
 from rdr_service.model.account_link import AccountLink
 from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
+from rdr_service.model.duplicate_account import DuplicateAccount
 from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import (
@@ -1960,6 +1962,16 @@ class ParticipantSummary(Base):
         primaryjoin=and_(
             foreign(participantId) == remote(PediatricDataLog.participant_id),
             PediatricDataLog.replaced_by_id.is_(None)
+        ),
+        uselist=True,
+        lazy='noload'
+    )
+
+    duplicationData: List[DuplicateAccount] = relationship(
+        DuplicateAccount,
+        primaryjoin=or_(
+            foreign(participantId) == remote(DuplicateAccount.participant_a_id),
+            foreign(participantId) == remote(DuplicateAccount.participant_b_id)
         ),
         uselist=True,
         lazy='noload'

@@ -21,6 +21,9 @@ from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERM
 from rdr_service.concepts import Concept
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.duplicate_account_dao import (
+    DuplicateAccountDao, DuplicationSource, DuplicationStatus, PrimaryParticipantIndication
+)
 from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -206,7 +209,8 @@ participant_summary_default_values = {
     'relatedParticipants': 'UNSET',
     'isPediatric': 'UNSET',
     'hasHeightAndWeight': False,
-    'consentForWearStudy': 'UNSET'
+    'consentForWearStudy': 'UNSET',
+    'duplicationInfo': []
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
@@ -4820,6 +4824,38 @@ class ParticipantSummaryApiTest(BaseTestCase):
             ],
             [participant['resource']['participantId'] for participant in sort_response['entry']]
         )
+
+    def test_duplicate_account_listing(self):
+        primary_participant = self.data_generator.create_database_participant_summary()
+        duplicate_participant = self.data_generator.create_database_participant_summary()
+
+        authored_date = datetime.datetime.now().replace(microsecond=0)
+        DuplicateAccountDao.store_duplication(
+            participant_a_id=primary_participant.participantId,
+            participant_b_id=duplicate_participant.participantId,
+            session=self.session,
+            authored=authored_date,
+            source=DuplicationSource.SUPPORT_TICKET,
+            status=DuplicationStatus.REJECTED,
+            primary_account=PrimaryParticipantIndication.PARTICIPANT_A
+        )
+        self.session.commit()
+
+        primary_response = self.send_get(f'Participant/P{primary_participant.participantId}/Summary')
+        primary_duplication_info = primary_response['duplicationInfo'][0]
+        self.assertEqual(f'P{duplicate_participant.participantId}', primary_duplication_info['duplicateId'])
+        self.assertEqual(f'P{primary_participant.participantId}', primary_duplication_info['primaryAccount'])
+        self.assertEqual('REJECTED', primary_duplication_info['status'])
+        self.assertEqual(authored_date.isoformat(), primary_duplication_info['timestamp'])
+        self.assertEqual('SUPPORT_TICKET', primary_duplication_info['origin'])
+
+        duplicate_response = self.send_get(f'Participant/P{duplicate_participant.participantId}/Summary')
+        primary_duplication_info = duplicate_response['duplicationInfo'][0]
+        self.assertEqual(f'P{primary_participant.participantId}', primary_duplication_info['duplicateId'])
+        self.assertEqual(f'P{primary_participant.participantId}', primary_duplication_info['primaryAccount'])
+        self.assertEqual('REJECTED', primary_duplication_info['status'])
+        self.assertEqual(authored_date.isoformat(), primary_duplication_info['timestamp'])
+        self.assertEqual('SUPPORT_TICKET', primary_duplication_info['origin'])
 
     def test_is_pediatric_filter(self):
         pediatric_summary = self.data_generator.create_database_participant_summary()

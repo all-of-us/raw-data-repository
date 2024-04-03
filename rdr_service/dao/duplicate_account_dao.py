@@ -4,7 +4,9 @@ from typing import Iterable
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-from rdr_service.model.duplicate_account import DuplicateAccount, DuplicationSource, DuplicationStatus
+from rdr_service.model.duplicate_account import (
+    DuplicateAccount, DuplicationSource, DuplicationStatus, PrimaryParticipantIndication
+)
 from rdr_service.model.participant_summary import ParticipantSummary
 
 
@@ -17,7 +19,8 @@ class DuplicateAccountDao:
     @classmethod
     def store_duplication(
         cls, participant_a_id: int, participant_b_id: int, session: Session, authored: datetime,
-        source: DuplicationSource, status: DuplicationStatus = DuplicationStatus.POTENTIAL
+        source: DuplicationSource, status: DuplicationStatus = DuplicationStatus.POTENTIAL,
+        primary_account: PrimaryParticipantIndication = None
     ):
         existing_record = session.query(DuplicateAccount).filter(
             sa.or_(
@@ -34,15 +37,16 @@ class DuplicateAccountDao:
         if existing_record:
             raise DuplicateExistsException(existing_record)
 
-        session.add(
-            DuplicateAccount(
-                participant_a_id=participant_a_id,
-                participant_b_id=participant_b_id,
-                authored=authored,
-                status=status,
-                source=source
-            )
+        new_record = DuplicateAccount(
+            participant_a_id=participant_a_id,
+            participant_b_id=participant_b_id,
+            authored=authored,
+            status=status,
+            source=source
         )
+        if primary_account is not None:
+            new_record.primary_participant = primary_account
+        session.add(new_record)
 
     @classmethod
     def query_participant_duplication_data(cls, session) -> Iterable[ParticipantSummary]:
