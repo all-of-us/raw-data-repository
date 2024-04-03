@@ -4992,21 +4992,25 @@ class GenomicLongReadDao(GenomicSubDao):
 
     def get_new_pipeline_members(self, *, biobank_ids: List[str], **kwargs) -> List:
         with self.session() as session:
-            collection_tube_ids = kwargs.get('parent_tube_ids')
-            records = session.query(
-                BiobankStoredSample.biobankId.label('biobank_id'),
-                BiobankStoredSample.biobankStoredSampleId.label('collection_tube_id')
+            return session.query(
+                GenomicSetMember.id.label('genomic_set_member_id'),
+                GenomicSetMember.biobankId.label('biobank_id'),
+                GenomicSetMember.collectionTubeId.label('collection_tube_id')
             ).join(
                 ParticipantSummary,
-                ParticipantSummary.biobankId == BiobankStoredSample.biobankId
+                ParticipantSummary.participantId == GenomicSetMember.participantId
             ).filter(
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
-                BiobankStoredSample.biobankId.in_(biobank_ids),
-                BiobankStoredSample.biobankStoredSampleId.in_(collection_tube_ids)
-            )
-            return records.distinct().all()
+                GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
+                GenomicSetMember.diversionPouchSiteFlag != 1,
+                GenomicSetMember.blockResults != 1,
+                GenomicSetMember.blockResearch != 1,
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.biobankId.in_(biobank_ids)
+            ).distinct().all()
 
     def get_manifest_zero_records_from_max_set(self):
         with self.session() as session:
@@ -5028,7 +5032,7 @@ class GenomicLongReadDao(GenomicSubDao):
             ).join(
                 GenomicSetMember,
                 and_(
-                    GenomicSetMember.biobankId == GenomicLongRead.biobank_id,
+                    GenomicSetMember.id == GenomicLongRead.genomic_set_member_id,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.ignoreFlag != 1
                 )
@@ -5041,7 +5045,8 @@ class GenomicLongReadDao(GenomicSubDao):
         self,
         *, biobank_ids: List[str],
         collection_tube_ids: List[str],
-        long_read_platform: GenomicLongReadPlatform
+        long_read_platform: GenomicLongReadPlatform,
+        lr_site_id: str
     ):
         with self.session() as session:
             return session.query(
@@ -5051,7 +5056,8 @@ class GenomicLongReadDao(GenomicSubDao):
                 self.model_type.sample_id.is_(None),
                 self.model_type.biobank_id.in_(biobank_ids),
                 self.model_type.collection_tube_id.in_(collection_tube_ids),
-                self.model_type.long_read_platform == long_read_platform
+                self.model_type.long_read_platform == long_read_platform,
+                self.model_type.lr_site_id == lr_site_id
             ).distinct().all()
 
     def get_manifest_three_records(self):

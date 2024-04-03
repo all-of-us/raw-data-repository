@@ -29,7 +29,7 @@ from rdr_service.dao import database_factory
 from rdr_service.model.participant import Participant
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import get_property_type
-from rdr_service.query import FieldFilter, GenericExpressionFilter, Operator, PropertyType, Results
+from rdr_service.query import FieldFilter, GenericExpressionFilter, Operator, PropertyType, Results, QueryMutatingFilter
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.
 
@@ -425,14 +425,16 @@ class BaseDao(object):
     def _set_filters(self, query, filter_list, model_type=None):
         model_type = model_type or self.model_type
         for query_filter in filter_list:
-            if not isinstance(query_filter, GenericExpressionFilter):
+            if isinstance(query_filter, GenericExpressionFilter):
+                query = query_filter.add_to_sqlalchemy_query(query)
+            elif isinstance(query_filter, QueryMutatingFilter):
+                query = query_filter.add_to_sqlalchemy_query(query)
+            else:
                 try:
                     filter_attribute = getattr(model_type, query_filter.field_name)
                 except AttributeError:
                     raise BadRequest(f"No field named {query_filter.field_name} found on {model_type}.")
                 query = self._add_filter(query, query_filter, filter_attribute)
-            else:
-                query = query_filter.add_to_sqlalchemy_query(query)
         return query
 
     @staticmethod

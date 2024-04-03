@@ -1641,6 +1641,7 @@ class GenomicLongRead(Base):
                 primary_key=True, autoincrement=True, nullable=False)
     created = Column(DateTime)
     modified = Column(DateTime)
+    genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"), nullable=True, index=True)
     biobank_id = Column(String(128), nullable=False, index=True)
     collection_tube_id = Column(String(255), nullable=True, index=True)
     sample_id = Column(String(80), nullable=True, index=True)
