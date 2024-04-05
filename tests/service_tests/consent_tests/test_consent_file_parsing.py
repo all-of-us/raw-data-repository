@@ -490,13 +490,13 @@ class ConsentFileParsingTest(BaseTestCase):
                     cls=LTTextLineHorizontal,
                     text='Relación con el participante',
                 ),
-                self._build_form_element(text='March 2024 File', bbox=(125, 280, 450, 290)),
+                self._build_form_element(text='Marzo 2024 File', bbox=(125, 275, 450, 290)),
                 self._build_form_element(text='Nov 5 2024', bbox=(125, 120, 450, 130))
             ]
         ])
         mar_24_spanish_ehr_case = EhrConsentTestData(
             file=files.VibrentEhrConsentFile(pdf=mar_24_spanish_ehr_pdf, blob=mock.MagicMock()),
-            expected_signature='March 2024 File',
+            expected_signature='Marzo 2024 File',
             expected_sign_date=date(2024, 11, 5)
         )
 
