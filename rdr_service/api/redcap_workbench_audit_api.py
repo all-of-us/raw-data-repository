@@ -58,7 +58,16 @@ class RedcapWorkbenchAuditApi(BaseRedcapApi):
 
     def get(self):
         super(RedcapWorkbenchAuditApi, self).get()
-        return self.dao.workspace_dao.get_redcap_audit_workspaces(**self.get_filters)
+
+        # No pagination required, response always contains a single record
+        if self.get_filters.get('snapshot_id') is not None or self.get_filters.get('workspace_id') is not None:
+            return self.dao.workspace_dao.get_redcap_audit_workspaces(self.get_filters.get('snapshot_id'),
+                                                                      self.get_filters.get('workspace_id'))
+        # Pagination is required for last_snapshot_id and returning all snapshots
+        if self.get_filters.get('last_snapshot_id') is not None:
+            self.dao.workspace_dao.last_snapshot_id = self.get_filters.get('last_snapshot_id')
+        response = self._query("snapshotId")
+        return response
 
     def _do_insert(self, m):
         audit_records = super()._do_insert(m)
@@ -76,6 +85,12 @@ class RedcapWorkbenchAuditApi(BaseRedcapApi):
                     self._task.execute('rebuild_research_workbench_table_records_task', payload=payload,
                                  in_seconds=30, queue='resource-rebuild')
         return audit_records
+
+    @classmethod
+    def _make_resource_url(cls, response_json, id_field, participant_id):
+        from rdr_service import main
+        url = main.api.url_for(cls, snapshot_id=response_json[0][id_field], _external=True)
+        return url
 
 class RedcapResearcherAuditApi(BaseRedcapApi):
     def __init__(self):

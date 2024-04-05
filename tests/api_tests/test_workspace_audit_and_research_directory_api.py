@@ -5,6 +5,18 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
     def setUp(self):
         super().setUp(with_data=False)
 
+        self.expected_workbench_snapshot_keys = ['snapshotId', 'workspaceId', 'name', 'creationTime', 'modifiedTime',
+                                                 'status', 'workspaceUsers', 'workspaceResearchers',
+                                                 'excludeFromPublicDirectory', 'ethicalLegalSocialImplications',
+                                                 'reviewRequested', 'diseaseFocusedResearch',
+                                                 'diseaseFocusedResearchName',
+                                                 'otherPurposeDetails', 'methodsDevelopment', 'controlSet', 'ancestry',
+                                                 'socialBehavioral', 'populationHealth', 'drugDevelopment',
+                                                 'commercialPurpose', 'educational', 'otherPurpose', 'accessTier',
+                                                 'scientificApproaches', 'intendToStudy', 'findingsFromStudy',
+                                                 'focusOnUnderrepresentedPopulations', 'workspaceDemographic',
+                                                 'cdrVersion']
+
     def test_get_research_projects_directory_end_to_end(self):
         # create researchers
         researchers_json = [
@@ -939,138 +951,29 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.send_post('workbench/directory/workspaces', request_data=request_json)
         # test workbench audit
         result = self.send_get('workbench/audit/workspace/snapshots')
-        self.assertEqual(len(result), 2)
-        self.assertIn({'snapshotId': 1, 'workspaceId': 0, 'name': 'workspace name str',
-                       'creationTime': '2019-11-25T17:43:41.085000', 'modifiedTime': '2019-11-25T17:43:41.085000',
-                       'status': 'ACTIVE',
-                       'workspaceUsers': [{'userId': 0, 'role': 'READER', 'status': 'ACTIVE', 'isCreator': True},
-                                          {'userId': 1, 'role': 'OWNER', 'status': 'ACTIVE', 'isCreator': False}],
-                       'workspaceResearchers': [
-                           {'userId': 0, 'creationTime': '2019-11-26T21:21:13.056000',
-                            'modifiedTime': '2019-11-26T21:21:13.056000', 'givenName': 'given name 1',
-                            'familyName': 'family name 1', 'email': None, 'accessTier': 'REGISTERED',
-                            'verifiedInstitutionalAffiliation': {},
-                            'affiliations': [
-                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]},
-                           {'userId': 1, 'creationTime': '2019-11-27T21:21:13.056000',
-                            'modifiedTime': '2019-11-27T21:21:13.056000', 'givenName': 'given name 2',
-                            'familyName': 'family name 2', 'email': None, 'accessTier': 'REGISTERED_AND_CONTROLLED',
-                            'verifiedInstitutionalAffiliation': {},
-                            'affiliations': [
-                                {'institution': 'institution2', 'role': 'institution role 2',
-                                 'isVerified': None, 'nonAcademicAffiliation': 'UNSET'},
-                                {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]}],
-                       'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': True,
-                       'reviewRequested': False, 'diseaseFocusedResearch': True,
-                       'diseaseFocusedResearchName': 'disease focused research name str',
-                       'otherPurposeDetails': 'other purpose details str', 'methodsDevelopment': True,
-                       'controlSet': True, 'ancestry': True, 'socialBehavioral': True, 'populationHealth': True,
-                       'drugDevelopment': True, 'commercialPurpose': True, 'educational': True, 'otherPurpose': True,
-                       'scientificApproaches': 'reasonForInvestigation string', 'intendToStudy': 'intendToStudy string',
-                       'findingsFromStudy': 'findingsFromStudy string', 'focusOnUnderrepresentedPopulations': True,
-                       'accessTier': 'UNSET',
-                       'workspaceDemographic': {
-                           'raceEthnicity': ['AIAN', 'MENA'], 'age': ['AGE_0_11', 'AGE_65_74'],
-                           'sexAtBirth': None, 'genderIdentity': 'OTHER_THAN_MAN_WOMAN',
-                           'sexualOrientation': 'OTHER_THAN_STRAIGHT', 'geography': 'RURAL',
-                           'disabilityStatus': 'DISABILITY', 'accessToCare': 'NOT_EASILY_ACCESS_CARE',
-                           'educationLevel': 'LESS_THAN_HIGH_SCHOOL',
-                           'incomeLevel': 'BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT',
-                           'others': 'string'},
-                       'cdrVersion': cdr_version
-                       }, result)
-        self.assertIn({'snapshotId': 2, 'workspaceId': 1, 'name': 'workspace name str 2',
-                       'creationTime': '2019-11-25T17:43:41.085000', 'modifiedTime': '2019-11-25T17:43:41.085000',
-                       'status': 'INACTIVE',
-                       'workspaceUsers': [
-                           {'userId': 0, 'role': 'OWNER', 'status': 'ACTIVE', 'isCreator': False},
-                           {'userId': 1, 'role': 'READER', 'status': 'ACTIVE', 'isCreator': False}
-                       ],
-                       'workspaceResearchers': [
-                           {'userId': 0, 'creationTime': '2019-11-26T21:21:13.056000',
-                            'modifiedTime': '2019-11-26T21:21:13.056000', 'givenName': 'given name 1',
-                            'familyName': 'family name 1', 'email': None, 'accessTier': 'REGISTERED',
-                            'verifiedInstitutionalAffiliation': {},
-                            'affiliations': [
-                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]},
-                           {'userId': 1, 'creationTime': '2019-11-27T21:21:13.056000',
-                            'modifiedTime': '2019-11-27T21:21:13.056000', 'givenName': 'given name 2',
-                            'familyName': 'family name 2', 'email': None, 'accessTier': 'REGISTERED_AND_CONTROLLED',
-                            'verifiedInstitutionalAffiliation': {},
-                            'affiliations': [
-                                {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'UNSET'},
-                                {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]}],
-                       'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': False,
-                       'reviewRequested': False, 'diseaseFocusedResearch': True,
-                       'diseaseFocusedResearchName': 'disease focused research name str 2',
-                       'otherPurposeDetails': 'other purpose details str 2', 'methodsDevelopment': False,
-                       'controlSet': False, 'ancestry': False, 'socialBehavioral': False, 'populationHealth': False,
-                       'drugDevelopment': False, 'commercialPurpose': False, 'educational': False,
-                       'otherPurpose': False, 'scientificApproaches': 'reasonForInvestigation string2',
-                       'intendToStudy': 'intendToStudy string2', 'findingsFromStudy': 'findingsFromStudy string2',
-                       'focusOnUnderrepresentedPopulations': None, 'accessTier': 'UNSET',
-                       'workspaceDemographic': {
-                           'raceEthnicity': None, 'age': None, 'sexAtBirth': None, 'genderIdentity': None,
-                           'sexualOrientation': None, 'geography': None, 'disabilityStatus': None,
-                           'accessToCare': None, 'educationLevel': None, 'incomeLevel': None, 'others': None},
-                       'cdrVersion': cdr_version
-                       }, result)
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.get('entry'))
+        self.assertEqual(len(result.get('entry')), 2)
+
+        result_data_1 = result.get('entry')[0]['resource'][0]
+        result_data_2 = result.get('entry')[1]['resource'][0]
+        self.assertEqual(result_data_1.get('snapshotId'), 1)
+        self.assertEqual(result_data_2.get('snapshotId'), 2)
+        self.assertEqual(list(result_data_1.keys()), self.expected_workbench_snapshot_keys)
+        self.assertEqual(list(result_data_2.keys()), self.expected_workbench_snapshot_keys)
 
         result = self.send_get('workbench/audit/workspace/snapshots?last_snapshot_id=1')
-        self.assertEqual(len(result), 1)
-        self.assertIn({'snapshotId': 2, 'workspaceId': 1, 'name': 'workspace name str 2',
-                       'creationTime': '2019-11-25T17:43:41.085000', 'modifiedTime': '2019-11-25T17:43:41.085000',
-                       'status': 'INACTIVE',
-                       'workspaceUsers': [
-                           {'userId': 0, 'role': 'OWNER', 'status': 'ACTIVE', 'isCreator': False},
-                           {'userId': 1, 'role': 'READER', 'status': 'ACTIVE', 'isCreator': False}
-                       ],
-                       'workspaceResearchers': [
-                           {'userId': 0, 'creationTime': '2019-11-26T21:21:13.056000',
-                            'modifiedTime': '2019-11-26T21:21:13.056000', 'givenName': 'given name 1',
-                            'familyName': 'family name 1', 'email': None, 'accessTier': 'REGISTERED',
-                            'verifiedInstitutionalAffiliation': {},
-                            'affiliations': [
-                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]},
-                           {'userId': 1, 'creationTime': '2019-11-27T21:21:13.056000',
-                            'modifiedTime': '2019-11-27T21:21:13.056000', 'givenName': 'given name 2',
-                            'familyName': 'family name 2', 'email': None, 'accessTier': 'REGISTERED_AND_CONTROLLED',
-                            'verifiedInstitutionalAffiliation': {},
-                            'affiliations': [
-                                {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'UNSET'},
-                                {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]}],
-                       'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': False,
-                       'reviewRequested': False, 'diseaseFocusedResearch': True,
-                       'diseaseFocusedResearchName': 'disease focused research name str 2',
-                       'otherPurposeDetails': 'other purpose details str 2', 'methodsDevelopment': False,
-                       'controlSet': False, 'ancestry': False, 'socialBehavioral': False, 'populationHealth': False,
-                       'drugDevelopment': False, 'commercialPurpose': False, 'educational': False,
-                       'otherPurpose': False, 'scientificApproaches': 'reasonForInvestigation string2',
-                       'intendToStudy': 'intendToStudy string2', 'findingsFromStudy': 'findingsFromStudy string2',
-                       'focusOnUnderrepresentedPopulations': None, 'accessTier': 'UNSET',
-                       'workspaceDemographic': {
-                           'raceEthnicity': None, 'age': None, 'sexAtBirth': None, 'genderIdentity': None,
-                           'sexualOrientation': None, 'geography': None, 'disabilityStatus': None,
-                           'accessToCare': None, 'educationLevel': None, 'incomeLevel': None, 'others': None},
-                       'cdrVersion': cdr_version
-                       }, result)
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.get('entry'))
+        self.assertEqual(len(result.get('entry')), 1)
+        result_data_1 = result.get('entry')[0]['resource'][0]
+        self.assertEqual(result_data_1.get('snapshotId'), 2)
+        self.assertEqual(list(result_data_1.keys()), self.expected_workbench_snapshot_keys)
 
         result = self.send_get('workbench/audit/workspace/snapshots?last_snapshot_id=2')
-        self.assertEqual(len(result), 0)
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.get('entry'))
+        self.assertEqual(len(result.get('entry')), 0)
 
         result = self.send_get('workbench/audit/workspace/snapshots?snapshot_id=1')
         self.assertEqual(len(result), 1)
@@ -1240,7 +1143,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         ]
         self.send_post('workbench/directory/workspaces', request_data=request_json)
         result = self.send_get('workbench/audit/workspace/snapshots')
-        self.assertEqual(len(result), 1)
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.get('entry'))
+        self.assertEqual(len(result.get('entry')), 1)
 
         # workbench will remove users info when a workspace is set to INACTIVE
         # set this workspace to INACTIVE and remove the users, re-sync to RDR DB
@@ -1293,96 +1198,23 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         ]
         self.send_post('workbench/directory/workspaces', request_data=request_json)
         result = self.send_get('workbench/audit/workspace/snapshots')
-        self.assertEqual(len(result), 2)
-        self.assertIn({'snapshotId': 1, 'workspaceId': 0, 'name': 'workspace name str',
-                       'creationTime': '2019-11-25T17:43:41.085000', 'modifiedTime': '2019-11-25T17:43:41.085000',
-                       'status': 'ACTIVE',
-                       'workspaceUsers': [{'userId': 0, 'role': 'READER', 'status': 'ACTIVE', 'isCreator': True},
-                                          {'userId': 1, 'role': 'OWNER', 'status': 'ACTIVE', 'isCreator': False}],
-                       'workspaceResearchers': [
-                           {'userId': 0, 'creationTime': '2019-11-26T21:21:13.056000',
-                            'modifiedTime': '2019-11-26T21:21:13.056000', 'givenName': 'given name 1',
-                            'familyName': 'family name 1', 'email': None, 'accessTier': 'NOT_REGISTERED',
-                            'verifiedInstitutionalAffiliation': {},
-                            'affiliations': [
-                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]},
-                           {'userId': 1, 'creationTime': '2019-11-27T21:21:13.056000',
-                            'modifiedTime': '2019-11-27T21:21:13.056000', 'givenName': 'given name 2',
-                            'familyName': 'family name 2', 'email': None, 'accessTier': 'NOT_REGISTERED',
-                            'verifiedInstitutionalAffiliation': {},
-                            'affiliations': [
-                                {'institution': 'institution2', 'role': 'institution role 2',
-                                 'isVerified': None, 'nonAcademicAffiliation': 'UNSET'},
-                                {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]}],
-                       'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': True,
-                       'reviewRequested': False, 'diseaseFocusedResearch': True,
-                       'diseaseFocusedResearchName': 'disease focused research name str',
-                       'otherPurposeDetails': 'other purpose details str', 'methodsDevelopment': True,
-                       'controlSet': True, 'ancestry': True, 'socialBehavioral': True, 'populationHealth': True,
-                       'drugDevelopment': True, 'commercialPurpose': True, 'educational': True, 'otherPurpose': True,
-                       'scientificApproaches': 'reasonForInvestigation string', 'intendToStudy': 'intendToStudy string',
-                       'findingsFromStudy': 'findingsFromStudy string', 'focusOnUnderrepresentedPopulations': True,
-                       'accessTier': 'UNSET',
-                       'workspaceDemographic': {
-                           'raceEthnicity': ['AIAN', 'MENA'], 'age': ['AGE_0_11', 'AGE_65_74'],
-                           'sexAtBirth': None, 'genderIdentity': 'OTHER_THAN_MAN_WOMAN',
-                           'sexualOrientation': 'OTHER_THAN_STRAIGHT', 'geography': 'RURAL',
-                           'disabilityStatus': 'DISABILITY', 'accessToCare': 'NOT_EASILY_ACCESS_CARE',
-                           'educationLevel': 'LESS_THAN_HIGH_SCHOOL',
-                           'incomeLevel': 'BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT',
-                           'others': 'string'},
-                       'cdrVersion': 'irving'
-                       }, result)
-        self.assertIn({'snapshotId': 2, 'workspaceId': 0, 'name': 'workspace name str',
-                       'creationTime': '2019-11-25T17:43:41.085000', 'modifiedTime': '2019-11-25T17:43:41.085000',
-                       'status': 'INACTIVE',
-                       'workspaceUsers': [{'userId': 0, 'role': 'READER', 'status': 'ACTIVE', 'isCreator': True},
-                                          {'userId': 1, 'role': 'OWNER', 'status': 'ACTIVE', 'isCreator': False}],
-                       'workspaceResearchers': [
-                           {'userId': 0, 'creationTime': '2019-11-26T21:21:13.056000',
-                            'modifiedTime': '2019-11-26T21:21:13.056000', 'givenName': 'given name 1',
-                            'familyName': 'family name 1', 'email': None, 'accessTier': 'NOT_REGISTERED',
-                            'verifiedInstitutionalAffiliation': {},
-                            'affiliations': [
-                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]},
-                           {'userId': 1, 'creationTime': '2019-11-27T21:21:13.056000',
-                            'modifiedTime': '2019-11-27T21:21:13.056000', 'givenName': 'given name 2',
-                            'familyName': 'family name 2', 'email': None, 'accessTier': 'NOT_REGISTERED',
-                            'verifiedInstitutionalAffiliation': {},
-                            'affiliations': [
-                                {'institution': 'institution2', 'role': 'institution role 2',
-                                 'isVerified': None, 'nonAcademicAffiliation': 'UNSET'},
-                                {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]}],
-                       'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': True,
-                       'reviewRequested': False, 'diseaseFocusedResearch': True,
-                       'diseaseFocusedResearchName': 'disease focused research name str',
-                       'otherPurposeDetails': 'other purpose details str', 'methodsDevelopment': True,
-                       'controlSet': True, 'ancestry': True, 'socialBehavioral': True, 'populationHealth': True,
-                       'drugDevelopment': True, 'commercialPurpose': True, 'educational': True, 'otherPurpose': True,
-                       'scientificApproaches': 'reasonForInvestigation string', 'intendToStudy': 'intendToStudy string',
-                       'findingsFromStudy': 'findingsFromStudy string', 'focusOnUnderrepresentedPopulations': True,
-                       'accessTier': 'UNSET',
-                       'workspaceDemographic': {
-                           'raceEthnicity': ['AIAN', 'MENA'], 'age': ['AGE_0_11', 'AGE_65_74'],
-                           'sexAtBirth': None, 'genderIdentity': 'OTHER_THAN_MAN_WOMAN',
-                           'sexualOrientation': 'OTHER_THAN_STRAIGHT', 'geography': 'RURAL',
-                           'disabilityStatus': 'DISABILITY', 'accessToCare': 'NOT_EASILY_ACCESS_CARE',
-                           'educationLevel': 'LESS_THAN_HIGH_SCHOOL',
-                           'incomeLevel': 'BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT',
-                           'others': 'string'},
-                       'cdrVersion': 'irving'
-                       }, result)
+
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.get('entry'))
+        self.assertEqual(len(result.get('entry')), 2)
+
+        result_snapshot_1 = result.get('entry')[0]['resource'][0]
+        result_snapshot_2 = result.get('entry')[1]['resource'][0]
+
+        self.assertEqual(list(result_snapshot_1.keys()), self.expected_workbench_snapshot_keys)
+        self.assertEqual(list(result_snapshot_2.keys()), self.expected_workbench_snapshot_keys)
+        self.assertEqual(result_snapshot_1.get('snapshotId'), 1)
+        self.assertEqual(result_snapshot_2.get('snapshotId'), 2)
 
         result = self.send_get('workbench/audit/workspace/snapshots?last_snapshot_id=1')
-        self.assertEqual(len(result), 1)
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.get('entry'))
+        self.assertEqual(len(result.get('entry')), 1)
 
         result = self.send_get('workbench/audit/workspace/snapshots?snapshot_id=2')
         self.assertEqual(len(result), 1)
@@ -1883,3 +1715,429 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertIsNone(result[0]['email'])
         self.assertEqual(result[0]['accessTier'], 'REGISTERED')
 
+    def test_redcap_workbench_audit_api_calls_without_pagination(self):
+        # create researchers
+        researchers_json = [
+            {
+                "userId": 0,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "given name 1",
+                "familyName": "family name 1",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "HISPANIC",
+                "gender": ["MAN"],
+                "race": ["AIAN"],
+                "sexAtBirth": ["FEMALE"],
+                "accessTierShortNames": ["REGISTERED"],
+                "sexualOrientation": "BISEXUAL",
+                "affiliations": [
+                    {
+                        "institution": "institution1",
+                        "role": "institution role 1",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ]
+            },
+            {
+                "userId": 1,
+                "creationTime": "2019-11-27T21:21:13.056Z",
+                "modifiedTime": "2019-11-27T21:21:13.056Z",
+                "givenName": "given name 2",
+                "familyName": "family name 2",
+                "streetAddress1": "string2",
+                "streetAddress2": "string2",
+                "city": "string2",
+                "state": "string2",
+                "zipCode": "string2",
+                "country": "string2",
+                "ethnicity": "HISPANIC",
+                "sexualOrientation": "BISEXUAL",
+                "gender": ["MAN", "WOMAN"],
+                "race": ["AIAN", "WHITE"],
+                "accessTierShortNames": ["REGISTERED", "CONTROLLED"],
+                "affiliations": [
+                    {
+                        "institution": "institution2",
+                        "role": "institution role 2"
+                    },
+                    {
+                        "institution": "institution22",
+                        "role": "institution role 22",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ]
+            }
+        ]
+        self.send_post('workbench/directory/researchers', request_data=researchers_json)
+
+        # create workspace
+        cdr_version = 'irving'
+        request_json = [
+            {
+                "workspaceId": 0,
+                "name": "workspace name str",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "status": "ACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 0,
+                        "role": "READER",
+                        "status": "ACTIVE"
+                    },
+                    {
+                        "userId": 1,
+                        "role": "OWNER",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "creator": {
+                    "userId": 0,
+                    "givenName": "aaa",
+                    "familyName": "bbb"
+                },
+                "excludeFromPublicDirectory": False,
+                "ethicalLegalSocialImplications": True,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "disease focused research name str",
+                "otherPurposeDetails": "other purpose details str",
+                "methodsDevelopment": True,
+                "controlSet": True,
+                "ancestry": True,
+                "socialBehavioral": True,
+                "populationHealth": True,
+                "drugDevelopment": True,
+                "commercialPurpose": True,
+                "educational": True,
+                "otherPurpose": True,
+                "scientificApproaches": 'reasonForInvestigation string',
+                "intendToStudy": 'intendToStudy string',
+                "findingsFromStudy": 'findingsFromStudy string',
+                "focusOnUnderrepresentedPopulations": True,
+                "workspaceDemographic": {
+                    "raceEthnicity": ['AIAN', 'MENA'],
+                    "age": ['AGE_0_11', 'AGE_65_74'],
+                    "sexAtBirth": "UNSET",
+                    "genderIdentity": "OTHER_THAN_MAN_WOMAN",
+                    "sexualOrientation": "OTHER_THAN_STRAIGHT",
+                    "geography": "RURAL",
+                    "disabilityStatus": "DISABILITY",
+                    "accessToCare": "NOT_EASILY_ACCESS_CARE",
+                    "educationLevel": "LESS_THAN_HIGH_SCHOOL",
+                    "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
+                    "others": "string"
+                },
+                "cdrVersionName": cdr_version
+            },
+            {
+                "workspaceId": 1,
+                "name": "workspace name str 2",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "status": "INACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 0,
+                        "role": "OWNER",
+                        "status": "ACTIVE"
+                    },
+                    {
+                        "userId": 1,
+                        "role": "READER",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "excludeFromPublicDirectory": False,
+                "ethicalLegalSocialImplications": False,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "disease focused research name str 2",
+                "otherPurposeDetails": "other purpose details str 2",
+                "methodsDevelopment": False,
+                "controlSet": False,
+                "ancestry": False,
+                "socialBehavioral": False,
+                "populationHealth": False,
+                "drugDevelopment": False,
+                "commercialPurpose": False,
+                "educational": False,
+                "otherPurpose": False,
+                "scientificApproaches": 'reasonForInvestigation string2',
+                "intendToStudy": 'intendToStudy string2',
+                "findingsFromStudy": 'findingsFromStudy string2',
+                "cdrVersionName": cdr_version
+            }
+        ]
+        self.send_post('workbench/directory/workspaces', request_data=request_json)
+
+        snapshot_id = 1
+        workspace_id = 1
+        last_snapshot_id = 0
+
+        # Call API get for snapshot_id
+        response = self.send_get(f'workbench/audit/workspace/snapshots?snapshot_id={snapshot_id}')
+        self.assertEqual(len(response), 1)
+
+        # Call API get for workspace_id
+        response = self.send_get(f'workbench/audit/workspace/snapshots?workspace_id={workspace_id}')
+        self.assertEqual(len(response), 1)
+
+        # Get with last_snapshot_id - no pagination & no count
+        response = self.send_get('workbench/audit/workspace/snapshots?last_snapshot_id=1')
+        self.assertIsNotNone(response)
+        self.assertIsNotNone(response.get('entry'))
+        self.assertEqual(len(response.get('entry')), 1)
+
+        response = self.send_get(f'workbench/audit/workspace/snapshots?last_snapshot_id={last_snapshot_id}')
+        self.assertIsNotNone(response)
+        self.assertIsNotNone(response.get('entry'))
+        self.assertEqual(len(response.get('entry')), 2)
+
+        # Get with last_snapshot_id - no pagination
+        response = self.send_get(f'workbench/audit/workspace/snapshots?last_snapshot_id={last_snapshot_id}&_count=2')
+        self.assertIsNotNone(response)
+        self.assertIsNotNone(response.get('entry'))
+        self.assertEqual(len(response.get('entry')), 2)
+
+        # Get with all snapshots - no pagination & no count
+        response = self.send_get(f'workbench/audit/workspace/snapshots')
+        self.assertIsNotNone(response)
+        self.assertIsNotNone(response.get('entry'))
+        self.assertEqual(len(response.get('entry')), 2)
+
+        # Get with all snapshots - no pagination
+        response = self.send_get(f'workbench/audit/workspace/snapshots?_count=2')
+        self.assertIsNotNone(response)
+        self.assertIsNotNone(response.get('entry'))
+        self.assertEqual(len(response.get('entry')), 2)
+
+    def test_redcap_workbench_audit_api_calls_with_pagination(self):
+        # create researchers
+        researchers_json = [
+            {
+                "userId": 0,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "given name 1",
+                "familyName": "family name 1",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "HISPANIC",
+                "gender": ["MAN"],
+                "race": ["AIAN"],
+                "sexAtBirth": ["FEMALE"],
+                "accessTierShortNames": ["REGISTERED"],
+                "sexualOrientation": "BISEXUAL",
+                "affiliations": [
+                    {
+                        "institution": "institution1",
+                        "role": "institution role 1",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ]
+            },
+            {
+                "userId": 1,
+                "creationTime": "2019-11-27T21:21:13.056Z",
+                "modifiedTime": "2019-11-27T21:21:13.056Z",
+                "givenName": "given name 2",
+                "familyName": "family name 2",
+                "streetAddress1": "string2",
+                "streetAddress2": "string2",
+                "city": "string2",
+                "state": "string2",
+                "zipCode": "string2",
+                "country": "string2",
+                "ethnicity": "HISPANIC",
+                "sexualOrientation": "BISEXUAL",
+                "gender": ["MAN", "WOMAN"],
+                "race": ["AIAN", "WHITE"],
+                "accessTierShortNames": ["REGISTERED", "CONTROLLED"],
+                "affiliations": [
+                    {
+                        "institution": "institution2",
+                        "role": "institution role 2"
+                    },
+                    {
+                        "institution": "institution22",
+                        "role": "institution role 22",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ]
+            }
+        ]
+        self.send_post('workbench/directory/researchers', request_data=researchers_json)
+
+        # create workspace
+        cdr_version = 'irving'
+        request_json = [
+            {
+                "workspaceId": 0,
+                "name": "workspace name str",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "status": "ACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 0,
+                        "role": "READER",
+                        "status": "ACTIVE"
+                    },
+                    {
+                        "userId": 1,
+                        "role": "OWNER",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "creator": {
+                    "userId": 0,
+                    "givenName": "aaa",
+                    "familyName": "bbb"
+                },
+                "excludeFromPublicDirectory": False,
+                "ethicalLegalSocialImplications": True,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "disease focused research name str",
+                "otherPurposeDetails": "other purpose details str",
+                "methodsDevelopment": True,
+                "controlSet": True,
+                "ancestry": True,
+                "socialBehavioral": True,
+                "populationHealth": True,
+                "drugDevelopment": True,
+                "commercialPurpose": True,
+                "educational": True,
+                "otherPurpose": True,
+                "scientificApproaches": 'reasonForInvestigation string',
+                "intendToStudy": 'intendToStudy string',
+                "findingsFromStudy": 'findingsFromStudy string',
+                "focusOnUnderrepresentedPopulations": True,
+                "workspaceDemographic": {
+                    "raceEthnicity": ['AIAN', 'MENA'],
+                    "age": ['AGE_0_11', 'AGE_65_74'],
+                    "sexAtBirth": "UNSET",
+                    "genderIdentity": "OTHER_THAN_MAN_WOMAN",
+                    "sexualOrientation": "OTHER_THAN_STRAIGHT",
+                    "geography": "RURAL",
+                    "disabilityStatus": "DISABILITY",
+                    "accessToCare": "NOT_EASILY_ACCESS_CARE",
+                    "educationLevel": "LESS_THAN_HIGH_SCHOOL",
+                    "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
+                    "others": "string"
+                },
+                "cdrVersionName": cdr_version
+            },
+            {
+                "workspaceId": 1,
+                "name": "workspace name str 2",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "status": "INACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 0,
+                        "role": "OWNER",
+                        "status": "ACTIVE"
+                    },
+                    {
+                        "userId": 1,
+                        "role": "READER",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "excludeFromPublicDirectory": False,
+                "ethicalLegalSocialImplications": False,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "disease focused research name str 2",
+                "otherPurposeDetails": "other purpose details str 2",
+                "methodsDevelopment": False,
+                "controlSet": False,
+                "ancestry": False,
+                "socialBehavioral": False,
+                "populationHealth": False,
+                "drugDevelopment": False,
+                "commercialPurpose": False,
+                "educational": False,
+                "otherPurpose": False,
+                "scientificApproaches": 'reasonForInvestigation string2',
+                "intendToStudy": 'intendToStudy string2',
+                "findingsFromStudy": 'findingsFromStudy string2',
+                "cdrVersionName": cdr_version
+            }
+        ]
+        self.send_post('workbench/directory/workspaces', request_data=request_json)
+
+        last_snapshot_id = 0
+
+        # Get with last_snapshot_id - pagination
+        response = self.send_get(f'workbench/audit/workspace/snapshots?last_snapshot_id={last_snapshot_id}&_count=1')
+        self.assertIsNotNone(response)
+        self.assertIsNotNone(response.get('entry'))
+        self.assertEqual(len(response.get('entry')), 1)
+
+        response_data = response.get('entry')[0]['resource'][0]
+        self.assertEqual(response_data.get('snapshotId'), 1)
+
+        # should have next link
+        self.assertIsNotNone(response.get('link'))
+        self.assertEqual(response['link'][0]['relation'], 'next')
+
+        self.assertEqual(len(response['entry']), 1)
+        self.assertIsNotNone(response['entry'][0]['fullUrl'])
+
+        next_pagination_link = response['link'][0]['url'].split('v1/')[-1]
+
+        next_response = self.send_get(next_pagination_link)
+        self.assertIsNotNone(response)
+        self.assertIsNotNone(next_response.get('entry'))
+        self.assertEqual(len(next_response.get('entry')), 1)
+
+        response_data = next_response.get('entry')[0]['resource'][0]
+        self.assertEqual(response_data.get('snapshotId'), 2)
+
+        # should not have next link
+        self.assertIsNone(next_response.get('link'))
+        self.assertEqual(len(next_response['entry']), 1)
+        self.assertIsNotNone(next_response['entry'][0]['fullUrl'])
+
+
+        # Get all snapshots - pagination
+        response = self.send_get(f'workbench/audit/workspace/snapshots?_count=1')
+        self.assertIsNotNone(response)
+        self.assertIsNotNone(response.get('entry'))
+        self.assertEqual(len(response.get('entry')), 1)
+
+        response_data = response.get('entry')[0]['resource'][0]
+        self.assertEqual(response_data.get('snapshotId'), 1)
+
+        # should have next link
+        self.assertIsNotNone(response.get('link'))
+        self.assertEqual(response['link'][0]['relation'], 'next')
+
+        self.assertEqual(len(response['entry']), 1)
+        self.assertIsNotNone(response['entry'][0]['fullUrl'])
+
+        next_pagination_link = response['link'][0]['url'].split('v1/')[-1]
+
+        next_response = self.send_get(next_pagination_link)
+        self.assertIsNotNone(response)
+        self.assertIsNotNone(next_response.get('entry'))
+        self.assertEqual(len(next_response.get('entry')), 1)
+
+        response_data = next_response.get('entry')[0]['resource'][0]
+        self.assertEqual(response_data.get('snapshotId'), 2)
+
+        # should not have next link
+        self.assertIsNone(next_response.get('link'))
+
+        self.assertEqual(len(next_response['entry']), 1)
+        self.assertIsNotNone(next_response['entry'][0]['fullUrl'])
