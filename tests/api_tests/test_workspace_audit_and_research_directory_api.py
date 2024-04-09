@@ -1916,7 +1916,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertIsNotNone(response.get('entry'))
         self.assertEqual(len(response.get('entry')), 2)
 
-        # Test MAX_MAX_RESULTS limit
+        # Test override MAX_MAX_RESULTS limit
         with self.assertRaises(Exception):
             self.send_get(f'workbench/audit/workspace/snapshots?_count=7000')
 

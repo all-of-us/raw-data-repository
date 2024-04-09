@@ -13,6 +13,7 @@ class BaseRedcapApi(BaseApi):
     def __init__(self):
         super().__init__(WorkbenchWorkspaceAuditDao())
         self.get_filters = None
+        self.max_max_results = 6000
 
     @auth_required(REDCAP_AND_RDR)
     def get(self):
