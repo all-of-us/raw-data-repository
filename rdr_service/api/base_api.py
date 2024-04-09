@@ -22,7 +22,7 @@ from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 
 DEFAULT_MAX_RESULTS = 100
-MAX_MAX_RESULTS = 10000
+MAX_MAX_RESULTS = 6000
 
 
 def log_api_request(log: RequestsLog = None, model_obj=None):

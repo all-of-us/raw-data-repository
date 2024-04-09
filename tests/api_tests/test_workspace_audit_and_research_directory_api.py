@@ -1916,6 +1916,10 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertIsNotNone(response.get('entry'))
         self.assertEqual(len(response.get('entry')), 2)
 
+        # Test override MAX_MAX_RESULTS limit
+        with self.assertRaises(Exception):
+            self.send_get(f'workbench/audit/workspace/snapshots?_count=7000')
+
     def test_redcap_workbench_audit_api_calls_with_pagination(self):
         # create researchers
         researchers_json = [
