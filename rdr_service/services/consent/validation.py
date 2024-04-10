@@ -58,7 +58,8 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
         # Filter down to just the EHR results and organize them by participant
         ehr_consents_by_participant = defaultdict(lambda: [])
         for result in result_list:
-            ehr_consents_by_participant[result.participant_id].append(result)
+            if result.type in [ConsentType.EHR, ConsentType.EHR_RECONSENT, ConsentType.PEDIATRIC_EHR]:
+                ehr_consents_by_participant[result.participant_id].append(result)
 
         for participant_id, result_list in ehr_consents_by_participant.items():
             self._update_status(
