@@ -44,7 +44,7 @@ grpcio==1.59.0           # via google-api-core, googleapis-common-protos, grpc-g
 gspread==5.12.0
 gunicorn==21.2.0          # via -r requirements.in
 httplib2==0.19.1          # via google-api-python-client, google-auth-httplib2, oauth2client
-idna==2.9                 # via requests
+idna==3.7                 # via requests
 isodate==0.6.0            # via fhirclient
 isort==4.3.21             # via pylint
 itsdangerous==2.1.2       # via flask
