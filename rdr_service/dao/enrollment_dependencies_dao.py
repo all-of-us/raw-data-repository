@@ -14,7 +14,9 @@ class EnrollmentDependenciesDao:
     @classmethod
     def get_enrollment_dependencies(cls, participant_id: int, session: Session) -> Optional[EnrollmentDependencies]:
         if participant_id in cache:
-            return cache[participant_id]
+            cached_record = cache[participant_id]
+            merge_result = session.merge(cached_record)
+            return merge_result
 
         result = session.query(EnrollmentDependencies).filter(
             EnrollmentDependencies.participant_id == participant_id
