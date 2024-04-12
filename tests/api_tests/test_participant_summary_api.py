@@ -1950,9 +1950,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
         if test_code in config.getSettingList(config.DNA_SAMPLE_TEST_CODES):
             participant_id_int = from_client_participant_id(participant["participantId"])
-            EnrollmentDependenciesDao.set_biobank_received_dna_time(
-                time, participant_id_int, self.session
-            )
+            EnrollmentDependenciesDao.set_biobank_received_dna_time(time, participant_id_int, self.session)
+            self.session.commit()
 
     def testQuery_ehrConsent(self):
         questionnaire_id = self.create_questionnaire("all_consents_questionnaire.json")
