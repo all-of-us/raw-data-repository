@@ -6,6 +6,7 @@ from sqlalchemy.orm import joinedload
 from rdr_service import code_constants
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.enrollment_dependencies import EnrollmentDependencies
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -23,22 +24,73 @@ class EnrollmentDependenciesBackfill(ToolBase):
     def run(self):
         super().run()
 
-        with self.get_session() as session:
-            summary_list = session.query(ParticipantSummary).options(
-                joinedload(ParticipantSummary.guardianParticipants).load_only(),
-                joinedload(ParticipantSummary.pediatricData)
-            ).yield_per(500)
-            for summary in summary_list:
-                self.create_dependency_data(summary, session)
+        with (
+            self.get_session() as session,
+            open(self.args.pid_file) as pid_file
+        ):
+            for participant_id in pid_file:
+                summary = session.query(ParticipantSummary).filter(
+                    ParticipantSummary.participantId == participant_id
+                ).options(
+                    joinedload(ParticipantSummary.guardianParticipants).load_only(),
+                    joinedload(ParticipantSummary.pediatricData)
+                ).one()
+                self.compare_dependency_data(summary, session)
+
+    def compare_dependency_data(self, summary: ParticipantSummary, session):
+        existing_data: EnrollmentDependencies = session.query(EnrollmentDependencies).filter(
+            EnrollmentDependencies.participant_id == summary.participantId
+        ).one()
+        expected_data = self._build_dependency_data(summary, session)
+        summary_dao = ParticipantSummaryDao()
+
+        print(f'P{summary.participantId}')
+        data_modification_indicators = [
+            self.check_property('consent_cohort', existing_data, expected_data),
+            self.check_property('primary_consent_authored_time', existing_data, expected_data),
+            self.check_property('intent_to_share_ehr_time', existing_data, expected_data),
+            self.check_property('full_ehr_consent_authored_time', existing_data, expected_data),
+            self.check_property('gror_consent_authored_time', existing_data, expected_data),
+            self.check_property('dna_consent_update_time', existing_data, expected_data),
+            self.check_property('basics_survey_authored_time', existing_data, expected_data),
+            self.check_property('overall_health_survey_authored_time', existing_data, expected_data),
+            self.check_property('lifestyle_survey_authored_time', existing_data, expected_data),
+            self.check_property('exposures_survey_authored_time', existing_data, expected_data),
+            self.check_property('biobank_received_dna_time', existing_data, expected_data),
+            self.check_property('wgs_sequencing_time', existing_data, expected_data),
+            self.check_property('first_ehr_file_received_time', existing_data, expected_data),
+            self.check_property('first_mediated_ehr_received_time', existing_data, expected_data),
+            self.check_property('physical_measurements_time', existing_data, expected_data),
+            self.check_property('weight_physical_measurements_time', existing_data, expected_data),
+            self.check_property('height_physical_measurements_time', existing_data, expected_data),
+            self.check_property('is_pediatric_participant', existing_data, expected_data),
+            self.check_property('has_linked_guardian_account', existing_data, expected_data)
+        ]
+        if any(data_modification_indicators):
+            summary_dao.update_enrollment_status(summary=summary, session=session)
+            session.commit()
+
+    def check_property(self, name, existing_data, expected_data):
+        existing_value = getattr(existing_data, name)
+        expected_value = getattr(expected_data, name)
+        did_update_value = False
+
+        if existing_value != expected_value:
+            print(f'{name} mismatch found: expected "{expected_value}" but have "{existing_value}"')
+            if not self.args.dry_run:
+                setattr(existing_data, name, expected_value)
+                did_update_value = True
+
+        return did_update_value
 
     @classmethod
-    def create_dependency_data(cls, summary: ParticipantSummary, session):
+    def _build_dependency_data(cls, summary: ParticipantSummary, session) -> EnrollmentDependencies:
         core_measurements = PhysicalMeasurementsDao.get_core_measurements_for_participant(
             session=session,
             participant_id=summary.participantId
         )
 
-        dependency_data = EnrollmentDependencies(
+        return EnrollmentDependencies(
             participant_id=summary.participantId,
             consent_cohort=ParticipantCohortEnum(int(summary.consentCohort)),
             primary_consent_authored_time=summary.consentForStudyEnrollmentFirstYesAuthored,
@@ -71,7 +123,6 @@ class EnrollmentDependenciesBackfill(ToolBase):
             is_pediatric_participant=summary.isPediatric,
             has_linked_guardian_account=bool(summary.guardianParticipants and len(summary.guardianParticipants) > 0)
         )
-        session.add(dependency_data)
 
     @classmethod
     def get_ehr_intent_to_share_time(cls, summary: ParticipantSummary, session):
@@ -123,5 +174,10 @@ class EnrollmentDependenciesBackfill(ToolBase):
         ])
 
 
+def add_additional_arguments(parser):
+    parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--pid-file', required=True)
+
+
 def run():
-    return cli_run(tool_cmd, tool_desc, EnrollmentDependenciesBackfill)
+    return cli_run(tool_cmd, tool_desc, EnrollmentDependenciesBackfill, add_additional_arguments)

@@ -84,7 +84,7 @@ from rdr_service.participant_enums import (
     PhysicalMeasurementsCollectType
 )
 from rdr_service.model.code import Code
-from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
+from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType, QueryMutatingFilter
 from rdr_service.repository.obfuscation_repository import ObfuscationRepository
 from rdr_service.services.retention_calculation import RetentionEligibility
 from rdr_service.services.system_utils import min_or_none
@@ -449,6 +449,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 ParticipantSummary.firstName,
                 ParticipantSummary.lastName
             ),
+            joinedload(ParticipantSummary.duplicationData)
         ]
 
     def get_by_hpo(self, hpo, session, yield_batch_size=1000):
@@ -659,6 +660,15 @@ class ParticipantSummaryDao(UpdatableDao):
                 ),
                 value,
                 PropertyType.DATETIME,
+                'dateOfBirth'
+            )
+        if field_name == 'isPediatric':
+            return QueryMutatingFilter(
+                lambda query_to_filter: query_to_filter.outerjoin(
+                    ParticipantSummary.pediatricData
+                ).filter(
+                    PediatricDataLog.id.is_(None) if value.lower() == 'unset' else PediatricDataLog.id.isnot(None)
+                ),
                 'dateOfBirth'
             )
 
@@ -1517,6 +1527,18 @@ class ParticipantSummaryDao(UpdatableDao):
             result['questionnaireOnEnvironmentalExposures'] = str(QuestionnaireStatus.SUBMITTED)
             result['questionnaireOnEnvironmentalExposuresTime'] = env_exposures_data.created
             result['questionnaireOnEnvironmentalExposuresAuthored'] = env_exposures_data.value
+
+        duplicate_data = []
+        for duplicate in obj.duplicationData:
+            primary_account_id = duplicate.get_primary_id()
+            duplicate_data.append({
+                'duplicateId': to_client_participant_id(duplicate.get_other_participant_id(obj.participantId)),
+                'primaryAccount': to_client_participant_id(primary_account_id) if primary_account_id else 'UNSET',
+                'status': duplicate.status.name,
+                'timestamp': duplicate.authored.isoformat(),
+                'origin': duplicate.source.name
+            })
+        result['duplicationInfo'] = duplicate_data
 
         # Format other responses to default to UNSET when none
         field_names = [

@@ -101,6 +101,15 @@ class GenericExpressionFilter:
         return query.filter(self._expression)
 
 
+class QueryMutatingFilter:
+    def __init__(self, callback, field_name):
+        self._callback = callback
+        self.field_name = field_name
+
+    def add_to_sqlalchemy_query(self, query):
+        return self._callback(query)
+
+
 class OrderBy(object):
     def __init__(self, field_name, ascending):
         self.field_name = field_name
