@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from rdr_service.clock import FakeClock
+from rdr_service.dao import database_factory
 from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.model.enrollment_dependencies import EnrollmentDependencies
 from rdr_service.participant_enums import ParticipantCohortEnum
@@ -325,3 +326,36 @@ class EnrollmentDependenciesDaoTest(BaseTestCase):
             EnrollmentDependencies.participant_id == self.participant_id
         ).one()
         self.assertEqual(value, db_obj.has_linked_guardian_account)
+
+    def test_subsequent_override(self):
+        """
+        The DAO has a caching mechanism useful for when a single process (receiving a QuestionnaireResponse)
+        works with the participant data across multiple sessions. But if the session an object is tied to ends,
+        no further changes to that object get persisted.
+        This checks that updating a cached object (using a new session) will persist the changes.
+        """
+        # start the object in the cache by setting a value
+        gror_time = datetime(2023, 1, 9)
+        with database_factory.get_database().session() as first_session:
+            EnrollmentDependenciesDao.set_gror_consent_authored_time(
+                gror_time,
+                participant_id=self.participant_id,
+                session=first_session
+            )
+
+        # using a new session, add new data to the cached object
+        lifestyle_time = datetime(2024, 11, 5)
+        with database_factory.get_database().session() as new_session:
+            EnrollmentDependenciesDao.set_lifestyle_survey_authored_time(
+                lifestyle_time,
+                participant_id=self.participant_id,
+                session=new_session
+            )
+            new_session.commit()
+
+        # ensure the data from both sessions was saved
+        result: EnrollmentDependencies = self.session.query(EnrollmentDependencies).filter(
+            EnrollmentDependencies.participant_id == self.participant_id
+        ).one()
+        self.assertEqual(gror_time, result.gror_consent_authored_time)
+        self.assertEqual(lifestyle_time, result.lifestyle_survey_authored_time)

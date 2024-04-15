@@ -526,6 +526,7 @@ class QuestionnaireResponseDao(BaseDao):
             session=session
         )
         if summary:
+            session.commit()
             ParticipantSummaryDao().update_enrollment_status(summary, session=session)
             dispatch_task(
                 endpoint='update_retention_status',

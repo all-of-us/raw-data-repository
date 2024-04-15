@@ -257,6 +257,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             arbitrary_date, core_participant_id, self.session
         )
         participant_summary_dao.update(core_summary)
+        self.session.commit()
 
         samples_json = test_data.open_biobank_samples(biobank_ids=biobank_ids, tests=test_codes)
         self.send_put('Biobank/specimens', request_data=samples_json)
