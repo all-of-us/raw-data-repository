@@ -2296,19 +2296,22 @@ class GenomicP3Raw(Base):
 
     biobank_id = Column(String(255), nullable=True, index=True)
     sample_id = Column(String(255), nullable=True, index=True)
-    biobankid_sampleid = Column(String(255), nullable=True)
-    lims_id = Column(String(255), nullable=True)
-    sample_source = Column(String(255), nullable=True)
-    genome_type = Column(String(255), nullable=True)
-    software_version = Column(String(255), nullable=True)
-    npx_explore_path = Column(String(255), nullable=True)
-    analysis_report_path = Column(String(255), nullable=True)
-    kit_type = Column(String(255), nullable=True)
+    biobankid_sampleid = Column(String(1028), nullable=True)
+    research_id = Column(String(1028), nullable=True)
+    lims_id = Column(String(1028), nullable=True)
+    sex_at_birth = Column(String(1028), nullable=True)
+    site_id = Column(String(1028), nullable=True)
+    sample_source = Column(String(1028), nullable=True)
+    genome_type = Column(String(1028), nullable=True)
+    ai_an = Column(String(1028), nullable=True)
+    npx_explore_path = Column(String(1028), nullable=True)
+    analysis_report_path = Column(String(1028), nullable=True)
+    kit_type = Column(String(1028), nullable=True)
     notes = Column(String(1028), nullable=True)
 
 
-event.listen(GenomicP2Raw, 'before_insert', model_insert_listener)
-event.listen(GenomicP2Raw, 'before_update', model_update_listener)
+event.listen(GenomicP3Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicP3Raw, 'before_update', model_update_listener)
 
 
 class GenomicRNA(Base):

@@ -51,7 +51,7 @@ from rdr_service.model.genomics import (
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead,
     GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, GenomicRRRaw, GenomicR1Raw, GenomicLRRaw,
-    GenomicL1Raw, GenomicAW4Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, GenomicL3Raw)
+    GenomicL1Raw, GenomicAW4Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, GenomicL3Raw, GenomicP3Raw, GenomicP2Raw)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -5255,7 +5255,44 @@ class GenomicPRDao(GenomicSubDao):
             ).distinct().all()
 
     def get_manifest_three_records(self):
-        ...
+        with self.session() as session:
+            return session.query(
+                func.concat(get_biobank_id_prefix(), GenomicProteomics.biobank_id),
+                GenomicProteomics.sample_id,
+                func.concat(get_biobank_id_prefix(),
+                            GenomicProteomics.biobank_id, '_',
+                            GenomicProteomics.sample_id),
+                Participant.researchId,
+                GenomicP2Raw.lims_id,
+                GenomicP1Raw.sex_at_birth,
+                GenomicProteomics.p_site_id,
+                GenomicP2Raw.sample_source,
+                GenomicProteomics.genome_type,
+                GenomicSetMember.ai_an,
+                GenomicP2Raw.software_version,
+                GenomicP2Raw.npx_explore_path,
+                GenomicP2Raw.analysis_report_path,
+                GenomicP2Raw.kit_type,
+                GenomicP2Raw.notes
+            ).join(
+                Participant,
+                Participant.biobankId == GenomicProteomics.biobank_id
+            ).join(
+                GenomicSetMember,
+                GenomicSetMember.id == GenomicProteomics.genomic_set_member_id
+            ).join(
+                GenomicP1Raw,
+                GenomicProteomics.sample_id == GenomicP1Raw.sample_id
+            ).join(
+                GenomicP2Raw,
+                GenomicProteomics.sample_id == GenomicP2Raw.sample_id
+            ).outerjoin(
+                GenomicP3Raw,
+                GenomicP1Raw.sample_id == GenomicP3Raw.sample_id
+            ).filter(
+                GenomicP3Raw.id.is_(None),
+                GenomicProteomics.sample_id.isnot(None)
+            ).distinct().all()
 
 
 class GenomicRNADao(GenomicSubDao):
