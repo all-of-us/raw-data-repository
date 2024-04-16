@@ -2304,6 +2304,7 @@ class GenomicP3Raw(Base):
     sample_source = Column(String(1028), nullable=True)
     genome_type = Column(String(1028), nullable=True)
     ai_an = Column(String(1028), nullable=True)
+    software_version = Column(String(1028), nullable=True)
     npx_explore_path = Column(String(1028), nullable=True)
     analysis_report_path = Column(String(1028), nullable=True)
     kit_type = Column(String(1028), nullable=True)
