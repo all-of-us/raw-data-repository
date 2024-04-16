@@ -2821,12 +2821,6 @@ class GenomicAW1RawDao(BaseDao, GenomicDaoMixin):
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw1_raw WHERE TRUE")
 
-    def delete_from_filepath(self, filepath):
-        with self.session() as session:
-            session.query(GenomicAW1Raw).filter(
-                GenomicAW1Raw.file_path == filepath
-            ).delete()
-
 
 class GenomicAW2RawDao(BaseDao, GenomicDaoMixin):
     def __init__(self):
@@ -2882,12 +2876,6 @@ class GenomicAW2RawDao(BaseDao, GenomicDaoMixin):
                 GenomicAW2Raw.sample_id != "",
                 GenomicSetMember.replatedMemberId.is_(None),
             ).order_by(GenomicAW2Raw.id).all()
-
-    def delete_from_filepath(self, filepath):
-        with self.session() as session:
-            session.query(GenomicAW2Raw).filter(
-                GenomicAW2Raw.file_path == filepath
-            ).delete()
 
     def truncate(self):
         if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":

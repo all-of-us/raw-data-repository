@@ -173,7 +173,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             model_type=GenomicLRRaw
         )
 
-        manifest_type = 'lr'
+        manifest_type = GenomicJob.LR_LR_WORKFLOW
         lr_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -206,7 +206,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
         )
 
         self.assertEqual(cloud_task_mock.called, True)
-        self.assertEqual(cloud_task_mock.call_count, 1)
+        self.assertEqual(cloud_task_mock.call_count, 2)
 
         # manifest type
         self.assertTrue(len(cloud_task_mock.call_args[1]), 1)
@@ -421,7 +421,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             model_type=GenomicL1Raw
         )
 
-        manifest_type = 'l1'
+        manifest_type = GenomicJob.LR_L1_WORKFLOW
         l1_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -476,7 +476,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             model_type=GenomicL2ONTRaw
         )
 
-        manifest_type = 'l2_ont'
+        manifest_type = GenomicJob.LR_L2_ONT_WORKFLOW
         l1_ont_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -533,7 +533,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             model_type=GenomicL2PBCCSRaw
         )
 
-        manifest_type = 'l2_pb_ccs'
+        manifest_type = GenomicJob.LR_L2_PB_CCS_WORKFLOW
         l1_pb_ccs_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -824,7 +824,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             model_type=GenomicL4Raw
         )
 
-        manifest_type = 'l4'
+        manifest_type = GenomicJob.LR_L4_WORKFLOW
         l4_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -879,7 +879,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             model_type=GenomicL5Raw
         )
 
-        manifest_type = 'l5'
+        manifest_type = GenomicJob.LR_L5_WORKFLOW
         l5_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -934,7 +934,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             model_type=GenomicL6Raw
         )
 
-        manifest_type = 'l6'
+        manifest_type = GenomicJob.LR_L6_WORKFLOW
         l6_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -989,7 +989,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             model_type=GenomicL1FRaw
         )
 
-        manifest_type = 'l1f'
+        manifest_type = GenomicJob.LR_L1F_WORKFLOW
         l1f_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -1044,7 +1044,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             model_type=GenomicL4FRaw
         )
 
-        manifest_type = 'l4f'
+        manifest_type = GenomicJob.LR_L4F_WORKFLOW
         l4f_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(
@@ -1099,7 +1099,7 @@ class GenomicLongReadPipelineTest(BaseTestCase):
             model_type=GenomicL6FRaw
         )
 
-        manifest_type = 'l6f'
+        manifest_type = GenomicJob.LR_L6F_WORKFLOW
         l6f_manifest_file = self.manifest_file_dao.get(1)
 
         genomic_dispatch.load_manifest_into_raw_table(

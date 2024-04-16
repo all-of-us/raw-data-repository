@@ -9,6 +9,7 @@ from unittest import mock
 
 from rdr_service.api_util import PTC, HEALTHPRO, GEM, RDR
 from rdr_service.dao.database_utils import format_datetime
+from rdr_service.genomic.genomic_manifest_mappings import GENOMIC_FULL_INGESTION_MAP
 from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus
 from rdr_service.services.system_utils import JSONObject
 from rdr_service import clock, config
@@ -2917,13 +2918,13 @@ class GenomicCloudTasksApiTest(BaseTestCase):
     def test_load_manifests_raw_data_task_api(self, load_raw_awn_data_mock):
 
         from rdr_service.resource import main as resource_main
-        raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w3ns', 'w3sc', 'w4wr']
+        raw_manifest_keys = GENOMIC_FULL_INGESTION_MAP.keys()
 
         for key in raw_manifest_keys:
             test_file_path = f"test-bucket-name/test_{key}_file.csv"
             data = {
                 "file_path": test_file_path,
-                "file_type": key
+                "file_type": key.name
             }
 
             self.send_post(
@@ -2933,7 +2934,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-            load_raw_awn_data_mock.assert_called_with(file_path=test_file_path, manifest_type=key)
+            load_raw_awn_data_mock.assert_called_with(file_path=test_file_path, manifest_type=str(key))
 
         self.assertEqual(load_raw_awn_data_mock.call_count, len(raw_manifest_keys))
 

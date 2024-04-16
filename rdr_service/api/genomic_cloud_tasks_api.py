@@ -82,7 +82,7 @@ class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
     """
     def post(self):
         super(LoadRawAWNManifestDataAPI, self).post()
-        logging.info(f'Loading {self.data.get("file_type").upper()} Raw Data: {self.data.get("filename")}')
+        logging.info(f'Loading {self.data.get("file_type").upper()} Raw Data: {self.data.get("file_path")}')
 
         # Call pipeline function
         genomic_dispatch.load_manifest_into_raw_table(
