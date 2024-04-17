@@ -204,6 +204,14 @@ class RetentionRecalcClass(RetentionBaseClass):
                 _logger.info(f'-----Processed {count} of {len(participant_id_list)} participants')
         return 0
 
+
+class CommitException(Exception):
+    """ an exception when making a commit to the DB using a session
+    """
+    def __init__(self, response):
+        self.response = response
+
+
 class RetentionQCClass(RetentionBaseClass):
     """
     A tool class to compare retention_eligible_metrics file entries with a PTSC CSV file, and to compare
@@ -424,13 +432,6 @@ def run():
                 sys.exit(0)
         exit_code = process.run()
         return exit_code
-
-
-class CommitException(Exception):
-    """ Indicating a 401 response.
-    """
-    def __init__(self, response):
-        self.response = response
 
 
 # --- Main Program Call ---

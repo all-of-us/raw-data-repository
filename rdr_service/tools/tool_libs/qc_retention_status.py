@@ -74,7 +74,7 @@ class QCRetentionStatus(ToolBase):
                 )
                 session.add(participant)
 
-        logger.info(f"REMEDIATED {len(pid_list)} MISMATCHES: \n{''.join(pid_list)}")
+        logger.info(f"REMEDIATED {len(pid_list)} MISMATCHES: \n{','.join(pid_list)}")
 
 
 def run():
