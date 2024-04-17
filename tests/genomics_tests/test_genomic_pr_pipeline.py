@@ -12,7 +12,7 @@ from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvide
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, \
     GenomicSubProcessStatus, GenomicSubProcessResult
 from rdr_service.model.config_utils import get_biobank_id_prefix
-from rdr_service.model.genomics import GenomicPRRaw, GenomicP0Raw, GenomicP1Raw, GenomicP2Raw, GenomicP3Raw
+from rdr_service.model.genomics import GenomicPRRaw, GenomicP0Raw, GenomicP1Raw, GenomicP2Raw, GenomicP3Raw, GenomicP4Raw
 from rdr_service.offline.genomics import genomic_dispatch, genomic_proteomics_pipeline
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
@@ -631,6 +631,61 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertTrue(any(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p3_job_runs))
         self.assertTrue(any(obj.runResult == GenomicSubProcessResult.NO_FILES for obj in p3_job_runs))
 
+    def test_p4_manifest_ingestion(self):
+
+        self.execute_base_pr_ingestion(
+            test_file='AoU_P4.csv',
+            job_id=GenomicJob.PR_P4_WORKFLOW,
+            manifest_type=GenomicManifestTypes.PR_P4,
+        )
+
+        # check job run record
+        p4_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_P4_WORKFLOW,
+                                  self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(p4_job_runs)
+        self.assertEqual(len(p4_job_runs), 1)
+
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p4_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p4_job_runs))
+
+    def test_p4_manifest_to_raw_ingestion(self):
+
+        self.execute_base_pr_ingestion(
+            test_file='AoU_P4.csv',
+            job_id=GenomicJob.PR_P4_WORKFLOW,
+            manifest_type=GenomicManifestTypes.PR_P4,
+        )
+
+        p4_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicP4Raw
+        )
+
+        manifest_type = 'p4'
+        p4_manifest_file = self.manifest_file_dao.get(1)
+
+        genomic_dispatch.load_manifest_into_raw_table(
+            p4_manifest_file.filePath,
+            manifest_type
+        )
+
+        p4_manifest_raw_records = p4_raw_dao.get_all()
+        self.assertEqual(len(p4_manifest_raw_records), 3)
+
+        for attribute in GenomicP4Raw.__table__.columns:
+            self.assertTrue(
+                all(getattr(obj, str(attribute).split('.')[1]) is not None for obj in p4_manifest_raw_records)
+            )
+
+        # check job run record
+        p4_job_runs = list(
+            filter(lambda x: x.jobId == GenomicJob.LOAD_P4_TO_RAW_TABLE, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(p4_job_runs)
+        self.assertEqual(len(p4_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p4_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p4_job_runs))
+
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("genomic_proteomics")
@@ -641,3 +696,4 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.clear_table_after_test('genomic_p1_raw')
         self.clear_table_after_test('genomic_p2_raw')
         self.clear_table_after_test('genomic_p3_raw')
+        self.clear_table_after_test('genomic_p4_raw')

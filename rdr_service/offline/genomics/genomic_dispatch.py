@@ -166,7 +166,7 @@ def load_manifest_into_raw_table(
             'model': GenomicP3Raw
         },
         "p4": {
-            'job_id': GenomicJob.LOAD_P3_TO_RAW_TABLE,
+            'job_id': GenomicJob.LOAD_P4_TO_RAW_TABLE,
             'model': GenomicP4Raw
         }
     }
@@ -258,6 +258,7 @@ def dispatch_genomic_job_from_task(
         GenomicJob.PR_PR_WORKFLOW,
         GenomicJob.PR_P1_WORKFLOW,
         GenomicJob.PR_P2_WORKFLOW,
+        GenomicJob.PR_P4_WORKFLOW,
         GenomicJob.RNA_RR_WORKFLOW,
         GenomicJob.RNA_R1_WORKFLOW,
         GenomicJob.RNA_R2_WORKFLOW,
