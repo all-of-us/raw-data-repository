@@ -12,7 +12,7 @@ from rdr_service.model.genomics import (GenomicLRRaw, GenomicL0Raw, GenomicPRRaw
                                         GenomicR1Raw, GenomicL1Raw, GenomicA2Raw, GenomicA3Raw, GenomicA1Raw,
                                         GenomicR2Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, GenomicL3Raw, GenomicL4Raw,
                                         GenomicL5Raw, GenomicL6Raw, GenomicL1FRaw, GenomicL4FRaw, GenomicL6FRaw,
-                                        GenomicP3Raw)
+                                        GenomicP3Raw, GenomicP4Raw)
 
 from rdr_service.services.system_utils import JSONObject
 
@@ -164,6 +164,10 @@ def load_manifest_into_raw_table(
         "p3": {
             'job_id': GenomicJob.LOAD_P3_TO_RAW_TABLE,
             'model': GenomicP3Raw
+        },
+        "p4": {
+            'job_id': GenomicJob.LOAD_P3_TO_RAW_TABLE,
+            'model': GenomicP4Raw
         }
     }
     rna_raw_map = {
