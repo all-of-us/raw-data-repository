@@ -19,7 +19,8 @@ from rdr_service.model.genomics import GenomicManifestFeedback, GenomicManifestF
     GenomicResultViewed, GenomicCVLSecondSample, GenomicSampleSwap, \
     GenomicSampleSwapMember, GenomicCVLResultPastDue, GenomicW4WRRaw, GenomicW3SCRaw, GenomicAppointmentEvent, \
     GenomicAppointmentEventMetrics, GenomicLongRead, GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, \
-    GenomicRRRaw, GenomicR1Raw, GenomicLRRaw, GenomicL1Raw, GenomicAW4Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw
+    GenomicRRRaw, GenomicR1Raw, GenomicLRRaw, GenomicL1Raw, GenomicAW4Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, \
+    GenomicP2Raw
 from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
@@ -999,15 +1000,6 @@ class DataGenerator:
         return m
 
     @staticmethod
-    def _genomic_proteomics_p1_raw(**kwargs):
-        return GenomicP1Raw(**kwargs)
-
-    def create_database_genomic_proteomics_p1_raw(self, **kwargs):
-        m = self._genomic_proteomics_p1_raw(**kwargs)
-        self._commit_to_database(m)
-        return m
-
-    @staticmethod
     def _genomic_proteomics(**kwargs):
         return GenomicProteomics(**kwargs)
 
@@ -1031,6 +1023,15 @@ class DataGenerator:
 
     def create_database_genomic_proteomics_p1_raw(self, **kwargs):
         m = self._genomic_proteomics_p1_raw(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_proteomics_p2_raw(**kwargs):
+        return GenomicP2Raw(**kwargs)
+
+    def create_database_genomic_proteomics_p2_raw(self, **kwargs):
+        m = self._genomic_proteomics_p2_raw(**kwargs)
         self._commit_to_database(m)
         return m
 

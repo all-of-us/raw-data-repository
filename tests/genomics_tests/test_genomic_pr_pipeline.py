@@ -11,7 +11,8 @@ from rdr_service.dao.genomics_dao import GenomicDefaultBaseDao, GenomicManifestF
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, \
     GenomicSubProcessStatus, GenomicSubProcessResult
-from rdr_service.model.genomics import GenomicPRRaw, GenomicP0Raw, GenomicP1Raw, GenomicP2Raw
+from rdr_service.model.config_utils import get_biobank_id_prefix
+from rdr_service.model.genomics import GenomicPRRaw, GenomicP0Raw, GenomicP1Raw, GenomicP2Raw, GenomicP3Raw
 from rdr_service.offline.genomics import genomic_dispatch, genomic_proteomics_pipeline
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
@@ -139,8 +140,6 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in pr_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in pr_job_runs))
 
-        self.clear_table_after_test('genomic_proteomics')
-
     def test_pr_manifest_ingestion_increments_set(self):
 
         self.execute_base_pr_ingestion(
@@ -179,8 +178,6 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in pr_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in pr_job_runs))
 
-        self.clear_table_after_test('genomic_proteomics')
-
     def test_pr_manifest_to_raw_ingestion(self):
 
         self.execute_base_pr_ingestion(
@@ -216,8 +213,6 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in pr_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in pr_raw_job_runs))
 
-        self.clear_table_after_test('genomic_proteomics')
-
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_full_pr_to_p0_cloud_task_manifest(self, cloud_task_mock):
 
@@ -236,8 +231,6 @@ class GenomicPRPipelineTest(BaseTestCase):
 
         # task queue
         self.assertTrue(cloud_task_mock.call_args[1].get('task_queue') == 'genomic-generate-manifest')
-
-        self.clear_table_after_test('genomic_proteomics')
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_p0_manifest_generation(self, cloud_task):
@@ -357,8 +350,6 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p0_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p0_raw_job_runs))
 
-        self.clear_table_after_test('genomic_proteomics')
-
     def test_p1_manifest_ingestion(self):
         for num in range(1, 4):
             participant_summary = self.data_generator.create_database_participant_summary(
@@ -405,8 +396,6 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p1_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p1_job_runs))
 
-        self.clear_table_after_test('genomic_proteomics')
-
     def test_p1_manifest_to_raw_ingestion(self):
 
         self.execute_base_pr_ingestion(
@@ -441,8 +430,6 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertEqual(len(p1_raw_job_runs), 1)
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p1_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p1_raw_job_runs))
-
-        self.clear_table_after_test('genomic_proteomics')
 
     def test_p2_manifest_ingestion(self):
 
@@ -495,3 +482,162 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p2_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p2_raw_job_runs))
 
+    def build_pr_p3_data(self):
+        for num in range(1, 4):
+            participant_summary = self.data_generator.create_database_participant_summary(
+                consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
+                consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
+            )
+            genomic_set_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=self.gen_set.id,
+                participantId=participant_summary.participantId,
+                biobankId=participant_summary.biobankId,
+                genomeType="aou_array",
+                collectionTubeId=num,
+                ai_an="N"
+            )
+            pr_member = self.data_generator.create_database_genomic_proteomics(
+                genomic_set_member_id=genomic_set_member.id,
+                biobank_id=genomic_set_member.biobankId,
+                collection_tube_id=f'{num}11111',
+                genome_type="aou_proteomics",
+                p_site_id="bi",
+                proteomics_set=1,
+                sample_id=f'{num+1}11111'
+            )
+            self.data_generator.create_database_genomic_proteomics_p1_raw(
+                sex_at_birth='F',
+                sample_id=pr_member.sample_id,
+                biobank_id=pr_member.biobank_id,
+            )
+            self.data_generator.create_database_genomic_proteomics_p2_raw(
+                sample_id=pr_member.sample_id,
+                biobank_id=pr_member.biobank_id,
+                sample_source='Whole Blood',
+                lims_id=f'{num}11111',
+                software_version='1.2',
+                npx_explore_path='path',
+                analysis_report_path='another_path',
+                kit_type='kit',
+                notes='some notes'
+            )
+
+    def test_p3_manifest_generation(self):
+
+        self.build_pr_p3_data()
+
+        # init p3 workflow from pipeline
+        genomic_proteomics_pipeline.pr_p3_manifest_workflow()
+
+        current_p3_manifests = self.manifest_file_dao.get_all()
+        self.assertEqual(len(current_p3_manifests), 1)
+
+        self.assertTrue(all(obj.recordCount == 3 for obj in current_p3_manifests))
+        self.assertTrue(all(obj.manifestTypeId == GenomicManifestTypes.PR_P3 for obj in current_p3_manifests))
+        self.assertTrue(all(obj.manifestTypeIdStr == GenomicManifestTypes.PR_P3.name for obj in current_p3_manifests))
+
+        manifest_def_provider = ManifestDefinitionProvider(kwargs={})
+        columns_expected = manifest_def_provider.manifest_columns_config[GenomicManifestTypes.PR_P3]
+
+        current_p3_manifest = current_p3_manifests[0]
+
+        with open_cloud_file(
+            os.path.normpath(
+                f'{current_p3_manifest.filePath}'
+            )
+        ) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            csv_rows = list(csv_reader)
+            self.assertEqual(len(csv_rows), 3)
+            # check for all columns
+            manifest_columns = csv_reader.fieldnames
+            self.assertTrue(list(columns_expected) == manifest_columns)
+
+        p3_files_processed = self.file_processed_dao.get_all()
+        self.assertEqual(len(p3_files_processed), 1)
+
+        # check raw records
+        p3_raw_dao = GenomicDefaultBaseDao(
+            model_type=GenomicP3Raw
+        )
+
+        p3_raw_records = p3_raw_dao.get_all()
+        self.assertEqual(len(p3_raw_records), 3)
+
+        self.assertTrue(all(obj.file_path is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in p3_raw_records))
+        self.assertTrue(all(get_biobank_id_prefix() in obj.biobank_id for obj in p3_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.biobankid_sampleid is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.research_id is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.lims_id is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.sex_at_birth is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.site_id is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.sample_source is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.genome_type is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.ai_an is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.processing_count is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.software_version is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.npx_explore_path is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.analysis_report_path is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.kit_type is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.notes is not None for obj in p3_raw_records))
+
+        # check raw job run record
+        p3_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_P3_TO_RAW_TABLE, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(p3_raw_job_runs)
+        self.assertEqual(len(p3_raw_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p3_raw_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p3_raw_job_runs))
+
+        # check job run record
+        p3_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_P3_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(p3_job_runs)
+        self.assertEqual(len(p3_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p3_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p3_job_runs))
+
+    def test_p3_manifest_generation_excludes_sent_samples(self):
+
+        self.build_pr_p3_data()
+
+        # init p3 workflow from pipeline
+        genomic_proteomics_pipeline.pr_p3_manifest_workflow()
+
+        current_p3_manifests = self.manifest_file_dao.get_all()
+        self.assertEqual(len(current_p3_manifests), 1)
+
+        p3_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_P3_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(p3_job_runs)
+        self.assertEqual(len(p3_job_runs), 1)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p3_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p3_job_runs))
+
+        # re-init p3 workflow from pipeline
+        genomic_proteomics_pipeline.pr_p3_manifest_workflow()
+
+        # should find no data since, so should only be one manifest
+        current_p3_manifests = self.manifest_file_dao.get_all()
+        self.assertEqual(len(current_p3_manifests), 1)
+
+        p3_job_runs = list(filter(lambda x: x.jobId == GenomicJob.PR_P3_WORKFLOW, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(p3_job_runs)
+        self.assertEqual(len(p3_job_runs), 2)
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in p3_job_runs))
+        self.assertTrue(any(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in p3_job_runs))
+        self.assertTrue(any(obj.runResult == GenomicSubProcessResult.NO_FILES for obj in p3_job_runs))
+
+    def tearDown(self):
+        super().tearDown()
+        self.clear_table_after_test("genomic_proteomics")
+        self.clear_table_after_test("participant")
+        self.clear_table_after_test("participant_summary")
+        self.clear_table_after_test("genomic_set_member")
+        self.clear_table_after_test('genomic_proteomics')
+        self.clear_table_after_test('genomic_p1_raw')
+        self.clear_table_after_test('genomic_p2_raw')
+        self.clear_table_after_test('genomic_p3_raw')
