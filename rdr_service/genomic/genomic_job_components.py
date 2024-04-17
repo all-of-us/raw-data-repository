@@ -3328,6 +3328,7 @@ class ManifestDefinitionProvider:
                 'sample_source',
                 'genome_type',
                 'ai_an',
+                'processing_count',
                 'software_version',
                 'npx_explore_path',
                 'analysis_report_path',

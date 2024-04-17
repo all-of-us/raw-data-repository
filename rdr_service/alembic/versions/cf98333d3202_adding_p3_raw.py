@@ -52,6 +52,7 @@ def upgrade_rdr():
     sa.Column('sample_source', sa.String(length=1028), nullable=True),
     sa.Column('genome_type', sa.String(length=1028), nullable=True),
     sa.Column('ai_an', sa.String(length=1028), nullable=True),
+    sa.Column('processing_count', sa.String(length=1028), nullable=True),
     sa.Column('software_version', sa.String(length=1028), nullable=True),
     sa.Column('npx_explore_path', sa.String(length=1028), nullable=True),
     sa.Column('analysis_report_path', sa.String(length=1028), nullable=True),

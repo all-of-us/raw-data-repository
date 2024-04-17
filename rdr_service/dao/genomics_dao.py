@@ -5256,6 +5256,11 @@ class GenomicPRDao(GenomicSubDao):
 
     def get_manifest_three_records(self):
         with self.session() as session:
+            current_processed_count: sqlalchemy.orm.Query = session.query(
+                GenomicAW3Raw.sample_id,
+                func.count(GenomicAW3Raw.sample_id).label('processed_count')
+            ).group_by(GenomicAW3Raw.sample_id).subquery()
+
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicProteomics.biobank_id),
                 GenomicProteomics.sample_id,
@@ -5269,6 +5274,12 @@ class GenomicPRDao(GenomicSubDao):
                 GenomicP2Raw.sample_source,
                 GenomicProteomics.genome_type,
                 GenomicSetMember.ai_an,
+                sqlalchemy.case(
+                    [
+                        (current_processed_count.c.processed_count.is_(None), 1)
+                    ],
+                    else_=current_processed_count.c.processed_count + 1
+                ),
                 GenomicP2Raw.software_version,
                 GenomicP2Raw.npx_explore_path,
                 GenomicP2Raw.analysis_report_path,
@@ -5289,6 +5300,9 @@ class GenomicPRDao(GenomicSubDao):
             ).outerjoin(
                 GenomicP3Raw,
                 GenomicP1Raw.sample_id == GenomicP3Raw.sample_id
+            ).outerjoin(
+                current_processed_count,
+                current_processed_count.c.sample_id == GenomicProteomics.sample_id
             ).filter(
                 GenomicP3Raw.id.is_(None),
                 GenomicProteomics.sample_id.isnot(None)

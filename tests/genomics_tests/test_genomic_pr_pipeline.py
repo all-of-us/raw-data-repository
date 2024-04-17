@@ -576,6 +576,7 @@ class GenomicPRPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.sample_source is not None for obj in p3_raw_records))
         self.assertTrue(all(obj.genome_type is not None for obj in p3_raw_records))
         self.assertTrue(all(obj.ai_an is not None for obj in p3_raw_records))
+        self.assertTrue(all(obj.processing_count is not None for obj in p3_raw_records))
         self.assertTrue(all(obj.software_version is not None for obj in p3_raw_records))
         self.assertTrue(all(obj.npx_explore_path is not None for obj in p3_raw_records))
         self.assertTrue(all(obj.analysis_report_path is not None for obj in p3_raw_records))
