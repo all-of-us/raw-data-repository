@@ -12,6 +12,7 @@ logger = logging.getLogger("rdr_logger")
 
 class QCRetentionStatus(ToolBase):
     """
+    NOTE: KEEPING HERE FOR NOW, TO REMOVE ONCE THIS IS WORKING IN RETENTION_METRICS.PY
     This tool will make the update the retention metrics data in the participant summary table to match the data
     that is sent to us by PTSC.
 
@@ -73,7 +74,7 @@ class QCRetentionStatus(ToolBase):
                 )
                 session.add(participant)
 
-        logger.info(f"REMEDIATED {len(pid_list)} MISMATCHES: \n{''.split(pid_list)}")
+        logger.info(f"REMEDIATED {len(pid_list)} MISMATCHES: \n{''.join(pid_list)}")
 
 
 def run():

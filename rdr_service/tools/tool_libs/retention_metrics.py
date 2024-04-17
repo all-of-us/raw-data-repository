@@ -11,6 +11,9 @@ import sys
 
 from typing import List
 
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
+
 # from rdr_service.offline.retention_eligible_import import import_retention_eligible_metrics_file
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -131,6 +134,54 @@ class RetentionRecalcClass(RetentionBaseClass):
     def recalculate_rdr_retention(cls, session, rem_rec: RetentionEligibleMetrics):
         _supplement_with_rdr_calculations(metrics_data=rem_rec, session=session)
         return cls.check_for_rdr_mismatches(rem_rec)
+
+    @staticmethod
+    def fetch_mismatches_from_participant_summary(session: Session) -> list:
+        """
+        Fetches mismatches between the Participant Summary & Retention Eligible Metrics tables.
+        """
+        mismatches = (
+            session.query(ParticipantSummary, RetentionEligibleMetrics)
+            .filter(
+                ParticipantSummary.participantId
+                == RetentionEligibleMetrics.participantId,
+                or_(
+                    ParticipantSummary.retentionEligibleStatus
+                    != RetentionEligibleMetrics.retentionEligibleStatus,
+                    ParticipantSummary.retentionEligibleTime
+                    != RetentionEligibleMetrics.retentionEligibleTime,
+                    ParticipantSummary.retentionType
+                    != RetentionEligibleMetrics.retentionType,
+                    ParticipantSummary.lastActiveRetentionActivityTime
+                    != RetentionEligibleMetrics.lastActiveRetentionActivityTime,
+                ),
+            )
+            .order_by(ParticipantSummary.participantId)
+            .all()
+        )
+        return mismatches
+
+    def handle_mismatches(self, session: Session):
+        """
+        Updates the retention metrics data in the participant summary table to match the data that is sent to us by PTSC
+        """
+        mismatches = self.fetch_mismatches_from_participant_summary()
+        for participant, retention_metric in mismatches:
+            _logger.info(f"Updating retention metrics in participant summary table for P{participant.participantId}")
+            participant.retentionEligibleStatus = retention_metric.retentionEligibleStatus
+            participant.retentionEligibleTime = retention_metric.retentionEligibleTime
+            participant.retentionType = retention_metric.retentionType
+            participant.lastActiveRetentionActivityTime = (
+                retention_metric.lastActiveRetentionActivityTime
+            )
+            session.add(participant)
+
+        try:
+            session.commit()
+            _logger.info('Successfully updated retention metric for these participants')
+        except CommitException as e:
+            session.rollback()
+            _logger.error(f'Failed to commit retention metric updates due to {e.response}')
 
     def run(self):
 
@@ -333,15 +384,31 @@ def run():
                                       help='action to perform, such as qc')
 
     load_parser = subparser.add_parser("load")
-    load_parser.add_argument("--file-upload-time", help="bucket file upload time (as string) of metrics file", type=str)
+    load_parser.add_argument(
+        "--file-upload-time",
+        help="bucket file upload time (as string) of metrics file",
+        type=str,
+    )
 
     qc_parser = subparser.add_parser("qc")
     qc_parser.add_argument("--bucket-file", help="bucket_file_path", type=str)
     qc_parser.add_argument("--csv", help="local CSV file path", type=str)
 
     recalc_parser = subparser.add_parser("recalc")
-    recalc_parser.add_argument('--from-file', help='file of ids to recalculate', default='', type=str)  # noqa
-    recalc_parser.add_argument("--id", help="comma-separated list of ids to recalculate", type=str, default=None)
+    recalc_parser.add_argument(
+        "--from-file", help="file of ids to recalculate", default="", type=str
+    )  # noqa
+    recalc_parser.add_argument(
+        "--id",
+        help="comma-separated list of ids to recalculate",
+        type=str,
+        default=None,
+    )
+    recalc_parser.add_argument(
+        "--fix-mismatches",
+        help="fix mismatches in retention between participant summary and retention eligible metrics",
+        action="store_true"
+    )
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -352,8 +419,18 @@ def run():
             process = RetentionQCClass(args, gcp_env)
         elif args.action == 'recalc':
             process = RetentionRecalcClass(args, gcp_env)
+            if args.fix_mismatches:
+                process.handle_mismatches()
+                sys.exit(0)
         exit_code = process.run()
         return exit_code
+
+
+class CommitException(Exception):
+    """ Indicating a 401 response.
+    """
+    def __init__(self, response):
+        self.response = response
 
 
 # --- Main Program Call ---
