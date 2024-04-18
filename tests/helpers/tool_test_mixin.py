@@ -36,5 +36,5 @@ class ToolTestMixin:
             if not mock_session and session is not None:
                 tool_instance.session = session
 
-        run_method = getattr(tool_instance, 'run_process', tool_instance.run)
-        return run_method()
+            run_method = getattr(tool_instance, 'run_process', tool_instance.run)
+            return run_method()
