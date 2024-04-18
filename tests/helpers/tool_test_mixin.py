@@ -35,8 +35,6 @@ class ToolTestMixin:
             tool_instance = tool_class(tool_args, gcp_env)
             if not mock_session and session is not None:
                 tool_instance.session = session
-        # is there a better solution to check which function to use?
-            try:
-                return tool_instance.run_process()
-            except AttributeError:
-                return tool_instance.run()
+
+        run_method = getattr(tool_instance, 'run_process', tool_instance.run)
+        return run_method()

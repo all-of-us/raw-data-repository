@@ -3,6 +3,7 @@ from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.tool_test_mixin import ToolTestMixin
 from rdr_service.tools.tool_libs.retention_metrics import RetentionRecalcClass
 from datetime import datetime
+from rdr_service.participant_enums import RetentionStatus
 
 
 class RetentionMetricsTest(BaseTestCase, ToolTestMixin):
@@ -23,7 +24,7 @@ class RetentionMetricsTest(BaseTestCase, ToolTestMixin):
         self.summary = self.participant_summary(self.participant)
         self.retention_eligible_metrics = RetentionEligibleMetrics(
             participantId=self.participant_id,
-            retentionEligibleStatus=True,
+            retentionEligibleStatus=RetentionStatus.ELIGIBLE,
             retentionEligibleTime=datetime(2024, 4, 17),
         )
         self.session.add(self.summary)

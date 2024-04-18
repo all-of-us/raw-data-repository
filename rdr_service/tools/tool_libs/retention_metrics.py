@@ -11,19 +11,22 @@ import sys
 
 from typing import List
 
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
 # from rdr_service.offline.retention_eligible_import import import_retention_eligible_metrics_file
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
-from rdr_service.offline.retention_eligible_import import _create_retention_eligible_metrics_obj_from_row, \
-    _supplement_with_rdr_calculations
+from rdr_service.offline.retention_eligible_import import (
+    _create_retention_eligible_metrics_obj_from_row,
+    _supplement_with_rdr_calculations,
+)
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.storage import GoogleCloudStorageCSVReader
 from rdr_service.services.system_utils import list_chunks
+from rdr_service.participant_enums import RetentionType, RetentionStatus
 
 
 _logger = logging.getLogger("rdr_logger")
@@ -32,6 +35,7 @@ _logger = logging.getLogger("rdr_logger")
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
 tool_cmd = "retention-metrics"
 tool_desc = "perform retention metrics data import/remediations"
+
 
 def has_flag_mismatch(val1, val2):
     """
@@ -62,6 +66,7 @@ def has_date_mismatch(ts1, ts2):
     else:
         return True
 
+
 class RetentionBaseClass(object):
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
@@ -74,28 +79,33 @@ class RetentionBaseClass(object):
         self.gcp_env.activate_sql_proxy()
 
     def get_retention_db_record(self, session, pid):
-        """ Retrieves the retention_eligible_metrics record from the database for the specified participant """
-        return session.query(
-            RetentionEligibleMetrics
-        ).filter(RetentionEligibleMetrics.participantId == pid).first()
+        """Retrieves the retention_eligible_metrics record from the database for the specified participant"""
+        return (
+            session.query(RetentionEligibleMetrics)
+            .filter(RetentionEligibleMetrics.participantId == pid)
+            .first()
+        )
 
     def has_participant_summary(self, session, pid):
         """
         Check if RDR has a participant_summary for the specified participant
         (since PTSC includes REGISTERED/unconsented pids in their retention metrics file drop)
         """
-        ps_rec = session.query(
-            ParticipantSummary
-        ).filter(ParticipantSummary.participantId == pid).first()
+        ps_rec = (
+            session.query(ParticipantSummary)
+            .filter(ParticipantSummary.participantId == pid)
+            .first()
+        )
         return True if ps_rec else False
 
     @staticmethod
     def get_int_ids_from_file(file_path):
-        """ Ingest a file of integer ids, such as participant_id or table record ids """
+        """Ingest a file of integer ids, such as participant_id or table record ids"""
         with open(os.path.expanduser(file_path)) as id_list:
             ids = id_list.readlines()
             # convert ids from a list of strings to a list of integers.
             return [int(i) for i in ids if i.strip()]
+
 
 class RetentionRecalcClass(RetentionBaseClass):
     """
@@ -107,26 +117,44 @@ class RetentionRecalcClass(RetentionBaseClass):
         mismatches = []
 
         if has_flag_mismatch(rem_rec.retentionEligible, rem_rec.rdr_retention_eligible):
-            _logger.error(f'P{rem_rec.participantId}\tPTSC/RDR retentionEligible mismatch, ' +
-                          f'{rem_rec.retentionEligible}/{rem_rec.rdr_retention_eligible}')
-            mismatches.append('retentionEligible')
-        if has_date_mismatch(rem_rec.retentionEligibleTime, rem_rec.rdr_retention_eligible_time):
-            _logger.error(f'P{rem_rec.participantId}\tPTSC/RDR retentionEligibleTime mismatch, ' +
-                          f'{rem_rec.retentionEligibleTime}/{rem_rec.rdr_retention_eligible_time}')
-            mismatches.append('retentionEligibleTime')
-        if has_flag_mismatch(rem_rec.activelyRetained, rem_rec.rdr_is_actively_retained):
-            _logger.error(f'P{rem_rec.participantId}\tPTSC/RDR ActivelyRetained mismatch, ' +
-                          f'{rem_rec.activelyRetained}/{rem_rec.rdr_is_actively_retained}')
-            mismatches.append('activelyRetained')
-        if has_flag_mismatch(rem_rec.passivelyRetained, rem_rec.rdr_is_passively_retained):
-            _logger.error(f'P{rem_rec.participantId}\tPTSC/RDR ActivelyRetained mismatch, ' +
-                          f'{rem_rec.passivelyRetained}/{rem_rec.rdr_is_passively_retained}')
-            mismatches.append('passivelyRetained')
-        if has_date_mismatch(rem_rec.lastActiveRetentionActivityTime,
-                                  rem_rec.rdr_last_retention_activity_time):
-            _logger.error(f'P{rem_rec.participantId}\tPTSC/RDR lastActiveRetentionActivityTime mismatch, ' +
-                          f'{rem_rec.lastActiveRetentionActivityTime}/{rem_rec.rdr_last_retention_activity_time}')
-            mismatches.append('lastActiveRetentionActivityTime')
+            _logger.error(
+                f"P{rem_rec.participantId}\tPTSC/RDR retentionEligible mismatch, "
+                + f"{rem_rec.retentionEligible}/{rem_rec.rdr_retention_eligible}"
+            )
+            mismatches.append("retentionEligible")
+        if has_date_mismatch(
+            rem_rec.retentionEligibleTime, rem_rec.rdr_retention_eligible_time
+        ):
+            _logger.error(
+                f"P{rem_rec.participantId}\tPTSC/RDR retentionEligibleTime mismatch, "
+                + f"{rem_rec.retentionEligibleTime}/{rem_rec.rdr_retention_eligible_time}"
+            )
+            mismatches.append("retentionEligibleTime")
+        if has_flag_mismatch(
+            rem_rec.activelyRetained, rem_rec.rdr_is_actively_retained
+        ):
+            _logger.error(
+                f"P{rem_rec.participantId}\tPTSC/RDR ActivelyRetained mismatch, "
+                + f"{rem_rec.activelyRetained}/{rem_rec.rdr_is_actively_retained}"
+            )
+            mismatches.append("activelyRetained")
+        if has_flag_mismatch(
+            rem_rec.passivelyRetained, rem_rec.rdr_is_passively_retained
+        ):
+            _logger.error(
+                f"P{rem_rec.participantId}\tPTSC/RDR ActivelyRetained mismatch, "
+                + f"{rem_rec.passivelyRetained}/{rem_rec.rdr_is_passively_retained}"
+            )
+            mismatches.append("passivelyRetained")
+        if has_date_mismatch(
+            rem_rec.lastActiveRetentionActivityTime,
+            rem_rec.rdr_last_retention_activity_time,
+        ):
+            _logger.error(
+                f"P{rem_rec.participantId}\tPTSC/RDR lastActiveRetentionActivityTime mismatch, "
+                + f"{rem_rec.lastActiveRetentionActivityTime}/{rem_rec.rdr_last_retention_activity_time}"
+            )
+            mismatches.append("lastActiveRetentionActivityTime")
 
         return mismatches
 
@@ -144,16 +172,31 @@ class RetentionRecalcClass(RetentionBaseClass):
             session.query(ParticipantSummary, RetentionEligibleMetrics)
             .filter(
                 ParticipantSummary.participantId
-                == RetentionEligibleMetrics.participantId,
+                == RetentionEligibleMetrics.participantId
+            )
+            .filter(
                 or_(
-                    ParticipantSummary.retentionEligibleStatus
-                    != RetentionEligibleMetrics.retentionEligibleStatus,
-                    ParticipantSummary.retentionEligibleTime
-                    != RetentionEligibleMetrics.retentionEligibleTime,
-                    ParticipantSummary.retentionType
-                    != RetentionEligibleMetrics.retentionType,
-                    ParticipantSummary.lastActiveRetentionActivityTime
-                    != RetentionEligibleMetrics.lastActiveRetentionActivityTime,
+                    func.coalesce(ParticipantSummary.retentionEligibleStatus, RetentionStatus.NOT_ELIGIBLE)
+                    != func.coalesce(
+                        RetentionEligibleMetrics.retentionEligibleStatus, RetentionStatus.NOT_ELIGIBLE
+                    ),
+                    func.coalesce(
+                        ParticipantSummary.retentionEligibleTime, "2024-02-02"
+                    )
+                    != func.coalesce(
+                        RetentionEligibleMetrics.retentionEligibleTime, "2024-02-02"
+                    ),
+                    func.coalesce(ParticipantSummary.retentionType, RetentionType.UNSET)
+                    != func.coalesce(
+                        RetentionEligibleMetrics.retentionType, RetentionType.UNSET
+                    ),
+                    func.coalesce(
+                        ParticipantSummary.lastActiveRetentionActivityTime, "2024-02-02"
+                    )
+                    != func.coalesce(
+                        RetentionEligibleMetrics.lastActiveRetentionActivityTime,
+                        "2024-02-02",
+                    ),
                 ),
             )
             .order_by(ParticipantSummary.participantId)
@@ -166,27 +209,31 @@ class RetentionRecalcClass(RetentionBaseClass):
         Updates the retention metrics data in the participant summary table to match the data that is sent to us by PTSC
         """
         mismatches = self.fetch_mismatches_from_participant_summary(session)
-        for participant, retention_metric in mismatches:
-            _logger.info(f"Updating retention metrics in participant summary table for P{participant.participantId}")
-            participant.retentionEligibleStatus = retention_metric.retentionEligibleStatus
-            participant.retentionEligibleTime = retention_metric.retentionEligibleTime
-            participant.retentionType = retention_metric.retentionType
-            participant.lastActiveRetentionActivityTime = (
-                retention_metric.lastActiveRetentionActivityTime
+        for summary, metric in mismatches:
+            _logger.info(
+                f"Updating retention metrics in participant summary table for P{summary.participantId}"
             )
-            session.add(participant)
+            summary.retentionEligibleStatus = metric.retentionEligibleStatus
+            summary.retentionEligibleTime = metric.retentionEligibleTime
+            summary.retentionType = metric.retentionType
+            summary.lastActiveRetentionActivityTime = (
+                metric.lastActiveRetentionActivityTime
+            )
+            session.add(summary)
 
         try:
             session.commit()
-            _logger.info('Successfully updated retention metric for these participants')
+            _logger.info("Successfully updated retention metric for these participants")
         except CommitException as e:
             session.rollback()
-            _logger.error(f'Failed to commit retention metric updates due to {e.response}')
+            _logger.error(
+                f"Failed to commit retention metric updates due to {e.response}"
+            )
 
     def run(self):
 
         if self.args.id:
-            participant_id_list = [int(i) for i in self.args.id.split(',')]
+            participant_id_list = [int(i) for i in self.args.id.split(",")]
         elif self.args.from_file:
             participant_id_list = self.get_int_ids_from_file(self.args.from_file)
         elif self.args.fix_mismatches:
@@ -194,25 +241,28 @@ class RetentionRecalcClass(RetentionBaseClass):
             self.handle_mismatches(self.session)
             return 0
 
-
         dao = RetentionEligibleMetricsDao()
         with dao.session() as session:
             count = 0
             for pid_list in list_chunks(participant_id_list, chunk_size=500):
                 for pid in pid_list:
-                    _logger.info(f'Recalculating P{pid}...')
+                    _logger.info(f"Recalculating P{pid}...")
                     # Error messages will be emitted if there are mismatches after recalculation
-                    self.recalculate_rdr_retention(session, self.get_retention_db_record(session, pid))
+                    self.recalculate_rdr_retention(
+                        session, self.get_retention_db_record(session, pid)
+                    )
                     count += 1
 
                 session.commit()
-                _logger.info(f'-----Processed {count} of {len(participant_id_list)} participants')
+                _logger.info(
+                    f"-----Processed {count} of {len(participant_id_list)} participants"
+                )
         return 0
 
 
 class CommitException(Exception):
-    """ an exception when making a commit to the DB using a session
-    """
+    """an exception when making a commit to the DB using a session"""
+
     def __init__(self, response):
         self.response = response
 
@@ -227,13 +277,19 @@ class RetentionQCClass(RetentionBaseClass):
     def has_ptsc_mismatches(pid, file_obj, db_obj):
         # This identifies mismatches between a PTSC CSV file and the last values recorded from PTSC in the
         # retention_eligible_metrics table.  E.g., to help identify potential failed/incomplete ingestions
-        if (has_flag_mismatch(file_obj.retentionEligible, db_obj.retentionEligible)
+        if (
+            has_flag_mismatch(file_obj.retentionEligible, db_obj.retentionEligible)
             or has_flag_mismatch(file_obj.activelyRetained, db_obj.activelyRetained)
             or has_flag_mismatch(file_obj.passivelyRetained, db_obj.passivelyRetained)
-            or has_date_mismatch(file_obj.retentionEligibleTime, db_obj.retentionEligibleTime)
-            or has_date_mismatch(file_obj.lastActiveRetentionActivityTime,
-                                 db_obj.lastActiveRetentionActivityTime)):
-            _logger.error(f'P{pid} file and database PTSC fields do not match')
+            or has_date_mismatch(
+                file_obj.retentionEligibleTime, db_obj.retentionEligibleTime
+            )
+            or has_date_mismatch(
+                file_obj.lastActiveRetentionActivityTime,
+                db_obj.lastActiveRetentionActivityTime,
+            )
+        ):
+            _logger.error(f"P{pid} file and database PTSC fields do not match")
 
     def check_for_all_mismatches(self, pid, file_obj, db_obj):
         """
@@ -243,7 +299,7 @@ class RetentionQCClass(RetentionBaseClass):
 
         if self.has_ptsc_mismatches(pid, file_obj, db_obj):
             # Don't bother continuing with RDR vs. PTSC checks if PTSC data isn't consistent
-            mismatches = ['ptsc_values_mismatch']
+            mismatches = ["ptsc_values_mismatch"]
         else:
             mismatches = RetentionRecalcClass.check_for_rdr_mismatches(db_obj)
 
@@ -257,8 +313,8 @@ class RetentionQCClass(RetentionBaseClass):
         if len(mismatch_list):
             print(header_line)
             for pid_list in list_chunks(mismatch_list, chunk_size=20):
-                print('\t' + ','.join([str(pid) for pid in pid_list]))
-            print('\n')
+                print("\t" + ",".join([str(pid) for pid in pid_list]))
+            print("\n")
 
     def run(self):
 
@@ -269,16 +325,16 @@ class RetentionQCClass(RetentionBaseClass):
         if self.args.bucket_file:
             _logger.info(f"Reading gs://{self.args.bucket_file}.")
             csv_reader = GoogleCloudStorageCSVReader(self.args.bucket_file)
-            file_date = self.args.bucket_file.split('/')[-1][:10]
+            file_date = self.args.bucket_file.split("/")[-1][:10]
         elif self.args.csv:
             # NOTE!! Still expected that a local CSV file will follow the naming convention used for bucket files,
             # so that the prefix of the base filename is a YYYY-MM-DD date string
             _logger.info(f"Reading local CSV file {self.args.csv}")
             csv_file = open(self.args.csv)
             csv_reader = csv.DictReader(csv_file)
-            file_date = self.args.csv.split('/')[-1][:10]
+            file_date = self.args.csv.split("/")[-1][:10]
 
-        year, month, day = file_date.split('-')
+        year, month, day = file_date.split("-")
 
         dao = RetentionEligibleMetricsDao()
         ptsc_mismatches = []
@@ -293,7 +349,9 @@ class RetentionQCClass(RetentionBaseClass):
             for row in csv_reader:
                 # Make an upload date value from date string taken from the file name
                 upload_date = datetime.datetime(int(year), int(month), int(day))
-                file_obj = _create_retention_eligible_metrics_obj_from_row(row, upload_date)
+                file_obj = _create_retention_eligible_metrics_obj_from_row(
+                    row, upload_date
+                )
                 pid = int(file_obj.participantId) if file_obj.participantId else 0
 
                 # Ignore expected diffs because PTSC includes REGISTERED/unconsented participants in the file drop
@@ -302,47 +360,57 @@ class RetentionQCClass(RetentionBaseClass):
 
                 db_obj = self.get_retention_db_record(session, pid)
                 if not db_obj:
-                    _logger.warning(f'No DB entry for P{pid}')
+                    _logger.warning(f"No DB entry for P{pid}")
                     continue
 
                 mismatches = self.check_for_all_mismatches(pid, file_obj, db_obj)
-                if 'ptsc_values_mismatch' in mismatches:
+                if "ptsc_values_mismatch" in mismatches:
                     ptsc_mismatches.append(pid)
 
                 elif len(mismatches):
                     # Try recalculating the RDR values to resolve deltas
                     recalculated.append(pid)
-                    mismatches = RetentionRecalcClass.recalculate_rdr_retention(session, db_obj)
-                    if 'retentionEligible' in mismatches:
+                    mismatches = RetentionRecalcClass.recalculate_rdr_retention(
+                        session, db_obj
+                    )
+                    if "retentionEligible" in mismatches:
                         retention_eligible_mismatches.append(pid)
-                    if 'activelyRetained' in mismatches:
+                    if "activelyRetained" in mismatches:
                         active_retention_mismatches.append(pid)
-                    if 'passivelyRetained' in mismatches:
+                    if "passivelyRetained" in mismatches:
                         passive_retention_mismatches.append(pid)
-                    if 'retentionEligibleTime' in mismatches:
+                    if "retentionEligibleTime" in mismatches:
                         eligibility_date_mismatches.append(pid)
-                    if 'lastActiveRetentionActivityTime' in mismatches:
+                    if "lastActiveRetentionActivityTime" in mismatches:
                         last_activity_date_mismatches.append(pid)
 
                 count += 1
                 if count % 500 == 0:
-                    _logger.info(f'Processed {count} pids, ', f'PTSC data mismatches: {len(ptsc_mismatches)}, ' +
-                                 f'active mismatches: {len(active_retention_mismatches)}, ' +
-                                 f'passive mismatches: {len(passive_retention_mismatches)}, ' +
-                                 f'eligible_mismatches: {len(retention_eligible_mismatches)}, ' +
-                                 f'eligibility date mismatches: {len(eligibility_date_mismatches)}, ' +
-                                 f'last active retention date mismatches: {len(last_activity_date_mismatches)}, ')
+                    _logger.info(
+                        f"Processed {count} pids, ",
+                        f"PTSC data mismatches: {len(ptsc_mismatches)}, "
+                        + f"active mismatches: {len(active_retention_mismatches)}, "
+                        + f"passive mismatches: {len(passive_retention_mismatches)}, "
+                        + f"eligible_mismatches: {len(retention_eligible_mismatches)}, "
+                        + f"eligibility date mismatches: {len(eligibility_date_mismatches)}, "
+                        + f"last active retention date mismatches: {len(last_activity_date_mismatches)}, ",
+                    )
         if csv_file:
             csv_file.close()
 
         if recalculated:
-            print(f'Recalculated {len(recalculated)} pids...')
-        for mismatches in (('PTSC data mismatches:', ptsc_mismatches),
-                           ('Retention eligible mismatches:', retention_eligible_mismatches),
-                           ('Active retention_mismatches: ', active_retention_mismatches),
-                           ('Passive retention mismatches: ', passive_retention_mismatches),
-                           ('Eligibility date mismatches: ', eligibility_date_mismatches),
-                           ('Last Active retention activity date mismatches: ', last_activity_date_mismatches)):
+            print(f"Recalculated {len(recalculated)} pids...")
+        for mismatches in (
+            ("PTSC data mismatches:", ptsc_mismatches),
+            ("Retention eligible mismatches:", retention_eligible_mismatches),
+            ("Active retention_mismatches: ", active_retention_mismatches),
+            ("Passive retention mismatches: ", passive_retention_mismatches),
+            ("Eligibility date mismatches: ", eligibility_date_mismatches),
+            (
+                "Last Active retention activity date mismatches: ",
+                last_activity_date_mismatches,
+            ),
+        ):
             self.output_mismatch_list(mismatches[0], mismatches[1])
 
         return 0
@@ -352,6 +420,7 @@ class RetentionLoadClass(object):
     """
     Manual ingestion of PTSC retention metrics file - NEEDS UPDATING
     """
+
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
@@ -382,19 +451,34 @@ class RetentionLoadClass(object):
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
-        _logger, tool_cmd, "--debug" in sys.argv, "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None
+        _logger,
+        tool_cmd,
+        "--debug" in sys.argv,
+        "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None,
     )
     setup_i18n()
 
     # Setup program arguments.
     parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
-    parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
-    parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
-    parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
+    parser.add_argument(
+        "--debug", help="enable debug output", default=False, action="store_true"
+    )  # noqa
+    parser.add_argument(
+        "--log-file",
+        help="write output to a log file",
+        default=False,
+        action="store_true",
+    )  # noqa
+    parser.add_argument(
+        "--project", help="gcp project name", default="localhost"
+    )  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
-    parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
-    subparser = parser.add_subparsers(title='action', dest='action',
-                                      help='action to perform, such as qc')
+    parser.add_argument(
+        "--service-account", help="gcp iam service account", default=None
+    )  # noqa
+    subparser = parser.add_subparsers(
+        title="action", dest="action", help="action to perform, such as qc"
+    )
 
     load_parser = subparser.add_parser("load")
     load_parser.add_argument(
@@ -420,17 +504,19 @@ def run():
     recalc_parser.add_argument(
         "--fix-mismatches",
         help="fix mismatches in retention between participant summary and retention eligible metrics",
-        action="store_true"
+        action="store_true",
     )
     args = parser.parse_args()
 
-    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        if args.action == 'load':
+    with GCPProcessContext(
+        tool_cmd, args.project, args.account, args.service_account
+    ) as gcp_env:
+        if args.action == "load":
             # process = RetentionLoadClass(args, gcp_env)
-            _logger.error('Manual load is not operational')
-        elif args.action == 'qc':
+            _logger.error("Manual load is not operational")
+        elif args.action == "qc":
             process = RetentionQCClass(args, gcp_env)
-        elif args.action == 'recalc':
+        elif args.action == "recalc":
             process = RetentionRecalcClass(args, gcp_env)
         exit_code = process.run()
         return exit_code
