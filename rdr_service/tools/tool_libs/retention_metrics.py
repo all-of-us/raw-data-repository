@@ -165,7 +165,7 @@ class RetentionRecalcClass(RetentionBaseClass):
         """
         Updates the retention metrics data in the participant summary table to match the data that is sent to us by PTSC
         """
-        mismatches = self.fetch_mismatches_from_participant_summary()
+        mismatches = self.fetch_mismatches_from_participant_summary(session)
         for participant, retention_metric in mismatches:
             _logger.info(f"Updating retention metrics in participant summary table for P{participant.participantId}")
             participant.retentionEligibleStatus = retention_metric.retentionEligibleStatus
@@ -189,6 +189,11 @@ class RetentionRecalcClass(RetentionBaseClass):
             participant_id_list = [int(i) for i in self.args.id.split(',')]
         elif self.args.from_file:
             participant_id_list = self.get_int_ids_from_file(self.args.from_file)
+        elif self.args.fix_mismatches:
+            # Ayaz is confused on what session argument to add to this function
+            self.handle_mismatches()
+            return 0
+
 
         dao = RetentionEligibleMetricsDao()
         with dao.session() as session:
@@ -427,9 +432,6 @@ def run():
             process = RetentionQCClass(args, gcp_env)
         elif args.action == 'recalc':
             process = RetentionRecalcClass(args, gcp_env)
-            if args.fix_mismatches:
-                process.handle_mismatches()
-                sys.exit(0)
         exit_code = process.run()
         return exit_code
 

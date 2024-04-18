@@ -33,4 +33,8 @@ class ToolTestMixin:
             mock_server_config.return_value = server_config or {}
 
             tool_instance = tool_class(tool_args, gcp_env)
-            return tool_instance.run_process()
+        # is there a better solution to check which function to use?
+            try:
+                return tool_instance.run_process()
+            except AttributeError:
+                return tool_instance.run()
