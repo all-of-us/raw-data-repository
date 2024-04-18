@@ -40,7 +40,7 @@ class RetentionMetricsTest(BaseTestCase, ToolTestMixin):
             "id": False,
             "from_file": False,
             "fix_mismatches": True}
-        self.run_tool(RetentionRecalcClass, tool_args=tool_args, mock_session=False)
+        self.run_tool(RetentionRecalcClass, tool_args=tool_args, mock_session=False, session=self.session)
         self.session.refresh(self.summary)
 
         self.assertEqual(

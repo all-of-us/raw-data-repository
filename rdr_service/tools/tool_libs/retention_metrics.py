@@ -191,7 +191,7 @@ class RetentionRecalcClass(RetentionBaseClass):
             participant_id_list = self.get_int_ids_from_file(self.args.from_file)
         elif self.args.fix_mismatches:
             # Ayaz is confused on what session argument to add to this function
-            self.handle_mismatches()
+            self.handle_mismatches(self.session)
             return 0
 
 

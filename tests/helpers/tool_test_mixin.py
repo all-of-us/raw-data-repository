@@ -18,7 +18,7 @@ class ToolTestMixin:
 
     @classmethod
     def run_tool(cls, tool_class: Type[ToolBase], tool_args: dict = None, server_config: dict = None,
-                 mock_session=False, project='localhost'):
+                 mock_session=False, project='localhost', session= None):
         gcp_env = mock.MagicMock()
         gcp_env.project = project
 
@@ -33,6 +33,8 @@ class ToolTestMixin:
             mock_server_config.return_value = server_config or {}
 
             tool_instance = tool_class(tool_args, gcp_env)
+            if not mock_session and session is not None:
+                tool_instance.session = session
         # is there a better solution to check which function to use?
             try:
                 return tool_instance.run_process()
