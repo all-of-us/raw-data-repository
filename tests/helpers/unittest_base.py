@@ -627,7 +627,6 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         summary.enrollmentStatusV3_0 = participant_enums.EnrollmentStatusV30.PARTICIPANT_PLUS_EHR
         summary.enrollmentStatusV3_2 = participant_enums.EnrollmentStatusV32.PARTICIPANT_PLUS_EHR
         summary.hasCoreData = False
-        summary.retentionEligibleStatus = participant_enums.RetentionStatus.NOT_ELIGIBLE
 
         return summary
 

@@ -22,6 +22,8 @@ class RetentionMetricsTest(BaseTestCase, ToolTestMixin):
     def setup_mismatched_retention_data(self):
         # Setting up the mismatched data to see if running the tool will fix the mismatches
         self.summary = self.participant_summary(self.participant)
+        self.summary.retentionEligibleStatus = RetentionStatus.NOT_ELIGIBLE
+        self.summary.retentionEligibleTime = datetime(2023,1,1)
         self.retention_eligible_metrics = RetentionEligibleMetrics(
             participantId=self.participant_id,
             retentionEligibleStatus=RetentionStatus.ELIGIBLE,
