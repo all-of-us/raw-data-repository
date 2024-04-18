@@ -1,0 +1,4 @@
+"biobank_id","sample_id","sex_at_birth","site_id","research_id","drc_qc_status","pass_to_research_pipeline","processing_count","sample_source","genome_type","software_version","npx_explore_path","analysis_report_path","kit_type","notes"
+"T01","1111","F","bi","1111","Pass","True","1","Whole Blood","aou_proteomics","20","npx_path","report_path","kit","pass"
+"T02","2222","F","bi","1111","Pass","True","1","Whole Blood","aou_proteomics","20","npx_path","report_path","kit","pass"
+"T03","3333","F","bi","1111","Pass","True","1","Whole Blood","aou_proteomics","20","npx_path","report_path","kit","pass"
