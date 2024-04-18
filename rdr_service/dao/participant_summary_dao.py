@@ -408,13 +408,13 @@ class ParticipantSummaryDao(UpdatableDao):
             ParticipantSummary.participantId.in_(obj_ids)
         ).all()
 
-    def get_by_participant_id(self, participant_id):
+    def get_by_participant_id(self, participant_id) -> ParticipantSummary:
         with self.session() as session:
             return session.query(
                 ParticipantSummary
             ).filter(
                 ParticipantSummary.participantId == participant_id
-            ).options(self._default_api_query_options()).one_or_none()
+            ).one_or_none()
 
     @classmethod
     def get_for_update_with_linked_data(cls, participant_id, session) -> ParticipantSummary:
