@@ -8,7 +8,7 @@ from rdr_service.participant_enums import RetentionStatus
 
 class RetentionMetricsTest(BaseTestCase, ToolTestMixin):
     """
-    A test for the retention metrics tool
+    A test case for the retention metrics tool
     """
 
     def setUp(self):
@@ -20,15 +20,22 @@ class RetentionMetricsTest(BaseTestCase, ToolTestMixin):
         self.setup_mismatched_retention_data()
 
     def setup_mismatched_retention_data(self):
-        # Setting up the mismatched data to see if running the tool will fix the mismatches
+        """
+        taking a test participant and mismatching some data fields in
+        the Participant Summary and Retention Eligible Metrics tables
+
+        this data is normally supposed to match
+        """
         self.summary = self.participant_summary(self.participant)
         self.summary.retentionEligibleStatus = RetentionStatus.NOT_ELIGIBLE
-        self.summary.retentionEligibleTime = datetime(2023,1,1)
+        self.summary.retentionEligibleTime = datetime(2023, 1, 1)
+
         self.retention_eligible_metrics = RetentionEligibleMetrics(
             participantId=self.participant_id,
             retentionEligibleStatus=RetentionStatus.ELIGIBLE,
             retentionEligibleTime=datetime(2024, 4, 17),
         )
+
         self.session.add(self.summary)
         self.session.add(self.retention_eligible_metrics)
         self.session.commit()
@@ -39,11 +46,13 @@ class RetentionMetricsTest(BaseTestCase, ToolTestMixin):
          will match the data from retention metrics
         if the Retention Recalc Tool is called with the 'fix-mismatches' flag
         """
-        tool_args = {
-            "id": False,
-            "from_file": False,
-            "fix_mismatches": True}
-        self.run_tool(RetentionRecalcClass, tool_args=tool_args, mock_session=False, session=self.session)
+        tool_args = {"id": False, "from_file": False, "fix_mismatches": True}
+        self.run_tool(
+            RetentionRecalcClass,
+            tool_args=tool_args,
+            mock_session=False,
+            session=self.session,
+        )
         self.session.refresh(self.summary)
 
         self.assertEqual(
@@ -54,3 +63,5 @@ class RetentionMetricsTest(BaseTestCase, ToolTestMixin):
             self.summary.retentionEligibleTime,
             self.retention_eligible_metrics.retentionEligibleTime,
         )
+        # confirms the participant summary table is getting updated properly, not the retention eligible metrics table
+        self.assertEqual(self.summary.retentionEligibleTime, datetime(2024, 4, 17))
