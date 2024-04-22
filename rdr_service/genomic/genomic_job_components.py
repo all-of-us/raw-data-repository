@@ -2224,7 +2224,7 @@ class GenomicFileValidator:
         # RNA pipeline
         def rna_rr_manifest_name_rule():
             """
-            RNA PR manifest name rule
+            RNA RR manifest name rule
             """
             return (
                 len(filename_components) == 5 and
@@ -2237,7 +2237,7 @@ class GenomicFileValidator:
 
         def rna_r1_manifest_name_rule():
             """
-            RNA P1 manifest name rule
+            RNA R1 manifest name rule
             """
             return (
                 len(filename_components) == 4 and
