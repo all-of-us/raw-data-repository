@@ -438,6 +438,11 @@ class IngestSubManifestTaskApi(BaseGenomicTaskApi):
                 'manifest_type': GenomicManifestTypes.RNA_RR
 
             },
+            'r1': {
+                'job': GenomicJob.RNA_R1_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.RNA_R1
+
+            },
             'r2': {
                 'job': GenomicJob.RNA_R2_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.RNA_R2
