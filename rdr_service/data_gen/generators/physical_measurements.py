@@ -1,7 +1,9 @@
 #
 # Physical Measurements Generator
 #
+import json
 import logging
+import os.path
 import random
 import string
 
@@ -27,14 +29,16 @@ class PhysicalMeasurementsGen(BaseGen):
     _measurement_specs = None
     _qualifier_map = None
 
-    def __init__(self):
+    def __init__(self, load_data=False):
         """
     Initialize physical measurements generator.
     """
-        super(PhysicalMeasurementsGen, self).__init__()
+        super(PhysicalMeasurementsGen, self).__init__(load_data=load_data)
 
         qualifier_concepts = set()
-        measurement_specs = self._app_data["measurement_specs"]
+        file_path = os.path.join(os.path.dirname(__file__), '../../app_data/measurement_specs.json')
+        with open(file_path) as f:
+            measurement_specs = json.load(f)
         for measurement in measurement_specs:
             for qualifier in measurement["qualifiers"]:
                 qualifier_concepts.add(Concept(qualifier["system"], qualifier["code"]))
@@ -331,8 +335,8 @@ class PhysicalMeasurementsGen(BaseGen):
                         self._make_author("finalizer@pmi-ops.org", "finalized"),
                     ],
                     "extension": [
-                        {"url": created_ext, "valueReference": "{0}{1}".format("Location/", self._site.id)},
-                        {"url": finalized_ext, "valueReference": "{0}{1}".format("Location/", self._site.id)},
+                        {"url": created_ext, "valueReference": "{0}{1}".format("Location/", self._site.name)},
+                        {"url": finalized_ext, "valueReference": "{0}{1}".format("Location/", self._site.name)},
                     ],
                     "date": now,
                     "resourceType": "Composition",
