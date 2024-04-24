@@ -84,7 +84,7 @@ class PhysicalMeasurementsGen(BaseGen):
 
     def _make_base_measurement_resource(self, measurement, mean, measurement_count):
 
-        system = "https://terminology.pmi-ops.org/CodeSystem/physical-measurements"
+        system = "http://terminology.pmi-ops.org/CodeSystem/physical-measurements"
 
         resource = {
             "code": {
