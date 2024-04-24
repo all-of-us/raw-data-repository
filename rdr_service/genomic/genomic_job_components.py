@@ -19,7 +19,8 @@ from rdr_service import clock, config
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow, GenomicAW4Workflow
-from rdr_service.genomic.genomic_sub_workflow import GenomicSubWorkflow, GenomicSubLongReadWorkflow
+from rdr_service.genomic.genomic_sub_workflow import GenomicSubLongReadWorkflow, \
+    GenomicSubProWorkflow, GenomicSubRNAWorkflow
 from rdr_service.genomic_enums import ResultsModuleType
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -1137,7 +1138,7 @@ class GenomicFileIngester:
     # Proteomics
     def _ingest_pr_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
-            GenomicSubWorkflow.create_genomic_sub_workflow(
+            GenomicSubProWorkflow.create_genomic_sub_workflow(
                 dao=GenomicPRDao,
                 job_id=self.job_id,
                 job_run_id=self.job_run_id,
@@ -1150,7 +1151,7 @@ class GenomicFileIngester:
     # RNA Seq
     def _ingest_rna_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
-            GenomicSubWorkflow.create_genomic_sub_workflow(
+            GenomicSubRNAWorkflow.create_genomic_sub_workflow(
                 dao=GenomicRNADao,
                 job_id=self.job_id,
                 job_run_id=self.job_run_id,

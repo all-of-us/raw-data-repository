@@ -186,6 +186,38 @@ class GenomicSubWorkflow(GenomicBaseSubWorkflow):
         }
 
 
+class GenomicSubProWorkflow(GenomicSubWorkflow):
+
+    def get_p_site_id(self):
+        try:
+            return self.current_manifest_file_name.lower().split('_')[0]
+        except KeyError:
+            return None
+
+    def get_members_for_sample_update(self):
+        return self.dao.get_pipeline_members_missing_sample_id(
+            biobank_ids=[row.get('biobank_id')[1:] for row in self.row_data if row.get('sample_id')],
+            collection_tube_ids=[row.get('collection_tubeid') for row in self.row_data if row.get('sample_id')],
+            p_site_id=self.get_p_site_id()
+        )
+
+
+class GenomicSubRNAWorkflow(GenomicSubWorkflow):
+
+    def get_r_site_id(self):
+        try:
+            return self.current_manifest_file_name.lower().split('_')[0]
+        except KeyError:
+            return None
+
+    def get_members_for_sample_update(self):
+        return self.dao.get_pipeline_members_missing_sample_id(
+            biobank_ids=[row.get('biobank_id')[1:] for row in self.row_data if row.get('sample_id')],
+            collection_tube_ids=[row.get('collection_tubeid') for row in self.row_data if row.get('sample_id')],
+            r_site_id=self.get_r_site_id()
+        )
+
+
 class GenomicSubLongReadWorkflow(GenomicBaseSubWorkflow):
 
     def get_platform_value(self, attribute_name: str = 'long_read_platform') -> Enum:
