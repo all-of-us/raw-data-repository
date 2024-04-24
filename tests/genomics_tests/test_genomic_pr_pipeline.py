@@ -370,7 +370,7 @@ class GenomicPRPipelineTest(BaseTestCase):
                     biobank_id=genomic_set_member.biobankId,
                     collection_tube_id=f'{num}11111',
                     genome_type="aou_proteomics",
-                    p_site_id="bi",
+                    p_site_id="rdr",
                     proteomics_set=1
                 )
 
