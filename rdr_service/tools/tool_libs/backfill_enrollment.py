@@ -2,12 +2,8 @@
 import logging
 from datetime import datetime
 
-import rdr_service.config as config
-
-from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.api_util import dispatch_task
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg
-
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 tool_cmd = 'backfill-enrollment'
@@ -19,9 +15,8 @@ class BackfillEnrollment(ToolBase):
 
     def run(self):
         super(BackfillEnrollment, self).run()
-        config.override_setting('pdr_pipeline', { 'allowed_projects': [self.gcp_env.project]})
+
         with self.get_session() as session:
-            summary_dao = ParticipantSummaryDao()
             # --id option takes precedence over --from-file option
             if self.args.id:
                 participant_id_list = [int(i) for i in self.args.id.split(',')]
@@ -41,25 +36,17 @@ class BackfillEnrollment(ToolBase):
                     logging.info(f'{datetime.now()}: {count} of {len(participant_id_list)} (last id: {last_id})')
                 count += 1
 
-                summary = ParticipantSummaryDao.get_for_update_with_linked_data(
-                    participant_id=participant_id,
-                    session=session
+                dispatch_task(
+                    endpoint='update_enrollment_status',
+                    payload={
+                        'participant_id': participant_id,
+                        'allow_downgrade': self.args.allow_downgrade
+                    },
+                    project_id=self.gcp_env.project
                 )
-                summary_dao.update_enrollment_status(
-                    summary=summary,
-                    session=session,
-                    allow_downgrade=self.args.allow_downgrade,
-                    # Don't trigger pubsub for PDR pipeline until after the commit
-                    pdr_pubsub=False
-                )
-                last_id = summary.participantId
+                last_id = participant_id
 
                 session.commit()
-
-                submit_pipeline_pubsub_msg(
-                    database='rdr', table='participant_summary', action='upsert',
-                    pk_columns=['participant_id'], pk_values=[participant_id], project=self.gcp_env.project
-                )
 
 
 def add_additional_arguments(parser):

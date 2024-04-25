@@ -84,6 +84,23 @@ class TaskApiTest(BaseTestCase):
         )
         self.assertEqual(site_rebuild_task_mock.call_count, 1)
 
+    @mock.patch('rdr_service.api.cloud_tasks_api.ParticipantSummaryDao')
+    def test_enrollment_status_task(self, summary_dao_mock):
+        self._call_task_endpoint(
+            task_path='UpdateEnrollmentStatus',
+            json={
+                'participant_id': 1234,
+                'allow_downgrade': True,
+                'pdr_pubsub': False
+            }
+        )
+        summary_dao_mock.return_value.update_enrollment_status.assert_called_with(
+            allow_downgrade=True,
+            pdr_pubsub=False,
+            summary=mock.ANY,
+            session=mock.ANY
+        )
+
     def _call_task_endpoint(self, task_path, json):
         response = self.send_post(
             f'/resource/task/{task_path}',
