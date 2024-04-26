@@ -157,6 +157,10 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             '_p4_': {
                 'manifest_type': 'p4',
                 'task_endpoint': 'IngestSubManifestTaskApi'
+            },
+            '_p5_': {
+                'manifest_type': 'p5',
+                'task_endpoint': 'IngestSubManifestTaskApi'
             }
         }
         rna_tasks = {
