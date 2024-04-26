@@ -329,6 +329,7 @@ class GenomicFileIngester:
                 GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
                 GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
                 GenomicJob.PR_P4_WORKFLOW: self._ingest_pr_manifest,
+                GenomicJob.PR_P5_WORKFLOW: self._ingest_pr_manifest,
                 GenomicJob.RNA_RR_WORKFLOW: self._ingest_rna_manifest,
                 GenomicJob.RNA_R1_WORKFLOW: self._ingest_rna_manifest,
                 GenomicJob.RNA_R2_WORKFLOW: self._ingest_rna_manifest
@@ -1727,6 +1728,16 @@ class GenomicFileValidator:
             "notes"
         )
 
+        self.PR_P5_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "sexatbirth",
+            "siteid",
+            "npxexplorepath",
+            "analysisreportpath"
+        )
+
         # RNA pipeline
         self.RNA_RR_SCHEMA = (
             "biobankid",
@@ -2222,6 +2233,17 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def pr_p5_manifest_name_rule():
+            """
+            PR P5 manifest name rule
+            """
+            return (
+                len(filename_components) <= 4 and
+                filename_components[0] == 'aou' and
+                filename_components[1] == 'p5' and
+                filename.lower().endswith('csv')
+            )
+
         # RNA pipeline
         def rna_rr_manifest_name_rule():
             """
@@ -2292,6 +2314,7 @@ class GenomicFileValidator:
             GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule,
             GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule,
             GenomicJob.PR_P4_WORKFLOW: pr_p4_manifest_name_rule,
+            GenomicJob.PR_P5_WORKFLOW: pr_p5_manifest_name_rule,
             GenomicJob.RNA_RR_WORKFLOW: rna_rr_manifest_name_rule,
             GenomicJob.RNA_R1_WORKFLOW: rna_r1_manifest_name_rule,
             GenomicJob.RNA_R2_WORKFLOW: rna_r2_manifest_name_rule
@@ -2439,6 +2462,8 @@ class GenomicFileValidator:
                 return self.PR_P2_SCHEMA
             if self.job_id == GenomicJob.PR_P4_WORKFLOW:
                 return self.PR_P4_SCHEMA
+            if self.job_id == GenomicJob.PR_P5_WORKFLOW:
+                return self.PR_P5_SCHEMA
             if self.job_id == GenomicJob.RNA_RR_WORKFLOW:
                 return self.RNA_RR_SCHEMA
             if self.job_id == GenomicJob.RNA_R1_WORKFLOW:

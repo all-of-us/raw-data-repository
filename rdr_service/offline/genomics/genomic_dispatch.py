@@ -12,7 +12,7 @@ from rdr_service.model.genomics import (GenomicLRRaw, GenomicL0Raw, GenomicPRRaw
                                         GenomicR1Raw, GenomicL1Raw, GenomicA2Raw, GenomicA3Raw, GenomicA1Raw,
                                         GenomicR2Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, GenomicL3Raw, GenomicL4Raw,
                                         GenomicL5Raw, GenomicL6Raw, GenomicL1FRaw, GenomicL4FRaw, GenomicL6FRaw,
-                                        GenomicP3Raw, GenomicP4Raw)
+                                        GenomicP3Raw, GenomicP4Raw, GenomicP5Raw)
 
 from rdr_service.services.system_utils import JSONObject
 
@@ -25,161 +25,165 @@ def load_manifest_into_raw_table(
     cvl_site_id=None
 ):
     short_read_raw_map = {
-        "aw1": {
+        'aw1': {
             'job_id': GenomicJob.LOAD_AW1_TO_RAW_TABLE,
             'dao': GenomicAW1RawDao
         },
-        "aw2": {
+        'aw2': {
             'job_id': GenomicJob.LOAD_AW2_TO_RAW_TABLE,
             'dao': GenomicAW2RawDao
         },
-        "aw3": {
+        'aw3': {
             'job_id': GenomicJob.LOAD_AW3_TO_RAW_TABLE,
             'model': GenomicAW3Raw
         },
-        "aw4": {
+        'aw4': {
             'job_id': GenomicJob.LOAD_AW4_TO_RAW_TABLE,
             'model': GenomicAW4Raw
         }
     }
     gem_map = {
-        "a1": {
+        'a1': {
             'job_id': GenomicJob.LOAD_A1_TO_RAW_TABLE,
             'model': GenomicA1Raw
         },
-        "a2": {
+        'a2': {
             'job_id': GenomicJob.LOAD_A2_TO_RAW_TABLE,
             'model': GenomicA2Raw
         },
-        "a3": {
+        'a3': {
             'job_id': GenomicJob.LOAD_A3_TO_RAW_TABLE,
             'model': GenomicA3Raw
         }
     }
     cvl_raw_map = {
-        "w1il": {
+        'w1il': {
             'job_id': GenomicJob.LOAD_CVL_W1IL_TO_RAW_TABLE,
             'model': GenomicW1ILRaw
         },
-        "w2sc": {
+        'w2sc': {
             'job_id': GenomicJob.LOAD_CVL_W2SC_TO_RAW_TABLE,
             'model': GenomicW2SCRaw
         },
-        "w2w": {
+        'w2w': {
             'job_id': GenomicJob.LOAD_CVL_W2W_TO_RAW_TABLE,
             'model': GenomicW2WRaw
         },
-        "w3ns": {
+        'w3ns': {
             'job_id': GenomicJob.LOAD_CVL_W3NS_TO_RAW_TABLE,
             'model': GenomicW3NSRaw
         },
-        "w3sc": {
+        'w3sc': {
             'job_id': GenomicJob.LOAD_CVL_W3SC_TO_RAW_TABLE,
             'model': GenomicW3SCRaw
         },
-        "w3ss": {
+        'w3ss': {
             'job_id': GenomicJob.LOAD_CVL_W3SS_TO_RAW_TABLE,
             'model': GenomicW3SSRaw
         },
-        "w3sr": {
+        'w3sr': {
             'job_id': GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE,
             'model': GenomicW3SRRaw
         },
-        "w4wr": {
+        'w4wr': {
             'job_id': GenomicJob.LOAD_CVL_W4WR_TO_RAW_TABLE,
             'model': GenomicW4WRRaw
         },
-        "w5nf": {
+        'w5nf': {
             'job_id': GenomicJob.LOAD_CVL_W5NF_TO_RAW_TABLE,
             'model': GenomicW5NFRaw
         },
     }
     long_read_raw_map = {
-        "lr": {
+        'lr': {
             'job_id': GenomicJob.LOAD_LR_TO_RAW_TABLE,
             'model': GenomicLRRaw
         },
-        "l0": {
+        'l0': {
             'job_id': GenomicJob.LOAD_L0_TO_RAW_TABLE,
             'model': GenomicL0Raw
         },
-        "l1": {
+        'l1': {
             'job_id': GenomicJob.LOAD_L1_TO_RAW_TABLE,
             'model': GenomicL1Raw
         },
-        "l1f": {
+        'l1f': {
             'job_id': GenomicJob.LOAD_L1F_TO_RAW_TABLE,
             'model': GenomicL1FRaw
         },
-        "l2_ont": {
+        'l2_ont': {
             'job_id': GenomicJob.LOAD_L2_ONT_TO_RAW_TABLE,
             'model': GenomicL2ONTRaw
         },
-        "l2_pb_ccs": {
+        'l2_pb_ccs': {
             'job_id': GenomicJob.LOAD_L2_PB_CCS_TO_RAW_TABLE,
             'model': GenomicL2PBCCSRaw
         },
-        "l3": {
+        'l3': {
             'job_id': GenomicJob.LOAD_L3_TO_RAW_TABLE,
             'model': GenomicL3Raw
         },
-        "l4": {
+        'l4': {
             'job_id': GenomicJob.LOAD_L4_TO_RAW_TABLE,
             'model': GenomicL4Raw
         },
-        "l4f": {
+        'l4f': {
             'job_id': GenomicJob.LOAD_L4F_TO_RAW_TABLE,
             'model': GenomicL4FRaw
         },
-        "l5": {
+        'l5': {
             'job_id': GenomicJob.LOAD_L5_TO_RAW_TABLE,
             'model': GenomicL5Raw
         },
-        "l6": {
+        'l6': {
             'job_id': GenomicJob.LOAD_L6_TO_RAW_TABLE,
             'model': GenomicL6Raw
         },
-        "l6f": {
+        'l6f': {
             'job_id': GenomicJob.LOAD_L6F_TO_RAW_TABLE,
             'model': GenomicL6FRaw
         }
     }
     pr_raw_map = {
-        "pr": {
+        'pr': {
             'job_id': GenomicJob.LOAD_PR_TO_RAW_TABLE,
             'model': GenomicPRRaw
         },
-        "p0": {
+        'p0': {
             'job_id': GenomicJob.LOAD_P0_TO_RAW_TABLE,
             'model': GenomicP0Raw
         },
-        "p1": {
+        'p1': {
             'job_id': GenomicJob.LOAD_P1_TO_RAW_TABLE,
             'model': GenomicP1Raw
         },
-        "p2": {
+        'p2': {
             'job_id': GenomicJob.LOAD_P2_TO_RAW_TABLE,
             'model': GenomicP2Raw
         },
-        "p3": {
+        'p3': {
             'job_id': GenomicJob.LOAD_P3_TO_RAW_TABLE,
             'model': GenomicP3Raw
         },
-        "p4": {
+        'p4': {
             'job_id': GenomicJob.LOAD_P4_TO_RAW_TABLE,
             'model': GenomicP4Raw
+        },
+        'p5': {
+            'job_id': GenomicJob.LOAD_P5_TO_RAW_TABLE,
+            'model': GenomicP5Raw
         }
     }
     rna_raw_map = {
-        "rr": {
+        'rr': {
             'job_id': GenomicJob.LOAD_RR_TO_RAW_TABLE,
             'model': GenomicRRRaw
         },
-        "r0": {
+        'r0': {
             'job_id': GenomicJob.LOAD_RO_TO_RAW_TABLE,
             'model': GenomicR0Raw
         },
-        "r1": {
+        'r1': {
             'job_id': GenomicJob.LOAD_R1_TO_RAW_TABLE,
             'model': GenomicR1Raw,
             'special_mappings': {
@@ -187,7 +191,7 @@ def load_manifest_into_raw_table(
                 '260_280': 'two_sixty_two_eighty'
             }
         },
-        "r2": {
+        'r2': {
             'job_id': GenomicJob.LOAD_R2_TO_RAW_TABLE,
             'model': GenomicR2Raw
         }
@@ -259,6 +263,7 @@ def dispatch_genomic_job_from_task(
         GenomicJob.PR_P1_WORKFLOW,
         GenomicJob.PR_P2_WORKFLOW,
         GenomicJob.PR_P4_WORKFLOW,
+        GenomicJob.PR_P5_WORKFLOW,
         GenomicJob.RNA_RR_WORKFLOW,
         GenomicJob.RNA_R1_WORKFLOW,
         GenomicJob.RNA_R2_WORKFLOW,
@@ -287,7 +292,7 @@ def dispatch_genomic_job_from_task(
         with GenomicJobController(_task_data.job,
                                   bq_project_id=project_id) as controller:
 
-            logging.info("Calculating record count for AW1 manifest...")
+            logging.info('Calculating record count for AW1 manifest...')
 
             rec_count = controller.manifest_file_dao.count_records_for_manifest_file(
                 _task_data.manifest_file
@@ -309,13 +314,13 @@ def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
     task_data = JSONObject(_task_data)
 
     if not hasattr(task_data, 'job'):
-        raise AttributeError("job are required to execute manifest file pipeline")
+        raise AttributeError('job are required to execute manifest file pipeline')
 
     if not hasattr(task_data, 'bucket'):
-        raise AttributeError("bucket is required to execute manifest file pipeline")
+        raise AttributeError('bucket is required to execute manifest file pipeline')
 
     if not hasattr(task_data, 'file_data'):
-        raise AttributeError("file_data is required to execute manifest file pipeline")
+        raise AttributeError('file_data is required to execute manifest file pipeline')
 
     with GenomicJobController(GenomicJob.GENOMIC_MANIFEST_FILE_TRIGGER,
                               task_data=task_data,

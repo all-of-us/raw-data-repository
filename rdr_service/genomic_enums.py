@@ -200,6 +200,7 @@ class GenomicJob(messages.Enum):
     PR_P2_WORKFLOW = 403
     PR_P3_WORKFLOW = 404
     PR_P4_WORKFLOW = 405
+    PR_P5_WORKFLOW = 406
 
     LOAD_PR_TO_RAW_TABLE = 450
     LOAD_P0_TO_RAW_TABLE = 451
@@ -207,6 +208,7 @@ class GenomicJob(messages.Enum):
     LOAD_P2_TO_RAW_TABLE = 453
     LOAD_P3_TO_RAW_TABLE = 454
     LOAD_P4_TO_RAW_TABLE = 455
+    LOAD_P5_TO_RAW_TABLE = 456
 
     RNA_RR_WORKFLOW = 500
     RNA_R0_WORKFLOW = 501
@@ -380,6 +382,7 @@ class GenomicManifestTypes(messages.Enum):
     PR_P2 = 43
     PR_P3 = 44
     PR_P4 = 45
+    PR_P5 = 46
 
     RNA_RR = 50
     RNA_R0 = 51
