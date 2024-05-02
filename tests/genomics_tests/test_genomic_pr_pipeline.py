@@ -745,7 +745,7 @@ class GenomicPRPipelineTest(BaseTestCase):
     def test_p1f_manifest_ingestion(self):
 
         self.execute_base_pr_ingestion(
-            test_file='RDR_AoU_P1f.csv',
+            test_file='RDR_AoU_p1f.csv',
             job_id=GenomicJob.PR_P1F_WORKFLOW,
             manifest_type=GenomicManifestTypes.PR_P1F,
         )
@@ -763,7 +763,7 @@ class GenomicPRPipelineTest(BaseTestCase):
     def test_p1f_manifest_to_raw_ingestion(self):
 
         self.execute_base_pr_ingestion(
-            test_file='RDR_AoU_P1f.csv',
+            test_file='RDR_AoU_p1f.csv',
             job_id=GenomicJob.PR_P1F_WORKFLOW,
             manifest_type=GenomicManifestTypes.PR_P1F,
         )
