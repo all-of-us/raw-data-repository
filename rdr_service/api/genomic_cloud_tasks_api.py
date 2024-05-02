@@ -423,6 +423,10 @@ class IngestSubManifestTaskApi(BaseGenomicTaskApi):
                 'job': GenomicJob.PR_P1_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.PR_P1
             },
+            'p1f': {
+                'job': GenomicJob.PR_P1F_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.PR_P1F
+            },
             'p2': {
                 'job': GenomicJob.PR_P2_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.PR_P2
