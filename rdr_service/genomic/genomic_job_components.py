@@ -327,6 +327,7 @@ class GenomicFileIngester:
                 GenomicJob.LR_L6F_WORKFLOW: self._ingest_lr_manifest,
                 GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
                 GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
+                GenomicJob.PR_P1F_WORKFLOW: self._ingest_pr_manifest,
                 GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
                 GenomicJob.PR_P4_WORKFLOW: self._ingest_pr_manifest,
                 GenomicJob.PR_P5_WORKFLOW: self._ingest_pr_manifest,
@@ -2210,6 +2211,18 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def pr_p1f_manifest_name_rule():
+            """
+            PR P1F manifest name rule
+            """
+            return (
+                len(filename_components) <= 4 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'p1f' and
+                filename.lower().endswith('csv')
+            )
+
         def pr_p2_manifest_name_rule():
             """
             PR P2 manifest name rule
@@ -2312,6 +2325,7 @@ class GenomicFileValidator:
             GenomicJob.LR_L6F_WORKFLOW: lr_l6_manifest_name_rule,
             GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule,
             GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule,
+            GenomicJob.PR_P1F_WORKFLOW: pr_p1f_manifest_name_rule,
             GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule,
             GenomicJob.PR_P4_WORKFLOW: pr_p4_manifest_name_rule,
             GenomicJob.PR_P5_WORKFLOW: pr_p5_manifest_name_rule,
@@ -2456,7 +2470,10 @@ class GenomicFileValidator:
                 return self.LR_L6_SCHEMA
             if self.job_id == GenomicJob.PR_PR_WORKFLOW:
                 return self.PR_PR_SCHEMA
-            if self.job_id == GenomicJob.PR_P1_WORKFLOW:
+            if self.job_id in [
+                GenomicJob.PR_P1_WORKFLOW,
+                GenomicJob.PR_P1F_WORKFLOW
+            ]:
                 return self.PR_P1_SCHEMA
             if self.job_id == GenomicJob.PR_P2_WORKFLOW:
                 return self.PR_P2_SCHEMA
