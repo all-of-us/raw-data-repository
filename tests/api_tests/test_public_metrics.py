@@ -1,5 +1,7 @@
 import datetime
+import mock
 
+from rdr_service import config
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (
     PMI_SKIP_CODE,
@@ -16,6 +18,7 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantSummaryDao
@@ -42,6 +45,43 @@ TIME_3 = datetime.datetime(2018, 2, 10)
 
 def _questionnaire_response_url(participant_id):
     return "Participant/%s/QuestionnaireResponse" % participant_id
+
+
+def generate_mock_results(participant, summary, the_basics=None):
+    expected_bq_results = dict()
+
+    for field, _ in ParticipantCountsOverTimeService.TEMP_FIELDS:
+        temp = field.split('_')
+        camel_field = temp[0] + ''.join(f.title() for f in temp[1:])
+
+        try:
+            value = getattr(summary, camel_field)
+
+            if field in ParticipantCountsOverTimeService.PARTICIPANT_FIELDS:
+                value = getattr(participant, camel_field)
+        except Exception:  # pylint: disable=broad-except
+            value = None
+
+        expected_bq_results[field] = value
+
+    expected_bq_results['sample_status_1ed10_time'] = getattr(summary, 'sampleStatus1ED10Time')
+    expected_bq_results['sample_status_2ed10_time'] = getattr(summary, 'sampleStatus2ED10Time')
+    expected_bq_results['sample_status_1ed04_time'] = getattr(summary, 'sampleStatus1ED04Time')
+    expected_bq_results['sample_status_1sal_time'] = getattr(summary, 'sampleStatus1SALTime')
+    expected_bq_results['sample_status_1sal2_time'] = getattr(summary, 'sampleStatus1SAL2Time')
+
+    expected_bq_results['withdrawal_status'] = 1
+    expected_bq_results['suspension_status'] = 1
+    expected_bq_results['enrollment_status'] = 3
+    expected_bq_results['deceased_status'] = 0
+    expected_bq_results['race'] = 0
+    expected_bq_results['questionnaire_on_the_basics'] = 1
+    expected_bq_results['consent_for_electronic_health_records'] = 0
+
+    if the_basics is not None:
+        expected_bq_results['questionnaire_on_the_basics'] = 0
+
+    return expected_bq_results
 
 
 class PublicMetricsApiTest(BaseTestCase):
@@ -99,6 +139,13 @@ class PublicMetricsApiTest(BaseTestCase):
         self.clear_table_after_test('metrics_lifecycle_cache')
         self.clear_table_after_test('metrics_language_cache')
 
+        self.temporarily_override_config_setting(config.PUBLIC_METRICS_PROJECT_MAP, {
+            "all-of-us-rdr-sandbox": "aou-warehouse-test",
+            "all-of-us-rdr-staging": "aou-warehouse-test",
+            "all-of-us-rdr-stable": "aou-warehouse-test",
+            "all-of-us-rdr-prod": "aou-warehouse-test",
+        })
+
     def _insert(
         self,
         participant,
@@ -132,6 +179,8 @@ class PublicMetricsApiTest(BaseTestCase):
     :return: Participant object
     """
 
+        expected_bq_results = dict()
+
         if unconsented is True:
             enrollment_status = None
         elif time_mem is None:
@@ -149,7 +198,21 @@ class PublicMetricsApiTest(BaseTestCase):
             self.dao.update(participant)
 
         if enrollment_status is None:
-            return None
+            for field, _ in ParticipantCountsOverTimeService.TEMP_FIELDS:
+                temp = field.split('_')
+                camel_field = temp[0] + ''.join(f.title() for f in temp[1:])
+
+                try:
+                    value = getattr(participant, camel_field)
+                except Exception:  # pylint: disable=broad-except
+                    value = None
+
+                expected_bq_results[field] = value
+
+            expected_bq_results['withdrawal_status'] = 1
+            expected_bq_results['suspension_status'] = 1
+
+            return None, expected_bq_results
 
         summary = self.participant_summary(participant)
 
@@ -212,10 +275,10 @@ class PublicMetricsApiTest(BaseTestCase):
 
         self.ps_dao.insert(summary)
 
-        return summary
+        return summary, generate_mock_results(participant, summary)
 
     def update_participant_summary(
-        self, participant_id, time_mem=None, time_fp=None, time_fp_stored=None, time_study=None
+        self, participant_id, time_mem=None, time_fp=None, time_fp_stored=None, time_study=None, the_basics=None
     ):
 
         participant = self.dao.get(participant_id)
@@ -263,20 +326,21 @@ class PublicMetricsApiTest(BaseTestCase):
 
         self.ps_dao.update(summary)
 
-        return summary
+        return summary, generate_mock_results(participant, summary, the_basics)
 
-    def test_public_metrics_get_enrollment_status_api(self):
+    @mock.patch('google.cloud.bigquery.Client.query')
+    def test_public_metrics_get_enrollment_status_api(self, big_query):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, time_study=self.time1)
+        _, expected_bq_results_1 = self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, time_study=self.time1)
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
+        _, expected_bq_results_2 = self._insert(
             p2, "Bob", "Builder", "AZ_TUCSON", "AZ_TUCSON_BANNER_HEALTH", time_int=self.time2, time_study=self.time2
         )
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
+        _, expected_bq_results_3 = self._insert(
             p3,
             "Chad",
             "Caterpillar",
@@ -288,7 +352,13 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time4,
         )
 
+        big_query.side_effect = [[expected_bq_results_1], [],
+                                 [expected_bq_results_2, expected_bq_results_3]]
+
         calculate_participant_metrics()
+
+        self.assertTrue(big_query.called)
+        self.assertEqual(big_query.call_count, 3)
 
         qs = "&stratification=ENROLLMENT_STATUS" "&startDate=2018-01-01" "&endDate=2018-01-08"
 
@@ -304,7 +374,8 @@ class PublicMetricsApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-02", "metrics": {"consented": 1, "core": 0, "registered": 1}}, results)
         self.assertIn({"date": "2018-01-03", "metrics": {"consented": 0, "core": 1, "registered": 1}}, results)
 
-    def test_public_metrics_get_gender_api(self):
+    @mock.patch('google.cloud.bigquery.Client.query')
+    def test_public_metrics_get_gender_api(self, big_query):
 
         self.init_gender_codes()
         gender_code_dict = {
@@ -319,7 +390,8 @@ class PublicMetricsApiTest(BaseTestCase):
 
         participant_gender_answer_dao = ParticipantGenderAnswersDao()
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, gender_identity=3)
+        _, expected_bq_results_1 = self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1,
+                                                gender_identity=3)
         participant_gender_answer_dao.insert(
             ParticipantGenderAnswers(
                 **dict(
@@ -332,7 +404,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
+        _, expected_bq_results_2 = self._insert(
             p2,
             "Bob",
             "Builder",
@@ -355,7 +427,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
+        _, expected_bq_results_3 = self._insert(
             p3,
             "Chad",
             "Caterpillar",
@@ -378,7 +450,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p4 = Participant(participantId=4, biobankId=7)
-        self._insert(
+        _, expected_bq_results_4 = self._insert(
             p4,
             "Chad2",
             "Caterpillar2",
@@ -401,7 +473,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p6 = Participant(participantId=6, biobankId=9)
-        self._insert(
+        _, expected_bq_results_6 = self._insert(
             p6,
             "Chad3",
             "Caterpillar3",
@@ -433,23 +505,14 @@ class PublicMetricsApiTest(BaseTestCase):
             )
         )
 
-        # ghost participant should be filtered out
-        p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-        self._insert(
-            p_ghost, "Ghost", "G", "AZ_TUCSON", "AZ_TUCSON_BANNER_HEALTH", time_int=self.time1, gender_identity=5
-        )
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=5,
-                    created=self.time1,
-                    modified=self.time1,
-                    codeId=gender_code_dict["GenderIdentity_Transgender"],
-                )
-            )
-        )
+        big_query.side_effect = [[expected_bq_results_1], [],
+                                 [expected_bq_results_2, expected_bq_results_3, expected_bq_results_4,
+                                  expected_bq_results_6]]
 
         calculate_participant_metrics()
+
+        self.assertTrue(big_query.called)
+        self.assertEqual(big_query.call_count, 3)
 
         qs = "&stratification=GENDER_IDENTITY" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -667,7 +730,8 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
-    def test_public_metrics_get_gender_api_v2(self):
+    @mock.patch('google.cloud.bigquery.Client.query')
+    def test_public_metrics_get_gender_api_v2(self, big_query):
 
         self.init_gender_codes()
         gender_code_dict = {
@@ -682,7 +746,8 @@ class PublicMetricsApiTest(BaseTestCase):
 
         participant_gender_answer_dao = ParticipantGenderAnswersDao()
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, gender_identity=3)
+        _, expected_bq_results_1 = self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1,
+                                                gender_identity=3)
         participant_gender_answer_dao.insert(
             ParticipantGenderAnswers(
                 **dict(
@@ -695,7 +760,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
+        _, expected_bq_results_2 = self._insert(
             p2,
             "Bob",
             "Builder",
@@ -717,7 +782,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
+        _, expected_bq_results_3 = self._insert(
             p3,
             "Chad",
             "Caterpillar",
@@ -739,7 +804,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p4 = Participant(participantId=4, biobankId=7)
-        self._insert(
+        _, expected_bq_results_4 = self._insert(
             p4,
             "Chad2",
             "Caterpillar2",
@@ -760,7 +825,7 @@ class PublicMetricsApiTest(BaseTestCase):
             )
         )
         p6 = Participant(participantId=6, biobankId=9)
-        self._insert(
+        _, expected_bq_results_6 = self._insert(
             p6,
             "Chad3",
             "Caterpillar3",
@@ -791,21 +856,11 @@ class PublicMetricsApiTest(BaseTestCase):
             )
         )
 
-        # ghost participant should be filtered out
-        p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-        self._insert(
-            p_ghost, "Ghost", "G", "AZ_TUCSON", "AZ_TUCSON_BANNER_HEALTH", time_int=self.time1, gender_identity=5
-        )
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=5,
-                    created=self.time1,
-                    modified=self.time1,
-                    codeId=gender_code_dict["GenderIdentity_Transgender"],
-                )
-            )
-        )
+        big_query.side_effect = [[expected_bq_results_1], [],
+                                 [expected_bq_results_2, expected_bq_results_3, expected_bq_results_4,
+                                  expected_bq_results_6], [expected_bq_results_1], [],
+                                 [expected_bq_results_2, expected_bq_results_3, expected_bq_results_4,
+                                  expected_bq_results_6]]
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
@@ -813,6 +868,9 @@ class PublicMetricsApiTest(BaseTestCase):
         # test copy historical cache for stage two
         with FakeClock(TIME_3):
             calculate_participant_metrics()
+
+        self.assertTrue(big_query.called)
+        self.assertEqual(big_query.call_count, 6)
 
         qs = "&stratification=GENDER_IDENTITY" "&startDate=2017-12-31" "&endDate=2018-01-08" "&version=2"
 
@@ -1091,16 +1149,17 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
-    def test_public_metrics_get_age_range_api(self):
+    @mock.patch('google.cloud.bigquery.Client.query')
+    def test_public_metrics_get_age_range_api(self, big_query):
         dob1 = datetime.date(1978, 10, 10)
         dob2 = datetime.date(1988, 10, 10)
         dob3 = datetime.date(1988, 10, 10)
         dob4 = datetime.date(1998, 10, 10)
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, dob=dob1)
+        _, expected_bq_results_1 = self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, dob=dob1)
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
+        _, expected_bq_results_2 = self._insert(
             p2,
             "Bob",
             "Builder",
@@ -1113,7 +1172,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
+        _, expected_bq_results_3 = self._insert(
             p3,
             "Chad",
             "Caterpillar",
@@ -1126,7 +1185,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p4 = Participant(participantId=4, biobankId=7)
-        self._insert(
+        _, expected_bq_results_4 = self._insert(
             p4,
             "Chad2",
             "Caterpillar2",
@@ -1138,9 +1197,9 @@ class PublicMetricsApiTest(BaseTestCase):
             dob=dob4
         )
 
-        # ghost participant should be filtered out
-        p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-        self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", "AZ_TUCSON_BANNER_HEALTH", time_int=self.time1, dob=dob3)
+        big_query.side_effect = [[expected_bq_results_1], [],
+                                 [expected_bq_results_2, expected_bq_results_3, expected_bq_results_4],
+                                 [expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3]]
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
@@ -1148,6 +1207,9 @@ class PublicMetricsApiTest(BaseTestCase):
         # test copy historical cache for stage two
         with FakeClock(TIME_3):
             calculate_participant_metrics()
+
+        self.assertTrue(big_query.called)
+        self.assertEqual(big_query.call_count, 6)
 
         qs = "&stratification=AGE_RANGE" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -1390,18 +1452,20 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
-    def test_public_metrics_get_total_api(self):
+    @mock.patch('google.cloud.bigquery.Client.query')
+    def test_public_metrics_get_total_api(self, big_query):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, time_study=self.time1)
+        _, expected_bq_results_1 = self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1,
+                                                time_study=self.time1)
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
+        _, expected_bq_results_2 = self._insert(
             p2, "Bob", "Builder", "AZ_TUCSON", "AZ_TUCSON_BANNER_HEALTH", time_int=self.time2, time_study=self.time2
         )
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
+        _, expected_bq_results_3 = self._insert(
             p3,
             "Chad",
             "Caterpillar",
@@ -1413,21 +1477,12 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time5,
         )
 
-        # ghost participant should be filtered out
-        p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-        self._insert(
-            p_ghost,
-            "Ghost",
-            "G",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time4,
-            time_fp_stored=self.time5,
-        )
+        big_query.side_effect = [[expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3]]
 
         calculate_participant_metrics()
+
+        self.assertTrue(big_query.called)
+        self.assertEqual(big_query.call_count, 3)
 
         qs = "&stratification=TOTAL" "&startDate=2018-01-01" "&endDate=2018-01-08"
 
@@ -1447,7 +1502,8 @@ class PublicMetricsApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-07", "metrics": {"TOTAL": 2}}, response)
         self.assertIn({"date": "2018-01-08", "metrics": {"TOTAL": 2}}, response)
 
-    def test_public_metrics_get_race_api(self):
+    @mock.patch('google.cloud.bigquery.Client.query')
+    def test_public_metrics_get_race_api(self, big_query):
 
         questionnaire_id = self.create_demographics_questionnaire()
 
@@ -1484,20 +1540,32 @@ class PublicMetricsApiTest(BaseTestCase):
             return participant
 
         p1 = setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        self.update_participant_summary(p1["participantId"][1:], time_mem=self.time2)
+        _, expected_bq_results_1 = self.update_participant_summary(p1["participantId"][1:], time_mem=self.time2)
         p2 = setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
-        self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3, time_fp_stored=self.time5)
+        _, expected_bq_results_2 = self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3,
+                                                                   time_fp_stored=self.time5)
         p3 = setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
-        setup_participant(self.time3, [PMI_SKIP_CODE], self.provider_link, no_demographic=True)
-        self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4)
+        p6 = setup_participant(self.time3, [PMI_SKIP_CODE], self.provider_link, no_demographic=True)
+        _, expected_bq_results_3 = self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4)
+        _, expected_bq_results_6 = self.update_participant_summary(p6["participantId"][1:], the_basics=0)
         p4 = setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
-        self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5)
+        _, expected_bq_results_4 = self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5)
         p5 = setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        self.update_participant_summary(p5["participantId"][1:], time_mem=self.time4, time_fp_stored=self.time5)
-        setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
-        setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
+        _, expected_bq_results_5 = self.update_participant_summary(p5["participantId"][1:], time_mem=self.time4,
+                                                                   time_fp_stored=self.time5)
+        p7 = setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
+        p8 = setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
+        _, expected_bq_results_7 = self.update_participant_summary(p7["participantId"][1:])
+        _, expected_bq_results_8 = self.update_participant_summary(p8["participantId"][1:])
+
+        big_query.side_effect = [[], [expected_bq_results_1, expected_bq_results_2, expected_bq_results_3,
+                                  expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
+                                 [expected_bq_results_7, expected_bq_results_8]]
 
         calculate_participant_metrics()
+
+        self.assertTrue(big_query.called)
+        self.assertEqual(big_query.call_count, 3)
 
         qs = "&stratification=RACE" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -1657,7 +1725,8 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
-    def test_public_metrics_get_race_api_v2(self):
+    @mock.patch('google.cloud.bigquery.Client.query')
+    def test_public_metrics_get_race_api_v2(self, big_query):
 
         questionnaire_id = self.create_demographics_questionnaire()
 
@@ -1694,20 +1763,32 @@ class PublicMetricsApiTest(BaseTestCase):
             return participant
 
         p1 = setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        self.update_participant_summary(p1["participantId"][1:], time_mem=self.time2)
+        _, expected_bq_results_1 = self.update_participant_summary(p1["participantId"][1:], time_mem=self.time2)
         p2 = setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
-        self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3, time_fp_stored=self.time5)
+        _, expected_bq_results_2 = self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3,
+                                                                   time_fp_stored=self.time5)
         p3 = setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
-        self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4)
+        _, expected_bq_results_3 = self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4)
         # Setup participant with no demographic questionnaire.
-        setup_participant(self.time3, [PMI_SKIP_CODE], self.provider_link, no_demographic=True)
+        p6 = setup_participant(self.time3, [PMI_SKIP_CODE], self.provider_link, no_demographic=True)
+        _, expected_bq_results_6 = self.update_participant_summary(p6["participantId"][1:], the_basics=0)
 
         p4 = setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
-        self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5)
+        _, expected_bq_results_4 = self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5)
         p5 = setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        self.update_participant_summary(p5["participantId"][1:], time_mem=self.time4, time_fp_stored=self.time5)
-        setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
-        setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
+        _, expected_bq_results_5 = self.update_participant_summary(p5["participantId"][1:], time_mem=self.time4,
+                                                                   time_fp_stored=self.time5)
+        p7 = setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
+        p8 = setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
+        _, expected_bq_results_7 = self.update_participant_summary(p7["participantId"][1:])
+        _, expected_bq_results_8 = self.update_participant_summary(p8["participantId"][1:])
+
+        big_query.side_effect = [[], [expected_bq_results_1, expected_bq_results_2, expected_bq_results_3,
+                                      expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
+                                 [expected_bq_results_7, expected_bq_results_8],
+                                 [], [expected_bq_results_1, expected_bq_results_2, expected_bq_results_3,
+                                      expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
+                                 [expected_bq_results_7, expected_bq_results_8]]
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
@@ -1715,6 +1796,9 @@ class PublicMetricsApiTest(BaseTestCase):
         # test copy historical cache for stage two
         with FakeClock(TIME_3):
             calculate_participant_metrics()
+
+        self.assertTrue(big_query.called)
+        self.assertEqual(big_query.call_count, 6)
 
         qs = "&stratification=RACE" "&startDate=2017-12-31" "&endDate=2018-01-08" "&version=2"
 
@@ -1875,7 +1959,8 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
-    def test_public_metrics_get_region_api(self):
+    @mock.patch('google.cloud.bigquery.Client.query')
+    def test_public_metrics_get_region_api(self, big_query):
 
         code1 = Code(
             codeId=1,
@@ -1921,7 +2006,7 @@ class PublicMetricsApiTest(BaseTestCase):
         self.code_dao.insert(code4)
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(
+        _, expected_bq_results_1 = self._insert(
             p1,
             "Alice",
             "Aardvark",
@@ -1934,7 +2019,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
+        _, expected_bq_results_2 = self._insert(
             p2,
             "Bob",
             "Builder",
@@ -1948,7 +2033,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
+        _, expected_bq_results_3 = self._insert(
             p3,
             "Chad",
             "Caterpillar",
@@ -1962,7 +2047,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p4 = Participant(participantId=4, biobankId=7)
-        self._insert(
+        _, expected_bq_results_4 = self._insert(
             p4,
             "Chad2",
             "Caterpillar2",
@@ -1976,7 +2061,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p5 = Participant(participantId=6, biobankId=9)
-        self._insert(
+        _, expected_bq_results_5 = self._insert(
             p5,
             "Chad3",
             "Caterpillar3",
@@ -1989,23 +2074,8 @@ class PublicMetricsApiTest(BaseTestCase):
             state_id=2,
         )
 
-        # ghost participant should be filtered out
-        p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-        self._insert(
-            p_ghost,
-            "Ghost",
-            "G",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp_stored=self.time1,
-            state_id=1,
-        )
-
         p6 = Participant(participantId=7, biobankId=10)
-        self._insert(
+        _, expected_bq_results_6 = self._insert(
             p6,
             "Angela",
             "Alligator",
@@ -2018,7 +2088,14 @@ class PublicMetricsApiTest(BaseTestCase):
             state_id=4,
         )
 
+        big_query.side_effect = [[expected_bq_results_1],
+                                 [expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
+                                 [expected_bq_results_2, expected_bq_results_3]]
+
         calculate_participant_metrics()
+
+        self.assertTrue(big_query.called)
+        self.assertEqual(big_query.call_count, 3)
 
         qs1 = "&stratification=GEO_STATE" "&endDate=2017-12-31"
 
@@ -2107,10 +2184,11 @@ class PublicMetricsApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-02", "count": 3, "hpo": "PITT"}, results3)
         self.assertIn({"date": "2018-01-02", "count": 2, "hpo": "AZ_TUCSON"}, results3)
 
-    def test_public_metrics_get_lifecycle_api(self):
+    @mock.patch('google.cloud.bigquery.Client.query')
+    def test_public_metrics_get_lifecycle_api(self, big_query):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(
+        _, expected_bq_results_1 = self._insert(
             p1,
             "Alice",
             "Aardvark",
@@ -2123,7 +2201,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
+        _, expected_bq_results_2 = self._insert(
             p2,
             "Bob",
             "Builder",
@@ -2137,7 +2215,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
+        _, expected_bq_results_3 = self._insert(
             p3,
             "Chad",
             "Caterpillar",
@@ -2151,7 +2229,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p4 = Participant(participantId=4, biobankId=7)
-        self._insert(
+        _, expected_bq_results_4 = self._insert(
             p4,
             "Chad2",
             "Caterpillar2",
@@ -2165,7 +2243,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p4 = Participant(participantId=6, biobankId=9)
-        self._insert(
+        _, expected_bq_results_5 = self._insert(
             p4,
             "Chad3",
             "Caterpillar3",
@@ -2178,20 +2256,10 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time5,
         )
 
-        # ghost participant should be filtered out
-        p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-        self._insert(
-            p_ghost,
-            "Ghost",
-            "G",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp=self.time1,
-            time_fp_stored=self.time1,
-        )
+        big_query.side_effect = [[expected_bq_results_1], [expected_bq_results_4, expected_bq_results_5],
+                                 [expected_bq_results_2, expected_bq_results_3],
+                                 [expected_bq_results_1], [expected_bq_results_4, expected_bq_results_5],
+                                 [expected_bq_results_2, expected_bq_results_3]]
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
@@ -2199,6 +2267,9 @@ class PublicMetricsApiTest(BaseTestCase):
         # test copy historical cache for stage two
         with FakeClock(TIME_3):
             calculate_participant_metrics()
+
+        self.assertTrue(big_query.called)
+        self.assertEqual(big_query.call_count, 6)
 
         qs1 = "&stratification=LIFECYCLE" "&endDate=2018-01-03"
 
@@ -2292,18 +2363,20 @@ class PublicMetricsApiTest(BaseTestCase):
             ],
         )
 
-    def test_public_metrics_get_language_api(self):
+    @mock.patch('google.cloud.bigquery.Client.query')
+    def test_public_metrics_get_language_api(self, big_query):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, primary_language="en")
+        _, expected_bq_results_1 = self._insert(p1, "Alice", "Aardvark", "UNSET",
+                                                unconsented=True, time_int=self.time1, primary_language="en")
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
-            p2, "Bob", "Builder", "AZ_TUCSON", "AZ_TUCSON_BANNER_HEALTH", time_int=self.time2, primary_language="es"
+        _, expected_bq_results_2 = self._insert(p2, "Bob", "Builder", "AZ_TUCSON",
+                                                "AZ_TUCSON_BANNER_HEALTH", time_int=self.time2, primary_language="es"
         )
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
+        _, expected_bq_results_3 = self._insert(
             p3,
             "Chad",
             "Caterpillar",
@@ -2316,7 +2389,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p4 = Participant(participantId=5, biobankId=7)
-        self._insert(
+        _, expected_bq_results_4 = self._insert(
             p4,
             "Chad2",
             "Caterpillar2",
@@ -2327,18 +2400,24 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time4,
         )
 
+        big_query.side_effect = [[expected_bq_results_1], [],
+                                 [expected_bq_results_2, expected_bq_results_3, expected_bq_results_4]]
+
         calculate_participant_metrics()
         qs = "&stratification=LANGUAGE" "&startDate=2017-12-30" "&endDate=2018-01-03"
 
         results = self.send_get("PublicMetrics", query_string=qs)
+        self.assertTrue(big_query.called)
+        self.assertEqual(big_query.call_count, 3)
         self.assertIn({"date": "2017-12-30", "metrics": {"EN": 0, "UNSET": 0, "ES": 0}}, results)
         self.assertIn({"date": "2017-12-31", "metrics": {"EN": 1, "UNSET": 2, "ES": 0}}, results)
         self.assertIn({"date": "2018-01-03", "metrics": {"EN": 1, "UNSET": 2, "ES": 1}}, results)
 
-    def test_public_metrics_get_primary_consent_api(self):
+    @mock.patch('google.cloud.bigquery.Client.query')
+    def test_public_metrics_get_primary_consent_api(self, big_query):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(
+        _, expected_bq_results_1 = self._insert(
             p1,
             "Alice",
             "Aardvark",
@@ -2351,7 +2430,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
+        _, expected_bq_results_2 = self._insert(
             p2,
             "Bob",
             "Builder",
@@ -2365,7 +2444,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
+        _, expected_bq_results_3 = self._insert(
             p3,
             "Chad",
             "Caterpillar",
@@ -2379,7 +2458,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         p4 = Participant(participantId=4, biobankId=7)
-        self._insert(
+        _, expected_bq_results_4 = self._insert(
             p4,
             "Chad2",
             "Caterpillar2",
@@ -2392,9 +2471,9 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time5,
         )
 
-        p4 = Participant(participantId=6, biobankId=9)
-        self._insert(
-            p4,
+        p5 = Participant(participantId=6, biobankId=9)
+        _, expected_bq_results_5 = self._insert(
+            p5,
             "Chad3",
             "Caterpillar3",
             "PITT",
@@ -2406,20 +2485,10 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time5,
         )
 
-        # ghost participant should be filtered out
-        p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-        self._insert(
-            p_ghost,
-            "Ghost",
-            "G",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp=self.time1,
-            time_fp_stored=self.time1,
-        )
+        big_query.side_effect = [[expected_bq_results_1], [expected_bq_results_4, expected_bq_results_5],
+                                 [expected_bq_results_2, expected_bq_results_3], [expected_bq_results_1],
+                                 [expected_bq_results_4, expected_bq_results_5],
+                                 [expected_bq_results_2, expected_bq_results_3]]
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
@@ -2431,6 +2500,8 @@ class PublicMetricsApiTest(BaseTestCase):
         qs = "&stratification=PRIMARY_CONSENT" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
         results = self.send_get("PublicMetrics", query_string=qs)
+        self.assertTrue(big_query.called)
+        self.assertEqual(big_query.call_count, 6)
         self.assertIn({"date": "2017-12-31", "metrics": {"Primary_Consent": 1}}, results)
         self.assertIn({"date": "2018-01-02", "metrics": {"Primary_Consent": 2}}, results)
         self.assertIn({"date": "2018-01-06", "metrics": {"Primary_Consent": 5}}, results)
