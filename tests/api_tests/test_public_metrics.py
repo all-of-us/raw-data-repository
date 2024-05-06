@@ -2506,7 +2506,8 @@ class PublicMetricsApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-02", "metrics": {"Primary_Consent": 2}}, results)
         self.assertIn({"date": "2018-01-06", "metrics": {"Primary_Consent": 5}}, results)
 
-    def test_public_metrics_get_ehr_consent_api(self):
+    @mock.patch('google.cloud.bigquery.Client.query')
+    def test_public_metrics_get_ehr_consent_api(self, big_query):
 
         p1 = Participant(participantId=1, biobankId=4)
         self._insert(
@@ -2596,6 +2597,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         qs = "&stratification=EHR_METRICS" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
+        self.assertTrue(big_query.called)
         results = self.send_get("PublicMetrics", query_string=qs)
         self.assertIn(
             {"date": "2017-12-31", "metrics": {"ORGANIZATIONS_ACTIVE": 0, "EHR_RECEIVED": 0, "EHR_CONSENTED": 1}},
