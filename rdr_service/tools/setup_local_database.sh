@@ -82,14 +82,14 @@ fi
 # Set it again with the Alembic user for upgrading the database.
 set_local_db_connection_string alembic
 
-echo "Updating RDR schema to latest..."
-tools/upgrade_database.sh
-
-echo "Updating REX schema to latest..."
-tools/upgrade_database_rex.sh
-
-echo "Updating NPH schema to latest..."
-tools/upgrade_database_nph.sh
+#echo "Updating RDR schema to latest..."
+#tools/upgrade_database.sh
+#
+#echo "Updating REX schema to latest..."
+#tools/upgrade_database_rex.sh
+#
+#echo "Updating NPH schema to latest..."
+#tools/upgrade_database_nph.sh
 
 echo "Updating PPSC schema to latest..."
 tools/upgrade_database_ppsc.sh

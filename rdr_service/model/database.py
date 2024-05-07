@@ -81,6 +81,7 @@ from rdr_service.model.retention_status_import_failures import RetentionStatusIm
 from rdr_service.model.study_nph import Participant
 from rdr_service.model.study_nph_sms import SmsSample, SmsJobRun
 from rdr_service.model.rex import Study
+from rdr_service.model.ppsc import Participant
 from rdr_service.etl.model.etl_vocabulary import Concept, ConceptRelationship, CombinedQuestionFilter,\
     CombinedSurveyFilter, SourceToConceptMap
 
