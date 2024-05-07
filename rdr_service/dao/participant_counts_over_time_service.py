@@ -91,7 +91,7 @@ class ParticipantCountsOverTimeService(BaseDao):
 
         public_metrics_project_map = config.getSettingJson(config.PUBLIC_METRICS_PROJECT_MAP, {})
 
-        self.client = bigquery.Client(config.GAE_PROJECT)
+        self.client = bigquery.Client(project=config.GAE_PROJECT)
         self.bq_project = public_metrics_project_map.get(self.client.project)
         self.participant_table = config.getSettingJson(config.PUBLIC_METRICS_PARTICIPANT_TABLE,
                                                        'lake_operational_data.rdr_participant')

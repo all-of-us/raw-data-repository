@@ -140,11 +140,16 @@ class PublicMetricsApiTest(BaseTestCase):
         self.clear_table_after_test('metrics_language_cache')
 
         self.temporarily_override_config_setting(config.PUBLIC_METRICS_PROJECT_MAP, {
+            "localhost": "aou-warehouse-test",
             "all-of-us-rdr-sandbox": "aou-warehouse-test",
             "all-of-us-rdr-staging": "aou-warehouse-test",
             "all-of-us-rdr-stable": "aou-warehouse-test",
             "all-of-us-rdr-prod": "aou-warehouse-test",
         })
+
+    def tearDown(self):
+        self.clear_table_after_test("rdr.metrics_enrollment_status_cache")
+        super().tearDown()
 
     def _insert(
         self,
