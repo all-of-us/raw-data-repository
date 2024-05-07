@@ -174,6 +174,9 @@ def _initialize_database(with_data=True, with_consent_codes=False):
             engine.execute("CREATE DATABASE voc CHARACTER SET utf8 COLLATE utf8_general_ci")
             engine.execute("CREATE DATABASE ppsc CHARACTER SET utf8 COLLATE utf8_general_ci")
 
+            engine.execute("USE ppsc")
+            database.create_ppsc_schema()
+
             engine.execute("USE nph")
             database.create_nph_schema()
 
@@ -191,9 +194,6 @@ def _initialize_database(with_data=True, with_consent_codes=False):
 
             engine.execute("USE rdr")
             database.create_schema()
-
-            engine.execute("USE ppsc")
-            database.create_ppsc_schema()
 
             # alter table charset like what db migration do
             engine.execute("ALTER TABLE `questionnaire_response_answer` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
