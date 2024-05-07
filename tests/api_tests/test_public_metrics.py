@@ -1,4 +1,5 @@
 import datetime
+import time
 import mock
 
 from rdr_service import config
@@ -333,7 +334,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         return summary, generate_mock_results(participant, summary, the_basics)
 
-    @mock.patch('google.cloud.bigquery.Client.query')
+    @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_enrollment_status_api(self, big_query):
 
         p1 = Participant(participantId=1, biobankId=4)
@@ -357,13 +358,12 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time4,
         )
 
-        big_query.side_effect = [[expected_bq_results_1], [],
-                                 [expected_bq_results_2, expected_bq_results_3]]
+        big_query().query.side_effect = [[expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3]]
 
         calculate_participant_metrics()
 
-        self.assertTrue(big_query.called)
-        self.assertEqual(big_query.call_count, 3)
+        self.assertTrue(big_query().query.called)
+        self.assertEqual(big_query().query.call_count, 3)
 
         qs = "&stratification=ENROLLMENT_STATUS" "&startDate=2018-01-01" "&endDate=2018-01-08"
 
@@ -379,7 +379,7 @@ class PublicMetricsApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-02", "metrics": {"consented": 1, "core": 0, "registered": 1}}, results)
         self.assertIn({"date": "2018-01-03", "metrics": {"consented": 0, "core": 1, "registered": 1}}, results)
 
-    @mock.patch('google.cloud.bigquery.Client.query')
+    @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_gender_api(self, big_query):
 
         self.init_gender_codes()
@@ -510,14 +510,13 @@ class PublicMetricsApiTest(BaseTestCase):
             )
         )
 
-        big_query.side_effect = [[expected_bq_results_1], [],
-                                 [expected_bq_results_2, expected_bq_results_3, expected_bq_results_4,
-                                  expected_bq_results_6]]
+        big_query().query.side_effect = [[expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3,
+                                                                       expected_bq_results_4, expected_bq_results_6]]
 
         calculate_participant_metrics()
 
-        self.assertTrue(big_query.called)
-        self.assertEqual(big_query.call_count, 3)
+        self.assertTrue(big_query().query.called)
+        self.assertEqual(big_query().query.call_count, 3)
 
         qs = "&stratification=GENDER_IDENTITY" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -735,7 +734,7 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
-    @mock.patch('google.cloud.bigquery.Client.query')
+    @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_gender_api_v2(self, big_query):
 
         self.init_gender_codes()
@@ -861,21 +860,22 @@ class PublicMetricsApiTest(BaseTestCase):
             )
         )
 
-        big_query.side_effect = [[expected_bq_results_1], [],
-                                 [expected_bq_results_2, expected_bq_results_3, expected_bq_results_4,
-                                  expected_bq_results_6], [expected_bq_results_1], [],
-                                 [expected_bq_results_2, expected_bq_results_3, expected_bq_results_4,
-                                  expected_bq_results_6]]
+        big_query().query.side_effect = [[expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3,
+                                                                       expected_bq_results_4, expected_bq_results_6],
+                                         [expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3,
+                                                                       expected_bq_results_4, expected_bq_results_6]]
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
+
+        time.sleep(2)
 
         # test copy historical cache for stage two
         with FakeClock(TIME_3):
             calculate_participant_metrics()
 
-        self.assertTrue(big_query.called)
-        self.assertEqual(big_query.call_count, 6)
+        self.assertTrue(big_query().query.called)
+        self.assertEqual(big_query().query.call_count, 6)
 
         qs = "&stratification=GENDER_IDENTITY" "&startDate=2017-12-31" "&endDate=2018-01-08" "&version=2"
 
@@ -1154,7 +1154,7 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
-    @mock.patch('google.cloud.bigquery.Client.query')
+    @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_age_range_api(self, big_query):
         dob1 = datetime.date(1978, 10, 10)
         dob2 = datetime.date(1988, 10, 10)
@@ -1202,19 +1202,21 @@ class PublicMetricsApiTest(BaseTestCase):
             dob=dob4
         )
 
-        big_query.side_effect = [[expected_bq_results_1], [],
-                                 [expected_bq_results_2, expected_bq_results_3, expected_bq_results_4],
-                                 [expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3]]
+        big_query().query.side_effect = [[expected_bq_results_1], [],
+                                         [expected_bq_results_2, expected_bq_results_3, expected_bq_results_4],
+                                         [expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3]]
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
+
+        time.sleep(2)
 
         # test copy historical cache for stage two
         with FakeClock(TIME_3):
             calculate_participant_metrics()
 
-        self.assertTrue(big_query.called)
-        self.assertEqual(big_query.call_count, 6)
+        self.assertTrue(big_query().query.called)
+        self.assertEqual(big_query().query.call_count, 6)
 
         qs = "&stratification=AGE_RANGE" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -1457,7 +1459,7 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
-    @mock.patch('google.cloud.bigquery.Client.query')
+    @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_total_api(self, big_query):
 
         p1 = Participant(participantId=1, biobankId=4)
@@ -1482,12 +1484,12 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time5,
         )
 
-        big_query.side_effect = [[expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3]]
+        big_query().query.side_effect = [[expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3]]
 
         calculate_participant_metrics()
 
-        self.assertTrue(big_query.called)
-        self.assertEqual(big_query.call_count, 3)
+        self.assertTrue(big_query().query.called)
+        self.assertEqual(big_query().query.call_count, 3)
 
         qs = "&stratification=TOTAL" "&startDate=2018-01-01" "&endDate=2018-01-08"
 
@@ -1507,7 +1509,7 @@ class PublicMetricsApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-07", "metrics": {"TOTAL": 2}}, response)
         self.assertIn({"date": "2018-01-08", "metrics": {"TOTAL": 2}}, response)
 
-    @mock.patch('google.cloud.bigquery.Client.query')
+    @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_race_api(self, big_query):
 
         questionnaire_id = self.create_demographics_questionnaire()
@@ -1563,14 +1565,14 @@ class PublicMetricsApiTest(BaseTestCase):
         _, expected_bq_results_7 = self.update_participant_summary(p7["participantId"][1:])
         _, expected_bq_results_8 = self.update_participant_summary(p8["participantId"][1:])
 
-        big_query.side_effect = [[], [expected_bq_results_1, expected_bq_results_2, expected_bq_results_3,
-                                  expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
-                                 [expected_bq_results_7, expected_bq_results_8]]
+        big_query().query.side_effect = [[], [expected_bq_results_1, expected_bq_results_2, expected_bq_results_3,
+                                              expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
+                                         [expected_bq_results_7, expected_bq_results_8]]
 
         calculate_participant_metrics()
 
-        self.assertTrue(big_query.called)
-        self.assertEqual(big_query.call_count, 3)
+        self.assertTrue(big_query().query.called)
+        self.assertEqual(big_query().query.call_count, 3)
 
         qs = "&stratification=RACE" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -1730,7 +1732,7 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
-    @mock.patch('google.cloud.bigquery.Client.query')
+    @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_race_api_v2(self, big_query):
 
         questionnaire_id = self.create_demographics_questionnaire()
@@ -1788,22 +1790,24 @@ class PublicMetricsApiTest(BaseTestCase):
         _, expected_bq_results_7 = self.update_participant_summary(p7["participantId"][1:])
         _, expected_bq_results_8 = self.update_participant_summary(p8["participantId"][1:])
 
-        big_query.side_effect = [[], [expected_bq_results_1, expected_bq_results_2, expected_bq_results_3,
-                                      expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
-                                 [expected_bq_results_7, expected_bq_results_8],
-                                 [], [expected_bq_results_1, expected_bq_results_2, expected_bq_results_3,
-                                      expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
-                                 [expected_bq_results_7, expected_bq_results_8]]
+        big_query().query.side_effect = [[], [expected_bq_results_1, expected_bq_results_2, expected_bq_results_3,
+                                              expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
+                                         [expected_bq_results_7, expected_bq_results_8],
+                                         [], [expected_bq_results_1, expected_bq_results_2, expected_bq_results_3,
+                                              expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
+                                         [expected_bq_results_7, expected_bq_results_8]]
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
+
+        time.sleep(2)
 
         # test copy historical cache for stage two
         with FakeClock(TIME_3):
             calculate_participant_metrics()
 
-        self.assertTrue(big_query.called)
-        self.assertEqual(big_query.call_count, 6)
+        self.assertTrue(big_query().query.called)
+        self.assertEqual(big_query().query.call_count, 6)
 
         qs = "&stratification=RACE" "&startDate=2017-12-31" "&endDate=2018-01-08" "&version=2"
 
@@ -1964,7 +1968,7 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
-    @mock.patch('google.cloud.bigquery.Client.query')
+    @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_region_api(self, big_query):
 
         code1 = Code(
@@ -2093,14 +2097,14 @@ class PublicMetricsApiTest(BaseTestCase):
             state_id=4,
         )
 
-        big_query.side_effect = [[expected_bq_results_1],
-                                 [expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
-                                 [expected_bq_results_2, expected_bq_results_3]]
+        big_query().query.side_effect = [[expected_bq_results_1],
+                                         [expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
+                                         [expected_bq_results_2, expected_bq_results_3]]
 
         calculate_participant_metrics()
 
-        self.assertTrue(big_query.called)
-        self.assertEqual(big_query.call_count, 3)
+        self.assertTrue(big_query().query.called)
+        self.assertEqual(big_query().query.call_count, 3)
 
         qs1 = "&stratification=GEO_STATE" "&endDate=2017-12-31"
 
@@ -2189,7 +2193,7 @@ class PublicMetricsApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-02", "count": 3, "hpo": "PITT"}, results3)
         self.assertIn({"date": "2018-01-02", "count": 2, "hpo": "AZ_TUCSON"}, results3)
 
-    @mock.patch('google.cloud.bigquery.Client.query')
+    @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_lifecycle_api(self, big_query):
 
         p1 = Participant(participantId=1, biobankId=4)
@@ -2261,20 +2265,22 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time5,
         )
 
-        big_query.side_effect = [[expected_bq_results_1], [expected_bq_results_4, expected_bq_results_5],
-                                 [expected_bq_results_2, expected_bq_results_3],
-                                 [expected_bq_results_1], [expected_bq_results_4, expected_bq_results_5],
-                                 [expected_bq_results_2, expected_bq_results_3]]
+        big_query().query.side_effect = [[expected_bq_results_1], [expected_bq_results_4, expected_bq_results_5],
+                                         [expected_bq_results_2, expected_bq_results_3],
+                                         [expected_bq_results_1], [expected_bq_results_4, expected_bq_results_5],
+                                         [expected_bq_results_2, expected_bq_results_3]]
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
+
+        time.sleep(2)
 
         # test copy historical cache for stage two
         with FakeClock(TIME_3):
             calculate_participant_metrics()
 
-        self.assertTrue(big_query.called)
-        self.assertEqual(big_query.call_count, 6)
+        self.assertTrue(big_query().query.called)
+        self.assertEqual(big_query().query.call_count, 6)
 
         qs1 = "&stratification=LIFECYCLE" "&endDate=2018-01-03"
 
@@ -2368,7 +2374,7 @@ class PublicMetricsApiTest(BaseTestCase):
             ],
         )
 
-    @mock.patch('google.cloud.bigquery.Client.query')
+    @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_language_api(self, big_query):
 
         p1 = Participant(participantId=1, biobankId=4)
@@ -2405,20 +2411,20 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time4,
         )
 
-        big_query.side_effect = [[expected_bq_results_1], [],
-                                 [expected_bq_results_2, expected_bq_results_3, expected_bq_results_4]]
+        big_query().query.side_effect = [[expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3,
+                                                                       expected_bq_results_4]]
 
         calculate_participant_metrics()
         qs = "&stratification=LANGUAGE" "&startDate=2017-12-30" "&endDate=2018-01-03"
 
         results = self.send_get("PublicMetrics", query_string=qs)
-        self.assertTrue(big_query.called)
-        self.assertEqual(big_query.call_count, 3)
+        self.assertTrue(big_query().query.called)
+        self.assertEqual(big_query().query.call_count, 3)
         self.assertIn({"date": "2017-12-30", "metrics": {"EN": 0, "UNSET": 0, "ES": 0}}, results)
         self.assertIn({"date": "2017-12-31", "metrics": {"EN": 1, "UNSET": 2, "ES": 0}}, results)
         self.assertIn({"date": "2018-01-03", "metrics": {"EN": 1, "UNSET": 2, "ES": 1}}, results)
 
-    @mock.patch('google.cloud.bigquery.Client.query')
+    @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_primary_consent_api(self, big_query):
 
         p1 = Participant(participantId=1, biobankId=4)
@@ -2490,13 +2496,15 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time5,
         )
 
-        big_query.side_effect = [[expected_bq_results_1], [expected_bq_results_4, expected_bq_results_5],
-                                 [expected_bq_results_2, expected_bq_results_3], [expected_bq_results_1],
-                                 [expected_bq_results_4, expected_bq_results_5],
-                                 [expected_bq_results_2, expected_bq_results_3]]
+        big_query().query.side_effect = [[expected_bq_results_1], [expected_bq_results_4, expected_bq_results_5],
+                                         [expected_bq_results_2, expected_bq_results_3], [expected_bq_results_1],
+                                         [expected_bq_results_4, expected_bq_results_5],
+                                         [expected_bq_results_2, expected_bq_results_3]]
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
+
+        time.sleep(2)
 
         # test copy historical cache for stage two
         with FakeClock(TIME_3):
@@ -2505,13 +2513,13 @@ class PublicMetricsApiTest(BaseTestCase):
         qs = "&stratification=PRIMARY_CONSENT" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
         results = self.send_get("PublicMetrics", query_string=qs)
-        self.assertTrue(big_query.called)
-        self.assertEqual(big_query.call_count, 6)
+        self.assertTrue(big_query().query.called)
+        self.assertEqual(big_query().query.call_count, 6)
         self.assertIn({"date": "2017-12-31", "metrics": {"Primary_Consent": 1}}, results)
         self.assertIn({"date": "2018-01-02", "metrics": {"Primary_Consent": 2}}, results)
         self.assertIn({"date": "2018-01-06", "metrics": {"Primary_Consent": 5}}, results)
 
-    @mock.patch('google.cloud.bigquery.Client.query')
+    @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_ehr_consent_api(self, big_query):
 
         p1 = Participant(participantId=1, biobankId=4)
@@ -2602,7 +2610,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         qs = "&stratification=EHR_METRICS" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
-        self.assertTrue(big_query.called)
+        self.assertTrue(big_query().query.called)
         results = self.send_get("PublicMetrics", query_string=qs)
         self.assertIn(
             {"date": "2017-12-31", "metrics": {"ORGANIZATIONS_ACTIVE": 0, "EHR_RECEIVED": 0, "EHR_CONSENTED": 1}},
@@ -2661,7 +2669,7 @@ class PublicMetricsApiTest(BaseTestCase):
         return self.create_questionnaire("questionnaire3.json")
 
     def post_demographics_questionnaire(
-        self, participant_id, questionnaire_id, cabor_signature_string=False, time=TIME_1, **kwargs
+        self, participant_id, questionnaire_id, cabor_signature_string=False, test_time=TIME_1, **kwargs
     ):
         """POSTs answers to the demographics questionnaire for the participant"""
         answers = {
@@ -2690,7 +2698,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         response_data = self.make_questionnaire_response_json(participant_id, questionnaire_id, **answers)
 
-        with FakeClock(time):
+        with FakeClock(test_time):
             url = "Participant/%s/QuestionnaireResponse" % participant_id
             return self.send_post(url, request_data=response_data)
 
