@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 
-from rdr_service.model.base import Base, MetricsBase, RexBase, NphBase, VocBase, CdmBase
+from rdr_service.model.base import Base, MetricsBase, RexBase, NphBase, VocBase, CdmBase, PPSCBase
 
 # All tables in the schema should be imported below here.
 # pylint: disable=unused-import
@@ -125,6 +125,9 @@ class Database(object):
 
     def create_nph_schema(self):
         NphBase.metadata.create_all(self._engine)
+
+    def create_ppsc_schema(self):
+        PPSCBase.metadata.create_all(self._engine)
 
     def create_voc_schema(self):
         VocBase.metadata.create_all(self._engine)

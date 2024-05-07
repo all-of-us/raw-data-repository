@@ -15,7 +15,7 @@ from rdr_service.model import compiler  # pylint: disable=unused-import
 
 # Importing this is what gets our model available for Alembic.
 from rdr_service.model import utils  # pylint: disable=unused-import
-from rdr_service.model.base import Base, MetricsBase, RexBase, NphBase
+from rdr_service.model.base import Base, MetricsBase, RexBase, NphBase, PPSCBase
 
 USE_TWOPHASE = False
 
@@ -42,6 +42,7 @@ target_metadata = {
     "metrics": MetricsBase.metadata,
     "nph": NphBase.metadata,
     "rex": RexBase.metadata,
+    "ppsc": PPSCBase.metadata
 }
 
 # other values from the config, defined by the needs of env.py,
