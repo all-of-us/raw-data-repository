@@ -9,7 +9,7 @@
 
 if [ -z "$1" ]
 then
-  echo "Usage: tools/generate_schema_nph.sh <MESSAGE>"
+  echo "Usage: tools/generate_schema_ppsc.sh <MESSAGE>"
   exit 1
 fi
 
