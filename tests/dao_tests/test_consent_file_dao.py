@@ -47,6 +47,34 @@ class ConsentFileDaoTest(BaseTestCase):
         consent_response = pid_consent_response_map[response_to_validate.participantId][0]
         self.assertEqual(response_to_validate.questionnaireResponseId, consent_response.questionnaire_response_id)
 
+    def test_getting_recent_response(self):
+        filter_date = datetime(2022, 4, 1)
+
+        # add a few before the filter date
+        self.session.add(
+            ConsentResponse(response=self.data_generator.create_database_questionnaire_response(
+                created=datetime(2021, 11, 8)
+            ))
+        )
+        self.session.add(
+            ConsentResponse(response=self.data_generator.create_database_questionnaire_response(
+                created=datetime(2022, 3, 25)
+            ))
+        )
+
+        # add one after the filter date
+        response_to_validate = self.data_generator.create_database_questionnaire_response(
+            created=datetime(2022, 4, 5)
+        )
+        self.session.add(ConsentResponse(response=response_to_validate, type=ConsentType.EHR))
+        self.session.commit()
+
+        # Make sure we get the correct response from the DAO
+        pid_consent_response_map, _ = self.consent_dao.get_consent_responses_to_validate(session=self.session)
+
+        consent_response = pid_consent_response_map[response_to_validate.participantId][0]
+        self.assertEqual(response_to_validate.questionnaireResponseId, consent_response.questionnaire_response_id)
+
     def test_finding_consent_responses_by_participant(self):
         # create a few consent responses for a participant
         participant = self.data_generator.create_database_participant()

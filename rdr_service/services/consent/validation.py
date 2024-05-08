@@ -668,7 +668,7 @@ class ConsentValidationController:
         # DA-3423:  Populate the consent_response_id values for the ConsentFile validation results as needed
         output_strategy.set_consent_response_ids_for_results()
 
-    def validate_consent_uploads(self, output_strategy: ValidationOutputStrategy):
+    def validate_consent_uploads(self, output_strategy: ValidationOutputStrategy, since: datetime = None):
         """
         Find all the expected consents (filtering by dates if provided) and check the files that have been uploaded
         """
