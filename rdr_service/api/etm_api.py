@@ -13,6 +13,7 @@ from werkzeug.exceptions import BadRequest
 
 from rdr_service.clock import CLOCK
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.domain_model import etm as models
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.repository import etm as etm_repository
@@ -126,7 +127,9 @@ class EtmApi:
             questionnaire_type=fhir_response.questionnaire.reference.split('/')[-1],
             status=QuestionnaireStatus.SUBMITTED,
             participant_id=cls._participant_id_from_patient_ref(fhir_response.subject.reference),
-            resource_json=questionnaire_response_json
+            resource_json=questionnaire_response_json,
+            identifier=fhir_response.identifier.value,
+            answer_hash=QuestionnaireResponseDao.calculate_answer_hash(questionnaire_response_json),
         )
 
         response_obj.metadata_list = cls._parse_extension_json(cls._find_extension(

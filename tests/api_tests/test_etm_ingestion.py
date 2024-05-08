@@ -134,6 +134,9 @@ class EtmIngestionTest(BaseTestCase):
         ps_ts = datetime.strptime(ps_etm_authored_str, '%Y-%m-%dT%H:%M:%S')
         self.assertEqual(ps_ts, saved_response.authored)
 
+        self.assertEqual(saved_response.identifier, questionnaire_response_json["identifier"]["value"])
+        self.assertIsNotNone(saved_response.answer_hash)
+
     def test_multiple_etm_tasks_for_retention(self):
         with open(data_path('etm_questionnaire.json')) as file:
             questionnaire_json = json.load(file)
