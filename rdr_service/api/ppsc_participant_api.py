@@ -24,12 +24,16 @@ class PPSCParticipantAPI(BaseApi):
         if all([key in req_data for key in required_keys]) \
                 and all([val for val in req_data.values() if val is not None]):
 
+            converted_dict: dict = {
+                self.dao.camel_to_snake(k): self.dao.extract_prefix_from_val(v) for (k, v)
+                in req_data.items() if k in required_keys
+            }
+
             if self.dao.get_participant_by_participant_id(
-                participant_id=req_data.get('participantId')
+                participant_id=int(converted_dict.get('participant_id'))
             ):
                 raise BadRequest(f'Participant {req_data.get("participantId")} already exists')
 
-            converted_dict: dict = {self.dao.camel_to_snake(k): v for k, v in req_data.items() if k in required_keys}
             inserted_participant = self.handle_participant_insert(participant_data=converted_dict)
             return self._make_response(obj=inserted_participant)
 

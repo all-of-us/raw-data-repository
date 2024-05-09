@@ -35,8 +35,8 @@ class PPSCParticipantAPITest(BaseTestCase):
         )
 
         payload = {
-            'participantId': 22,
-            'biobankId': 22,
+            'participantId': 'P22',
+            'biobankId': 'T22',
             'registeredDate': '2024-03-26T13:24:03.935Z'
         }
 
@@ -61,8 +61,8 @@ class PPSCParticipantAPITest(BaseTestCase):
         # extra keys - will return a response instead of an error since json will be cleaned
         payload = {
             'badKey': 22,
-            'participantId': 22,
-            'biobankId': 22,
+            'participantId': 'P22',
+            'biobankId': 'T22',
             'registeredDate': '2024-03-26T13:24:03.935Z'
         }
         response = self.send_post('createParticipant', request_data=payload)
@@ -71,7 +71,7 @@ class PPSCParticipantAPITest(BaseTestCase):
         # null values
         payload = {
             'participantId': '',
-            'biobankId': 22,
+            'biobankId': 'T22',
             'registeredDate': '2024-03-26T13:24:03.935Z'
         }
         response = self.send_post('createParticipant', request_data=payload, expected_status=http.client.BAD_REQUEST)
@@ -87,21 +87,21 @@ class PPSCParticipantAPITest(BaseTestCase):
             }
         )
         payload = {
-            'participantId': 22,
-            'biobankId': 22,
+            'participantId': 'P22',
+            'biobankId': 'T22',
             'registeredDate': '2024-03-26T13:24:03.935Z'
         }
 
         response = self.send_post('createParticipant', request_data=payload, expected_status=http.client.BAD_REQUEST)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json['message'], f'Participant {payload.get("participantId")} already exists')
-        self.assertEqual(current_participant.id, payload.get("participantId"))
+        self.assertEqual(current_participant.id, int(payload.get("participantId")[1:]))
 
     def test_payload_inserts_participant_records(self):
 
         payload = {
-            'participantId': 22,
-            'biobankId': 22,
+            'participantId': 'P22',
+            'biobankId': 'T22',
             'registeredDate': '2024-03-26T13:24:03.935Z'
         }
         response = self.send_post('createParticipant', request_data=payload)
