@@ -281,6 +281,8 @@ def check_for_consent_corrections():
 @app_util.auth_required_cron
 def validate_consent_files():
     consent_dao = ConsentDao()
+    # Consents are validated every hour, putting a bunch of overlap in case something went wrong in the recent passes
+    three_hours_ago = datetime.utcnow() - timedelta(hours=3)
     with consent_dao.session() as session, StoreResultStrategy(
         session=session,
         consent_dao=consent_dao
@@ -289,7 +291,7 @@ def validate_consent_files():
             session=session,
             consent_dao=consent_dao
         )
-        validation_controller.validate_consent_uploads(store_strategy)
+        validation_controller.validate_consent_uploads(store_strategy, since=three_hours_ago)
     return '{"success": "true"}'
 
 @app_util.auth_required_cron

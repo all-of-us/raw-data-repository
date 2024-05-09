@@ -70,10 +70,19 @@ class ConsentFileDaoTest(BaseTestCase):
         self.session.commit()
 
         # Make sure we get the correct response from the DAO
-        pid_consent_response_map, _ = self.consent_dao.get_consent_responses_to_validate(session=self.session)
+        pid_consent_response_map, _ = self.consent_dao.get_consent_responses_to_validate(
+            session=self.session,
+            since_date=filter_date
+        )
 
-        consent_response = pid_consent_response_map[response_to_validate.participantId][0]
-        self.assertEqual(response_to_validate.questionnaireResponseId, consent_response.questionnaire_response_id)
+        self.assertEqual(1, len(pid_consent_response_map))
+        self.assertIn(response_to_validate.participantId, pid_consent_response_map)
+
+        resulting_consent_response = pid_consent_response_map[response_to_validate.participantId][0]
+        self.assertEqual(
+            response_to_validate.questionnaireResponseId,
+            resulting_consent_response.questionnaire_response_id
+        )
 
     def test_finding_consent_responses_by_participant(self):
         # create a few consent responses for a participant

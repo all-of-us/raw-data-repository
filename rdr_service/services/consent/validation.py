@@ -676,7 +676,8 @@ class ConsentValidationController:
         is_last_batch = False
         while not is_last_batch:
             participant_id_consent_map, is_last_batch = self.consent_dao.get_consent_responses_to_validate(
-                session=self._session
+                session=self._session,
+                since_date=since
             )
             self._process_id_consent_map(
                 participant_id_consent_map=participant_id_consent_map,
