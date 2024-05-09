@@ -29,12 +29,16 @@ class PPSCParticipantAPI(BaseApi):
             ):
                 raise BadRequest(f'Participant {req_data.get("participantId")} already exists')
 
-            # converted_dict: dict = {self.dao.camel_to_snake(k): v for k, v in req_data.items()}
-            # inserted_participant = self.dao.insert(**self.dao.model_type)
-            # return self._make_response()
+            converted_dict: dict = {self.dao.camel_to_snake(k): v for k, v in req_data.items() if k in required_keys}
+            inserted_participant = self.handle_participant_insert(participant_data=converted_dict)
+            return self._make_response(obj=inserted_participant)
 
         response_string: str = ', '.join(required_keys)
-        raise BadRequest(f'Missing/Extra data in createParticipant payload: Required keys - {response_string}')
+        raise BadRequest(f'Payload for createParticipant is invalid: Required keys - {response_string}')
 
-    def handle_participant_insert(self):
-        ...
+    def handle_participant_insert(self, *, participant_data: dict) -> dict:
+        print(participant_data)
+        # converted_dict: dict = {self.dao.camel_to_snake(k): v for k, v in participant_data.items()}
+        # inserted_participant = self.dao.insert(**self.dao.model_type)
+        return {}
+
