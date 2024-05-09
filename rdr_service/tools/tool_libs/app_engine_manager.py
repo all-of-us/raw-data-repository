@@ -399,7 +399,8 @@ class DeployAppClass(ToolBase):
         apply_migrations_for_all_databases = [
             ["upgrade", "heads"],
             ["-c", "alembic_nph.ini", "upgrade", "heads"],
-            ["-c", "alembic_rex.ini", "upgrade", "heads"]
+            ["-c", "alembic_rex.ini", "upgrade", "heads"],
+            ["-c", "alembic_ppsc.ini", "upgrade", "heads"]
         ]
         for args in apply_migrations_for_all_databases:
             alembic = AlembicManagerClass(self.args, self.gcp_env, args)
