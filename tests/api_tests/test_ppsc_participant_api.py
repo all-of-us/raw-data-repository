@@ -2,7 +2,7 @@ import http.client
 import random
 from copy import deepcopy
 
-from rdr_service import clock, config
+from rdr_service import config
 from rdr_service.api_util import PPSC, RDR, HEALTHPRO
 from rdr_service.dao.ppsc_dao import ParticipantDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
@@ -37,7 +37,7 @@ class PPSCParticipantAPITest(BaseTestCase):
         payload = {
             'participantId': 22,
             'biobankId': 22,
-            'registeredDate': clock.CLOCK.now()
+            'registeredDate': '2024-03-26T13:24:03.935Z'
         }
 
         response = self.send_post('createParticipant', request_data=payload)
@@ -63,7 +63,7 @@ class PPSCParticipantAPITest(BaseTestCase):
             'badKey': 22,
             'participantId': 22,
             'biobankId': 22,
-            'registeredDate': clock.CLOCK.now()
+            'registeredDate': '2024-03-26T13:24:03.935Z'
         }
         response = self.send_post('createParticipant', request_data=payload)
         self.assertTrue(response is not None)
@@ -72,7 +72,7 @@ class PPSCParticipantAPITest(BaseTestCase):
         payload = {
             'participantId': '',
             'biobankId': 22,
-            'registeredDate': clock.CLOCK.now()
+            'registeredDate': '2024-03-26T13:24:03.935Z'
         }
         response = self.send_post('createParticipant', request_data=payload, expected_status=http.client.BAD_REQUEST)
         self.assertEqual(response.status_code, 400)
@@ -89,7 +89,7 @@ class PPSCParticipantAPITest(BaseTestCase):
         payload = {
             'participantId': 22,
             'biobankId': 22,
-            'registeredDate': clock.CLOCK.now()
+            'registeredDate': '2024-03-26T13:24:03.935Z'
         }
 
         response = self.send_post('createParticipant', request_data=payload, expected_status=http.client.BAD_REQUEST)
@@ -102,7 +102,7 @@ class PPSCParticipantAPITest(BaseTestCase):
         payload = {
             'participantId': 22,
             'biobankId': 22,
-            'registeredDate': clock.CLOCK.now()
+            'registeredDate': '2024-03-26T13:24:03.935Z'
         }
         response = self.send_post('createParticipant', request_data=payload)
         self.assertTrue(response is not None)
