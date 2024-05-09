@@ -560,6 +560,33 @@ class ConsentValidationTesting(BaseTestCase):
             self.validator.get_etm_validation_results()
         )
 
+    @mock.patch('rdr_service.services.consent.validation.AccountLinkDao')
+    def test_pediatric_guardian_name(self, _):
+        """Check that the guardian's name matching is flexible (case-insensitive and optional middle name"""
+
+        self.consent_factory_mock.get_pediatric_primary_consents.return_value = [
+            self._mock_consent(
+                consent_class=files.PediatricPrimaryConsentFile,
+                get_guardian_name='TEST AL MCTESTERSON'
+            )
+        ]
+        guardian_participant = ParticipantSummary(
+            firstName='Test',
+            lastName='McTesterson'
+        )
+        self.validator._session.query.return_value.filter.return_value.one_or_none.return_value = guardian_participant
+
+        self.assertMatchesExpectedResults(
+            [
+                {
+                    'participant_id': self.participant_summary.participantId,
+                    'type': ConsentType.PEDIATRIC_PRIMARY,
+                    'sync_status': ConsentSyncStatus.READY_FOR_SYNC
+                }
+            ],
+            self.validator.get_pediatric_primary_validation_results()
+        )
+
     def _mock_consent(self, consent_class: Type[files.ConsentFile], **kwargs):
         consent_args = {
             'get_signature_on_file': self._default_signature,

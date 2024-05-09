@@ -48,7 +48,7 @@ idna==3.7                 # via requests
 isodate==0.6.0            # via fhirclient
 isort==4.3.21             # via pylint
 itsdangerous==2.1.2       # via flask
-jinja2==3.1.3             # via flask, sphinx
+jinja2==3.1.4             # via flask, sphinx
 jira==2.0.0               # via -r requirements.in
 lazy-object-proxy==1.4.3  # via astroid
 locust==1.3.2             # via -r requirements.in
@@ -104,7 +104,7 @@ toml==0.10.1              # via pylint
 typed-ast==1.5.4          # via astroid
 uritemplate==3.0.1        # via google-api-python-client
 urllib3==1.26.18           # via requests
-werkzeug==3.0.1           # via flask
+werkzeug==3.0.3           # via flask
 wrapt==1.15.0             # via astroid
 xmltodict==0.12.0         # via -r requirements.in
 zope.event==4.4           # via gevent

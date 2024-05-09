@@ -5267,9 +5267,9 @@ class GenomicPRDao(GenomicSubDao):
     def get_manifest_three_records(self):
         with self.session() as session:
             current_processed_count: sqlalchemy.orm.Query = session.query(
-                GenomicAW3Raw.sample_id,
-                func.count(GenomicAW3Raw.sample_id).label('processed_count')
-            ).group_by(GenomicAW3Raw.sample_id).subquery()
+                GenomicP3Raw.sample_id,
+                func.count(GenomicP3Raw.sample_id).label('processed_count')
+            ).group_by(GenomicP3Raw.sample_id).subquery()
 
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicProteomics.biobank_id),
