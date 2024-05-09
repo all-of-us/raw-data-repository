@@ -83,7 +83,8 @@ class ConsentDao(BaseDao):
 
         if since_date:
             query = query.filter(
-                QuestionnaireResponse.created >= since_date
+                QuestionnaireResponse.created >= since_date,
+                QuestionnaireResponse.questionnaireId > 0  # needed to use prod's index of the created date
             ).with_hint(
                 QuestionnaireResponse, 'USE INDEX (idx_created_q_id)'
             )
