@@ -71,3 +71,18 @@ event.listen(EnrollmentEventType, "before_insert", model_insert_listener)
 event.listen(EnrollmentEventType, "before_update", model_update_listener)
 
 
+class EnrollmentEvent(PPSCBase):
+    __tablename__ = "enrollment_event"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    event_authored_time = Column(UTCDateTime)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    event_type_id = Column(BigInteger, ForeignKey("enrollment_event_type.id"))
+
+
+event.listen(EnrollmentEvent, "before_insert", model_insert_listener)
+event.listen(EnrollmentEvent, "before_update", model_update_listener)

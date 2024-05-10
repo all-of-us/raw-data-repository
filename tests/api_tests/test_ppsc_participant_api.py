@@ -4,8 +4,9 @@ from copy import deepcopy
 
 from rdr_service import config
 from rdr_service.api_util import PPSC, RDR, HEALTHPRO
-from rdr_service.dao.ppsc_dao import ParticipantDao
+from rdr_service.dao.ppsc_dao import ParticipantDao, PPSCDefaultBaseDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
+from rdr_service.model.ppsc import ParticipantEventActivity, EnrollmentEvent
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -13,13 +14,20 @@ class PPSCParticipantAPITest(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.ppsc_data_gen = PPSCDataGenerator()
-        self.partcipant_dao = ParticipantDao()
+        self.ppsc_partcipant_dao = ParticipantDao()
+        self.ppsc_participant_activity_dao = PPSCDefaultBaseDao(model_type=ParticipantEventActivity)
+        self.ppsc_enrollment_event_dao = PPSCDefaultBaseDao(model_type=EnrollmentEvent)
 
         activities = ['ENROLLMENT']
         for activity in activities:
             self.ppsc_data_gen.create_database_activity(
                 name=activity
             )
+
+        self.ppsc_data_gen.create_database_enrollment_event_type(
+            name="Participant Created",
+            source_name='participant_created'
+        )
 
     def overwrite_test_user_roles(self, roles):
         new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
@@ -106,9 +114,33 @@ class PPSCParticipantAPITest(BaseTestCase):
         }
         response = self.send_post('createParticipant', request_data=payload)
         self.assertTrue(response is not None)
+        self.assertEqual(response, f'Participant {payload.get("participantId")} was created successfully')
+
+        # check insert model deps
+        current_participant_event_activity = self.ppsc_participant_activity_dao.get_all()
+        self.assertEqual(len(current_participant_event_activity), 1)
+        current_participant_event_activity = current_participant_event_activity[0]
+        self.assertEqual(current_participant_event_activity.activity_id, 1)
+        self.assertEqual(current_participant_event_activity.participant_id, int(payload.get("participantId")[1:]))
+        self.assertEqual(current_participant_event_activity.resource, payload)
+
+        current_enrollment_event = self.ppsc_enrollment_event_dao.get_all()
+        self.assertEqual(len(current_enrollment_event), 1)
+        current_enrollment_event = current_enrollment_event[0]
+        self.assertEqual(current_enrollment_event.participant_id, int(payload.get("participantId")[1:]))
+        self.assertTrue(current_enrollment_event.event_id is not None)
+        self.assertTrue(current_enrollment_event.event_type_id is not None)
+
+        current_participant = self.ppsc_partcipant_dao.get_all()
+        self.assertEqual(len(current_participant), 1)
+        current_participant = current_participant[0]
+        self.assertEqual(current_participant.biobank_id, int(payload.get("biobankId")[1:]))
+        self.assertEqual(current_participant.id, int(payload.get("participantId")[1:]))
+        self.assertTrue(current_participant.registered_date is not None)
 
     def tearDown(self):
         super().tearDown()
+        self.clear_table_after_test("ppsc.activity")
         self.clear_table_after_test("ppsc.participant")
-        self.clear_table_after_test("ppsc.activity")
-        self.clear_table_after_test("ppsc.activity")
+        self.clear_table_after_test("ppsc.enrollment_event_type")
+        self.clear_table_after_test("ppsc.enrollment_event")
