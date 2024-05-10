@@ -57,8 +57,9 @@ class PPSCParticipantAPI(BaseApi):
         participant_data['id'] = participant_data.get('participant_id')
         del participant_data['participant_id']
 
-        inserted_participant = self.ppsc_participant_dao.insert(self.ppsc_participant_dao.model_type(
-            **participant_data))
+        inserted_participant = self.ppsc_participant_dao.insert(
+            self.ppsc_participant_dao.model_type(**participant_data)
+        )
 
         participant_event_activity_dict = {
             'activity_id': enrollment_activity.id,
@@ -66,15 +67,17 @@ class PPSCParticipantAPI(BaseApi):
             'resource': req_data
         }
         participant_event_activity = self.ppsc_participant_activity_dao.insert(
-            self.ppsc_participant_activity_dao.model_type(
-                **participant_event_activity_dict))
+            self.ppsc_participant_activity_dao.model_type(**participant_event_activity_dict)
+        )
 
         enrollment_event_dict = {
             'event_id': participant_event_activity.id,
             'participant_id': inserted_participant.id,
             'event_type_id': enrollment_type.id
         }
-        self.ppsc_enrollment_event_dao.insert(self.ppsc_enrollment_event_dao.model_type(**enrollment_event_dict))
+        self.ppsc_enrollment_event_dao.insert(
+            self.ppsc_enrollment_event_dao.model_type(**enrollment_event_dict)
+        )
 
         return inserted_participant
 
