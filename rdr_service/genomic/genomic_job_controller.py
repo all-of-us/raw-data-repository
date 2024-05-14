@@ -21,6 +21,7 @@ from rdr_service.config import (
     MissingConfigException,
     RDR_SLACK_WEBHOOKS,
     GENOME_TYPE_WGS, GENOMIC_MEMBER_BLOCKLISTS)
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
@@ -1205,6 +1206,7 @@ class GenomicJobController:
         return path_map
 
     def set_rdr_aw1_attributes_from_raw(self, rec: tuple, file_proc_map: dict):
+        sample_dao = BiobankStoredSampleDao()
         member = rec[0]
         raw = rec[1]
 
@@ -1217,6 +1219,10 @@ class GenomicJobController:
 
         # Set the GC site ID (sourced from file-name)
         member.gcSiteId = raw.file_path.split('/')[-1].split("_")[0].lower()
+
+        # Update the diversion pouch flag
+        if sample_dao.get_diversion_pouch_site_id(raw.collection_tube_id):
+            member.diversionPouchSiteFlag = 1
 
         # Only update the state if it was AW0 or AW1 (if in failure manifest workflow)
         # We do not want to regress a state for reingested data
