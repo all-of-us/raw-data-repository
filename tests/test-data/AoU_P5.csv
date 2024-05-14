@@ -1,0 +1,5 @@
+"biobank_id","sample_id","biobankid_sampleid","sex_at_birth","site_id","npx_explore_path","analysis_report_path"
+"T01","1111","T01_1111","F","bi","path","more path"
+"T02","2222","T02_2222","F","ont","path","more path"
+"T03","3333","T03_3333","F","bi","path","more path"
+

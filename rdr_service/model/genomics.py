@@ -2249,6 +2249,54 @@ event.listen(GenomicP1Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicP1Raw, 'before_update', model_update_listener)
 
 
+class GenomicP1FRaw(Base):
+    """
+    Raw Data from P1F files
+    """
+    __tablename__ = 'genomic_p1f_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    package_id = Column(String(255), nullable=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    box_storageunit_id = Column(String(255), nullable=True)
+    box_id_plate_id = Column(String(255), nullable=True)
+    well_position = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    parent_sample_id = Column(String(255), nullable=True, index=True)
+    collection_tubeid = Column(String(255), nullable=True, index=True)
+    matrix_id = Column(String(255), nullable=True)
+    collection_date = Column(String(255), nullable=True)
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    age = Column(String(255), nullable=True)
+    ny_state_y_n = Column(String(255), nullable=True)
+    sample_type = Column(String(255), nullable=True)
+    treatments = Column(String(255), nullable=True)
+    quantity_ul = Column(String(255), nullable=True)
+    visit_description = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    study = Column(String(255), nullable=True)
+    tracking_number = Column(String(255), nullable=True)
+    contact = Column(String(255), nullable=True)
+    email = Column(String(255), nullable=True)
+    study_pi = Column(String(255), nullable=True)
+    site_name = Column(String(255), nullable=True, index=True)
+    failure_mode = Column(String(255), nullable=True)
+    failure_mode_desc = Column(String(255), nullable=True)
+    genome_type = Column(String(80), nullable=True, index=True)
+
+
+event.listen(GenomicP1FRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicP1FRaw, 'before_update', model_update_listener)
+
+
 class GenomicP2Raw(Base):
     """
     Raw Data from P2 files
@@ -2345,8 +2393,36 @@ class GenomicP4Raw(Base):
     kit_type = Column(String(1028), nullable=True)
     notes = Column(String(1028), nullable=True)
 
+
 event.listen(GenomicP4Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicP4Raw, 'before_update', model_update_listener)
+
+
+class GenomicP5Raw(Base):
+    """
+    Raw Data from P5 files
+    """
+    __tablename__ = 'genomic_p5_raw'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankid_sampleid = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    site_id = Column(String(255), nullable=True)
+    npx_explore_path = Column(String(255), nullable=True)
+    analysis_report_path = Column(String(255), nullable=True)
+
+
+event.listen(GenomicP5Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicP5Raw, 'before_update', model_update_listener)
 
 
 class GenomicRNA(Base):

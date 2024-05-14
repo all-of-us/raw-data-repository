@@ -63,7 +63,7 @@ mv -f /tmp/db_config.json .configs/db_config.json
 
 if [ -z "${UPGRADE}" ]
 then
-  for db_name in "rdr" "metrics" "rdr_tasks" "nph" "rex"; do
+  for db_name in "rdr" "metrics" "rdr_tasks" "nph" "rex" "ppsc"; do
     # Include charset here since mysqld defaults to Latin1 (even though CloudSQL
     # is configured with UTF8 as the default). Keep in sync with unit_test_util.py.
     cat tools/drop_db.sql tools/create_db.sql | envsubst > $CREATE_DB_FILE
@@ -82,14 +82,17 @@ fi
 # Set it again with the Alembic user for upgrading the database.
 set_local_db_connection_string alembic
 
-echo "Updating schema to latest..."
+echo "Updating RDR schema to latest..."
 tools/upgrade_database.sh
 
-echo "Updating schema to latest..."
+echo "Updating REX schema to latest..."
 tools/upgrade_database_rex.sh
 
-echo "Updating schema to latest..."
+echo "Updating NPH schema to latest..."
 tools/upgrade_database_nph.sh
+
+echo "Updating PPSC schema to latest..."
+tools/upgrade_database_ppsc.sh
 
 echo "Setting general configuration..."
 #tools/install_config.sh --config config/config_dev.json --update

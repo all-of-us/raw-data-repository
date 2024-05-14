@@ -423,6 +423,10 @@ class IngestSubManifestTaskApi(BaseGenomicTaskApi):
                 'job': GenomicJob.PR_P1_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.PR_P1
             },
+            'p1f': {
+                'job': GenomicJob.PR_P1F_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.PR_P1F
+            },
             'p2': {
                 'job': GenomicJob.PR_P2_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.PR_P2
@@ -431,11 +435,20 @@ class IngestSubManifestTaskApi(BaseGenomicTaskApi):
                 'job': GenomicJob.PR_P4_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.PR_P4
             },
+            'p5': {
+                'job': GenomicJob.PR_P5_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.PR_P5
+            },
         }
         rna_map = {
             'rr': {
                 'job': GenomicJob.RNA_RR_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.RNA_RR
+
+            },
+            'r1': {
+                'job': GenomicJob.RNA_R1_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.RNA_R1
 
             },
             'r2': {

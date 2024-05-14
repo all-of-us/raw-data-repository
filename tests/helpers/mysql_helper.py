@@ -163,6 +163,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
             engine.execute("DROP DATABASE IF EXISTS nph")
             engine.execute("DROP DATABASE IF EXISTS rex")
             engine.execute("DROP DATABASE IF EXISTS voc")
+            engine.execute("DROP DATABASE IF EXISTS ppsc")
 
             # Keep in sync with tools/setup_local_database.sh.
             engine.execute("CREATE DATABASE rdr CHARACTER SET utf8 COLLATE utf8_general_ci")
@@ -171,6 +172,10 @@ def _initialize_database(with_data=True, with_consent_codes=False):
             engine.execute("CREATE DATABASE nph CHARACTER SET utf8 COLLATE utf8_general_ci")
             engine.execute("CREATE DATABASE rex CHARACTER SET utf8 COLLATE utf8_general_ci")
             engine.execute("CREATE DATABASE voc CHARACTER SET utf8 COLLATE utf8_general_ci")
+            engine.execute("CREATE DATABASE ppsc CHARACTER SET utf8 COLLATE utf8_general_ci")
+
+            engine.execute("USE ppsc")
+            database.create_ppsc_schema()
 
             engine.execute("USE nph")
             database.create_nph_schema()

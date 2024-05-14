@@ -378,7 +378,7 @@ class GenomicRNAPipelineTest(BaseTestCase):
                     biobank_id=genomic_set_member.biobankId,
                     collection_tube_id=f'{num}11111',
                     genome_type="aou_rnaseq",
-                    r_site_id="bi",
+                    r_site_id="rdr",
                     rna_set=1
                 )
 

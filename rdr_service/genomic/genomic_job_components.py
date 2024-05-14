@@ -19,7 +19,8 @@ from rdr_service import clock, config
 from rdr_service.cloud_utils.gcp_google_pubsub import submit_pipeline_pubsub_msg_from_model
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_short_read_workflow import GenomicAW1Workflow, GenomicAW2Workflow, GenomicAW4Workflow
-from rdr_service.genomic.genomic_sub_workflow import GenomicSubWorkflow, GenomicSubLongReadWorkflow
+from rdr_service.genomic.genomic_sub_workflow import GenomicSubLongReadWorkflow, \
+    GenomicSubProWorkflow, GenomicSubRNAWorkflow
 from rdr_service.genomic_enums import ResultsModuleType
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -326,8 +327,10 @@ class GenomicFileIngester:
                 GenomicJob.LR_L6F_WORKFLOW: self._ingest_lr_manifest,
                 GenomicJob.PR_PR_WORKFLOW: self._ingest_pr_manifest,
                 GenomicJob.PR_P1_WORKFLOW: self._ingest_pr_manifest,
+                GenomicJob.PR_P1F_WORKFLOW: self._ingest_pr_manifest,
                 GenomicJob.PR_P2_WORKFLOW: self._ingest_pr_manifest,
                 GenomicJob.PR_P4_WORKFLOW: self._ingest_pr_manifest,
+                GenomicJob.PR_P5_WORKFLOW: self._ingest_pr_manifest,
                 GenomicJob.RNA_RR_WORKFLOW: self._ingest_rna_manifest,
                 GenomicJob.RNA_R1_WORKFLOW: self._ingest_rna_manifest,
                 GenomicJob.RNA_R2_WORKFLOW: self._ingest_rna_manifest
@@ -1137,7 +1140,7 @@ class GenomicFileIngester:
     # Proteomics
     def _ingest_pr_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
-            GenomicSubWorkflow.create_genomic_sub_workflow(
+            GenomicSubProWorkflow.create_genomic_sub_workflow(
                 dao=GenomicPRDao,
                 job_id=self.job_id,
                 job_run_id=self.job_run_id,
@@ -1150,7 +1153,7 @@ class GenomicFileIngester:
     # RNA Seq
     def _ingest_rna_manifest(self, rows: List[OrderedDict]) -> GenomicSubProcessResult:
         try:
-            GenomicSubWorkflow.create_genomic_sub_workflow(
+            GenomicSubRNAWorkflow.create_genomic_sub_workflow(
                 dao=GenomicRNADao,
                 job_id=self.job_id,
                 job_run_id=self.job_run_id,
@@ -1726,6 +1729,16 @@ class GenomicFileValidator:
             "notes"
         )
 
+        self.PR_P5_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "sexatbirth",
+            "siteid",
+            "npxexplorepath",
+            "analysisreportpath"
+        )
+
         # RNA pipeline
         self.RNA_RR_SCHEMA = (
             "biobankid",
@@ -2198,6 +2211,18 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def pr_p1f_manifest_name_rule():
+            """
+            PR P1F manifest name rule
+            """
+            return (
+                len(filename_components) <= 4 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'p1f' and
+                filename.lower().endswith('csv')
+            )
+
         def pr_p2_manifest_name_rule():
             """
             PR P2 manifest name rule
@@ -2221,10 +2246,21 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def pr_p5_manifest_name_rule():
+            """
+            PR P5 manifest name rule
+            """
+            return (
+                len(filename_components) <= 4 and
+                filename_components[0] == 'aou' and
+                filename_components[1] == 'p5' and
+                filename.lower().endswith('csv')
+            )
+
         # RNA pipeline
         def rna_rr_manifest_name_rule():
             """
-            RNA PR manifest name rule
+            RNA RR manifest name rule
             """
             return (
                 len(filename_components) == 5 and
@@ -2237,7 +2273,7 @@ class GenomicFileValidator:
 
         def rna_r1_manifest_name_rule():
             """
-            RNA P1 manifest name rule
+            RNA R1 manifest name rule
             """
             return (
                 len(filename_components) == 4 and
@@ -2289,8 +2325,10 @@ class GenomicFileValidator:
             GenomicJob.LR_L6F_WORKFLOW: lr_l6_manifest_name_rule,
             GenomicJob.PR_PR_WORKFLOW: pr_pr_manifest_name_rule,
             GenomicJob.PR_P1_WORKFLOW: pr_p1_manifest_name_rule,
+            GenomicJob.PR_P1F_WORKFLOW: pr_p1f_manifest_name_rule,
             GenomicJob.PR_P2_WORKFLOW: pr_p2_manifest_name_rule,
             GenomicJob.PR_P4_WORKFLOW: pr_p4_manifest_name_rule,
+            GenomicJob.PR_P5_WORKFLOW: pr_p5_manifest_name_rule,
             GenomicJob.RNA_RR_WORKFLOW: rna_rr_manifest_name_rule,
             GenomicJob.RNA_R1_WORKFLOW: rna_r1_manifest_name_rule,
             GenomicJob.RNA_R2_WORKFLOW: rna_r2_manifest_name_rule
@@ -2432,12 +2470,17 @@ class GenomicFileValidator:
                 return self.LR_L6_SCHEMA
             if self.job_id == GenomicJob.PR_PR_WORKFLOW:
                 return self.PR_PR_SCHEMA
-            if self.job_id == GenomicJob.PR_P1_WORKFLOW:
+            if self.job_id in [
+                GenomicJob.PR_P1_WORKFLOW,
+                GenomicJob.PR_P1F_WORKFLOW
+            ]:
                 return self.PR_P1_SCHEMA
             if self.job_id == GenomicJob.PR_P2_WORKFLOW:
                 return self.PR_P2_SCHEMA
             if self.job_id == GenomicJob.PR_P4_WORKFLOW:
                 return self.PR_P4_SCHEMA
+            if self.job_id == GenomicJob.PR_P5_WORKFLOW:
+                return self.PR_P5_SCHEMA
             if self.job_id == GenomicJob.RNA_RR_WORKFLOW:
                 return self.RNA_RR_SCHEMA
             if self.job_id == GenomicJob.RNA_R1_WORKFLOW:

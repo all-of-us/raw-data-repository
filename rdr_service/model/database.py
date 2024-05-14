@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 
-from rdr_service.model.base import Base, MetricsBase, RexBase, NphBase, VocBase, CdmBase
+from rdr_service.model.base import Base, MetricsBase, RexBase, NphBase, VocBase, CdmBase, PPSCBase
 
 # All tables in the schema should be imported below here.
 # pylint: disable=unused-import
@@ -81,6 +81,7 @@ from rdr_service.model.retention_status_import_failures import RetentionStatusIm
 from rdr_service.model.study_nph import Participant
 from rdr_service.model.study_nph_sms import SmsSample, SmsJobRun
 from rdr_service.model.rex import Study
+from rdr_service.model.ppsc import Participant
 from rdr_service.etl.model.etl_vocabulary import Concept, ConceptRelationship, CombinedQuestionFilter,\
     CombinedSurveyFilter, SourceToConceptMap
 
@@ -125,6 +126,9 @@ class Database(object):
 
     def create_nph_schema(self):
         NphBase.metadata.create_all(self._engine)
+
+    def create_ppsc_schema(self):
+        PPSCBase.metadata.create_all(self._engine)
 
     def create_voc_schema(self):
         VocBase.metadata.create_all(self._engine)

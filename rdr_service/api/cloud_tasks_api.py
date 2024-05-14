@@ -404,9 +404,16 @@ class UpdateEnrollmentStatus(Resource):
                 session=session,
                 participant_id=participant_id
             )
+
+            additional_parameters = {}
+            for param_name in ('allow_downgrade', 'pdr_pubsub'):
+                if param_name in task_data:
+                    additional_parameters[param_name] = task_data[param_name]
+
             dao.update_enrollment_status(
                 summary=summary,
-                session=session
+                session=session,
+                **additional_parameters
             )
 
 

@@ -4958,16 +4958,9 @@ class GenomicSubDao(ABC, UpdatableDao, GenomicDaoMixin):
     def get_max_set_subquery(self):
         ...
 
+    @abstractmethod
     def get_pipeline_members_missing_sample_id(self, *, biobank_ids: List[str], collection_tube_ids: List[str]):
-        with self.session() as session:
-            return session.query(
-                self.model_type.id,
-                self.model_type.biobank_id
-            ).filter(
-                self.model_type.sample_id.is_(None),
-                self.model_type.biobank_id.in_(biobank_ids),
-                self.model_type.collection_tube_id.in_(collection_tube_ids),
-            ).distinct().all()
+        ...
 
 
 class GenomicLongReadDao(GenomicSubDao):
@@ -5227,6 +5220,23 @@ class GenomicPRDao(GenomicSubDao):
                 GenomicSetMember.ai_an == 'N'
             ).distinct().all()
 
+    def get_pipeline_members_missing_sample_id(
+        self,
+        *,
+        biobank_ids: List[str],
+        collection_tube_ids: List[str],
+        p_site_id: str):
+        with self.session() as session:
+            return session.query(
+                self.model_type.id,
+                self.model_type.biobank_id
+            ).filter(
+                self.model_type.sample_id.is_(None),
+                self.model_type.biobank_id.in_(biobank_ids),
+                self.model_type.collection_tube_id.in_(collection_tube_ids),
+                self.model_type.p_site_id == p_site_id
+            ).distinct().all()
+
     def get_manifest_zero_records_from_max_set(self):
         with self.session() as session:
             return session.query(
@@ -5257,9 +5267,9 @@ class GenomicPRDao(GenomicSubDao):
     def get_manifest_three_records(self):
         with self.session() as session:
             current_processed_count: sqlalchemy.orm.Query = session.query(
-                GenomicAW3Raw.sample_id,
-                func.count(GenomicAW3Raw.sample_id).label('processed_count')
-            ).group_by(GenomicAW3Raw.sample_id).subquery()
+                GenomicP3Raw.sample_id,
+                func.count(GenomicP3Raw.sample_id).label('processed_count')
+            ).group_by(GenomicP3Raw.sample_id).subquery()
 
             return session.query(
                 func.concat(get_biobank_id_prefix(), GenomicProteomics.biobank_id),
@@ -5347,6 +5357,23 @@ class GenomicRNADao(GenomicSubDao):
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.biobankId.in_(biobank_ids),
                 GenomicSetMember.ai_an == 'N'
+            ).distinct().all()
+
+    def get_pipeline_members_missing_sample_id(
+        self,
+        *,
+        biobank_ids: List[str],
+        collection_tube_ids: List[str],
+        r_site_id: str):
+        with self.session() as session:
+            return session.query(
+                self.model_type.id,
+                self.model_type.biobank_id
+            ).filter(
+                self.model_type.sample_id.is_(None),
+                self.model_type.biobank_id.in_(biobank_ids),
+                self.model_type.collection_tube_id.in_(collection_tube_ids),
+                self.model_type.r_site_id == r_site_id
             ).distinct().all()
 
     def get_manifest_zero_records_from_max_set(self):
