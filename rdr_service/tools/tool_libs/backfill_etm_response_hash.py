@@ -2,12 +2,12 @@ from datetime import datetime
 import json
 import os
 
-from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
+from rdr_service.api.etm_api import EtmApi
 from rdr_service.model.etm import EtmQuestionnaireResponse
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase, logger
 
-tool_cmd = 'etm-answer-hash-backfill'
-tool_desc = 'Backfill the answer digest for EtM responses'
+tool_cmd = 'etm-response-hash-backfill'
+tool_desc = 'Backfill the response digest for EtM responses'
 
 
 class EtmDigestBackfillTool(ToolBase):
@@ -33,19 +33,19 @@ class EtmDigestBackfillTool(ToolBase):
         ids = [int(i) for i in ids if i.strip()]
         num_ids = len(ids)
         if num_ids > 2500:
-            logger.error(f'Max of 2500 questionnaire_response_ids can be backfilled. File contained {num_ids} ids')
+            logger.error(f'Max of 2500 etm_questionnaire_response_ids can be backfilled. File contained {num_ids} ids')
         elif num_ids:
             with self.get_session() as session:
                 questionnaire_response_query = session.query(
                     EtmQuestionnaireResponse
                 ).filter(
                     EtmQuestionnaireResponse.etm_questionnaire_response_id.in_(ids),
-                    EtmQuestionnaireResponse.answer_hash.is_(None)
+                    EtmQuestionnaireResponse.response_hash.is_(None)
                 ).limit(2500)
 
                 for response in questionnaire_response_query:
-                    answer_hash = QuestionnaireResponseDao.calculate_answer_hash(json.loads(response.resource))
-                    response.answer_hash = answer_hash
+                    response_hash = EtmApi.calculate_response_hash(json.loads(response.resource))
+                    response.response_hash = response_hash
 
                 session.commit()
 
@@ -59,14 +59,14 @@ class EtmDigestBackfillTool(ToolBase):
                     EtmQuestionnaireResponse
                 ).filter(
                     EtmQuestionnaireResponse.etm_questionnaire_response_id > latest_id,
-                    EtmQuestionnaireResponse.answer_hash.is_(None)
+                    EtmQuestionnaireResponse.response_hash.is_(None)
                 ).order_by(EtmQuestionnaireResponse.etm_questionnaire_response_id).limit(2500)
 
                 for response in questionnaire_response_query:
                     found_responses = True
 
-                    answer_hash = QuestionnaireResponseDao.calculate_answer_hash(json.loads(response.resource))
-                    response.answer_hash = answer_hash
+                    response_hash = EtmApi.calculate_response_hash(json.loads(response.resource))
+                    response.response_hash = response_hash
 
                     latest_id = response.questionnaireResponseId
 

@@ -42,7 +42,7 @@ class EtmResponse:
     version: int = None
     questionnaire_id: int = None
     identifier: str = None
-    answer_hash: str = None
+    response_hash: str = None
 
 
 @dataclass

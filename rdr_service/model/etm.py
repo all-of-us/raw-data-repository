@@ -64,7 +64,7 @@ class EtmQuestionnaireResponse(Base):
         backref='response'
     )
 
-    answer_hash = sa.Column(sa.String(32), nullable=True)
+    response_hash = sa.Column(sa.String(32), nullable=True)
     """MD5 hash of the payload used to identify duplicate submissions"""
 
     identifier = sa.Column(sa.String(64), nullable=True)
