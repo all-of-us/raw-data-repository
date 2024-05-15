@@ -668,7 +668,7 @@ class ConsentValidationController:
         # DA-3423:  Populate the consent_response_id values for the ConsentFile validation results as needed
         output_strategy.set_consent_response_ids_for_results()
 
-    def validate_consent_uploads(self, output_strategy: ValidationOutputStrategy):
+    def validate_consent_uploads(self, output_strategy: ValidationOutputStrategy, since: datetime = None):
         """
         Find all the expected consents (filtering by dates if provided) and check the files that have been uploaded
         """
@@ -676,7 +676,8 @@ class ConsentValidationController:
         is_last_batch = False
         while not is_last_batch:
             participant_id_consent_map, is_last_batch = self.consent_dao.get_consent_responses_to_validate(
-                session=self._session
+                session=self._session,
+                since_date=since
             )
             self._process_id_consent_map(
                 participant_id_consent_map=participant_id_consent_map,
@@ -1012,9 +1013,12 @@ class ConsentValidator:
             ).filter(ParticipantSummary.participantId == guardian_id_list.pop()).one_or_none()
 
         # compare first and last name to parsed string
+        file_guardian_name_parts = result.guardian_printed_name.lower().split(' ')
         if (
             not guardian_summary
-            or f'{guardian_summary.firstName} {guardian_summary.lastName}' != result.guardian_printed_name
+            or len(file_guardian_name_parts) < 2
+            or guardian_summary.firstName.lower() != file_guardian_name_parts[0]
+            or guardian_summary.lastName.lower() != file_guardian_name_parts[-1]
         ):
             self._append_other_error(ConsentOtherErrors.UNEXPECTED_GUARDIAN_NAME, result)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING

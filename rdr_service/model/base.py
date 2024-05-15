@@ -30,6 +30,7 @@ RexBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="rex"))
 NphBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="nph"))
 CdmBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="cdm"))
 VocBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="voc"))
+PPSCBase = declarative_base(cls=DictableModel, metadata=MetaData(schema="ppsc"))
 
 
 class ModelMixin(object):
