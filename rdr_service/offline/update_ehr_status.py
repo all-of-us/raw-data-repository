@@ -299,7 +299,10 @@ def make_update_organizations_job():
         bigquery_view = None
     if bigquery_view:
         query = "SELECT org_id, person_upload_time FROM `{}`".format(bigquery_view)
-        return bigquery.BigQueryJob(query, default_dataset_id="operations_analytics", page_size=1000)
+        twenty_second_timeout = 20_000
+        return bigquery.BigQueryJob(
+            query, default_dataset_id="operations_analytics", page_size=1000, socket_timeout=twenty_second_timeout
+        )
     else:
         return None
 
