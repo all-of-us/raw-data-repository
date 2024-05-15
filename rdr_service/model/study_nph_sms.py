@@ -69,6 +69,7 @@ class SmsSample(NphBase):
     race = Column(String(1024))
     ethnicity = Column(String(1024))
     destination = Column(String(64), index=True)
+    body_weight_kg = Column(String(32))
 
 
 event.listen(SmsSample, "before_insert", model_insert_listener)
@@ -156,6 +157,10 @@ class SmsN1Mc1(NphBase):
     urine_clarity = Column(String(1024))
     bowel_movement = Column(String(1024))
     bowel_movement_quality = Column(String(1024))
+    body_weight_kg = Column(String(1024))
+    dlw_dose_batch = Column(String(1024))
+    dlw_dose_date_time = Column(String(1024))
+    dlw_dose_grams = Column(String(1024))
 
 
 event.listen(SmsN1Mc1, "before_insert", model_insert_listener)
