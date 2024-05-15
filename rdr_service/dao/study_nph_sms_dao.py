@@ -1,4 +1,3 @@
-import logging
 from typing import List, Dict
 from sqlalchemy import func, and_
 from sqlalchemy.orm import aliased
