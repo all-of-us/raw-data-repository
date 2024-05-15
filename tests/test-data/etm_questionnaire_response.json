@@ -4,6 +4,9 @@
         "reference": "https://research.joinallofus.org/fhir/emorecog"
     },
     "status": "completed",
+    "identifier": {
+      "value": "142"
+    },
     "subject": {
         "reference": "Patient/P000000000"
     },
