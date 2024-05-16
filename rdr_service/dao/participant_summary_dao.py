@@ -565,6 +565,8 @@ class ParticipantSummaryDao(UpdatableDao):
             return self._add_env_exposures_order(query, order_by, PediatricDataLog.value)
         elif order_by.field_name == 'ageAtConsentMonths':
             return self._add_age_at_consent_months_order(order_by, query)
+        elif order_by.field_name == 'isPediatric':
+            return self._add_is_pediatric_order(query, order_by, PediatricDataLog.id.isnot(None))
         return super(ParticipantSummaryDao, self)._add_order_by(query, order_by, field_names, fields)
 
     @staticmethod
@@ -599,6 +601,20 @@ class ParticipantSummaryDao(UpdatableDao):
             return query.order_by(age_at_consent_expr)
         else:
             return query.order_by(age_at_consent_expr.desc())
+
+    @classmethod
+    def _add_is_pediatric_order(cls, query, order_by, field):
+        if not order_by.ascending:
+            field = field.desc()
+
+        return query.outerjoin(
+            PediatricDataLog,
+            and_(
+                PediatricDataLog.participant_id == ParticipantSummary.participantId,
+                PediatricDataLog.data_type == PediatricDataType.AGE_RANGE
+            )
+        ).order_by(field)
+
 
     def _make_query(self, session, query_definition):
         query, order_by_field_names = super(ParticipantSummaryDao, self)._make_query(session, query_definition)
