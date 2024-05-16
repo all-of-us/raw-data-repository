@@ -124,7 +124,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
         if env_split in ['prod', 'stable', 'sandbox']:
             bucket = config.NPH_SMS_BUCKETS.get(env_split).get(recipient)
 
-        if recipient.lower() in ["ucsd", "tandam"]:
+        if recipient.lower() in ["ucsd", "tandam_dlw"]:
             delimiter_str = '\t'
             extension = 'txt'
         else:
