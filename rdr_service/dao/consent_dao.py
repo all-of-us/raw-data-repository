@@ -36,7 +36,9 @@ class ConsentDao(BaseDao):
         )
 
     @classmethod
-    def get_consent_responses_to_validate(cls, session) -> (Dict[int, List[ConsentResponse]], bool):
+    def get_consent_responses_to_validate(
+        cls, session, since_date: datetime = None
+    ) -> (Dict[int, List[ConsentResponse]], bool):
         """
         Gets all the consent responses that need to be validated.
         :return: Dictionary with keys being participant ids and values being collections of ConsentResponses
@@ -45,7 +47,7 @@ class ConsentDao(BaseDao):
 
         # A ConsentResponse will need to be validated if there are not yet any ConsentFile objects
         # that are of the same type and for the same participant.
-        consent_responses = (
+        query = (
             session.query(ConsentResponse)
             .join(QuestionnaireResponse)
             .join(Participant)
@@ -77,8 +79,17 @@ class ConsentDao(BaseDao):
             ).options(
                 joinedload(ConsentResponse.response)
             )
-        ).limit(consent_batch_limit).all()
+        )
 
+        if since_date:
+            query = query.filter(
+                QuestionnaireResponse.created >= since_date,
+                QuestionnaireResponse.questionnaireId > 0  # needed to use prod's index of the created date
+            ).with_hint(
+                QuestionnaireResponse, 'USE INDEX (idx_created_q_id)'
+            )
+
+        consent_responses = query.limit(consent_batch_limit).all()
         grouped_results = defaultdict(list)
         for consent_response in consent_responses:
             grouped_results[consent_response.response.participantId].append(consent_response)

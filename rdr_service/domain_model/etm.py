@@ -41,6 +41,8 @@ class EtmResponse:
     answer_list: List['EtmResponseAnswer'] = None
     version: int = None
     questionnaire_id: int = None
+    identifier: str = None
+    response_hash: str = None
 
 
 @dataclass

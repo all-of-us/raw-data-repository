@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import json
 from typing import List, Optional, Union
 
+from rdr_service.api.etm_api import EtmApi
 from rdr_service.domain_model.etm import EtmResponseAnswer
 from rdr_service.model import etm
 from rdr_service.model.requests_log import RequestsLog
@@ -133,6 +134,9 @@ class EtmIngestionTest(BaseTestCase):
         self.assertIsNotNone(ps_etm_authored_str)
         ps_ts = datetime.strptime(ps_etm_authored_str, '%Y-%m-%dT%H:%M:%S')
         self.assertEqual(ps_ts, saved_response.authored)
+
+        self.assertEqual(saved_response.identifier, questionnaire_response_json["identifier"]["value"])
+        self.assertEqual(saved_response.response_hash, EtmApi.calculate_response_hash(questionnaire_response_json))
 
     def test_multiple_etm_tasks_for_retention(self):
         with open(data_path('etm_questionnaire.json')) as file:

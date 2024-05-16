@@ -110,9 +110,6 @@ jobs:
           project-id: all-of-us-rdr-ptsc-2-test
           git-target: << pipeline.git.tag >>
 
-
-
-
   job_deploy_to_ce:
     <<: *job_defaults
     steps:

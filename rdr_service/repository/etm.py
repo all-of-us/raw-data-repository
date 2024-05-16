@@ -116,6 +116,8 @@ class EtmResponseRepository(BaseRepository):
         schema_response.resource = response_obj.resource_json
         schema_response.version = response_obj.version
         schema_response.etm_questionnaire_id = response_obj.questionnaire_id
+        schema_response.identifier = response_obj.identifier
+        schema_response.response_hash = response_obj.response_hash
 
         for metadata in response_obj.metadata_list:
             schema_response.extension_list.append(
