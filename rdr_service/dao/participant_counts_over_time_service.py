@@ -1,9 +1,12 @@
 import datetime
 import logging
+import time
 import warnings
 
 from werkzeug.exceptions import BadRequest
+from google.cloud import bigquery
 
+from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.metrics_cache_dao import (
@@ -34,6 +37,49 @@ from rdr_service.dao.metrics_cache_dao import TEMP_TABLE_PREFIX
 
 
 class ParticipantCountsOverTimeService(BaseDao):
+    QUERIES = {
+        "participant_sql": """
+            SELECT {columns} FROM `{participant_bq_table}` AS p
+            LEFT JOIN `{participant_summary_bq_table}` AS ps
+            ON p.participant_id = ps.participant_id
+            WHERE p.hpo_id != @test_hpo_id
+            AND p.is_ghost_id != 1
+            AND p.is_test_participant != 1
+            AND (ps.email IS NULL OR NOT ps.email LIKE @test_email_pattern)
+            AND p.withdrawal_status = @not_withdraw
+            AND p.hpo_id = @hpo_id
+            ;""",
+    }
+
+    PARTICIPANT_FIELDS = ['participant_id', 'biobank_id', 'sign_up_time', 'withdrawal_status',
+                          'hpo_id', 'organization_id', 'site_id', 'participant_origin']
+
+    TEMP_FIELDS = [('participant_id','int'), ('biobank_id', 'int'), ('sign_up_time', 'datetime'),
+                   ('first_name', 'varchar(255)'), ('last_name', 'varchar(255)'), ('suspension_status', 'smallint'),
+                   ('deceased_status', 'smallint'), ('is_ehr_data_available', 'tinyint(1)'),
+                   ('is_participant_mediated_ehr_data_available', 'tinyint(1)'),
+                   ('was_participant_mediated_ehr_available', 'tinyint(1)'), ('withdrawal_status', 'smallint'),
+                   ('hpo_id', 'int'), ('organization_id', 'int'), ('site_id', 'int'),
+                   ('participant_origin', 'varchar(80)'), ('date_of_birth', 'date'),
+                   ('consent_for_study_enrollment_time', 'datetime'), ('enrollment_status', 'smallint'),
+                   ('enrollment_status_member_time', 'datetime'),
+                   ('enrollment_status_core_stored_sample_time', 'datetime'),
+                   ('questionnaire_on_the_basics', 'smallint'), ('primary_language', 'varchar(80)'),
+                   ('language_id', 'int'), ('gender_identity_id', 'int'), ('gender_identity', 'smallint'),
+                   ('race', 'smallint'), ('questionnaire_on_the_basics_time', 'datetime'),
+                   ('questionnaire_on_lifestyle_time', 'datetime'), ('questionnaire_on_medications_time', 'datetime'),
+                   ('questionnaire_on_family_health_time', 'datetime'),
+                   ('questionnaire_on_overall_health_time', 'datetime'),
+                   ('questionnaire_on_healthcare_access_time', 'datetime'),
+                   ('questionnaire_on_medical_history_time', 'datetime'),
+                   ('clinic_physical_measurements_time', 'datetime'),
+                   ('self_reported_physical_measurements_authored', 'datetime'),
+                   ('sample_status_1ed10_time', 'datetime'), ('sample_status_2ed10_time', 'datetime'),
+                   ('sample_status_1ed04_time', 'datetime'), ('sample_status_1sal_time', 'datetime'),
+                   ('sample_status_1sal2_time', 'datetime'), ('state_id', 'int'),
+                   ('consent_for_electronic_health_records', 'int'),
+                   ('clinic_physical_measurements_finalized_time', 'datetime')]
+
     def __init__(self):
         super(ParticipantCountsOverTimeService, self).__init__(ParticipantSummary, alembic=True)
         self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
@@ -42,6 +88,15 @@ class ParticipantCountsOverTimeService(BaseDao):
         self.end_date = datetime.datetime.now().date() + datetime.timedelta(days=10)
         self.stage_number = MetricsCronJobStage.STAGE_ONE
         self.cronjob_time = datetime.datetime.now().replace(microsecond=0)
+
+        public_metrics_project_map = config.getSettingJson(config.PUBLIC_METRICS_PROJECT_MAP, {})
+
+        self.client = bigquery.Client(project=config.GAE_PROJECT)
+        self.bq_project = public_metrics_project_map.get(self.client.project)
+        self.participant_table = config.getSettingJson(config.PUBLIC_METRICS_PARTICIPANT_TABLE,
+                                                       'lake_operational_data.rdr_participant')
+        self.participant_summary_table = config.getSettingJson(config.PUBLIC_METRICS_PARTICIPANT_SUMMARY_TABLE,
+                                                               'lake_operational_data.rdr_participant_summary')
 
     def init_tmp_table(self):
         with self.session() as session:
@@ -54,19 +109,13 @@ class ParticipantCountsOverTimeService(BaseDao):
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore')
                     session.execute('DROP TABLE IF EXISTS {};'.format(temp_table_name))
-                # generated columns can not be inserted any value, need to drop them
-                exclude_columns = [
-                    'health_data_stream_sharing_status',
-                    'health_data_stream_sharing_status_time',
-                    'retention_eligible_time',
-                    'retention_eligible_status',
-                    'was_ehr_data_available'
-                ]
-                session.execute('CREATE TABLE {} LIKE participant_summary'.format(temp_table_name))
+
+                temp_table_columns = ", ".join([a + ' ' + b for a, b in self.TEMP_FIELDS])
+
+                sql_string = 'CREATE TABLE {} ({})'.format(temp_table_name, temp_table_columns)
+                session.execute(sql_string)
 
                 indexes_cursor = session.execute('SHOW INDEX FROM {}'.format(temp_table_name))
-                for exclude_column_name in exclude_columns:
-                    session.execute('ALTER TABLE {} DROP COLUMN  {}'.format(temp_table_name, exclude_column_name))
 
                 index_name_list = []
                 for index in indexes_cursor:
@@ -77,50 +126,15 @@ class ParticipantCountsOverTimeService(BaseDao):
                     if index_name != 'PRIMARY':
                         session.execute('ALTER TABLE {} DROP INDEX  {}'.format(temp_table_name, index_name))
 
-                # The ParticipantSummary table requires these, but there may not be a participant_summary for
-                # all participants that we insert
-                session.execute('ALTER TABLE {} MODIFY first_name VARCHAR(255)'.format(temp_table_name))
-                session.execute('ALTER TABLE {} MODIFY last_name VARCHAR(255)'.format(temp_table_name))
-                session.execute('ALTER TABLE {} MODIFY suspension_status SMALLINT'.format(temp_table_name))
-                session.execute('ALTER TABLE {} MODIFY participant_origin VARCHAR(80)'.format(temp_table_name))
-                session.execute('ALTER TABLE {} MODIFY deceased_status SMALLINT'.format(temp_table_name))
-                session.execute('ALTER TABLE {} MODIFY is_ehr_data_available TINYINT(1)'.format(temp_table_name))
-                session.execute(
-                    f'ALTER TABLE {temp_table_name} MODIFY is_participant_mediated_ehr_data_available TINYINT(1)'
-                )
-                session.execute('ALTER TABLE {} MODIFY was_participant_mediated_ehr_available TINYINT(1)'
-                                 .format(temp_table_name))
+                columns_str = ", ".join(['p.' + a if a in self.PARTICIPANT_FIELDS else 'ps.' + a for a, b in
+                                         self.TEMP_FIELDS])
 
-                columns_cursor = session.execute('SELECT * FROM {} LIMIT 0'.format(temp_table_name))
-
-                participant_fields = ['participant_id', 'biobank_id', 'sign_up_time', 'withdrawal_status',
-                                      'hpo_id', 'organization_id', 'site_id', 'participant_origin']
-
-                def get_field_name(name):
-                    if name in participant_fields:
-                        return 'p.' + name
-                    else:
-                        return 'ps.' + name
-
-                columns = map(get_field_name, columns_cursor.keys())
-                columns_str = ','.join(columns)
-
-                participant_sql = """
-                  INSERT INTO
-                  """ + temp_table_name + """
-                  SELECT
-                  """ + columns_str + """
-                  FROM participant p
-                  left join participant_summary ps on p.participant_id = ps.participant_id
-                  WHERE p.hpo_id <> :test_hpo_id
-                  AND p.is_ghost_id IS NOT TRUE
-                  AND p.is_test_participant IS NOT TRUE
-                  AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                  AND p.withdrawal_status = :not_withdraw
-                  AND p.hpo_id = :hpo_id
-                """
-                params = {'test_hpo_id': self.test_hpo_id, 'test_email_pattern': self.test_email_pattern,
-                          'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN), 'hpo_id': hpo.hpoId}
+                params = [
+                    bigquery.ScalarQueryParameter("test_hpo_id", "INT64", self.test_hpo_id),
+                    bigquery.ScalarQueryParameter("test_email_pattern", "STRING", self.test_email_pattern),
+                    bigquery.ScalarQueryParameter("not_withdraw", "INT64", int(WithdrawalStatus.NOT_WITHDRAWN)),
+                    bigquery.ScalarQueryParameter("hpo_id", "INT64", hpo.hpoId),
+                ]
 
                 session.execute('CREATE INDEX idx_sign_up_time ON {} (sign_up_time)'.format(temp_table_name))
                 session.execute('CREATE INDEX idx_date_of_birth ON {} (date_of_birth)'.format(temp_table_name))
@@ -133,8 +147,10 @@ class ParticipantCountsOverTimeService(BaseDao):
                 session.execute('CREATE INDEX idx_participant_origin ON {} (participant_origin)'
                                 .format(temp_table_name))
 
-                session.execute(participant_sql, params)
-                logging.info('crete temp table for hpo_id: ' + str(hpo.hpoId))
+                participant_data = self.build_participant_sql(params, columns_str)
+                self.batch_insert_results(session, temp_table_name, participant_data)
+
+                logging.info('create temp table for hpo_id: ' + str(hpo.hpoId))
 
             session.execute('DROP TABLE IF EXISTS metrics_tmp_participant_origin;')
             session.execute('CREATE TABLE metrics_tmp_participant_origin (participant_origin VARCHAR(50))')
@@ -145,6 +161,49 @@ class ParticipantCountsOverTimeService(BaseDao):
             session.execute(participant_origin_sql)
 
             logging.info('Init temp table for metrics cron job.')
+
+    def build_participant_sql(self, params, columns):
+        p_table_path = f"{self.bq_project}.{self.participant_table}"
+        ps_table_path = f"{self.bq_project}.{self.participant_summary_table}"
+        job_config = bigquery.QueryJobConfig(query_parameters=params)
+        sql = self.QUERIES['participant_sql'].format(participant_bq_table=p_table_path,
+                                                     participant_summary_bq_table=ps_table_path,
+                                                     columns=columns)
+        return self.run_bq_query(sql, job_config)
+
+    def run_bq_query(self, sql: str, job_config=None):
+        # Run the job with exponential backoff to avoid 403: rateLimitExceeded Error
+        # https://cloud.google.com/bigquery/docs/troubleshoot-quotas,
+        max_tries = 10
+        for n in range(max_tries):
+            try:
+                query_job = self.client.query(sql, job_config)
+                return query_job
+            except Exception:  # pylint: disable=broad-except
+                if n == max_tries - 1:
+                    raise Exception
+                time.sleep(2 ** n)
+
+    def batch_insert_results(self, session, temp_table_name, results):
+        # Insert results into RDR table, implement batching of the results
+        records_to_insert, batch_size = [], 100
+
+        columns_str = ", ".join([a for a, b in self.TEMP_FIELDS])
+        values_str = ",".join([':' + a for a, b in self.TEMP_FIELDS])
+        batch_insert_stmt = ('insert into `{temp_table_name}` ({columns_str}) values ({values_str});'
+                             .format(temp_table_name=temp_table_name, columns_str=columns_str, values_str=values_str))
+
+        for record in results:
+            x = dict(record.items())
+            records_to_insert.append(x)
+
+            if len(records_to_insert) == batch_size:
+                session.execute(batch_insert_stmt, records_to_insert)
+                records_to_insert.clear()
+
+        if records_to_insert:
+            session.execute(batch_insert_stmt, records_to_insert)
+            records_to_insert.clear()
 
     def clean_tmp_tables(self):
         with self.session() as session:
