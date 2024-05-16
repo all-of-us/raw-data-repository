@@ -645,6 +645,12 @@ class BaseDao(object):
         ))
 
     @staticmethod
+    def extract_prefix_from_val(val: str):
+        if val[0].isalpha():
+            return val[1:]
+        return val
+
+    @staticmethod
     def query_to_text(query, reindent=True):
         """
     Return the SQL statement text from a sqlalchemy query object.
