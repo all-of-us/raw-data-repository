@@ -124,7 +124,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
         if env_split in ['prod', 'stable', 'sandbox']:
             bucket = config.NPH_SMS_BUCKETS.get(env_split).get(recipient)
 
-        if "ucsd" in recipient.lower():
+        if recipient.lower() in ["ucsd", "tandam_dlw"]:
             delimiter_str = '\t'
             extension = 'txt'
         else:
@@ -177,9 +177,6 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 func.json_extract(OrderedSample.supplemental_fields, "$.color").label('urine_color'),
                 func.json_extract(OrderedSample.supplemental_fields, "$.clarity").label('urine_clarity'),
                 func.json_extract(OrderedSample.supplemental_fields, "$.bowelMovement").label('bowel_movement'),
-                func.json_extract(
-                    OrderedSample.supplemental_fields, "$.bowelMovementQuality"
-                ).label('bowel_movement_quality'),
             ).outerjoin(
                 SmsSample,
                 and_(
@@ -209,6 +206,24 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                      sample_well.ignore_flag == 0
                 )
             )
+
+            if 'tandam' in kwargs.get('recipient').lower():
+                query = query.add_columns(
+                    SmsSample.body_weight_kg,
+                    func.json_extract(OrderedSample.supplemental_fields, '$.dlwDose.batchid').label('dlw_dose_batch'),
+                    func.json_extract(
+                        OrderedSample.supplemental_fields, '$.dlwDose.doseAdministered'
+                    ).label('dlw_dose_date_time'),
+                    func.json_extract(
+                        OrderedSample.supplemental_fields, '$.dlwDose.dose'
+                    ).label('dlw_dose_grams')
+                )
+            else:
+                query = query.add_columns(
+                    func.json_extract(
+                        OrderedSample.supplemental_fields, '$.bowelMovementQuality'
+                    ).label('bowel_movement_quality')
+                )
 
             query = query.filter(
                 SmsBlocklist.id.is_(None),
