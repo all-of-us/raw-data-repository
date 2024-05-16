@@ -1,5 +1,5 @@
 from flask import request
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, Forbidden
 
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RDR, PPSC
@@ -38,7 +38,7 @@ class PPSCParticipantAPI(BaseApi):
             if self.dao.get_participant_by_participant_id(
                 participant_id=int(converted_dict.get('participant_id'))
             ):
-                raise BadRequest(f'Participant {req_data.get("participantId")} already exists')
+                raise Forbidden(f'Participant {req_data.get("participantId")} already exists')
 
             inserted_participant = self.handle_participant_insert(
                 participant_data=converted_dict,

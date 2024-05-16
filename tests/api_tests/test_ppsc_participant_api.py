@@ -100,8 +100,8 @@ class PPSCParticipantAPITest(BaseTestCase):
             'registeredDate': '2024-03-26T13:24:03.935Z'
         }
 
-        response = self.send_post('createParticipant', request_data=payload, expected_status=http.client.BAD_REQUEST)
-        self.assertEqual(response.status_code, 400)
+        response = self.send_post('createParticipant', request_data=payload, expected_status=http.client.FORBIDDEN)
+        self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json['message'], f'Participant {payload.get("participantId")} already exists')
         self.assertEqual(current_participant.id, int(payload.get("participantId")[1:]))
 
