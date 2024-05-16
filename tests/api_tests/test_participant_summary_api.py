@@ -4742,6 +4742,47 @@ class ParticipantSummaryApiTest(BaseTestCase):
         response = self.send_get(f'Participant/P{pediatric_participant.participantId}/Summary')
         self.assertEqual(True, response['isPediatric'])
 
+    def test_is_pediatric_sorting(self):
+        ped_summary_1 = self.data_generator.create_database_participant_summary()
+        self.session.add(
+            PediatricDataLog(
+                participant_id=ped_summary_1.participantId,
+                data_type=PediatricDataType.AGE_RANGE,
+                value='test1'
+            )
+        )
+        ped_summary_2 = self.data_generator.create_database_participant_summary()
+        self.session.add(
+            PediatricDataLog(
+                participant_id=ped_summary_2.participantId,
+                data_type=PediatricDataType.AGE_RANGE,
+                value='test2'
+            )
+        )
+
+        # Create adult participants
+        self.data_generator.create_database_participant_summary()
+        self.data_generator.create_database_participant_summary()
+
+        response = self.send_get('ParticipantSummary?_sort:asc=isPediatric')
+        self.assertEqual(4, len(response['entry']))
+        # Confirm ASC sorting results (entries 0-1 adult, entries 2-3 pediatric)
+        self.assertEqual(
+            response['entry'][0]['resource']['isPediatric'], 'UNSET'
+        )
+        self.assertEqual(
+            response['entry'][2]['resource']['isPediatric'], True
+        )
+        # Confirm DESC sorting results (entries 0-1 pediatric, entries 2-3 adult)
+        response = self.send_get('ParticipantSummary?_sort:desc=isPediatric')
+        self.assertEqual(4, len(response['entry']))
+        self.assertEqual(
+            response['entry'][0]['resource']['isPediatric'], True
+        )
+        self.assertEqual(
+            response['entry'][2]['resource']['isPediatric'], 'UNSET'
+        )
+
     @mock.patch('rdr_service.dao.participant_summary_dao.logging')
     def test_invalid_link(self, logging_mock):
         """
