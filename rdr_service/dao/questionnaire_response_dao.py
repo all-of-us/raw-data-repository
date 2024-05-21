@@ -591,6 +591,10 @@ class QuestionnaireResponseDao(BaseDao):
             questions = QuestionnaireQuestionDao().get_all_with_session(session, question_ids)
             code_ids = [question.codeId for question in questions]
 
+            platform_origin = session.query(Participant.participantOrigin).filter(
+                Participant.participantId == questionnaire_response.participantId
+            ).scalar()
+
         code_dao = CodeDao()
         pm_unite_code = code_dao.get_code(PPI_SYSTEM, REMOTE_PM_UNIT)
         if not pm_unite_code:
@@ -693,7 +697,7 @@ class QuestionnaireResponseDao(BaseDao):
             logPosition=LogPosition(),
             finalized=authored,
             measurements=measurements,
-            origin='vibrent',
+            origin='ce' if platform_origin == 'careevolution' else platform_origin,
             collectType=PhysicalMeasurementsCollectType.SELF_REPORTED,
             originMeasurementUnit=origin_measurement_unit,
             questionnaireResponseId=questionnaire_response.questionnaireResponseId
