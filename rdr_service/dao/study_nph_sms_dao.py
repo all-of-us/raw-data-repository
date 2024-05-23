@@ -124,7 +124,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
         if env_split in ['prod', 'stable', 'sandbox']:
             bucket = config.NPH_SMS_BUCKETS.get(env_split).get(recipient)
 
-        if recipient.lower() in ["ucsd", "tandam_dlw"]:
+        if recipient.lower() in ["ucsd", "pbrc"]:
             delimiter_str = '\t'
             extension = 'txt'
         else:
@@ -207,7 +207,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 )
             )
 
-            if 'tandam' in kwargs.get('recipient').lower():
+            if 'pbrc' in kwargs.get('recipient').lower():
                 query = query.add_columns(
                     SmsSample.body_weight_kg,
                     func.json_extract(OrderedSample.supplemental_fields, '$.dlwDose.batchid').label('dlw_dose_batch'),
