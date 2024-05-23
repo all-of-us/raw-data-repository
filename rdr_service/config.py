@@ -223,8 +223,7 @@ NPH_SMS_BUCKETS = {
         "DUKE": "prod-nph-sample-data-mcac-duke",
         "UNC_CLINICAL": "prod-nph-sample-data-mcac-unc-clinical",
         "PBRC": "prod-nph-sample-data-tandam-pbrc",
-        "UCSD": "prod-nph-sample-data-mmc-ucsd",
-        "TANDAM_DLW": "prod-nph-sample-data-tandam-pbrc"
+        "UCSD": "prod-nph-sample-data-mmc-ucsd"
     },
     "stable": {
         "UNC_META": "stable-nph-sample-data-mcac-unc-meta",
@@ -232,8 +231,7 @@ NPH_SMS_BUCKETS = {
         "DUKE": "stable-nph-sample-data-mcac-duke",
         "UNC_CLINICAL": "stable-nph-sample-data-mcac-unc-clinical",
         "PBRC": "stable-nph-sample-data-tandam-pbrc",
-        "UCSD": "stable-nph-sample-data-mmc-ucsd",
-        "TANDAM_DLW": "stable-nph-sample-data-tandam-pbrc"
+        "UCSD": "stable-nph-sample-data-mmc-ucsd"
     },
     "sandbox": {
         "UNC_META": "aou-rdr-sandbox-test-workflow",
