@@ -6,7 +6,7 @@ import warnings
 from werkzeug.exceptions import BadRequest
 from google.cloud import bigquery
 
-from rdr_service import config
+# from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.metrics_cache_dao import (
@@ -43,7 +43,7 @@ class ParticipantCountsOverTimeService(BaseDao):
             LEFT JOIN `{participant_summary_bq_table}` AS ps
             ON p.participant_id = ps.participant_id
             WHERE p.hpo_id != @test_hpo_id
-            AND p.is_ghost_id != 1
+            AND (p.is_ghost_id != 1 OR p.is_ghost_id IS NULL)
             AND p.is_test_participant != 1
             AND (ps.email IS NULL OR NOT ps.email LIKE @test_email_pattern)
             AND p.withdrawal_status = @not_withdraw
@@ -89,14 +89,17 @@ class ParticipantCountsOverTimeService(BaseDao):
         self.stage_number = MetricsCronJobStage.STAGE_ONE
         self.cronjob_time = datetime.datetime.now().replace(microsecond=0)
 
-        public_metrics_project_map = config.getSettingJson(config.PUBLIC_METRICS_PROJECT_MAP, {})
+        # public_metrics_project_map = config.getSettingJson(config.PUBLIC_METRICS_PROJECT_MAP, {})
 
-        self.client = bigquery.Client(project=config.GAE_PROJECT)
-        self.bq_project = public_metrics_project_map.get(self.client.project)
-        self.participant_table = config.getSettingJson(config.PUBLIC_METRICS_PARTICIPANT_TABLE,
-                                                       'lake_operational_data.rdr_participant')
-        self.participant_summary_table = config.getSettingJson(config.PUBLIC_METRICS_PARTICIPANT_SUMMARY_TABLE,
-                                                               'lake_operational_data.rdr_participant_summary')
+        self.client = bigquery.Client() #project=config.GAE_PROJECT)
+        # self.bq_project = public_metrics_project_map.get(self.client.project)
+        # self.participant_table = config.getSettingJson(config.PUBLIC_METRICS_PARTICIPANT_TABLE,
+        #                                                'lake_operational_data.rdr_participant')
+        # self.participant_summary_table = config.getSettingJson(config.PUBLIC_METRICS_PARTICIPANT_SUMMARY_TABLE,
+        #                                                        'lake_operational_data.rdr_participant_summary')
+        self.bq_project = 'aou-warehouse-preprod'
+        self.participant_table = 'lake_operational_data.rdr_participant'
+        self.participant_summary_table = 'lake_operational_data.rdr_participant_summary'
 
     def init_tmp_table(self):
         with self.session() as session:
@@ -112,7 +115,8 @@ class ParticipantCountsOverTimeService(BaseDao):
 
                 temp_table_columns = ", ".join([a + ' ' + b for a, b in self.TEMP_FIELDS])
 
-                sql_string = 'CREATE TABLE {} ({})'.format(temp_table_name, temp_table_columns)
+                sql_string = 'CREATE TABLE {} ({}) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'.format(
+                    temp_table_name, temp_table_columns)
                 session.execute(sql_string)
 
                 indexes_cursor = session.execute('SHOW INDEX FROM {}'.format(temp_table_name))
