@@ -22,4 +22,3 @@ def calculate_participant_metrics():
     # calculate data earlier than 30 days
     service.refresh_metrics_cache_data(stage_two_start_date, stage_two_end_date, MetricsCronJobStage.STAGE_TWO)
     logging.info('calculate participant metrics stage two is done.')
-    service.clean_tmp_tables()

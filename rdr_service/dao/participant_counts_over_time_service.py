@@ -112,8 +112,10 @@ class ParticipantCountsOverTimeService(BaseDao):
 
                 temp_table_columns = ", ".join([a + ' ' + b for a, b in self.TEMP_FIELDS])
 
-                sql_string = 'CREATE TABLE {} ({})'.format(temp_table_name, temp_table_columns)
+                sql_string = 'CREATE TABLE {} ({}) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'.format(
+                    temp_table_name, temp_table_columns)
                 session.execute(sql_string)
+                logging.info('temp table created for hpo_id: ' + str(hpo.hpoId))
 
                 indexes_cursor = session.execute('SHOW INDEX FROM {}'.format(temp_table_name))
 
@@ -150,7 +152,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                 participant_data = self.build_participant_sql(params, columns_str)
                 self.batch_insert_results(session, temp_table_name, participant_data)
 
-                logging.info('create temp table for hpo_id: ' + str(hpo.hpoId))
+                logging.info('data inserted into temp table for hpo_id: ' + str(hpo.hpoId))
 
             session.execute('DROP TABLE IF EXISTS metrics_tmp_participant_origin;')
             session.execute('CREATE TABLE metrics_tmp_participant_origin (participant_origin VARCHAR(50))')
