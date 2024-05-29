@@ -84,7 +84,10 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
         if not valid_files:
             return None
 
-        return min(result.expected_sign_date for result in valid_files)
+        return min(
+            datetime(result.expected_sign_date.year, result.expected_sign_date.month, result.expected_sign_date.day)
+            for result in valid_files
+        )
 
     def _update_status(
         self, participant_id, has_valid_file, authored_time, status_check=QuestionnaireStatus.SUBMITTED_NOT_VALIDATED
