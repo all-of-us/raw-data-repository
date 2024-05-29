@@ -43,7 +43,7 @@ class ParticipantCountsOverTimeService(BaseDao):
             LEFT JOIN `{participant_summary_bq_table}` AS ps
             ON p.participant_id = ps.participant_id
             WHERE p.hpo_id != @test_hpo_id
-            AND p.is_ghost_id != 1
+            AND (p.is_ghost_id != 1 OR p.is_ghost_id IS NULL)
             AND p.is_test_participant != 1
             AND (ps.email IS NULL OR NOT ps.email LIKE @test_email_pattern)
             AND p.withdrawal_status = @not_withdraw
