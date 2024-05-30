@@ -70,18 +70,33 @@ class BigQueryJob(object):
             self._service.jobs().query(projectId=self.project_id, body=job_body).execute(num_retries=self.retry_count)
         )
         self._job_ref = self.JobReference(**result["jobReference"])
+
+        if not result['jobComplete'] and 'errors' not in result:
+            result = self._retrieve_query_results()
+
         page_token = result.get("pageToken")
         if page_token:
             self._page_token = page_token
         return result
 
     def get_job_results(self, page_token=None):
+        result = self._retrieve_query_results(page_token)
+        page_token = result.get("pageToken")
+        self._page_token = page_token
+        return result
+
+    def _retrieve_query_results(self, page_token=None):
         kwargs = dict(projectId=self._job_ref.projectId, jobId=self._job_ref.jobId, maxResults=self.page_size)
         if page_token is not None:
             kwargs["pageToken"] = page_token
         result = self._service.jobs().getQueryResults(**kwargs).execute()
-        page_token = result.get("pageToken")
-        self._page_token = page_token
+
+        max_checks = 100
+        check_count = 0
+        while not result['jobComplete'] and 'errors' not in result and check_count < max_checks:
+            check_count += 1
+            result = self._service.jobs().getQueryResults(**kwargs).execute()
+
         return result
 
     @classmethod

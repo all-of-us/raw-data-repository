@@ -309,6 +309,56 @@ class NphSmsWorkflowsTest(BaseTestCase):
             well_box_position="A4"
         )
 
+    @staticmethod
+    def create_data_pbrc_n1_mc1_generation(destination="PBRC"):
+        sms_datagen = NphSmsDataGenerator()
+
+        sms_datagen.create_database_ordered_sample(
+            nph_sample_id=10004,
+            supplemental_fields={
+                "dlwDose": {
+                    "dose": 456.7,
+                    "batchid": 12345678,
+                    "calculateddose": 456.65,
+                    "doseAdministered": "2024-04-08T15:11:00",
+                    "participantweight": 123.4
+                }
+            }
+        )
+        sms_datagen.create_database_sms_sample(
+            ethnicity="test",
+            race="test",
+            bmi="28",
+            diet="LMT",
+            sex_at_birth="M",
+            sample_identifier="test",
+            sample_id=10004,
+            lims_sample_id="000200",
+            destination=destination,
+            body_weight_kg="123.4"
+        )
+        sms_datagen.create_database_sms_n0(
+            sample_id=10004,
+            matrix_id=1111,
+            package_id="test",
+            storage_unit_id="test",
+            file_path=f"{destination}_n0_test.csv",
+            well_box_position="A5",
+            tracking_number="test",
+            sample_comments="test",
+            study="test",
+            visit="1",
+            timepoint="LMT",
+            collection_site="UNC",
+            collection_date_time="2023-04-20T15:54:33",
+            sample_type="Urine",
+            additive_treatment="test-treatment",
+            quantity_ml="120",
+            manufacturer_lot='256837',
+            age="22",
+            biobank_id="test",
+        )
+
     def test_n1_mc1_generation(self):
         self.create_data_n1_mc1_generation()
 
@@ -327,6 +377,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
+
         expected_csv_path = "test-bucket-unc-meta/n1_manifests/UNC_META_n1_2023-04-25T15:13:00.csv"
 
         with open_cloud_file(expected_csv_path, mode='r') as cloud_file:
@@ -339,9 +390,35 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(csv_rows[0]['urine_clarity'], '"Clean"')
         self.assertEqual(csv_rows[0]['manufacturer_lot'], '256837')
 
+        self.create_data_pbrc_n1_mc1_generation()
+
+        generation_data = {
+            "job": "FILE_GENERATION",
+            "file_type": "N1_MC1",
+            "recipient": "PBRC",
+            "package_id": "test"
+        }
+        with clock.FakeClock(self.TIME_1):
+            from rdr_service.resource import main as resource_main
+            self.send_post(
+                local_path='NphSmsGenerationTaskApi',
+                request_data=generation_data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+        pbrc_csv_path = "test-bucket-unc-meta/n1_manifests/PBRC_n1_2023-04-25T15:13:00.txt"
+
+        with open_cloud_file(pbrc_csv_path, mode='r') as cloud_file:
+            csv_reader = csv.DictReader(cloud_file, delimiter='\t')
+            csv_rows = list(csv_reader)
+
+        self.assertEqual(csv_rows[0]['sample_id'], '10004')
+        self.assertEqual(csv_rows[0]['matrix_id'], "1111")
+
         n1_mcac_dao = SmsN1Mc1Dao()
         manifest_records = n1_mcac_dao.get_all()
-        self.assertEqual(len(manifest_records), 3)
+        self.assertEqual(len(manifest_records), 4)
         self.assertEqual(manifest_records[0].file_path, expected_csv_path)
         self.assertEqual(manifest_records[0].sample_id, "10001")
         self.assertEqual(manifest_records[0].matrix_id, "1111")
@@ -365,6 +442,19 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[1].bowel_movement_quality, '"I tend to have normal formed stool - Type 3 and 4"')
 
         self.assertEqual(manifest_records[2].well_box_position, "A4")
+
+        self.assertEqual(manifest_records[3].file_path, pbrc_csv_path)
+        self.assertEqual(manifest_records[3].sample_id, "10004")
+        self.assertEqual(manifest_records[3].matrix_id, "1111")
+        self.assertEqual(manifest_records[3].bmi, "28")
+        self.assertEqual(manifest_records[3].diet, "LMT")
+        self.assertEqual(manifest_records[3].collection_site, "UNC")
+        self.assertEqual(manifest_records[3].manufacturer_lot, '256837')
+        self.assertEqual(manifest_records[3].collection_date_time, api_util.parse_date("2023-04-20T15:54:33"))
+        self.assertEqual(manifest_records[3].body_weight_kg, '123.4')
+        self.assertEqual(manifest_records[3].dlw_dose_batch, '12345678')
+        self.assertEqual(manifest_records[3].dlw_dose_date_time, '"2024-04-08T15:11:00"')
+        self.assertEqual(manifest_records[3].dlw_dose_grams, '456.7')
 
         # Test Ignore and rerun
         with n1_mcac_dao.session() as session:

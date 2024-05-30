@@ -1,3 +1,4 @@
+from copy import deepcopy
 import datetime
 import http.client
 import json
@@ -25,7 +26,6 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao, \
     ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
-from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
@@ -137,12 +137,19 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('baselineQuestionnairesFirstCompleteAuthored'), TIME_3.isoformat())
 
-    def test_remote_pm_imperial_response(self):
+    @mock.patch('rdr_service.dao.biobank_order_dao.BiobankOrderDao._make_mayolink_order')
+    def test_remote_pm_imperial_response(self, _):
+        new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
+        new_user_info['example@example.com']['clientId'] = 'careevolution'
+        self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
+
         questionnaire_id = self.create_questionnaire("questionnaire3.json")
         questionnaire_id_1 = self.create_questionnaire("all_consents_questionnaire.json")
         questionnaire_id_2 = self.create_questionnaire("questionnaire4.json")
-        participant_1 = self.send_post("Participant", {})
-        participant_id = participant_1["participantId"]
+        participant_1 = self.data_generator.create_database_participant(
+            participantOrigin='careevolution'
+        )
+        participant_id = f'P{participant_1.participantId}'
         authored_1 = datetime.datetime(2019, 3, 16, 1, 39, 33)
         created = datetime.datetime(2019, 3, 16, 1, 51, 22)
         with FakeClock(created):
@@ -185,8 +192,9 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             time=TIME_2,
         )
         # Store samples for DNA for participants
-        self._store_biobank_sample(participant_1, "1SAL", time=TIME_1)
-        self._store_biobank_sample(participant_1, "2ED10", time=TIME_1)
+        participant_id_int = from_client_participant_id(participant_id)
+        self._store_biobank_sample(participant_id_int, participant_1.biobankId, "1SAL", time=TIME_1)
+        self._store_biobank_sample(participant_id_int, participant_1.biobankId, "2ED10", time=TIME_1)
         # completing the baseline PPI modules.
         self._submit_empty_questionnaire_response(participant_id, questionnaire_id_2)
         # Update participant summaries based on these changes
@@ -194,7 +202,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         # clinicPhysicalMeasurementsFinalizedTime with other times to cover the bug scenario:
         # TypeError("can't compare offset-naive and offset-aware datetimes")
         ps_dao = ParticipantSummaryDao()
-        ps_dao.update_from_biobank_stored_samples(biobank_ids=[from_client_biobank_id(participant_1['biobankId'])])
+        ps_dao.update_from_biobank_stored_samples(biobank_ids=[participant_1.biobankId])
 
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary["selfReportedPhysicalMeasurementsStatus"], 'UNSET')
@@ -215,7 +223,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(1, len(response["entry"]))
         self.assertEqual(response["entry"][0]["resource"]["collectType"], 'SELF_REPORTED')
         self.assertEqual(response["entry"][0]["resource"]["originMeasurementUnit"], 'IMPERIAL')
-        self.assertEqual(response["entry"][0]["resource"]["origin"], 'vibrent')
+        self.assertEqual(response["entry"][0]["resource"]["origin"], 'ce')
         self.assertEqual(len(response["entry"][0]["resource"]["entry"]), 2)
         self.assertEqual(response["entry"][0]["resource"]["entry"][0]['resource']['status'], 'final')
         self.assertEqual(response["entry"][0]["resource"]["entry"][0]['resource']['valueQuantity'],
@@ -270,7 +278,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(1, len(response["entry"]))
         self.assertEqual(response["entry"][0]["resource"]["collectType"], 'SELF_REPORTED')
         self.assertEqual(response["entry"][0]["resource"]["originMeasurementUnit"], 'METRIC')
-        self.assertEqual(response["entry"][0]["resource"]["origin"], 'vibrent')
+        self.assertEqual(response["entry"][0]["resource"]["origin"], 'example')
         self.assertEqual(len(response["entry"][0]["resource"]["entry"]), 2)
         self.assertEqual(response["entry"][0]["resource"]["entry"][0]['resource']['status'], 'final')
         self.assertEqual(response["entry"][0]["resource"]["entry"][0]['resource']['valueQuantity'],
@@ -2447,19 +2455,18 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         with FakeClock(time):
             self.send_post("Participant/%s/BiobankOrder" % participant_id, order)
 
-    def _store_biobank_sample(self, participant, test_code, time=TIME_1):
+    def _store_biobank_sample(self, participant_id, biobank_id, test_code, time=TIME_1):
         BiobankStoredSampleDao().insert(
             BiobankStoredSample(
-                biobankStoredSampleId="s" + participant["participantId"] + test_code,
-                biobankId=participant["biobankId"][1:],
+                biobankStoredSampleId=f'sP{participant_id}{test_code}',
+                biobankId=biobank_id,
                 test=test_code,
                 biobankOrderIdentifier="KIT",
                 confirmed=time,
             )
         )
         if test_code in config.getSettingList(config.DNA_SAMPLE_TEST_CODES):
-            participant_id_int = from_client_participant_id(participant["participantId"])
-            EnrollmentDependenciesDao.set_biobank_received_dna_time(time, participant_id_int, self.session)
+            EnrollmentDependenciesDao.set_biobank_received_dna_time(time, participant_id, self.session)
 
     def _create_codes(self, code_list):
         return {

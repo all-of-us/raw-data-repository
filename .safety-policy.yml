@@ -17,6 +17,9 @@ security: # configuration for the `safety check` command
         65213:
             reason: RDR code not run on PowerPC architecture
             expires: '2030-01-01'
+        67599:
+            reason: pip v 24.0 installs a vulnerability
+            expires: '2025-05-14'
     continue-on-vulnerability-error: False # Suppress non-zero exit codes when vulnerabilities are found. Enable this in pipelines and CI/CD processes if you want to pass builds that have vulnerabilities. We recommend you set this to False.
 alert: # configuration for the `safety alert` command
     security:
