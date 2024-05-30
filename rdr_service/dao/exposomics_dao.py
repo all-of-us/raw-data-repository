@@ -1,5 +1,6 @@
+
 from sqlalchemy.sql.expression import literal
-from sqlalchemy import func
+from sqlalchemy import func, orm
 
 from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao
@@ -22,6 +23,18 @@ class ExposomicsM0Dao(BaseDao):
 
     def get_id(self, obj):
         pass
+
+    @classmethod
+    def get_max_set_subquery(cls):
+        return orm.Query(
+            func.max(ExposomicsM0.exposomics_set).label('exposomics_set')
+        ).subquery()
+
+    def get_max_set(self):
+        with self.session() as session:
+            return session.query(
+                self.get_max_set_subquery()
+            ).one()
 
     def get_manifest_data(self, **kwargs):
         form_data = kwargs.get("form_data")
@@ -64,16 +77,3 @@ class ExposomicsM0Dao(BaseDao):
                 Participant.isGhostId.is_(None),
                 Participant.isTestParticipant != 1
             ).all()
-
-
-class ExposomicsDefaultBaseDao(BaseDao):
-    def __init__(self, model_type):
-        super().__init__(
-            model_type, order_by_ending=['id']
-        )
-
-    def from_client_json(self):
-        pass
-
-    def get_id(self, obj):
-        pass

@@ -30,6 +30,8 @@ class ExposomicsM0(Base, ExposomicsManifestBase):
 
     __tablename__ = 'exposomics_m0'
 
+    exposomics_set = Column(Integer, nullable=False, default=0)
+
 
 event.listen(ExposomicsM0, 'before_insert', model_insert_listener)
 event.listen(ExposomicsM0, 'before_update', model_update_listener)
