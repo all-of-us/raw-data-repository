@@ -38,7 +38,7 @@ class ExposomicsGenerateManifestWorkflow(ExposomicsManifestWorkflow):
                 writer.write_header(self.headers)
                 writer.write_rows(self.source_data)
 
-            logging.warning(f'The {self.manifest_type} was generated successfully: {self.fie_name}')
+            logging.warning(f'The {self.manifest_type} was generated successfully: {self.file_name}')
             return True
 
         except RuntimeError as e:
@@ -71,7 +71,7 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
 
     def store_manifest_data(self):
         manifest_data = {
-            'file_path': f'{self.bucket_name}/{self.destination_path}/',
+            'file_path': f'{self.bucket_name}/{self.destination_path}/{self.file_name}',
             'file_data': self.source_data,
             'file_name': self.file_name,
             'bucket_name': self.bucket_name,
