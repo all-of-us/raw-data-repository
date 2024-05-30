@@ -34,7 +34,7 @@ class ExposomicsGenerateManifestWorkflow(ExposomicsManifestWorkflow):
 
     def write_upload_manifest(self):
         try:
-            with SqlExporter(self.bucket_name).open_cloud_writer(self.destination_path) as writer:
+            with SqlExporter(self.bucket_name).open_cloud_writer(f'{self.destination_path}/{self.file_name}') as writer:
                 writer.write_header(self.headers)
                 writer.write_rows(self.source_data)
 
@@ -54,7 +54,7 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
         self.manifest_type = 'mO'
         self.dao = ExposomicsM0Dao()
         self.bucket_name = config.BIOBANK_SAMPLES_BUCKET_NAME
-        self.destination_path = f'/{config.EXPOSOMICS_MO_MANIFEST_SUBFOLDER}'
+        self.destination_path = f'{config.EXPOSOMICS_MO_MANIFEST_SUBFOLDER}'
         self.file_name = None
         self.set_num = None
         self.source_data = []
