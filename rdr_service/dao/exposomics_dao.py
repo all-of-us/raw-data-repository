@@ -43,9 +43,8 @@ class ExposomicsM0Dao(BaseDao):
         # need to know which stored sample for collection tube id - getting first for now
         with self.session() as session:
             return session.query(
-                BiobankStoredSample.biobankStoredSampleId.label('collection_tube_id'),
+                func.concat(get_biobank_id_prefix(), ParticipantSummary.biobankId).label('biobank_id'),
                 literal(form_data.get('sample_type')).label('sample_type'),
-                func.concat(get_biobank_id_prefix(), BiobankStoredSample.biobankId).label('biobank_id'),
                 literal(form_data.get('treatment_type')).label('treatment_type'),
                 func.IF(GenomicSetMember.nyFlag == 1,
                         literal("Y"),
@@ -67,7 +66,7 @@ class ExposomicsM0Dao(BaseDao):
                 GenomicSetMember,
                 GenomicSetMember.biobankId == ParticipantSummary.biobankId
             ).filter(
-                BiobankStoredSample.biobankId.in_(biobank_ids),
+                ParticipantSummary.biobankId.in_(biobank_ids),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
                 GenomicSetMember.blockResults != 1,
                 GenomicSetMember.blockResearch != 1,

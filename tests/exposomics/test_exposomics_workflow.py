@@ -19,10 +19,6 @@ class ExposomicsWorkflowTest(BaseTestCase):
             participant_summary = self.data_generator.create_database_participant_summary(
                 consentForStudyEnrollment=1
             )
-            self.data_generator.create_database_biobank_stored_sample(
-                biobankId=participant_summary.biobankId,
-                test='test'
-            )
             self.data_generator.create_database_genomic_set_member(
                 genomicSetId=gen_set.id,
                 biobankId=participant_summary.biobankId,
@@ -42,15 +38,18 @@ class ExposomicsWorkflowTest(BaseTestCase):
         sample_list = [
             {
                 'biobank_id': current_biobank_ids[0],
-                'sample_id': '11111'
+                'sample_id': '11111',
+                'collection_tube_id': '11111111'
             },
             {
                 'biobank_id': current_biobank_ids[1],
-                'sample_id': '22222'
+                'sample_id': '22222',
+                'collection_tube_id': '22222222'
             },
             {
                 'biobank_id': 3000000,
-                'sample_id': '33333'
+                'sample_id': '33333',
+                'collection_tube_id': '33333333'
             }
         ]
 

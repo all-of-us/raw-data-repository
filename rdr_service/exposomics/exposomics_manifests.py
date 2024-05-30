@@ -91,13 +91,14 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
         updated_records = []
         for el in self.source_data:
             current_record = el._asdict()
-            sample_id = self.get_sample_id_from_list(
+            sample_data: dict = self.get_sample_data_from_list(
                 biobank_id=self.dao.extract_prefix_from_val(
                     current_record.get('biobank_id'))
             )
 
-            if sample_id:
-                current_record['sample_id'] = sample_id
+            if sample_data:
+                current_record['sample_id'] = sample_data.get('sample_id')
+                current_record['collection_tube_id'] = sample_data.get('collection_tube_id')
                 updated_records.append(current_record)
 
         self.headers = updated_records[0].keys()
@@ -107,10 +108,9 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
         if manifest_created:
             self.store_manifest_data()
 
-    def get_sample_id_from_list(self, *, biobank_id: int):
+    def get_sample_data_from_list(self, *, biobank_id: int):
         try:
-            return list(filter(lambda x: int(x.get('biobank_id')) == int(biobank_id), self.sample_list))[0].get(
-                'sample_id')
+            return list(filter(lambda x: int(x.get('biobank_id')) == int(biobank_id), self.sample_list))[0]
         except IndexError:
             logging.warning(f'Can not find sample_id for biobank_id: {biobank_id}')
             return None
