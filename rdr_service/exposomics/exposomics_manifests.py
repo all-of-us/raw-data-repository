@@ -103,8 +103,9 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
         self.headers = updated_records[0].keys()
         self.source_data = updated_records
 
-        self.write_upload_manifest()
-        self.store_manifest_data()
+        manifest_created = self.write_upload_manifest()
+        if manifest_created:
+            self.store_manifest_data()
 
     def get_sample_id_from_list(self, *, biobank_id: int):
         try:
