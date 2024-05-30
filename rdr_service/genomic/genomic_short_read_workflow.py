@@ -340,7 +340,7 @@ class GenomicAW1Workflow(BaseGenomicShortReadWorkflow):
                         continue
 
                 # Check for diversion pouch site
-                div_pouch_site_id = sample_dao.get_diversion_pouch_site_id(row_copy['collectiontubeid'])
+                div_pouch_site_id = sample_dao.get_diversion_pouc2h_site_id(row_copy['collectiontubeid'])
                 if div_pouch_site_id:
                     member.diversionPouchSiteFlag = 1
 

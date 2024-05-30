@@ -1,5 +1,7 @@
 from typing import List
 
+from rdr_service.exposomics.exposomics_manifests import ExposomicsM0Workflow
+
 
 class ExposomicsGenerate:
 
@@ -12,4 +14,7 @@ class ExposomicsGenerate:
         return cls(sample_list, form_data)
 
     def run_generation(self):
-        ...
+        ExposomicsM0Workflow(
+            sample_list=self.sample_list,
+            form_data=self.form_data
+        ).generate_manifest()
