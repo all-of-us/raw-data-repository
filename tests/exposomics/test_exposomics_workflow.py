@@ -2,7 +2,7 @@ import csv
 import os
 
 from rdr_service.api_util import open_cloud_file
-from rdr_service.dao.exposomics_dao import ExposomicsM0Dao
+from rdr_service.dao.exposomics_dao import ExposomicsM0Dao, ExposomicsSamplesDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.exposomics.exposomics_generate import ExposomicsGenerate
 from tests.helpers.unittest_base import BaseTestCase
@@ -13,6 +13,7 @@ class ExposomicsWorkflowTest(BaseTestCase):
         super().setUp()
         self.participant_summary_dao = ParticipantSummaryDao()
         self.m0_dao = ExposomicsM0Dao()
+        self.samples_dao = ExposomicsSamplesDao()
 
     def generate_m0_data(self):
         gen_set = self.data_generator.create_database_genomic_set(
@@ -59,30 +60,39 @@ class ExposomicsWorkflowTest(BaseTestCase):
             }
         ]
 
+        # run generation
         ExposomicsGenerate.create_exposomics_generate_workflow(
             sample_list=sample_list,
             form_data=form_data,
         ).run_generation()
 
-        current_m0 = self.m0_dao.get_all()
+        # check stored samples
+        current_samples = self.samples_dao.get_all()
 
+        self.assertEqual(len(sample_list), len(current_samples))
+        self.assertTrue(all(obj.biobank_id is not None for obj in current_samples))
+        self.assertTrue(all(obj.sample_id is not None for obj in current_samples))
+        self.assertTrue(all(obj.collection_tube_id is not None for obj in current_samples))
+        self.assertTrue(all(obj.exposomics_set is not None for obj in current_samples))
+        self.assertTrue(all(obj.exposomics_set is not None for obj in current_samples))
+        self.assertTrue(all(obj.exposomics_set == 1 for obj in current_samples))
+
+        # check file was generated
+        current_m0 = self.m0_dao.get_all()
         self.assertEqual(len(current_m0), 1)
 
+        # check file data was stored
         current_m0 = current_m0[0]
         self.assertTrue(current_m0.file_data is not None)
         self.assertTrue(current_m0.file_name is not None)
         self.assertTrue(current_m0.file_path is not None)
         self.assertTrue(current_m0.bucket_name is not None)
 
+        # check csv that was generated
         with open_cloud_file(
-            os.path.normpath(
-                f'{current_m0.file_path}'
-            )
+            os.path.normpath(f'{current_m0.file_path}')
         ) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             csv_rows = list(csv_reader)
             self.assertEqual(len(csv_rows), 2)
-            # check for all columns
-            # manifest_columns = csv_reader.fieldnames
-            # self.assertTrue(list(columns_expected) == manifest_columns)
 
