@@ -793,7 +793,7 @@ class VibrentEhrConsentFile(EhrConsentFile):
 
     def _get_date_search_box(self):
         if self._is_english_mar_24_version():
-            return Rect.from_edges(left=130, right=250, bottom=100, top=105)
+            return Rect.from_edges(left=130, right=250, bottom=90, top=105)
         elif self._is_spanish_mar_24_version():
             return Rect.from_edges(left=130, right=250, bottom=113, top=123)
         else:

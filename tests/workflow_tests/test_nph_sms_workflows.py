@@ -310,7 +310,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         )
 
     @staticmethod
-    def create_data_tandam_n1_mc1_generation(destination="TANDAM_DLW"):
+    def create_data_pbrc_n1_mc1_generation(destination="PBRC"):
         sms_datagen = NphSmsDataGenerator()
 
         sms_datagen.create_database_ordered_sample(
@@ -390,12 +390,12 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(csv_rows[0]['urine_clarity'], '"Clean"')
         self.assertEqual(csv_rows[0]['manufacturer_lot'], '256837')
 
-        self.create_data_tandam_n1_mc1_generation()
+        self.create_data_pbrc_n1_mc1_generation()
 
         generation_data = {
             "job": "FILE_GENERATION",
             "file_type": "N1_MC1",
-            "recipient": "TANDAM_DLW",
+            "recipient": "PBRC",
             "package_id": "test"
         }
         with clock.FakeClock(self.TIME_1):
@@ -407,9 +407,9 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        tandam_csv_path = "test-bucket-unc-meta/n1_manifests/TANDAM_DLW_n1_2023-04-25T15:13:00.txt"
+        pbrc_csv_path = "test-bucket-unc-meta/n1_manifests/PBRC_n1_2023-04-25T15:13:00.txt"
 
-        with open_cloud_file(tandam_csv_path, mode='r') as cloud_file:
+        with open_cloud_file(pbrc_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file, delimiter='\t')
             csv_rows = list(csv_reader)
 
@@ -443,7 +443,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
         self.assertEqual(manifest_records[2].well_box_position, "A4")
 
-        self.assertEqual(manifest_records[3].file_path, tandam_csv_path)
+        self.assertEqual(manifest_records[3].file_path, pbrc_csv_path)
         self.assertEqual(manifest_records[3].sample_id, "10004")
         self.assertEqual(manifest_records[3].matrix_id, "1111")
         self.assertEqual(manifest_records[3].bmi, "28")
