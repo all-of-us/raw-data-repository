@@ -28,10 +28,6 @@ class ExposomicsGenerateManifestWorkflow(ExposomicsManifestWorkflow):
     def generate_filename(self):
         ...
 
-    def get_incremented_set_number(self) -> int:
-        current_set: List[int] = self.dao.get_max_set()
-        return 1 if current_set[0] is None else current_set[0] + 1
-
     def write_upload_manifest(self):
         try:
             with SqlExporter(self.bucket_name).open_cloud_writer(f'{self.destination_path}/{self.file_name}') as writer:
@@ -48,7 +44,7 @@ class ExposomicsGenerateManifestWorkflow(ExposomicsManifestWorkflow):
 
 class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
 
-    def __init__(self, form_data: dict, sample_list: List[dict]):
+    def __init__(self, form_data: dict, sample_list: List[dict], set_num: int):
         self.form_data = form_data
         self.sample_list = sample_list
         self.manifest_type = 'mO'
@@ -56,7 +52,7 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
         self.bucket_name = config.BIOBANK_SAMPLES_BUCKET_NAME
         self.destination_path = f'{config.EXPOSOMICS_MO_MANIFEST_SUBFOLDER}'
         self.file_name = None
-        self.set_num = None
+        self.set_num = set_num
         self.source_data = []
         self.headers = []
 
@@ -67,7 +63,11 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
                 f'_{now_formatted}_{self.set_num}.csv')
 
     def get_source_data(self):
-        return self.dao.get_manifest_data(form_data=self.form_data, sample_list=self.sample_list)
+        return self.dao.get_manifest_data(
+            form_data=self.form_data,
+            sample_list=self.sample_list,
+            set_num=self.set_num
+        )
 
     def store_manifest_data(self):
         manifest_data = {
@@ -80,7 +80,6 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
         self.dao.insert(self.dao.model_type(**manifest_data))
 
     def generate_manifest(self):
-        self.set_num = self.get_incremented_set_number()
         self.file_name = self.generate_filename()
         self.source_data = self.get_source_data()
 
@@ -88,30 +87,9 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
             logging.warning('There were no results returned for the M0 generation')
             return
 
-        updated_records = []
-        for el in self.source_data:
-            current_record = el._asdict()
-            sample_data: dict = self.get_sample_data_from_list(
-                biobank_id=self.dao.extract_prefix_from_val(
-                    current_record.get('biobank_id'))
-            )
-
-            if sample_data:
-                current_record['sample_id'] = sample_data.get('sample_id')
-                current_record['collection_tube_id'] = sample_data.get('collection_tube_id')
-                updated_records.append(current_record)
-
-        self.headers = updated_records[0].keys()
-        self.source_data = updated_records
+        self.headers = ['biobank_id', 'sample_type'] # ADD THIS
 
         manifest_created = self.write_upload_manifest()
         if manifest_created:
             self.store_manifest_data()
-
-    def get_sample_data_from_list(self, *, biobank_id: int):
-        try:
-            return list(filter(lambda x: int(x.get('biobank_id')) == int(biobank_id), self.sample_list))[0]
-        except IndexError:
-            logging.warning(f'Can not find sample_id for biobank_id: {biobank_id}')
-            return None
 

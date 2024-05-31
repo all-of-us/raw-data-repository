@@ -1,3 +1,8 @@
+import csv
+import os
+
+from rdr_service.api_util import open_cloud_file
+from rdr_service.dao.exposomics_dao import ExposomicsM0Dao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.exposomics.exposomics_generate import ExposomicsGenerate
 from tests.helpers.unittest_base import BaseTestCase
@@ -7,6 +12,7 @@ class ExposomicsWorkflowTest(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.participant_summary_dao = ParticipantSummaryDao()
+        self.m0_dao = ExposomicsM0Dao()
 
     def generate_m0_data(self):
         gen_set = self.data_generator.create_database_genomic_set(
@@ -58,3 +64,26 @@ class ExposomicsWorkflowTest(BaseTestCase):
             form_data=form_data,
         ).run_generation()
 
+        current_m0 = self.m0_dao.get_all()
+
+        self.assertEqual(len(current_m0), 1)
+
+        current_m0 = current_m0[0]
+        self.assertTrue(current_m0.file_data is not None)
+        self.assertTrue(current_m0.file_name is not None)
+        self.assertTrue(current_m0.file_path is not None)
+        self.assertTrue(current_m0.bucket_name is not None)
+
+        with open_cloud_file(
+            os.path.normpath(
+                f'{current_m0.file_path}'
+            )
+        ) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            csv_rows = list(csv_reader)
+            self.assertEqual(len(csv_rows), 3)
+            # check for all columns
+            # manifest_columns = csv_reader.fieldnames
+            # self.assertTrue(list(columns_expected) == manifest_columns)
+
+        print('Darryl')
