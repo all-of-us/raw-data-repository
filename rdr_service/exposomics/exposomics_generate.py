@@ -27,6 +27,7 @@ class ExposomicsGenerate:
             el['created'] = clock.CLOCK.now()
             el['modified'] = clock.CLOCK.now()
             el['exposomics_set'] = self.new_set
+            el['biobank_id'] = self.samples_dao.extract_prefix_from_val(el['biobank_id'])
         self.samples_dao.insert_bulk(self.sample_list)
 
     def run_generation(self):

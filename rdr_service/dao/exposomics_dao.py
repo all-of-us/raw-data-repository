@@ -61,7 +61,7 @@ class ExposomicsM0Dao(BaseDao):
             return session.query(
                 ExposomicsSamples.collection_tube_id.label('collection_tube_id'),
                 literal(form_data.get('sample_type')).label('sample_type'),
-                func.concat(get_biobank_id_prefix(), ParticipantSummary.biobankId).label('biobank_id'),
+                func.concat(get_biobank_id_prefix(), ExposomicsSamples.biobank_id).label('biobank_id'),
                 literal(form_data.get('treatment_type')).label('treatment_type'),
                 func.IF(GenomicSetMember.nyFlag == 1,
                         literal("Y"),
@@ -76,7 +76,7 @@ class ExposomicsM0Dao(BaseDao):
                 literal(form_data.get('freeze_thaw_count')).label('freeze_thaw_count')
             ).join(
                 Participant,
-                Participant.biobankId == ParticipantSummary.biobankId
+                Participant.biobankId == ExposomicsSamples.biobank_id
             ).join(
                 GenomicSetMember,
                 GenomicSetMember.biobankId == Participant.biobankId
@@ -91,4 +91,4 @@ class ExposomicsM0Dao(BaseDao):
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
                 Participant.isGhostId.is_(None),
                 Participant.isTestParticipant != 1
-            ).all()
+            ).distinct().all()

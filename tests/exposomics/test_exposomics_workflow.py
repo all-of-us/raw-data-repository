@@ -43,17 +43,17 @@ class ExposomicsWorkflowTest(BaseTestCase):
 
         sample_list = [
             {
-                'biobank_id': current_biobank_ids[0],
+                'biobank_id': f'A{current_biobank_ids[0]}',
                 'sample_id': '11111',
                 'collection_tube_id': '11111111'
             },
             {
-                'biobank_id': current_biobank_ids[1],
+                'biobank_id': f'A{current_biobank_ids[1]}',
                 'sample_id': '22222',
                 'collection_tube_id': '22222222'
             },
             {
-                'biobank_id': 3000000,
+                'biobank_id': 'A300000',
                 'sample_id': '33333',
                 'collection_tube_id': '33333333'
             }
@@ -81,9 +81,8 @@ class ExposomicsWorkflowTest(BaseTestCase):
         ) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             csv_rows = list(csv_reader)
-            self.assertEqual(len(csv_rows), 3)
+            self.assertEqual(len(csv_rows), 2)
             # check for all columns
             # manifest_columns = csv_reader.fieldnames
             # self.assertTrue(list(columns_expected) == manifest_columns)
 
-        print('Darryl')

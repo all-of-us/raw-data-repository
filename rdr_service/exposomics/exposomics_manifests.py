@@ -87,7 +87,7 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
             logging.warning('There were no results returned for the M0 generation')
             return
 
-        self.headers = ['biobank_id', 'sample_type'] # ADD THIS
+        self.headers = self.source_data[0]._asdict().keys()
 
         manifest_created = self.write_upload_manifest()
         if manifest_created:
