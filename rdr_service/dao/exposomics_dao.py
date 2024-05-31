@@ -40,7 +40,6 @@ class ExposomicsM0Dao(BaseDao):
         form_data = kwargs.get("form_data")
         sample_list = kwargs.get("sample_list")
         biobank_ids = [obj.get('biobank_id') for obj in sample_list]
-        # need to know which stored sample for collection tube id - getting first for now
         with self.session() as session:
             return session.query(
                 func.concat(get_biobank_id_prefix(), ParticipantSummary.biobankId).label('biobank_id'),
