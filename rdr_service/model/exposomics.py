@@ -26,6 +26,16 @@ class ExposomicsManifestBase(ExposomicsBase):
     bucket_name = Column(String(128), nullable=False, index=True)
 
 
+class ExposomicsSamples(Base, ExposomicsBase):
+
+    __tablename__ = 'exposomics_samples'
+
+    biobank_id = Column(String(255), nullable=False, index=True)
+    sample_id = Column(String(255), nullable=False, index=True)
+    collection_tube_id = Column(String(255), nullable=False, index=True)
+    exposomics_set = Column(Integer, nullable=False, default=0)
+
+
 class ExposomicsM0(Base, ExposomicsManifestBase):
 
     __tablename__ = 'exposomics_m0'
