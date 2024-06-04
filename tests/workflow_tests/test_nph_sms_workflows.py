@@ -216,6 +216,19 @@ class NphSmsWorkflowsTest(BaseTestCase):
             diet="LMT",
             sex_at_birth="M",
             sample_identifier="test",
+            created=datetime.datetime(2023, 4, 25, 15, 13),
+            sample_id=10002,
+            lims_sample_id="000200",
+            destination=destination
+        )
+        sms_datagen.create_database_sms_sample(
+            ethnicity="test",
+            race="test",
+            bmi="30",
+            diet="LMT",
+            sex_at_birth="M",
+            sample_identifier="test2",
+            created=datetime.datetime(2023, 4, 26, 15, 13),
             sample_id=10002,
             lims_sample_id="000200",
             destination=destination
@@ -369,14 +382,15 @@ class NphSmsWorkflowsTest(BaseTestCase):
             "package_id": "test"
         }
         with clock.FakeClock(self.TIME_1):
-            from rdr_service.resource import main as resource_main
-            self.send_post(
-                local_path='NphSmsGenerationTaskApi',
-                request_data=generation_data,
-                prefix="/resource/task/",
-                test_client=resource_main.app.test_client(),
-            )
-
+            with self.assertLogs(level="INFO") as cm:
+                from rdr_service.resource import main as resource_main
+                self.send_post(
+                    local_path='NphSmsGenerationTaskApi',
+                    request_data=generation_data,
+                    prefix="/resource/task/",
+                    test_client=resource_main.app.test_client(),
+                )
+                print(cm.output)
 
         expected_csv_path = "test-bucket-unc-meta/n1_manifests/UNC_META_n1_2023-04-25T15:13:00.csv"
 
@@ -389,6 +403,9 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(csv_rows[0]['urine_color'], '"Color 4"')
         self.assertEqual(csv_rows[0]['urine_clarity'], '"Clean"')
         self.assertEqual(csv_rows[0]['manufacturer_lot'], '256837')
+        for row in csv_rows:
+            print(row['sample_id'])
+            print(row['collection_date_time'])
 
         self.create_data_pbrc_n1_mc1_generation()
 
@@ -433,7 +450,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[1].file_path, expected_csv_path)
         self.assertEqual(manifest_records[1].sample_id, "10002")
         self.assertEqual(manifest_records[1].matrix_id, "1112")
-        self.assertEqual(manifest_records[1].bmi, "28")
+        self.assertEqual(manifest_records[1].bmi, "30")
         self.assertEqual(manifest_records[1].diet, "LMT")
         self.assertEqual(manifest_records[1].collection_site, "UNC")
         self.assertEqual(manifest_records[1].manufacturer_lot, '256838')

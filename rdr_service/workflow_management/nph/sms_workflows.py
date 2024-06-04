@@ -204,7 +204,9 @@ class SmsWorkflow:
 
         if self.file_dao:
             source_data = self.file_dao.source_data(recipient=self.recipient, package_id=self.package_id)
+            logging.info("looking for source data")
             if source_data:
+                logging.info("found source data")
                 try:
                     self.validator.validate_n1(source_data)
                 except ValueError as e:

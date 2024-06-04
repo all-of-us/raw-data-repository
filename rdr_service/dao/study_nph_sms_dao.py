@@ -1,7 +1,7 @@
 from typing import List, Dict
 from sqlalchemy import func, and_
 from sqlalchemy.orm import aliased
-
+import logging
 from rdr_service import clock
 from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao
@@ -146,7 +146,16 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
         if not kwargs.get('package_id'):
             raise KeyError("package_id required for N1_MC1")
 
-        with self.session() as session:
+        with (self.session() as session):
+            most_recent = session.query(
+                SmsSample.sample_id,
+                func.max(SmsSample.created).label("created")
+            ).group_by(
+                SmsSample.sample_id
+            ).filter(
+                SmsSample.ignore_flag == 0
+            ).subquery()
+
             sample_well = aliased(SmsN1Mc1)
             query = session.query(
                 SmsSample.sample_id,
@@ -181,7 +190,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsSample,
                 and_(
                     SmsN0.sample_id == SmsSample.sample_id,
-                     SmsSample.ignore_flag == 0
+                    SmsSample.ignore_flag == 0
                 )
             ).outerjoin(
                 OrderedSample,
@@ -204,6 +213,12 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                      SmsN0.well_box_position == sample_well.well_box_position,
                      SmsN0.package_id == sample_well.package_id,
                      sample_well.ignore_flag == 0
+                )
+            ).join(
+                most_recent,
+                and_(
+                    SmsSample.sample_id == most_recent.c.sample_id,
+                    SmsSample.created == most_recent.c.created
                 )
             )
 
@@ -234,4 +249,4 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsN0.file_path.ilike(f'%{kwargs.get("recipient")}%')
             ).distinct().order_by(SmsN0.id)
 
-            return query.all()
+        return query.all()
