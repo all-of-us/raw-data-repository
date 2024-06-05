@@ -1,7 +1,7 @@
 import csv
 import datetime
 import os
-import time
+"""import time"""
 from unittest import mock
 
 from rdr_service import api_util, clock
