@@ -1,7 +1,7 @@
 from typing import List, Dict
 from sqlalchemy import func, and_, or_
 from sqlalchemy.orm import aliased
-import logging
+
 from rdr_service import clock
 from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao
@@ -146,7 +146,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
         if not kwargs.get('package_id'):
             raise KeyError("package_id required for N1_MC1")
 
-        with (self.session() as session):
+        with self.session() as session:
             most_recent = session.query(
                 SmsSample.sample_id,
                 func.max(SmsSample.created).label("created")
