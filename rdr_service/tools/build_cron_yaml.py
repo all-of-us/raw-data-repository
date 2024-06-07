@@ -29,7 +29,6 @@ PROJECT_NAME_MAPPING = {
     'pmi-drc-api-test': 'test',
     'all-of-us-rdr-sandbox': 'sandbox',
     'all-of-us-rdr-ptsc-1-test': 'ptsc',
-    'all-of-us-rdr-ptsc-2-test': 'ptsc',
     'all-of-us-rdr-careevo-test': 'careevo',
 }
 

@@ -76,10 +76,6 @@ def run():
                     primary=DatabaseProxy(name='rdrmaindb', port=9960),
                     replica=DatabaseProxy(name='rdrbackupdb', port=9965)
                 ),
-                RdrEnvironment.PTSC_2_TEST: ProxyData(
-                    primary=DatabaseProxy(name='rdrmaindb', port=9970),
-                    replica=DatabaseProxy(name='rdrbackupdb', port=9975)
-                )
             }
 
             self.environments_to_activate = [RdrEnvironment.PROD, RdrEnvironment.STABLE, RdrEnvironment.STAGING]
@@ -92,8 +88,6 @@ def run():
                 self.environments_to_activate.append(RdrEnvironment.CAREEVO_TEST)
             if self._args.enable_ptsc_1_test:
                 self.environments_to_activate.append(RdrEnvironment.PTSC_1_TEST)
-            if self._args.enable_ptsc_2_test:
-                self.environments_to_activate.append(RdrEnvironment.PTSC_2_TEST)
 
         def _print_instance_line(self, project_name, db_type, port_number):
             project_name_display = f'{project_name}:'.ljust(30)
@@ -221,8 +215,6 @@ def run():
     parser.add_argument('--enable-care-evo', help='Add proxy to all-of-us-rdr-careevo-test',
                         default=False, action='store_true')
     parser.add_argument('--enable-ptsc-1-test', help='Add proxy to all-of-us-rdr-ptsc-1-test',
-                        default=False, action='store_true')
-    parser.add_argument('--enable-ptsc-2-test', help='Add proxy to all-of-us-rdr-ptsc-2-test',
                         default=False, action='store_true')
     parser.add_argument('--enable-test-mysql-8', help='Add proxy to test MySQL 8 instance',
                         default=False, action='store_true')
