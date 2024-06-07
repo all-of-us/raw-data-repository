@@ -1,6 +1,7 @@
 import csv
 import datetime
 import os
+import time
 from unittest import mock
 
 from rdr_service import api_util, clock
@@ -361,6 +362,19 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
     def test_n1_mc1_generation(self):
         self.create_data_n1_mc1_generation()
+        sms_datagen = NphSmsDataGenerator()
+        time.sleep(1)
+        sms_datagen.create_database_sms_sample(
+            ethnicity="test",
+            race="test",
+            bmi="30",
+            diet="LMT",
+            sex_at_birth="M",
+            sample_identifier="test",
+            sample_id=10002,
+            lims_sample_id="000200",
+            destination="UNC_META"
+        )
 
         generation_data = {
             "job": "FILE_GENERATION",
@@ -376,7 +390,6 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 prefix="/resource/task/",
                 test_client=resource_main.app.test_client(),
             )
-
 
         expected_csv_path = "test-bucket-unc-meta/n1_manifests/UNC_META_n1_2023-04-25T15:13:00.csv"
 
@@ -433,7 +446,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[1].file_path, expected_csv_path)
         self.assertEqual(manifest_records[1].sample_id, "10002")
         self.assertEqual(manifest_records[1].matrix_id, "1112")
-        self.assertEqual(manifest_records[1].bmi, "28")
+        self.assertEqual(manifest_records[1].bmi, "30")
         self.assertEqual(manifest_records[1].diet, "LMT")
         self.assertEqual(manifest_records[1].collection_site, "UNC")
         self.assertEqual(manifest_records[1].manufacturer_lot, '256838')
