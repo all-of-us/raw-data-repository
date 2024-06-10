@@ -1,5 +1,5 @@
 from typing import List, Dict
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, or_
 from sqlalchemy.orm import aliased
 
 from rdr_service import clock
@@ -124,7 +124,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
         if env_split in ['prod', 'stable', 'sandbox']:
             bucket = config.NPH_SMS_BUCKETS.get(env_split).get(recipient)
 
-        if recipient.lower() in ["ucsd", "tandam_dlw"]:
+        if recipient.lower() in ["ucsd", "pbrc"]:
             delimiter_str = '\t'
             extension = 'txt'
         else:
@@ -147,6 +147,15 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             raise KeyError("package_id required for N1_MC1")
 
         with self.session() as session:
+            most_recent = session.query(
+                SmsSample.sample_id,
+                func.max(SmsSample.created).label("created")
+            ).group_by(
+                SmsSample.sample_id
+            ).filter(
+                SmsSample.ignore_flag == 0
+            ).subquery()
+
             sample_well = aliased(SmsN1Mc1)
             query = session.query(
                 SmsSample.sample_id,
@@ -181,7 +190,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsSample,
                 and_(
                     SmsN0.sample_id == SmsSample.sample_id,
-                     SmsSample.ignore_flag == 0
+                    SmsSample.ignore_flag == 0
                 )
             ).outerjoin(
                 OrderedSample,
@@ -205,9 +214,15 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                      SmsN0.package_id == sample_well.package_id,
                      sample_well.ignore_flag == 0
                 )
+            ).outerjoin(
+                most_recent,
+                and_(
+                    SmsSample.sample_id == most_recent.c.sample_id,
+                    SmsSample.created == most_recent.c.created
+                )
             )
 
-            if 'tandam' in kwargs.get('recipient').lower():
+            if 'pbrc' in kwargs.get('recipient').lower():
                 query = query.add_columns(
                     SmsSample.body_weight_kg,
                     func.json_extract(OrderedSample.supplemental_fields, '$.dlwDose.batchid').label('dlw_dose_batch'),
@@ -231,7 +246,11 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 sample_well.id.is_(None),
                 SmsN0.ignore_flag == 0,
                 SmsN0.package_id == kwargs.get('package_id'),
-                SmsN0.file_path.ilike(f'%{kwargs.get("recipient")}%')
+                SmsN0.file_path.ilike(f'%{kwargs.get("recipient")}%'),
+                or_(
+                    SmsSample.created == most_recent.c.created,
+                    SmsSample.created.is_(None)
+                )
             ).distinct().order_by(SmsN0.id)
 
             return query.all()

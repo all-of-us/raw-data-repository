@@ -591,6 +591,10 @@ class QuestionnaireResponseDao(BaseDao):
             questions = QuestionnaireQuestionDao().get_all_with_session(session, question_ids)
             code_ids = [question.codeId for question in questions]
 
+            platform_origin = session.query(Participant.participantOrigin).filter(
+                Participant.participantId == questionnaire_response.participantId
+            ).scalar()
+
         code_dao = CodeDao()
         pm_unite_code = code_dao.get_code(PPI_SYSTEM, REMOTE_PM_UNIT)
         if not pm_unite_code:
@@ -693,7 +697,7 @@ class QuestionnaireResponseDao(BaseDao):
             logPosition=LogPosition(),
             finalized=authored,
             measurements=measurements,
-            origin='vibrent',
+            origin='ce' if platform_origin == 'careevolution' else platform_origin,
             collectType=PhysicalMeasurementsCollectType.SELF_REPORTED,
             originMeasurementUnit=origin_measurement_unit,
             questionnaireResponseId=questionnaire_response.questionnaireResponseId
@@ -1039,7 +1043,7 @@ class QuestionnaireResponseDao(BaseDao):
         dna_program_consent_update_code = config.getSettingJson(config.DNA_PROGRAM_CONSENT_UPDATE_CODE, None)
 
         if 'verified' in remote_id_info:
-            if remote_id_info['verified'] == "true":
+            if remote_id_info['verified'].lower() == "true":
                 if 'verified_on' in remote_id_info:
                     participant_summary.remoteIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
                 else:
@@ -1052,7 +1056,7 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_summary.idVerificationOrigin = IdVerificationOriginType.REMOTE
                 if not participant_summary.firstIdVerifiedOn:
                     participant_summary.firstIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
-            elif remote_id_info['verified'] == "false":
+            elif remote_id_info['verified'].lower() == "false":
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
                 participant_summary.remoteIdVerificationStatus = False
                 participant_summary.remoteIdVerifiedOn = None
