@@ -3,22 +3,35 @@ from abc import ABC, abstractmethod
 from rdr_service import config, clock
 from typing import List
 
-from rdr_service.dao.exposomics_dao import ExposomicsM0Dao
+from rdr_service.dao.exposomics_dao import ExposomicsM0Dao, ExposomicsDefaultBaseDao
+from rdr_service.model.exposomics import ExposomicsM1
 from rdr_service.offline.sql_exporter import SqlExporter
+from rdr_service.storage import GoogleCloudStorageProvider
 
 
 class ExposomicsManifestWorkflow(ABC):
-
-    @abstractmethod
-    def get_source_data(self):
-        ...
 
     @abstractmethod
     def store_manifest_data(self):
         ...
 
 
+class ExposommicsIngestManifestWorkflow(ExposomicsManifestWorkflow):
+
+    @abstractmethod
+    def copy_manifest_to_bucket(self):
+        ...
+
+    @abstractmethod
+    def set_destination_path(self):
+        ...
+
+
 class ExposomicsGenerateManifestWorkflow(ExposomicsManifestWorkflow):
+
+    @abstractmethod
+    def get_source_data(self):
+        ...
 
     @abstractmethod
     def generate_manifest(self):
@@ -58,7 +71,7 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
 
     def generate_filename(self):
         now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
-        return (f'AoU_m0_{self.form_data.get("sample_type")}'
+        return (f'AoU_{self.manifest_type}_{self.form_data.get("sample_type")}'
                 f'_{self.form_data.get("unique_study_identifier")}'
                 f'_{now_formatted}_{self.set_num}.csv')
 
@@ -93,3 +106,37 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
         if manifest_created:
             self.store_manifest_data()
 
+
+class ExposomicsM1Workflow(ExposommicsIngestManifestWorkflow):
+
+    def __init__(self, file_path: str):
+        self.dao = ExposomicsDefaultBaseDao(ExposomicsM1)
+        self.storage_provider = GoogleCloudStorageProvider()
+        self.source_data = []
+        self.file_path = file_path
+        self.destination_path = self.set_destination_path()
+
+    def copy_manifest_to_bucket(self):
+        try:
+            self.storage_provider.copy_blob(
+                self.file_path,
+                self.destination_path
+            )
+        # pylint: disable=broad-except
+        except Exception as e:
+            logging.warning(f'Failure to copy manifest path {self.file_path} to new destination: {e}')
+            return
+
+    def set_destination_path(self):
+        return ''
+
+    def store_manifest_data(self):
+        # self.copy_manifest_to_bucket()
+        manifest_data = {
+            'file_path': f'{self.bucket_name}/{self.destination_path}/{self.file_name}',
+            'file_data': self.source_data,
+            'file_name': self.file_name,
+            'bucket_name': self.bucket_name,
+            'copied_path': self.copied_path
+        }
+        self.dao.insert(self.dao.model_type(**manifest_data))

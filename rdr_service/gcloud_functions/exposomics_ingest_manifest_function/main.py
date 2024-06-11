@@ -33,7 +33,7 @@ class ExposomicsIngestManifestFunction(FunctionPubSubHandler):
     def __init__(self, gcp_env, _event, _context):
         super().__init__(gcp_env, _event, _context)
 
-        self.api_route = '/resource/task/NphSmsIngestionTaskApi'
+        self.api_route = '/resource/task/ExposomicsIngestManifest'
 
     def run(self):
         """ Handle Pub/Sub message events.
@@ -49,19 +49,27 @@ class ExposomicsIngestManifestFunction(FunctionPubSubHandler):
 
         _logger.info("Pushing cloud task...")
 
+        exposomics_tasks = {
+            'aou_m1_': 'm1'
+        }
+
+        for key, value in exposomics_tasks.items():
+            if key in object_id:
+                manifest_type: str = value
+                break
+        else:
+            _logger.info("No files match ingestion criteria.")
+            return
+
         data = {
             "file_path": f'{self.event.attributes.bucketId}/{self.event.attributes.objectId}',
             "bucket_name": self.event.attributes.bucketId,
-            "topic": "sms_files_upload",
             "event_payload": self.event,
-            "job": "FILE_INGESTION",
-            "file_type": '',
-            "api_route": self.api_route,
-            "cloud_function": True,
+            "file_type": manifest_type,
         }
 
-        _task = GCPCloudTask()
-        _task.execute(self.api_route, payload=data, queue=task_queue)
+        cloud_task = GCPCloudTask()
+        cloud_task.execute(self.api_route, payload=data, queue=task_queue)
 
 
 def get_deploy_args(gcp_env):

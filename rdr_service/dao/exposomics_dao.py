@@ -92,3 +92,15 @@ class ExposomicsM0Dao(BaseDao):
                 Participant.isGhostId.is_(None),
                 Participant.isTestParticipant != 1
             ).distinct().all()
+
+
+class ExposomicsDefaultBaseDao(BaseDao):
+
+    def __init__(self, model_type):
+        super().__init__(model_type, order_by_ending=["id"])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass

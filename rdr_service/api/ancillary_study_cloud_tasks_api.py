@@ -237,3 +237,17 @@ class WithdrawnParticipantNotifierTaskApi(BaseAncillaryTaskApi):
             for pid in nph_pids
         ]
         return aou_pids
+
+
+class ExposomicsIngestManifest(BaseAncillaryTaskApi):
+
+    def post(self):
+        super().post()
+        logging.info(f'Ingesting Exposomics Manifest: {self.data.get("file_type")}')
+
+        # exposomics_manifest = {
+        #     'm1': ExposomicsM1Workflow
+        # }
+
+        logging.info('Complete.')
+        return {"success": True}

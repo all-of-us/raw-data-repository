@@ -36,6 +36,10 @@ class ExposomicsSamples(Base, ExposomicsBase):
     exposomics_set = Column(Integer, nullable=False, default=0)
 
 
+event.listen(ExposomicsSamples, 'before_insert', model_insert_listener)
+event.listen(ExposomicsSamples, 'before_update', model_update_listener)
+
+
 class ExposomicsM0(Base, ExposomicsManifestBase):
 
     __tablename__ = 'exposomics_m0'
@@ -45,3 +49,14 @@ class ExposomicsM0(Base, ExposomicsManifestBase):
 
 event.listen(ExposomicsM0, 'before_insert', model_insert_listener)
 event.listen(ExposomicsM0, 'before_update', model_update_listener)
+
+
+class ExposomicsM1(Base, ExposomicsManifestBase):
+
+    __tablename__ = 'exposomics_m1'
+
+    copied_path = Column(String(255), nullable=False, index=True)
+
+
+event.listen(ExposomicsM1, 'before_insert', model_insert_listener)
+event.listen(ExposomicsM1, 'before_update', model_update_listener)

@@ -222,3 +222,27 @@ class NphIncidentTaskApiCloudTaskTest(BaseTestCase):
         self.clear_table_after_test("nph.participant_event_activity")
         self.clear_table_after_test("nph.activity")
         self.clear_table_after_test("nph.participant")
+
+
+class ExoposomicsIngestManifestCloudTask(BaseTestCase):
+
+    def setUp(self) -> None:
+        super().setUp()
+
+    def test_exposomics_ingest_manifest(self):
+
+        data = {
+            "file_path": 'fake_bucket/fake_file_path',
+            "bucket_name": 'fake_bucket',
+            "file_type": 'm1',
+        }
+
+        from rdr_service.resource import main as resource_main
+
+        self.send_post(
+            local_path='ExposomicsIngestManifest',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+

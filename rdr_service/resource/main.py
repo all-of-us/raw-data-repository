@@ -237,6 +237,10 @@ def _build_resource_app():
                       TASK_PREFIX + "WithdrawnParticipantNotifierTaskApi",
                       endpoint="withdrawn_participant_notifier_task", methods=["POST"])
 
+    # Cloud Task for ingesting exposomics manifests
+    _api.add_resource(ancillary_study_cloud_tasks_api.ExposomicsIngestManifest,
+                      TASK_PREFIX + "ExposomicsIngestManifest",
+                      endpoint="exposomics_ingest_manifest", methods=["POST"])
     #
     # End Ancillary Studies Cloud Task API endpoints
     #
