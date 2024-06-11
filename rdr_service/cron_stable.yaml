@@ -14,3 +14,8 @@ cron:
   target: offline
   timezone: America/New_York
   url: /offline/NphBiobankInventoryFileImport
+- description: ETM Duplicate Response Detector
+  schedule: every day 02:30
+  target: offline
+  timezone: America/New_York
+  url: /offline/detect_etm_response_duplicates
