@@ -11,6 +11,9 @@ from rdr_service.storage import GoogleCloudStorageProvider
 
 class ExposomicsManifestWorkflow(ABC):
 
+    def convert_source_data(self):
+        return [el._asdict() for el in self.source_data]
+
     @abstractmethod
     def store_manifest_data(self):
         ...
@@ -85,7 +88,7 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
     def store_manifest_data(self):
         manifest_data = {
             'file_path': f'{self.bucket_name}/{self.destination_path}/{self.file_name}',
-            'file_data': self.source_data,
+            'file_data': self.convert_source_data(),
             'file_name': self.file_name,
             'bucket_name': self.bucket_name,
             'exposomics_set': self.set_num
