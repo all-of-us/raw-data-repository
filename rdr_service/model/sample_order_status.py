@@ -14,7 +14,7 @@ class SampleOrderStatus(Base):
     participant_id = sa.Column(sa.Integer, sa.ForeignKey('participant.participant_id'), nullable=False)
     test_code = sa.Column(sa.String(80), nullable=False)
     status = sa.Column(Enum(OrderStatus), nullable=False)
-    status_time = sa.Column(UTCDateTime, nullable=False)
+    status_time = sa.Column(UTCDateTime)
 
 
 sa.event.listen(SampleOrderStatus, 'before_insert', model_insert_listener)

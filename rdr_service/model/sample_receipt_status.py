@@ -14,7 +14,7 @@ class SampleReceiptStatus(Base):
     participant_id = sa.Column(sa.Integer, sa.ForeignKey('participant.participant_id'), nullable=False)
     test_code = sa.Column(sa.String(80), nullable=False)
     status = sa.Column(Enum(SampleStatus), nullable=False)
-    status_time = sa.Column(UTCDateTime, nullable=False)
+    status_time = sa.Column(UTCDateTime)
 
 
 sa.event.listen(SampleReceiptStatus, 'before_insert', model_insert_listener)

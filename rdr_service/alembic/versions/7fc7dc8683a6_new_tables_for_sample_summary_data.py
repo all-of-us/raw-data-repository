@@ -44,7 +44,7 @@ def upgrade_rdr():
     sa.Column('participant_id', sa.Integer(), nullable=False),
     sa.Column('test_code', sa.String(length=80), nullable=False),
     sa.Column('status', rdr_service.model.utils.Enum(OrderStatus), nullable=False),
-    sa.Column('status_time', rdr_service.model.utils.UTCDateTime(), nullable=False),
+    sa.Column('status_time', rdr_service.model.utils.UTCDateTime(), nullable=True),
     sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -55,7 +55,7 @@ def upgrade_rdr():
     sa.Column('participant_id', sa.Integer(), nullable=False),
     sa.Column('test_code', sa.String(length=80), nullable=False),
     sa.Column('status', rdr_service.model.utils.Enum(SampleStatus), nullable=False),
-    sa.Column('status_time', rdr_service.model.utils.UTCDateTime(), nullable=False),
+    sa.Column('status_time', rdr_service.model.utils.UTCDateTime(), nullable=True),
     sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
     sa.PrimaryKeyConstraint('id')
     )
