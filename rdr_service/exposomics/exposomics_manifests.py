@@ -10,6 +10,10 @@ from rdr_service.offline.sql_exporter import SqlExporter
 class ExposomicsManifestWorkflow(ABC):
 
     @abstractmethod
+    def convert_source_data(self):
+        ...
+
+    @abstractmethod
     def get_source_data(self):
         ...
 
@@ -56,6 +60,9 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
         self.source_data = []
         self.headers = []
 
+    def convert_source_data(self):
+        return [el._asdict() for el in self.source_data]
+
     def generate_filename(self):
         now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
         return (f'AoU_m0_{self.form_data.get("sample_type")}'
@@ -72,7 +79,7 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
     def store_manifest_data(self):
         manifest_data = {
             'file_path': f'{self.bucket_name}/{self.destination_path}/{self.file_name}',
-            'file_data': self.source_data,
+            'file_data': self.convert_source_data(),
             'file_name': self.file_name,
             'bucket_name': self.bucket_name,
             'exposomics_set': self.set_num
