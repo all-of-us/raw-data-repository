@@ -793,7 +793,7 @@ class VibrentEhrConsentFile(EhrConsentFile):
 
     def _get_date_search_box(self):
         if self._is_english_mar_24_version():
-            return Rect.from_edges(left=130, right=250, bottom=100, top=105)
+            return Rect.from_edges(left=130, right=250, bottom=90, top=105)
         elif self._is_spanish_mar_24_version():
             return Rect.from_edges(left=130, right=250, bottom=113, top=123)
         else:
@@ -1058,9 +1058,11 @@ class CeFileWrapper:
 
         signature_label_strings = [
             "Participant's Name (printed)",
+            "Participant’s Name (printed)",
             "'s Name (printed)",
             "Name (printed)",
-            'Nombre'
+            'Nombre',
+            'consent-printed-name-label'
         ]
 
         for offset in signature_offsets:
@@ -1075,6 +1077,8 @@ class CeFileWrapper:
         signature_footer_location = self._get_location_of_string(signature_page, 'Date')
         if not signature_footer_location:
             signature_footer_location = self._get_location_of_string(signature_page, 'Fecha')
+        if not signature_footer_location:
+            signature_footer_location = self._get_location_of_string(signature_page, 'consent-date-label')
 
         if signature_footer_location:
             date_string_list = self._text_in_bounds(

@@ -103,13 +103,6 @@ jobs:
           project-id: all-of-us-rdr-ptsc-1-test
           git-target: << pipeline.git.tag >>
 
-  job_deploy_to_ptsc_2:
-    <<: *job_defaults
-    steps:
-      - deploy-app-steps:
-          project-id: all-of-us-rdr-ptsc-2-test
-          git-target: << pipeline.git.tag >>
-
   job_deploy_to_ce:
     <<: *job_defaults
     steps:
@@ -158,12 +151,6 @@ workflows:
             tags:
               only: /^\d\.\d+\.\d+$/
       - job_deploy_to_ptsc_1:
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^\d\.\d+\.\d+$/
-      - job_deploy_to_ptsc_2:
           filters:
             branches:
               ignore: /.*/

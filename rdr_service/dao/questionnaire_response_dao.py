@@ -1043,7 +1043,7 @@ class QuestionnaireResponseDao(BaseDao):
         dna_program_consent_update_code = config.getSettingJson(config.DNA_PROGRAM_CONSENT_UPDATE_CODE, None)
 
         if 'verified' in remote_id_info:
-            if remote_id_info['verified'] == "true":
+            if remote_id_info['verified'].lower() == "true":
                 if 'verified_on' in remote_id_info:
                     participant_summary.remoteIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
                 else:
@@ -1056,7 +1056,7 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_summary.idVerificationOrigin = IdVerificationOriginType.REMOTE
                 if not participant_summary.firstIdVerifiedOn:
                     participant_summary.firstIdVerifiedOn = datetime.utcfromtimestamp(remote_id_info['verified_on'])
-            elif remote_id_info['verified'] == "false":
+            elif remote_id_info['verified'].lower() == "false":
                 participant_summary.remoteIdVerificationOrigin = participant_summary.participantOrigin
                 participant_summary.remoteIdVerificationStatus = False
                 participant_summary.remoteIdVerifiedOn = None
