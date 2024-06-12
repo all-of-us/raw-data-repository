@@ -19,6 +19,13 @@ class ExposomicsManifestWorkflow(ABC):
     def convert_source_data(self):
         return [el._asdict() for el in self.source_data]
 
+    def handle_special_mappings_row(self, *, row):
+        if self.special_mappings:
+            for mapping_key in self.special_mappings:
+                row[self.special_mappings.get(mapping_key)] = row.get(mapping_key)
+                del row[mapping_key]
+        return row
+
 
 class ExposommicsIngestManifestWorkflow(ExposomicsManifestWorkflow):
 
@@ -173,20 +180,28 @@ class ExposomicsM1Workflow(ExposommicsIngestManifestWorkflow):
         self.dao = ExposomicsM1Dao()
         self.file_path = file_path
         self.source_data = self.retrieve_source_data()
+        self.special_mappings = {
+            '260_230': 'two_sixty_two_thirty',
+            '260_280': 'two_sixty_two_eighty'
+        }
 
     def store_manifest_data(self):
         file_path_data = self.file_path.split('/')
-        manifest_data = [
-            {
-                'created': clock.CLOCK.now(),
-                'modified': clock.CLOCK.now(),
-                'biobank_id': self.dao.extract_prefix_from_val(row.get('biobank_id')),
-                'file_path': self.file_path,
-                'row_data': row,
-                'file_name': file_path_data[-1],
-                'bucket_name': file_path_data[0]
-            } for row in self.source_data
-        ]
+        manifest_data = []
+
+        for row in self.source_data:
+            row = self.handle_special_mappings_row(row=row)
+            manifest_data.append(
+                {
+                    'created': clock.CLOCK.now(),
+                    'modified': clock.CLOCK.now(),
+                    'biobank_id': self.dao.extract_prefix_from_val(row.get('biobank_id')),
+                    'file_path': self.file_path,
+                    'row_data': row,
+                    'file_name': file_path_data[-1],
+                    'bucket_name': file_path_data[0]
+                }
+            )
         self.dao.insert_bulk(manifest_data)
 
     def ingest_manifest(self):
