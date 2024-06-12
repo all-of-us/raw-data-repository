@@ -1,18 +1,16 @@
+import csv
 import logging
 from abc import ABC, abstractmethod
 from rdr_service import config, clock
 from typing import List
 
-from rdr_service.dao.exposomics_dao import ExposomicsM0Dao, ExposomicsDefaultBaseDao
-from rdr_service.model.exposomics import ExposomicsM1
+from rdr_service.api_util import open_cloud_file
+from rdr_service.config import BIOBANK_SAMPLES_BUCKET_NAME, HHEAR_BUCKET_NAME
+from rdr_service.dao.exposomics_dao import ExposomicsM0Dao, ExposomicsM1Dao
 from rdr_service.offline.sql_exporter import SqlExporter
-from rdr_service.storage import GoogleCloudStorageProvider
 
 
 class ExposomicsManifestWorkflow(ABC):
-
-    def convert_source_data(self):
-        return [el._asdict() for el in self.source_data]
 
     @abstractmethod
     def store_manifest_data(self):
@@ -21,20 +19,20 @@ class ExposomicsManifestWorkflow(ABC):
 
 class ExposommicsIngestManifestWorkflow(ExposomicsManifestWorkflow):
 
-    @abstractmethod
-    def copy_manifest_to_bucket(self):
-        ...
+    def retrieve_source_data(self):
+        try:
+            with open_cloud_file(self.file_path) as csv_file:
+                csv_reader = csv.DictReader(csv_file, delimiter=",")
+                return [obj for obj in csv_reader]
+        except FileNotFoundError:
+            logging.warning(f"File path '{self.file_path}' not found")
 
     @abstractmethod
-    def set_destination_path(self):
+    def ingest_manifest(self):
         ...
 
 
 class ExposomicsGenerateManifestWorkflow(ExposomicsManifestWorkflow):
-
-    @abstractmethod
-    def get_source_data(self):
-        ...
 
     @abstractmethod
     def generate_manifest(self):
@@ -43,6 +41,13 @@ class ExposomicsGenerateManifestWorkflow(ExposomicsManifestWorkflow):
     @abstractmethod
     def generate_filename(self):
         ...
+
+    @abstractmethod
+    def get_source_data(self):
+        ...
+
+    def convert_source_data(self):
+        return [el._asdict() for el in self.source_data]
 
     def write_upload_manifest(self):
         try:
@@ -65,7 +70,7 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
         self.sample_list = sample_list
         self.manifest_type = 'mO'
         self.dao = ExposomicsM0Dao()
-        self.bucket_name = config.BIOBANK_SAMPLES_BUCKET_NAME
+        self.bucket_name = config.getSetting(BIOBANK_SAMPLES_BUCKET_NAME)
         self.destination_path = f'{config.EXPOSOMICS_MO_MANIFEST_SUBFOLDER}'
         self.file_name = None
         self.set_num = set_num
@@ -110,36 +115,71 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
             self.store_manifest_data()
 
 
+class ExposomicsM1CopyWorkflow(ExposomicsGenerateManifestWorkflow):
+
+    def __init__(self, copy_file_path):
+        self.manifest_type = 'm1'
+        self.dao = ExposomicsM1Dao()
+        self.copy_file_path = copy_file_path
+        self.bucket_name = config.getSetting(HHEAR_BUCKET_NAME)
+        # self.destination_path = f'{config.EXPOSOMICS_MO_MANIFEST_SUBFOLDER}'
+        # self.file_name = None
+        # self.set_num = set_num
+        # self.source_data = []
+        # self.headers = []
+
+    def generate_filename(self):
+        return self.copy_file_path.split('/')[-1]
+
+    def get_source_data(self):
+        return self.dao.get_manifest_data(
+            file_path=self.copy_file_path
+        )
+
+    def store_manifest_data(self):
+        ...
+        # manifest_data = {
+        #     'file_path': f'{self.bucket_name}/{self.destination_path}/{self.file_name}',
+        #     'file_data': self.convert_source_data(),
+        #     'file_name': self.file_name,
+        #     'bucket_name': self.bucket_name,
+        #     'exposomics_set': self.set_num
+        # }
+        # self.dao.insert(self.dao.model_type(**manifest_data))
+
+    def generate_manifest(self):
+        ...
+        # self.file_name = self.generate_filename()
+        # self.source_data = self.get_source_data()
+        #
+        # if not self.source_data:
+        #     logging.warning('There were no results returned for the M0 generation')
+        #     return
+        #
+        # self.headers = self.source_data[0]._asdict().keys()
+        #
+        # manifest_created = self.write_upload_manifest()
+        # if manifest_created:
+        #     self.store_manifest_data()
+
+
 class ExposomicsM1Workflow(ExposommicsIngestManifestWorkflow):
 
     def __init__(self, file_path: str):
-        self.dao = ExposomicsDefaultBaseDao(ExposomicsM1)
-        self.storage_provider = GoogleCloudStorageProvider()
-        self.source_data = []
+        self.dao = ExposomicsM1Dao()
         self.file_path = file_path
-        self.destination_path = self.set_destination_path()
-
-    def copy_manifest_to_bucket(self):
-        try:
-            self.storage_provider.copy_blob(
-                self.file_path,
-                self.destination_path
-            )
-        # pylint: disable=broad-except
-        except Exception as e:
-            logging.warning(f'Failure to copy manifest path {self.file_path} to new destination: {e}')
-            return
-
-    def set_destination_path(self):
-        return ''
+        self.source_data = self.retrieve_source_data()
 
     def store_manifest_data(self):
-        # self.copy_manifest_to_bucket()
+        file_path_data = self.file_path.split('/')
         manifest_data = {
-            'file_path': f'{self.bucket_name}/{self.destination_path}/{self.file_name}',
-            'file_data': self.source_data,
-            'file_name': self.file_name,
-            'bucket_name': self.bucket_name,
-            'copied_path': self.copied_path
+            'file_path': self.file_path,
+            'file_data': self.retrieve_source_data(),
+            'file_name': file_path_data[-1],
+            'bucket_name': file_path_data[0]
         }
         self.dao.insert(self.dao.model_type(**manifest_data))
+
+    def ingest_manifest(self):
+        self.store_manifest_data()
+        ExposomicsM1CopyWorkflow(copy_file_path=self.file_path).generate_manifest()
