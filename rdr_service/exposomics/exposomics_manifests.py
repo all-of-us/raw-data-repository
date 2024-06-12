@@ -77,6 +77,9 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
         self.source_data = []
         self.headers = []
 
+    def convert_source_data(self):
+        return [el._asdict() for el in self.source_data]
+
     def generate_filename(self):
         now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
         return (f'AoU_{self.manifest_type}_{self.form_data.get("sample_type")}'
