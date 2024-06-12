@@ -18,14 +18,6 @@ class ExposomicsBase:
     modified = Column("modified", UTCDateTime, nullable=True)
 
 
-class ExposomicsManifestBase(ExposomicsBase):
-
-    file_path = Column(String(255), nullable=False, index=True)
-    file_data = Column(JSON, nullable=False)
-    file_name = Column(String(128), nullable=False)
-    bucket_name = Column(String(128), nullable=False, index=True)
-
-
 class ExposomicsSamples(Base, ExposomicsBase):
 
     __tablename__ = 'exposomics_samples'
@@ -38,6 +30,15 @@ class ExposomicsSamples(Base, ExposomicsBase):
 
 event.listen(ExposomicsSamples, 'before_insert', model_insert_listener)
 event.listen(ExposomicsSamples, 'before_update', model_update_listener)
+
+
+class ExposomicsManifestBase(ExposomicsBase):
+
+    biobank_id = Column(String(255), nullable=False, index=True)
+    file_path = Column(String(255), nullable=False, index=True)
+    row_data = Column(JSON, nullable=False)
+    file_name = Column(String(128), nullable=False)
+    bucket_name = Column(String(128), nullable=False, index=True)
 
 
 class ExposomicsM0(Base, ExposomicsManifestBase):
@@ -55,7 +56,7 @@ class ExposomicsM1(Base, ExposomicsManifestBase):
 
     __tablename__ = 'exposomics_m1'
 
-    copied_path = Column(String(255), nullable=False, index=True)
+    copied_path = Column(String(255))
 
 
 event.listen(ExposomicsM1, 'before_insert', model_insert_listener)
