@@ -140,6 +140,10 @@ class ExposomicsWorkflowTest(BaseTestCase):
         self.assertTrue(all(obj.row_data is not None for obj in current_m1))
         self.assertTrue(all(obj.file_name is not None for obj in current_m1))
         self.assertTrue(all(obj.bucket_name is not None for obj in current_m1))
+        self.assertTrue(all(obj.copied_path is not None for obj in current_m1))
+
+        # check file paths differ
+        self.assertTrue(all(obj.file_path != obj.copied_path for obj in current_m1))
 
         copied_path = current_m1[0].copied_path
         # check copied csv that was generated
