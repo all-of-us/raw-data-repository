@@ -2,6 +2,8 @@ import logging
 import json
 import datetime
 import pytz
+from typing import Optional
+
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import fhirdate
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.backboneelement import BackboneElement
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
@@ -20,6 +22,7 @@ from rdr_service.code_constants import BIOBANK_TESTS_SET, HEALTHPRO_USERNAME_SYS
 from rdr_service.dao.base_dao import FhirMixin, FhirProperty, UpdatableDao
 from rdr_service.dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.sample_summary_dao import SampleSummaryDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.model.biobank_order import (
@@ -408,7 +411,7 @@ class BiobankOrderDao(UpdatableDao):
             raise BadRequest(f"Can't submit biospecimens for participant {obj.participantId} without consent")
         raise_if_withdrawn(participant_summary)
 
-        self._set_participant_summary_fields(obj, participant_summary)
+        self._set_participant_summary_fields(obj, participant_summary, session)
         participant_summary_dao = ParticipantSummaryDao()
         participant_summary_dao.update_enrollment_status(participant_summary, session=session)
 
@@ -426,7 +429,7 @@ class BiobankOrderDao(UpdatableDao):
             if sample.finalized is not None:
                 return sample.finalized
 
-    def _set_participant_summary_fields(self, obj, participant_summary):
+    def _set_participant_summary_fields(self, obj, participant_summary, session):
         participant_summary.biospecimenStatus = OrderStatus.FINALIZED
         participant_summary.biospecimenOrderTime = obj.created
         if obj.sourceSiteId or obj.collectedSiteId or obj.processedSiteId or obj.finalizedSiteId:
@@ -438,10 +441,14 @@ class BiobankOrderDao(UpdatableDao):
         participant_summary.lastModified = clock.CLOCK.now()
 
         for sample in obj.samples:
-            status_field = "sampleOrderStatus" + sample.test
             status, time = self._get_order_status_and_time(sample, obj)
-            setattr(participant_summary, status_field, status)
-            setattr(participant_summary, status_field + "Time", time)
+            self._set_status_summary_fields(
+                participant_summary=participant_summary,
+                session=session,
+                test_code=sample.test,
+                status_value=status,
+                timestamp=time
+            )
 
     def _get_non_cancelled_biobank_orders(self, session, participantId):
         # look up latest order without cancelled status
@@ -489,13 +496,17 @@ class BiobankOrderDao(UpdatableDao):
 
         participant_summary.lastModified = clock.CLOCK.now()
         for sample in obj.samples:
-            status_field = "sampleOrderStatus" + sample.test
-            setattr(participant_summary, status_field, OrderStatus.UNSET)
-            setattr(participant_summary, status_field + "Time", None)
+            self._set_status_summary_fields(
+                participant_summary=participant_summary,
+                session=session,
+                test_code=sample.test,
+                status_value=OrderStatus.UNSET,
+                timestamp=None
+            )
 
         if len(non_cancelled_orders) > 0:
             for order in non_cancelled_orders:
-                self._set_participant_summary_fields(order, participant_summary)
+                self._set_participant_summary_fields(order, participant_summary, session)
         participant_summary_dao.update_enrollment_status(participant_summary, session=session)
 
     def _parse_handling_info(self, handling_info):
@@ -907,3 +918,19 @@ class BiobankOrderDao(UpdatableDao):
         order.restoredSiteId = None
         order.cancelledSiteId = None
         order.status = BiobankOrderStatus.UNSET
+
+    @classmethod
+    def _set_status_summary_fields(
+        cls, participant_summary, session, test_code, status_value: OrderStatus, timestamp: Optional[datetime]
+    ):
+        status_field = "sampleOrderStatus" + test_code
+        setattr(participant_summary, status_field, status_value)
+        setattr(participant_summary, status_field + "Time", timestamp)
+
+        SampleSummaryDao.upsert_order_data(
+            participant_id=participant_summary.participantId,
+            status=status_value,
+            time=timestamp,
+            test=test_code,
+            session=session
+        )

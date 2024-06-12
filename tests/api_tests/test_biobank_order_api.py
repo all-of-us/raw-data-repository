@@ -15,6 +15,7 @@ from rdr_service.model.biobank_order import (
     BiobankOrderedSampleHistory,
 )
 from rdr_service.model.participant import Participant
+from rdr_service.model.sample_order_status import SampleOrderStatus
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
 from rdr_service.participant_enums import OrderStatus, UNSET_HPO_ID
 from tests.api_tests.test_participant_summary_api import _add_code_answer
@@ -251,6 +252,13 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual(get_cancelled_order["cancelledInfo"]["author"]["value"], "fred@pmi-ops.org")
         self.assertEqual(get_cancelled_order["cancelledInfo"]["site"]["value"], "hpo-site-monroeville")
 
+        order_status: SampleOrderStatus = self.session.query(SampleOrderStatus).filter(
+            SampleOrderStatus.participant_id == self.participant.participantId
+        ).filter(
+            SampleOrderStatus.test_code == '1PST8'
+        ).one()
+        self.assertNotEqual(OrderStatus.FINALIZED, order_status.status)
+
     def test_you_can_not_cancel_a_cancelled_order(self):
         self.summary_dao.insert(self.participant_summary(self.participant))
         order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")
@@ -368,6 +376,18 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual(restored_order["restoredInfo"]["author"]["value"], "fred@pmi-ops.org")
         self.assertEqual(restored_order["restoredInfo"]["site"]["value"], "hpo-site-monroeville")
         self.assertEqual(restored_order["amendedReason"], "I didnt mean to cancel")
+
+        order_status_query = self.session.query(SampleOrderStatus).filter(
+            SampleOrderStatus.participant_id == self.participant.participantId
+        )
+        one_sal_status: SampleOrderStatus = order_status_query.filter(
+            SampleOrderStatus.test_code == '1SAL'
+        ).one()
+        self.assertEqual(OrderStatus.CREATED, one_sal_status.status)
+        ed2_status: SampleOrderStatus = order_status_query.filter(
+            SampleOrderStatus.test_code == '1ED02'
+        ).one()
+        self.assertEqual(OrderStatus.FINALIZED, ed2_status.status)
 
     def test_amending_an_order(self):
         # pylint: disable=unused-variable

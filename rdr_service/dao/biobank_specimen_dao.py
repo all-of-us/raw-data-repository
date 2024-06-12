@@ -11,6 +11,7 @@ from rdr_service.dao.database_utils import NamedLock
 from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.object_preloader import LoadingStrategy, ObjectPreloader
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.sample_summary_dao import SampleSummaryDao
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot,\
     BiobankAliquotDataset, BiobankAliquotDatasetItem
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample, SampleStatus
@@ -332,21 +333,20 @@ class BiobankSpecimenDao(BiobankDaoBase):
         ).one_or_none()
 
         if stored_sample is None:
-            session.add(
-                BiobankStoredSample(
-                    biobankStoredSampleId=specimen.rlimsId,
-                    biobankId=specimen.biobankId,
-                    biobankOrderIdentifier=specimen.orderId,
-                    test=specimen.testCode,
-                    confirmed=specimen.confirmedDate,
-                    created=specimen.confirmedDate,
-                    status=self._get_stored_status(
-                        status_str=specimen.status,
-                        disposal_reason_str=specimen.disposalReason
-                    ),
-                    disposed=specimen.disposalDate
-                )
+            stored_sample = BiobankStoredSample(
+                biobankStoredSampleId=specimen.rlimsId,
+                biobankId=specimen.biobankId,
+                biobankOrderIdentifier=specimen.orderId,
+                test=specimen.testCode,
+                confirmed=specimen.confirmedDate,
+                created=specimen.confirmedDate,
+                status=self._get_stored_status(
+                    status_str=specimen.status,
+                    disposal_reason_str=specimen.disposalReason
+                ),
+                disposed=specimen.disposalDate
             )
+            session.add(stored_sample)
             dna_sample_test_codes = config.getSettingList(config.DNA_SAMPLE_TEST_CODES)
             if specimen.testCode in dna_sample_test_codes and specimen.confirmedDate:
                 participant_id = session.query(Participant.participantId).filter(
@@ -374,12 +374,14 @@ class BiobankSpecimenDao(BiobankDaoBase):
                     disposal_reason_str=specimen.disposalReason
                 )
 
+        return stored_sample
+
     def insert_with_session(self, session, obj: BiobankSpecimen):
         self._check_participant_exists(session, obj.biobankId)
         insert_result = super(BiobankSpecimenDao, self).insert_with_session(session, obj)
 
-        self._upsert_stored_sample(session=session, specimen=insert_result)
-        self._update_participant_sample_metadata(obj.biobankId, session)
+        stored_sample = self._upsert_stored_sample(session=session, specimen=insert_result)
+        self._update_participant_sample_metadata(obj.biobankId, session, stored_sample)
 
         return insert_result
 
@@ -387,8 +389,8 @@ class BiobankSpecimenDao(BiobankDaoBase):
         self._check_participant_exists(session, obj.biobankId)
         super(BiobankSpecimenDao, self).update_with_session(session, obj)
 
-        self._upsert_stored_sample(session=session, specimen=obj)
-        self._update_participant_sample_metadata(obj.biobankId, session)
+        stored_sample = self._upsert_stored_sample(session=session, specimen=obj)
+        self._update_participant_sample_metadata(obj.biobankId, session, stored_sample)
 
     def get_mutually_exclusive_lock(self, rlims_id):
         with self.session() as session:
@@ -399,11 +401,13 @@ class BiobankSpecimenDao(BiobankDaoBase):
             )
 
     @classmethod
-    def _update_participant_sample_metadata(cls, biobank_id: int, session):
+    def _update_participant_sample_metadata(cls, biobank_id: int, session, stored_sample: BiobankStoredSample):
         participant_id = session.query(Participant.participantId).filter(Participant.biobankId == biobank_id).scalar()
 
         dao = ParticipantSummaryDao()
         dao.update_from_biobank_stored_samples(participant_id=participant_id, biobank_ids=[biobank_id], session=session)
+
+        SampleSummaryDao.refresh_receipt_data(participant_id=participant_id, new_sample=stored_sample, session=session)
 
         dispatch_participant_rebuild_tasks([participant_id])
         dispatch_task(endpoint='update_retention_status', payload={'participant_id': participant_id})
