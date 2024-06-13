@@ -229,15 +229,14 @@ class ExoposomicsIngestManifestCloudTask(BaseTestCase):
     def setUp(self) -> None:
         super().setUp()
 
-    def test_exposomics_ingest_manifest(self):
-
-        data = {
-            "file_path": 'fake_bucket/fake_file_path',
-            "bucket_name": 'fake_bucket',
-            "file_type": 'm1',
-        }
+    @mock.patch("rdr_service.exposomics.exposomics_manifests.ExposomicsM1Workflow.ingest_manifest")
+    def test_exposomics_ingest_manifest(self, mock_ingestion):
 
         from rdr_service.resource import main as resource_main
+
+        data = {
+            "bucket_name": 'fake_bucket'
+        }
 
         self.send_post(
             local_path='ExposomicsIngestManifest',
@@ -246,3 +245,21 @@ class ExoposomicsIngestManifestCloudTask(BaseTestCase):
             test_client=resource_main.app.test_client(),
         )
 
+        # should NOT have the mock called
+        self.assertEqual(mock_ingestion.call_count, 0)
+
+        data = {
+            "file_path": 'fake_bucket/fake_file_path',
+            "bucket_name": 'fake_bucket',
+            "file_type": 'm1',
+        }
+
+        self.send_post(
+            local_path='ExposomicsIngestManifest',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        # should HAVE the mock called
+        self.assertEqual(mock_ingestion.call_count, 1)
