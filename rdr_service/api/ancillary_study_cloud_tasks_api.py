@@ -260,5 +260,5 @@ class ExposomicsIngestManifest(BaseAncillaryTaskApi):
             logging.info('Complete.')
             return {"success": True}
 
-        logging.warning(f'Cannot find Exposomics ingestion class from json')
+        logging.warning('Cannot find Exposomics ingestion class from json')
         return {"success": False}
