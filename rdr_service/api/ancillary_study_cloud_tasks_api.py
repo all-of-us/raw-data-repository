@@ -9,6 +9,7 @@ from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.study_nph_dao import NphConsentEventDao, NphPairingEventDao, NphEnrollmentEventDao, \
     NphParticipantEventActivityDao
+from rdr_service.exposomics.exposomics_manifests import ExposomicsM1Workflow
 from rdr_service.services.ancillary_studies.nph_incident import create_nph_incident
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -237,3 +238,27 @@ class WithdrawnParticipantNotifierTaskApi(BaseAncillaryTaskApi):
             for pid in nph_pids
         ]
         return aou_pids
+
+
+class ExposomicsIngestManifest(BaseAncillaryTaskApi):
+
+    def post(self):
+        super().post()
+        logging.info(f'Ingesting Exposomics Manifest: {self.data.get("file_type")}')
+
+        exposomics_manifest = {
+            'm1': ExposomicsM1Workflow
+        }
+
+        ingestion_class = exposomics_manifest.get(self.data.get('file_type'))
+
+        if ingestion_class and self.data.get('file_path'):
+            ingestion_class(
+                file_path=self.data.get('file_path')
+            ).ingest_manifest()
+
+            logging.info('Complete.')
+            return {"success": True}
+
+        logging.warning('Cannot find Exposomics ingestion class from json')
+        return {"success": False}

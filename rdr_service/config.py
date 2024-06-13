@@ -177,8 +177,10 @@ ENABLE_HEALTH_SHARING_STATUS_3 = 'enable_health_sharing_status_3'
 ENABLE_PARTICIPANT_MEDIATED_EHR = 'enable_participant_mediated_ehr'
 ENABLED_STATUS_FIELD_LIST = 'enabled_status_field_list'
 NPH_SAMPLE_DATA_BIOBANK_NIGHTLY_FILE_DROP = 'nph_sample_data_biobank_bucket_name'
-CE_MEDIATED_HPO_ID='ce_mediated_hpo_id'
+CE_MEDIATED_HPO_ID = 'ce_mediated_hpo_id'
 EXPOSOMICS_MO_MANIFEST_SUBFOLDER = 'm0_manifests'
+EXPOSOMICS_M1_MANIFEST_SUBFOLDER = 'm1_manifests'
+HHEAR_BUCKET_NAME = 'hhear_bucket_name'
 
 CVL_SITES_DATA_BUCKETS = {
     "bcm": "prod-genomics-data-baylor",

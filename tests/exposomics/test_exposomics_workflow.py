@@ -2,9 +2,11 @@ import csv
 import os
 
 from rdr_service.api_util import open_cloud_file
-from rdr_service.dao.exposomics_dao import ExposomicsM0Dao, ExposomicsSamplesDao
+from rdr_service.dao.exposomics_dao import ExposomicsM0Dao, ExposomicsSamplesDao, ExposomicsM1Dao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.exposomics.exposomics_generate import ExposomicsGenerate
+from rdr_service.exposomics.exposomics_manifests import ExposomicsM1Workflow
+from tests.genomics_tests.test_genomic_utils import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -13,6 +15,7 @@ class ExposomicsWorkflowTest(BaseTestCase):
         super().setUp()
         self.participant_summary_dao = ParticipantSummaryDao()
         self.m0_dao = ExposomicsM0Dao()
+        self.m1_dao = ExposomicsM1Dao()
         self.samples_dao = ExposomicsSamplesDao()
 
     def generate_m0_data(self):
@@ -31,6 +34,16 @@ class ExposomicsWorkflowTest(BaseTestCase):
                 biobankId=participant_summary.biobankId,
                 genomeType="aou_array",
             )
+
+    @classmethod
+    def execute_base_exposomics_ingestion(cls, **kwargs):
+        create_ingestion_test_file(
+            test_data_filename=kwargs.get('test_data_filename'),
+            bucket_name=kwargs.get('bucket_name'),
+            folder=kwargs.get('subfolder'),
+            include_timestamp=False,
+            include_sub_num=False
+        )
 
     def test_form_data_to_M0_manifest(self):
 
@@ -79,20 +92,66 @@ class ExposomicsWorkflowTest(BaseTestCase):
 
         # check file was generated
         current_m0 = self.m0_dao.get_all()
-        self.assertEqual(len(current_m0), 1)
+        self.assertEqual(len(current_m0), 2)
 
-        # check file data was stored
-        current_m0 = current_m0[0]
-        self.assertTrue(current_m0.file_data is not None)
-        self.assertTrue(current_m0.file_name is not None)
-        self.assertTrue(current_m0.file_path is not None)
-        self.assertTrue(current_m0.bucket_name is not None)
+        # check row data records stored
+        self.assertTrue(all(obj.created is not None for obj in current_m0))
+        self.assertTrue(all(obj.modified is not None for obj in current_m0))
+        self.assertTrue(all(obj.biobank_id is not None for obj in current_m0))
+        self.assertTrue(all(obj.file_path is not None for obj in current_m0))
+        self.assertTrue(all(obj.row_data is not None for obj in current_m0))
+        self.assertTrue(all(obj.file_name is not None for obj in current_m0))
+        self.assertTrue(all(obj.bucket_name is not None for obj in current_m0))
+        self.assertTrue(all(obj.exposomics_set is not None for obj in current_m0))
 
         # check csv that was generated
         with open_cloud_file(
-            os.path.normpath(f'{current_m0.file_path}')
+            os.path.normpath(f'{current_m0[0].file_path}')
         ) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             csv_rows = list(csv_reader)
             self.assertEqual(len(csv_rows), 2)
+
+    def test_exposomics_m1_ingestion_and_send_copy_manifest(self):
+        bucket_name = 'test_expo_bucket'
+        subfolder = 'expo_subfolder'
+        file_name = 'AoU_mO_Plasma_8579309_2024.csv'
+
+        self.execute_base_exposomics_ingestion(
+            test_data_filename=file_name,
+            bucket_name=bucket_name,
+            subfolder=subfolder
+        )
+        original_file_path = f'{bucket_name}/{subfolder}/{file_name}'
+
+        ExposomicsM1Workflow(
+            file_path=original_file_path
+        ).ingest_manifest()
+
+        # check file was ingested
+        current_m1 = self.m1_dao.get_all()
+        self.assertEqual(len(current_m1), 3)
+
+        # check row data records stored
+        self.assertTrue(all(obj.created is not None for obj in current_m1))
+        self.assertTrue(all(obj.modified is not None for obj in current_m1))
+        self.assertTrue(all(obj.biobank_id is not None for obj in current_m1))
+        self.assertTrue(all(obj.file_path is not None for obj in current_m1))
+        self.assertTrue(all(obj.row_data is not None for obj in current_m1))
+        self.assertTrue(all(obj.file_name is not None for obj in current_m1))
+        self.assertTrue(all(obj.bucket_name is not None for obj in current_m1))
+        self.assertTrue(all(obj.copied_path is not None for obj in current_m1))
+
+        # check file paths differ
+        self.assertTrue(all(obj.file_path != obj.copied_path for obj in current_m1))
+
+        copied_path = current_m1[0].copied_path
+        # check copied csv that was generated
+        with open_cloud_file(
+            os.path.normpath(copied_path)
+        ) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            csv_rows = list(csv_reader)
+            self.assertEqual(len(csv_rows), 3)
+
 

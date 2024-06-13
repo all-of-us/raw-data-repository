@@ -1,19 +1,31 @@
+from abc import abstractmethod, ABC
 from typing import List, Dict
 
 from sqlalchemy.sql.expression import literal
 from sqlalchemy import func, orm
 
 from rdr_service import config
-from rdr_service.dao.base_dao import BaseDao
+from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.model.config_utils import get_biobank_id_prefix
-from rdr_service.model.exposomics import ExposomicsM0, ExposomicsSamples
+from rdr_service.model.exposomics import ExposomicsM0, ExposomicsSamples, ExposomicsM1
 from rdr_service.model.genomics import GenomicSetMember
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import QuestionnaireStatus, SuspensionStatus, WithdrawalStatus
 
 
-class ExposomicsSamplesDao(BaseDao):
+class ExposomicsBase:
+
+    def insert_bulk(self, batch: List[Dict]) -> None:
+        with self.session() as session:
+            session.bulk_insert_mappings(self.model_type, batch)
+
+    def bulk_update(self, model_objects: List[Dict]) -> None:
+        with self.session() as session:
+            session.bulk_update_mappings(self.model_type, model_objects)
+
+
+class ExposomicsSamplesDao(BaseDao, ExposomicsBase):
 
     def __init__(self):
         super().__init__(ExposomicsSamples, order_by_ending=["id"])
@@ -36,21 +48,24 @@ class ExposomicsSamplesDao(BaseDao):
                 self.get_max_set_subquery()
             ).one()
 
-    def insert_bulk(self, batch: List[Dict]) -> None:
-        with self.session() as session:
-            session.bulk_insert_mappings(self.model_type, batch)
 
-
-class ExposomicsM0Dao(BaseDao):
-
-    def __init__(self):
-        super().__init__(ExposomicsM0, order_by_ending=["id"])
+class ExposomicsManifestDao(ABC, BaseDao):
 
     def from_client_json(self):
         pass
 
     def get_id(self, obj):
         pass
+
+    @abstractmethod
+    def get_manifest_data(self, **kwargs):
+        ...
+
+
+class ExposomicsM0Dao(BaseDao, ExposomicsBase):
+
+    def __init__(self):
+        super().__init__(ExposomicsM0, order_by_ending=["id"])
 
     def get_manifest_data(self, **kwargs):
         form_data = kwargs.get("form_data")
@@ -92,3 +107,58 @@ class ExposomicsM0Dao(BaseDao):
                 Participant.isGhostId.is_(None),
                 Participant.isTestParticipant != 1
             ).distinct().all()
+
+
+class ExposomicsM1Dao(UpdatableDao, ExposomicsBase):
+
+    validate_version_match = False
+
+    def __init__(self):
+        super().__init__(ExposomicsM1, order_by_ending=["id"])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    def get_manifest_data(self, **kwargs):
+        file_path = kwargs.get('file_path')
+        with self.session() as session:
+            return session.query(
+                func.json_extract(ExposomicsM1.row_data, "$.package_id").label('package_id'),
+                func.json_extract(ExposomicsM1.row_data, "$.box_storageunit_id").label('box_storageunit_id'),
+                func.json_extract(ExposomicsM1.row_data, "$.box_id_plate_id").label('box_id_plate_id'),
+                func.json_extract(ExposomicsM1.row_data, "$.well_position").label('well_position'),
+                func.json_extract(ExposomicsM1.row_data, "$.biobankid_sampleid").label('biobankid_sampleid'),
+                func.concat(get_biobank_id_prefix(), ExposomicsM1.biobank_id).label('biobank_id'),
+                func.json_extract(ExposomicsM1.row_data, "$.sample_id").label('sample_id'),
+                func.json_extract(ExposomicsM1.row_data, "$.matrix_id").label('matrix_id'),
+                func.json_extract(ExposomicsM1.row_data, "$.parent_sample_id").label('parent_sample_id'),
+                func.json_extract(ExposomicsM1.row_data, "$.collection_tube_id").label('collection_tube_id'),
+                func.json_extract(ExposomicsM1.row_data, "$.sample_type").label('sample_type'),
+                func.json_extract(ExposomicsM1.row_data, "$.ny_flag").label('ny_flag'),
+                func.json_extract(ExposomicsM1.row_data, "$.quantity_ul").label('quantity_ul'),
+                func.json_extract(ExposomicsM1.row_data, "$.total_concentration_ng_ul").label(
+                    'total_concentration_ng_ul'
+                ),
+                func.json_extract(ExposomicsM1.row_data, "$.total_yield_ng").label('total_yield_ng'),
+                func.json_extract(ExposomicsM1.row_data, "$.rqs").label('rqs'),
+                func.json_extract(ExposomicsM1.row_data, "$.two_sixty_two_thirty").label('260_230'),
+                func.json_extract(ExposomicsM1.row_data, "$.two_sixty_two_eighty").label('260_280'),
+                func.json_extract(ExposomicsM1.row_data, "$.study_name").label('study_name'),
+                func.json_extract(ExposomicsM1.row_data, "$.contact").label('contact'),
+                func.json_extract(ExposomicsM1.row_data, "$.email").label('email'),
+                func.json_extract(ExposomicsM1.row_data, "$.tracking_number").label('tracking_number'),
+            ).filter(
+                ExposomicsM1.file_path == file_path
+            ).all()
+
+    def get_id_from_file_path(self, *, file_path: str):
+        with self.session() as session:
+            return session.query(
+                ExposomicsM1.id
+            ).filter(
+                ExposomicsM1.file_path == file_path
+            )
+

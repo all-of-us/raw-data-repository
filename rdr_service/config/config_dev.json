@@ -91,6 +91,9 @@
   "biobank_samples_bucket_name": [
     "app_default_bucket"
   ],
+  "hhear_bucket_name": [
+    "hhear_default_bucket"
+  ],
   "ghost_id_bucket": [
     "all-of-us-rdr-test-ghost-accounts"
   ],
