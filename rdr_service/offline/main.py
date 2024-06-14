@@ -64,6 +64,7 @@ from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.offline.study_nph_biobank_file_export import main as study_nph_biobank_file_export_job
 from rdr_service.offline.study_nph_biobank_import_inventory_file import main as study_nph_biobank_inventory_import_job
 from rdr_service.workflow_management.nph.sms_pipeline import n1_generation
+from rdr_service.offline.etm_duplicate_detector import run_etm_duplicate_detector
 
 
 def _alert_on_exceptions(func):
@@ -964,6 +965,10 @@ def sync_tactis_participants_to_bq():
     data_sync.sync_data_to_bigquery()
     return '{ "success": "true" }'
 
+@app_util.auth_required_cron
+def detect_etm_response_duplicates():
+    run_etm_duplicate_detector()
+    return '{ "success": "true" }'
 
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -1561,6 +1566,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'NphSmsN1Generation',
         endpoint="nph_sms_n1_generation",
         view_func=nph_sms_n1_generation,
+        methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'detect_etm_response_duplicates',
+        endpoint="detect_etm_response_duplicates",
+        view_func=detect_etm_response_duplicates,
         methods=["GET"]
     )
 

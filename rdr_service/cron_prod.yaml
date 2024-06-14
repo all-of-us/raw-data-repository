@@ -144,3 +144,8 @@ cron:
   schedule: every day 20:00
   target: offline
   timezone: America/New_York
+- description: ETM Duplicate Response Detector
+  schedule: every day 02:30
+  target: offline
+  timezone: America/New_York
+  url: /offline/detect_etm_response_duplicates

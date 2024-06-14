@@ -65,10 +65,10 @@ class EtmDigestBackfillTool(ToolBase):
                 for response in questionnaire_response_query:
                     found_responses = True
 
-                    response_hash = EtmApi.calculate_response_hash(json.loads(response.resource))
+                    response_hash = EtmApi.calculate_response_hash(response.resource)
                     response.response_hash = response_hash
 
-                    latest_id = response.questionnaireResponseId
+                    latest_id = response.etm_questionnaire_response_id
 
                 if found_responses:
                     logger.info(f'got to {latest_id}')
