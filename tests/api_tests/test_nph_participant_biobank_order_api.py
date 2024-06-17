@@ -1,11 +1,12 @@
 # Sample ID = NP124820391
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from sqlalchemy.orm import Query
 from unittest.mock import MagicMock, patch
 
 from rdr_service.dao.rex_dao import RexStudyDao
 from rdr_service.dao.study_nph_dao import NphOrderedSampleDao
+from rdr_service.offline.study_nph_biobank_file_export import get_processing_timestamp
 from rdr_service.data_gen.generators.nph import NphDataGenerator, NphSmsDataGenerator
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao import database_factory
@@ -13,7 +14,8 @@ from rdr_service.main import app
 from rdr_service.model.study_nph import (
     StudyCategory, Order, OrderedSample, Participant, SampleUpdate, Site
 )
-from tests.workflow_tests.test_data.test_biobank_order_payloads import SALIVA_DIET_SAMPLE, URINE_DIET_SAMPLE
+from tests.workflow_tests.test_data.test_biobank_order_payloads import (SALIVA_DIET_SAMPLE, URINE_DIET_SAMPLE,
+                                                                        STOOL_DIET_SAMPLE)
 
 BLOOD_SAMPLE = {
     "subject": "Patient/P124820391",
@@ -504,6 +506,46 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
                 }
         }
         self.assertEqual(expected_supplement, sample.supplemental_fields)
+
+    def test_freeze_stool_order(self):
+        self.setup_backend_for_diet_orders()
+        app.test_client().post('rdr/v1/api/v1/nph/Participant/100001/BiobankOrder', json=STOOL_DIET_SAMPLE)
+        dao = NphOrderedSampleDao()
+        sample = dao.get(1)
+        freezeDateUTC = datetime.strptime("2022-11-03 10:30:49", "%Y-%m-%d %H:%M:%S")
+        self.assertEqual(freezeDateUTC, sample.finalized)
+
+        app.test_client().patch(
+            'rdr/v1/api/v1/nph/Participant/100001/BiobankOrder/1',
+            json={
+                'status': 'amended',
+                "amendedInfo": {
+                    "author": {
+                        "system": "https://www.pmi-ops.org\/nph-username",
+                        "value": "test@example.com"
+                    },
+                    "site": {
+                        "system": "https://www.pmi-ops.org\/site-id",
+                        "value": "test-site-1"
+                    }
+                },
+                'sample': {
+                    "test": "ST1",
+                    "description": "95% Ethanol Tube 1",
+                    "collected": "2022-11-03T09:45:49Z",
+                    "finalized": "2022-11-03T10:55:41Z",
+                    "bowelMovement": "I was constipated (had difficulty passing stool), and my stool looks like Type 1 and/or 2",
+                    "bowelMovementQuality": "I tend to be constipated (have difficulty passing stool) - Type 1 and 2",
+                    "freezed": "2022-11-03T10:15:49Z",
+                },
+            }
+        )
+
+        sample = dao.get(1)
+        freezeDateUTC = freezeDateUTC - timedelta(minutes=15)
+        self.assertEqual(freezeDateUTC, sample.finalized)
+        processingDateUTC = get_processing_timestamp(sample)
+        self.assertEqual(freezeDateUTC, processingDateUTC)
 
     def tearDown(self):
         super().tearDown()

@@ -487,6 +487,8 @@ class NphOrderDao(UpdatableDao):
     def _update_if_present(cls, target_obj, target_field_name, source_obj, source_field_name=None):
         source_field_name = source_field_name or target_field_name
         if hasattr(source_obj, source_field_name):
+            if hasattr(source_obj, "freezed") and source_field_name == "finalized":
+                source_field_name = "freezed"
             new_value = getattr(source_obj, source_field_name)
             setattr(target_obj, target_field_name, new_value)
 
@@ -712,7 +714,7 @@ class NphOrderedSampleDao(UpdatableDao):
                              test=obj.sample.test,
                              description=obj.sample.description,
                              collected=obj.sample.collected,
-                             finalized=obj.sample.finalized,
+                             finalized=obj.sample.freezed if obj.sample.test.startswith("ST") else obj.sample.finalized,
                              supplemental_fields=self._fetch_supplemental_fields_for_tube(obj)
                              )
 
@@ -736,7 +738,7 @@ class NphOrderedSampleDao(UpdatableDao):
         return value
 
     def _fetch_supplemental_fields_for_tube(self, order_cls) -> Dict:
-        keys = ["test", "description", "collected", "finalized"]
+        keys = ["test", "description", "collected", "finalized", "freezed"]
         result = {k: self.check_input_struct(v) for k, v in order_cls.sample.__dict__.items() if k not in keys}
         return result
 
@@ -827,7 +829,7 @@ class NphOrderedSampleDao(UpdatableDao):
         order_sample.test = obj.sample.test
         order_sample.description = obj.sample.description
         order_sample.collected = obj.sample.collected
-        order_sample.finalized = obj.sample.finalized
+        order_sample.finalized = obj.sample.freezed if obj.sample.test.startswith("ST") else obj.sample.finalized
         order_sample.supplemental_fields = self._fetch_supplemental_fields_for_tube(obj)
         return order_sample
 
@@ -1243,6 +1245,7 @@ class NphBiospecimenDao(BaseDao):
                             ),
                             'processingDateUTC', case(
                                 [
+                                    (OrderedSample.test.startswith("ST"), OrderedSample.finalized),
                                     (OrderedSample.parent_sample_id.isnot(None), OrderedSample.collected),
                                 ],
                                 else_=None

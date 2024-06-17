@@ -126,7 +126,7 @@ def _get_ordered_samples(order_id: int) -> List[OrderedSample]:
         return query.all()
 
 
-def _get_processing_timestamp(ordered_sample: OrderedSample) -> Optional[datetime]:
+def get_processing_timestamp(ordered_sample: OrderedSample) -> Optional[datetime]:
     """Get finalized ts for stool samples & collected ts for other samples."""
     if ordered_sample.test is not None and ordered_sample.test.startswith("ST"):
         return ordered_sample.finalized
@@ -151,7 +151,7 @@ def _convert_ordered_samples_to_samples(
             "volume": ordered_sample.volume,
             "volumeUOM": ordered_sample.volumeUnits,
             "collectionDateUTC": _format_timestamp((ordered_sample.parent or ordered_sample).collected),
-            "processingDateUTC": _format_timestamp(_get_processing_timestamp(ordered_sample)),
+            "processingDateUTC": _format_timestamp(get_processing_timestamp(ordered_sample)),
             "cancelledFlag": "Y" if sample_cancelled else "N",
             "notes": notes,
         }
