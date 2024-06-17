@@ -1243,7 +1243,7 @@ class NphBiospecimenDao(BaseDao):
                             ),
                             'processingDateUTC', case(
                                 [
-                                    (OrderedSample.test.startswith("ST"), OrderedSample.supplemental_fields.freezed),
+                                    (OrderedSample.test.startswith("ST"), OrderedSample.supplemental_fields["freezed"]),
                                     (OrderedSample.parent_sample_id.isnot(None), OrderedSample.collected),
                                 ],
                                 else_=None
