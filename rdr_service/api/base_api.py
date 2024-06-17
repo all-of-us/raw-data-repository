@@ -22,7 +22,6 @@ from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 
 DEFAULT_MAX_RESULTS = 100
-MAX_MAX_RESULTS = 10000
 
 
 def log_api_request(log: RequestsLog = None, model_obj=None):
@@ -130,6 +129,7 @@ class BaseApi(Resource, ApiUtilMixin):
     def __init__(self, dao, get_returns_children=False):
         self.dao = dao
         self._get_returns_children = get_returns_children
+        self.max_max_results = 10000
 
     def _get_request_arg_bool(self, key, default=False):
         """
@@ -280,8 +280,8 @@ class BaseApi(Resource, ApiUtilMixin):
                 max_results = int(request.args["_count"])
                 if max_results < 1:
                     raise BadRequest("_count < 1")
-                if max_results > MAX_MAX_RESULTS:
-                    raise BadRequest("_count exceeds {}".format(MAX_MAX_RESULTS))
+                if max_results > self.max_max_results:
+                    raise BadRequest("_count exceeds {}".format(self.max_max_results))
             elif key == "_token":
                 pagination_token = value
             elif key == "_sort" or key == "_sort:asc":
