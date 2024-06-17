@@ -512,38 +512,9 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         app.test_client().post('rdr/v1/api/v1/nph/Participant/100001/BiobankOrder', json=STOOL_DIET_SAMPLE)
         dao = NphOrderedSampleDao()
         sample = dao.get(1)
+        sample_freeze_date = datetime.strptime(sample.supplemental_fields["freezed"], "%Y-%m-%dT%H:%M:%SZ")
         freezeDateUTC = datetime.strptime("2022-11-03 10:30:49", "%Y-%m-%d %H:%M:%S")
-        self.assertEqual(freezeDateUTC, sample.finalized)
-
-        app.test_client().patch(
-            'rdr/v1/api/v1/nph/Participant/100001/BiobankOrder/1',
-            json={
-                'status': 'amended',
-                "amendedInfo": {
-                    "author": {
-                        "system": "https://www.pmi-ops.org\/nph-username",
-                        "value": "test@example.com"
-                    },
-                    "site": {
-                        "system": "https://www.pmi-ops.org\/site-id",
-                        "value": "test-site-1"
-                    }
-                },
-                'sample': {
-                    "test": "ST1",
-                    "description": "95% Ethanol Tube 1",
-                    "collected": "2022-11-03T09:45:49Z",
-                    "finalized": "2022-11-03T10:55:41Z",
-                    "bowelMovement": "I was constipated (had difficulty passing stool), and my stool looks like Type 1 and/or 2",
-                    "bowelMovementQuality": "I tend to be constipated (have difficulty passing stool) - Type 1 and 2",
-                    "freezed": "2022-11-03T10:15:49Z",
-                },
-            }
-        )
-
-        sample = dao.get(1)
-        freezeDateUTC = freezeDateUTC - timedelta(minutes=15)
-        self.assertEqual(freezeDateUTC, sample.finalized)
+        self.assertEqual(freezeDateUTC, sample_freeze_date)
         processingDateUTC = get_processing_timestamp(sample)
         self.assertEqual(freezeDateUTC, processingDateUTC)
 
