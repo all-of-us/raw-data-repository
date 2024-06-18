@@ -161,3 +161,67 @@ URINE_DIET_SAMPLE = {
         "finalized": "Test notes 2"
     }
 }
+
+STOOL_DIET_SAMPLE = {
+  "subject": "Patient/P124820391",
+    "identifier": [{
+      "system": "http://www.pmi-ops.org/order-id",
+      "value": "nph-order-id-kit-12345678"
+      },
+      {
+        "system": "http://www.pmi-ops.org/sample-id",
+        "value": "nph-sample-id-kit-12345679"
+      },
+      {
+        "system": "http://www.pmi-ops.org/client-id",
+        "value": "123456789"
+      }
+    ],
+    "createdInfo": {
+        "author": {
+            "system": "https://www.pmi-ops.org\/nph-username",
+            "value": "test@example.com"
+        },
+        "site": {
+            "system": "https://www.pmi-ops.org\/site-id",
+            "value": "test-site-1"
+        }
+    },
+    "collectedInfo": {
+        "author": {
+            "system": "https://www.pmi-ops.org\/nph-username",
+            "value": "test@example.com"
+        },
+        "site": {
+            "system": "https://www.pmi-ops.org\/site-id",
+            "value": "test-site-1"
+        }
+    },
+    "finalizedInfo": {
+        "author": {
+            "system": "https://www.pmi-ops.org\/nph-username",
+            "value": "test@example.com"
+        },
+        "site": {
+            "system": "https://www.pmi-ops.org\/site-id",
+            "value": "test-site-1"
+        }
+    },
+  "created": "2022-11-03T09:40:21Z",
+  "module": "1",
+  "visitType": "LMT",
+  "timepoint": "Pre LMT",
+  "sample": {
+    "test": "ST1",
+    "description": "95% Ethanol Tube 1",
+    "collected": "2022-11-03T09:45:49Z",
+    "finalized": "2022-11-03T10:55:41Z",
+    "bowelMovement": "I was constipated (had difficulty passing stool), and my stool looks like Type 1 and/or 2",
+    "bowelMovementQuality": "I tend to be constipated (have difficulty passing stool) - Type 1 and 2",
+    "freezed": "2022-11-03T10:30:49Z"
+  },
+  "notes": {
+    "collected": "Test notes 1",
+    "finalized": "Test notes 2"
+  }
+}
