@@ -109,7 +109,7 @@ class ExposomicsM0Dao(BaseDao, ExposomicsBase):
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
                 Participant.isGhostId.is_(None),
                 Participant.isTestParticipant != 1
-            ).distinct().all()
+            ).order_by(ExposomicsSamples.id).distinct().all()
 
 
 class ExposomicsM1Dao(UpdatableDao, ExposomicsBase):

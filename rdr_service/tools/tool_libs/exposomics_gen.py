@@ -36,6 +36,7 @@ class ExposomicsGenrateTool(ToolBase):
         return cleaned_rows
 
     def run(self):
+        server_config = self.get_server_config()
         self.gcp_env.activate_sql_proxy()
 
         logging.info('Starting Exposomics generation workflow')
@@ -56,6 +57,7 @@ class ExposomicsGenrateTool(ToolBase):
         ExposomicsGenerate.create_exposomics_generate_workflow(
             sample_list=sample_list,
             form_data=form_data[0],
+            server_config=server_config
         ).run_generation()
 
 
