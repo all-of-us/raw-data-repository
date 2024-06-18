@@ -1,5 +1,6 @@
 # This module is the entrypoint for SMS jobs scheduled through cloud scheduler
 
+import time
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.config import GAE_PROJECT, NPH_SMS_BUCKETS
 from rdr_service.dao.study_nph_sms_dao import SmsN0Dao
@@ -29,3 +30,5 @@ def n1_generation(file_type="N1_MC1"):
 
             _task = GCPCloudTask()
             _task.execute("nph_sms_generation_task", payload=data, queue=TASK_QUEUE)
+
+            time.sleep(2)  # Files to process usually number < 10 at a time.
