@@ -30,7 +30,10 @@ class ExposomicsGenrateTool(ToolBase):
         with open(csv_path, 'r') as f:
             dict_reader = DictReader(f)
             data_list = list(dict_reader)
-        return data_list
+            cleaned_rows = []
+            for row in data_list:
+                cleaned_rows.append({k.lower().replace('\ufeff', ''): v for k, v in row.copy().items()})
+        return cleaned_rows
 
     def run(self):
         self.gcp_env.activate_sql_proxy()
