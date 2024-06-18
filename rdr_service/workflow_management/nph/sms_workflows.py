@@ -157,7 +157,7 @@ class SmsWorkflow:
                            f"File '{self.file_path}' does not conform to csv format."
             }
             cloud_task.execute(
-                endpoint="nph_incident_task_api",
+                endpoint="nph_incident_task",
                 payload=message,
                 queue="nph"
             )
