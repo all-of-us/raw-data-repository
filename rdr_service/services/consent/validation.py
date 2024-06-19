@@ -96,6 +96,7 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
             participant_id=participant_id,
             session=self._session
         )
+        self._session.refresh(participant_summary)
         did_modify_status = False
 
         if participant_summary.consentForElectronicHealthRecords == status_check:

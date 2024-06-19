@@ -5,12 +5,14 @@ from typing import List, Type
 
 from rdr_service import config
 from rdr_service.code_constants import SENSITIVE_EHR_STATES
+from rdr_service.dao import database_factory
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType, ConsentOtherErrors
 from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.services.consent import files
-from rdr_service.services.consent.validation import ConsentValidator, StoreResultStrategy
+from rdr_service.services.consent.validation import ConsentValidator, EhrStatusUpdater, StoreResultStrategy
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -622,3 +624,42 @@ class ConsentValidationTesting(BaseTestCase):
                     f'{json_print(expected)} not found in results: '
                     f'{json_print([actual.asdict() for actual in actual_list])}'
                 )
+
+
+class ValidationDbTesting(BaseTestCase):
+
+    @mock.patch('rdr_service.services.consent.validation.GCPCloudTask')
+    def test_reading_current_ehr_status(self, _):
+        """
+        The EhrStatusUpdater should only move statuses from ...NOT_VALIDATED, rather than updating any other status based
+        on a recent validation result. We've seen some cases where the validation starts running and caches a
+        ...NOT_VALIDATED result, but before setting the new status we get a no-consent response from the participant.
+        The EhrStatusUpdater doesn't see this new status, because we still have previous status in the cache.
+        """
+
+        # make a summary with a NOT_VALIDATED status in the current session
+        participant_summary = self.data_generator.create_database_participant_summary(
+            consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED_NOT_VALIDATED
+        )
+
+        # set the status to NO in the db in another session (to avoid applying it to the cache of the current session)
+        with database_factory.get_database().session() as new_session:
+            copied_summary: ParticipantSummary = new_session.query(ParticipantSummary).filter(
+                ParticipantSummary.participantId == participant_summary.participantId
+            ).one()
+            copied_summary.consentForElectronicHealthRecords = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+
+        # make sure the cached version still has NOT_VALIDATED (to make sure the test still functions as intended)
+        original_summary: ParticipantSummary = self.session.query(ParticipantSummary).get(participant_summary.participantId)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED_NOT_VALIDATED, original_summary.consentForElectronicHealthRecords)
+
+        # run the EHR updater and check that it doesn't clobber the NO by using the cached NEEDS_VALIDATION
+        updater = EhrStatusUpdater(session=self.session)
+        updater._update_status(
+            participant_id=participant_summary.participantId,
+            has_valid_file=True,
+            authored_time=datetime.utcnow()
+        )
+
+        self.session.refresh(participant_summary)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED_NO_CONSENT, participant_summary.consentForElectronicHealthRecords)
