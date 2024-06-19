@@ -5031,7 +5031,8 @@ class GenomicLongReadDao(GenomicSubDao):
                 )
             ).filter(
                 GenomicLongRead.long_read_set ==
-                self.get_max_set_subquery().c.long_read_set
+                self.get_max_set_subquery().c.long_read_set,
+                GenomicLongRead.ignore_flag != 1
             ).distinct().all()
 
     def get_pipeline_members_missing_sample_id(
@@ -5050,7 +5051,8 @@ class GenomicLongReadDao(GenomicSubDao):
                 self.model_type.biobank_id.in_(biobank_ids),
                 self.model_type.collection_tube_id.in_(collection_tube_ids),
                 self.model_type.long_read_platform == long_read_platform,
-                self.model_type.lr_site_id == lr_site_id
+                self.model_type.lr_site_id == lr_site_id,
+                self.model_type.ignore_flag != 1
             ).distinct().all()
 
     def get_manifest_three_records(self):
@@ -5085,17 +5087,22 @@ class GenomicLongReadDao(GenomicSubDao):
                     GenomicL1Raw,
                     and_(
                         GenomicLongRead.sample_id == GenomicL1Raw.sample_id,
-                        GenomicL1Raw.long_read_platform.ilike('ont')
+                        GenomicL1Raw.long_read_platform.ilike('ont'),
+                        GenomicL1Raw.ignore_flag != 1
                     )
                 ).join(
                     GenomicL2ONTRaw,
-                    GenomicLongRead.sample_id == GenomicL2ONTRaw.sample_id
+                    and_(
+                        GenomicLongRead.sample_id == GenomicL2ONTRaw.sample_id,
+                        GenomicL2ONTRaw.ignore_flag != 1
+                    )
                 ).outerjoin(
                     GenomicL3Raw,
                     and_(
                         GenomicL2ONTRaw.sample_id == GenomicL3Raw.sample_id,
                         GenomicL2ONTRaw.flowcell_id == GenomicL3Raw.flowcell_id,
-                        GenomicL2ONTRaw.barcode == GenomicL3Raw.barcode
+                        GenomicL2ONTRaw.barcode == GenomicL3Raw.barcode,
+                        GenomicL3Raw.ignore_flag != 1
                     )
                 ).filter(
                     GenomicL3Raw.id.is_(None),
@@ -5114,6 +5121,7 @@ class GenomicLongReadDao(GenomicSubDao):
                     GenomicL2ONTRaw.basecaller_version.isnot(None),
                     GenomicL2ONTRaw.basecaller_model.isnot(None),
                     GenomicL2ONTRaw.mean_read_quality.isnot(None),
+                    GenomicL2ONTRaw.ignore_flag != 1
                 ).union(
                     session.query(
                         func.concat(get_biobank_id_prefix(), GenomicLongRead.biobank_id),
@@ -5144,17 +5152,22 @@ class GenomicLongReadDao(GenomicSubDao):
                         GenomicL1Raw,
                         and_(
                             GenomicLongRead.sample_id == GenomicL1Raw.sample_id,
-                            GenomicL1Raw.long_read_platform.ilike('pacbio_ccs')
+                            GenomicL1Raw.long_read_platform.ilike('pacbio_ccs'),
+                            GenomicL1Raw.ignore_flag != 1
                         )
                     ).join(
                         GenomicL2PBCCSRaw,
-                        GenomicLongRead.sample_id == GenomicL2PBCCSRaw.sample_id
+                        and_(
+                            GenomicLongRead.sample_id == GenomicL2PBCCSRaw.sample_id,
+                            GenomicL2PBCCSRaw.ignore_flag != 1
+                        )
                     ).outerjoin(
                         GenomicL3Raw,
                         and_(
                             GenomicL2PBCCSRaw.sample_id == GenomicL3Raw.sample_id,
                             GenomicL2PBCCSRaw.flowcell_id == GenomicL3Raw.flowcell_id,
-                            GenomicL2PBCCSRaw.barcode == GenomicL3Raw.barcode
+                            GenomicL2PBCCSRaw.barcode == GenomicL3Raw.barcode,
+                            GenomicL3Raw.ignore_flag != 1
                         )
                     ).filter(
                         GenomicL3Raw.id.is_(None),
@@ -5173,6 +5186,7 @@ class GenomicLongReadDao(GenomicSubDao):
                         GenomicL2PBCCSRaw.mean_coverage.isnot(None),
                         GenomicL2PBCCSRaw.genome_coverage.isnot(None),
                         GenomicL2PBCCSRaw.contamination.isnot(None),
+                        GenomicL2PBCCSRaw.ignore_flag != 1
                     )
                 )
             )
@@ -5234,7 +5248,8 @@ class GenomicPRDao(GenomicSubDao):
                 self.model_type.sample_id.is_(None),
                 self.model_type.biobank_id.in_(biobank_ids),
                 self.model_type.collection_tube_id.in_(collection_tube_ids),
-                self.model_type.p_site_id == p_site_id
+                self.model_type.p_site_id == p_site_id,
+                self.model_type.ignore_flag != 1
             ).distinct().all()
 
     def get_manifest_zero_records_from_max_set(self):
@@ -5261,7 +5276,8 @@ class GenomicPRDao(GenomicSubDao):
                 )
             ).filter(
                 GenomicProteomics.proteomics_set ==
-                self.get_max_set_subquery().c.proteomics_set
+                self.get_max_set_subquery().c.proteomics_set,
+                GenomicProteomics.ignore_flag != 1
             ).distinct().all()
 
     def get_manifest_three_records(self):
@@ -5303,13 +5319,22 @@ class GenomicPRDao(GenomicSubDao):
                 GenomicSetMember.id == GenomicProteomics.genomic_set_member_id
             ).join(
                 GenomicP1Raw,
-                GenomicProteomics.sample_id == GenomicP1Raw.sample_id
+                and_(
+                    GenomicProteomics.sample_id == GenomicP1Raw.sample_id,
+                    GenomicP1Raw.ignore_flag != 1
+                )
             ).join(
                 GenomicP2Raw,
-                GenomicProteomics.sample_id == GenomicP2Raw.sample_id
+                and_(
+                    GenomicProteomics.sample_id == GenomicP2Raw.sample_id,
+                    GenomicP2Raw.ignore_flag != 1
+                )
             ).outerjoin(
                 GenomicP3Raw,
-                GenomicP1Raw.sample_id == GenomicP3Raw.sample_id
+                and_(
+                    GenomicP1Raw.sample_id == GenomicP3Raw.sample_id,
+                    GenomicP3Raw.ignore_flag != 1
+                )
             ).outerjoin(
                 current_processed_count,
                 current_processed_count.c.sample_id == GenomicProteomics.sample_id
@@ -5373,7 +5398,8 @@ class GenomicRNADao(GenomicSubDao):
                 self.model_type.sample_id.is_(None),
                 self.model_type.biobank_id.in_(biobank_ids),
                 self.model_type.collection_tube_id.in_(collection_tube_ids),
-                self.model_type.r_site_id == r_site_id
+                self.model_type.r_site_id == r_site_id,
+                self.model_type.ignore_flag != 1
             ).distinct().all()
 
     def get_manifest_zero_records_from_max_set(self):
@@ -5400,7 +5426,8 @@ class GenomicRNADao(GenomicSubDao):
                 )
             ).filter(
                 GenomicRNA.rna_set ==
-                self.get_max_set_subquery().c.rna_set
+                self.get_max_set_subquery().c.rna_set,
+                GenomicRNA.ignore_flag != 1
             ).distinct().all()
 
     def get_manifest_three_records(self):
