@@ -7,15 +7,16 @@ from rdr_service.exposomics.exposomics_manifests import ExposomicsM0Workflow
 
 class ExposomicsGenerate:
 
-    def __init__(self, sample_list: List[dict], form_data: dict):
+    def __init__(self, sample_list: List[dict], form_data: dict, **kwargs):
         self.sample_list = sample_list
         self.form_data = form_data
         self.new_set = None
         self.samples_dao = ExposomicsSamplesDao()
+        self.kwargs = kwargs
 
     @classmethod
-    def create_exposomics_generate_workflow(cls, *, sample_list: List[dict], form_data: dict):
-        return cls(sample_list, form_data)
+    def create_exposomics_generate_workflow(cls, *, sample_list: List[dict], form_data: dict, **kwargs):
+        return cls(sample_list, form_data, **kwargs)
 
     def get_incremented_set_number(self) -> int:
         current_set: List[int] = self.samples_dao.get_max_set()
@@ -35,5 +36,6 @@ class ExposomicsGenerate:
         ExposomicsM0Workflow(
             sample_list=self.sample_list,
             form_data=self.form_data,
-            set_num=self.new_set
+            set_num=self.new_set,
+            server_config=self.kwargs.get('server_config')
         ).generate_manifest()

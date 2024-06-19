@@ -72,18 +72,27 @@ class ExposomicsGenerateManifestWorkflow(ExposomicsManifestWorkflow):
 
 class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
 
-    def __init__(self, form_data: dict, sample_list: List[dict], set_num: int):
+    def __init__(self, form_data: dict, sample_list: List[dict], set_num: int, **kwargs):
         self.form_data = form_data
         self.sample_list = sample_list
         self.manifest_type = 'mO'
         self.dao = ExposomicsM0Dao()
-        self.bucket_name = config.getSetting(BIOBANK_SAMPLES_BUCKET_NAME)
         self.destination_path = f'{config.EXPOSOMICS_MO_MANIFEST_SUBFOLDER}'
         self.file_name = None
         self.set_num = set_num
         self.source_data = []
         self.headers = []
         self.manifest_full_path = None
+        self.kwargs = kwargs
+        self.server_config = self.kwargs.get('server_config') or config
+        self.bucket_name = None
+
+    def get_bucket_from_config(self):
+        if hasattr(self.server_config, 'getSetting'):
+            bucket_name = self.server_config.getSetting(BIOBANK_SAMPLES_BUCKET_NAME)
+            return bucket_name
+
+        return self.server_config.get('biobank_samples_bucket_name')[0]
 
     def generate_filename(self):
         now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
@@ -114,6 +123,7 @@ class ExposomicsM0Workflow(ExposomicsGenerateManifestWorkflow):
         self.dao.insert_bulk(manifest_data)
 
     def generate_manifest(self):
+        self.bucket_name = self.get_bucket_from_config()
         self.file_name = self.generate_filename()
         self.source_data = self.get_source_data()
 

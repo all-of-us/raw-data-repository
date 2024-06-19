@@ -30,9 +30,13 @@ class ExposomicsGenrateTool(ToolBase):
         with open(csv_path, 'r') as f:
             dict_reader = DictReader(f)
             data_list = list(dict_reader)
-        return data_list
+            cleaned_rows = []
+            for row in data_list:
+                cleaned_rows.append({k.lower().replace('\ufeff', ''): v for k, v in row.copy().items()})
+        return cleaned_rows
 
     def run(self):
+        server_config = self.get_server_config()
         self.gcp_env.activate_sql_proxy()
 
         logging.info('Starting Exposomics generation workflow')
@@ -53,6 +57,7 @@ class ExposomicsGenrateTool(ToolBase):
         ExposomicsGenerate.create_exposomics_generate_workflow(
             sample_list=sample_list,
             form_data=form_data[0],
+            server_config=server_config
         ).run_generation()
 
 
