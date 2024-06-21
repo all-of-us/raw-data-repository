@@ -249,6 +249,11 @@ class DeployAppClass(ToolBase):
 
             Security Impact: <None, Low, Medium, High>
 
+            Security Questions
+            Does this release impact participant data? <Yes, No>
+            Does this release introduce new data types? <Yes, No>
+            Will this release cause scheduled downtime? <Yes, No>
+
             CircleCI Output: {circle_ci_url}
             """
 
