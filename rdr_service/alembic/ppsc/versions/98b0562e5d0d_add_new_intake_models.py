@@ -56,7 +56,7 @@ def upgrade_ppsc():
                     ['event_authored_time'], unique=False, schema='ppsc')
     op.create_index(op.f('ix_ppsc_consent_event_event_type_name'), 'consent_event',
                     ['event_type_name'], unique=False, schema='ppsc')
-    op.create_table('profile_update_event',
+    op.create_table('profile_updates_event',
     sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
     sa.Column('created', rdr_service.model.utils.UTCDateTime(), nullable=True),
     sa.Column('modified', rdr_service.model.utils.UTCDateTime(), nullable=True),
@@ -75,15 +75,15 @@ def upgrade_ppsc():
     sa.PrimaryKeyConstraint('id'),
     schema='ppsc'
     )
-    op.create_index(op.f('ix_ppsc_profile_update_event_created'), 'profile_update_event',
+    op.create_index(op.f('ix_ppsc_profile_updates_event_created'), 'profile_updates_event',
                     ['created'], unique=False, schema='ppsc')
-    op.create_index(op.f('ix_ppsc_profile_update_event_data_element_name'), 'profile_update_event',
+    op.create_index(op.f('ix_ppsc_profile_updates_event_data_element_name'), 'profile_updates_event',
                     ['data_element_name'], unique=False, schema='ppsc')
-    op.create_index(op.f('ix_ppsc_profile_update_event_data_element_value'), 'profile_update_event',
+    op.create_index(op.f('ix_ppsc_profile_updates_event_data_element_value'), 'profile_updates_event',
                     ['data_element_value'], unique=False, schema='ppsc')
-    op.create_index(op.f('ix_ppsc_profile_update_event_event_authored_time'), 'profile_update_event',
+    op.create_index(op.f('ix_ppsc_profile_updates_event_event_authored_time'), 'profile_updates_event',
                     ['event_authored_time'], unique=False, schema='ppsc')
-    op.create_index(op.f('ix_ppsc_profile_update_event_event_type_name'), 'profile_update_event',
+    op.create_index(op.f('ix_ppsc_profile_updates_event_event_type_name'), 'profile_updates_event',
                     ['event_type_name'], unique=False, schema='ppsc')
     op.create_table('survey_completion_event',
     sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
@@ -141,7 +141,7 @@ def upgrade_ppsc():
         VALUES
         (now(), now(), 'Consent', 0),
         (now(), now(), 'Survey Completion', 0),
-        (now(), now(), 'Profile Updates', 0),
+        (now(), now(), 'Profile Updates', 0)
         ;
         """
     )
@@ -176,17 +176,17 @@ def downgrade_ppsc():
     op.drop_index(op.f('ix_ppsc_survey_completion_event_created'),
                   table_name='survey_completion_event', schema='ppsc')
     op.drop_table('survey_completion_event', schema='ppsc')
-    op.drop_index(op.f('ix_ppsc_profile_update_event_event_type_name'),
-                  table_name='profile_update_event', schema='ppsc')
-    op.drop_index(op.f('ix_ppsc_profile_update_event_event_authored_time'),
-                  table_name='profile_update_event', schema='ppsc')
-    op.drop_index(op.f('ix_ppsc_profile_update_event_data_element_value'),
-                  table_name='profile_update_event', schema='ppsc')
-    op.drop_index(op.f('ix_ppsc_profile_update_event_data_element_name'),
-                  table_name='profile_update_event', schema='ppsc')
-    op.drop_index(op.f('ix_ppsc_profile_update_event_created'),
-                  table_name='profile_update_event', schema='ppsc')
-    op.drop_table('profile_update_event', schema='ppsc')
+    op.drop_index(op.f('ix_ppsc_profile_updates_event_event_type_name'),
+                  table_name='profile_updates_event', schema='ppsc')
+    op.drop_index(op.f('ix_ppsc_profile_updates_event_event_authored_time'),
+                  table_name='profile_updates_event', schema='ppsc')
+    op.drop_index(op.f('ix_ppsc_profile_updates_event_data_element_value'),
+                  table_name='profile_updates_event', schema='ppsc')
+    op.drop_index(op.f('ix_ppsc_profile_updates_event_data_element_name'),
+                  table_name='profile_updates_event', schema='ppsc')
+    op.drop_index(op.f('ix_ppsc_profile_updates_event_created'),
+                  table_name='profile_updates_event', schema='ppsc')
+    op.drop_table('profile_updates_event', schema='ppsc')
     op.drop_index(op.f('ix_ppsc_consent_event_event_type_name'),
                   table_name='consent_event', schema='ppsc')
     op.drop_index(op.f('ix_ppsc_consent_event_event_authored_time'),

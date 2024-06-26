@@ -7,7 +7,7 @@ from rdr_service import clock, config
 from rdr_service.api_util import HEALTHPRO, PPSC, RDR
 from rdr_service.dao.ppsc_dao import PPSCDefaultBaseDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
-from rdr_service.model.ppsc import ParticipantEventActivity, ConsentEvent
+from rdr_service.model.ppsc import ParticipantEventActivity, ConsentEvent, SurveyCompletionEvent, ProfileUpdatesEvent
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -17,6 +17,8 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.ppsc_data_gen = PPSCDataGenerator()
         self.ppsc_participant_activity_dao = PPSCDefaultBaseDao(model_type=ParticipantEventActivity)
         self.consent_event_dao = PPSCDefaultBaseDao(model_type=ConsentEvent)
+        self.survey_completion_event_dao = PPSCDefaultBaseDao(model_type=SurveyCompletionEvent)
+        self.profile_updates_event_dao = PPSCDefaultBaseDao(model_type=ProfileUpdatesEvent)
 
         activities = ["ENROLLMENT", "Consent", "Survey Completion", "Profile Updates"]
         for activity in activities:
@@ -138,6 +140,26 @@ class PPSCIntakeAPITest(BaseTestCase):
         response = self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
         self.assertEqual(response.status_code, 400)
 
+    def test_intake_participant_validation(self):
+        payload = {
+            "activity": "Consent",
+            "eventType": "Primary Consent",
+            "participantId": f"P10000",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "yes"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00Z"
+                },
+            ]
+        }
+
+        response = self.send_post('Intake', request_data=payload, expected_status=http.client.NOT_FOUND)
+        self.assertEqual(response.status_code, 404)
+
     def test_intake_consent_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()
 
@@ -216,26 +238,6 @@ class PPSCIntakeAPITest(BaseTestCase):
         response = self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
         self.assertEqual(response.status_code, 400)
 
-    def test_intake_participant_validation(self):
-        payload = {
-            "activity": "Consent",
-            "eventType": "Primary Consent",
-            "participantId": f"P10000",
-            "dataElements": [
-                {
-                    "dataElementName": "activity_status",
-                    "dataElementValue": "yes"
-                },
-                {
-                    "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
-                },
-            ]
-        }
-
-        response = self.send_post('Intake', request_data=payload, expected_status=http.client.NOT_FOUND)
-        self.assertEqual(response.status_code, 404)
-
     def test_intake_consent_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
 
@@ -286,9 +288,173 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual('activity_date_time', consent_events[1].data_element_name)
         self.assertEqual("2024-05-20T14:30:00Z", consent_events[1].data_element_value)
 
+    def test_intake_survey_completion_event_type_validation(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+
+        payload = {
+            "activity": "Survey Completion",
+            "eventType": "Pepperoni",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "yes"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00Z"
+                },
+            ]
+        }
+
+        response = self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
+        self.assertEqual(response.status_code, 400)
+
+    def test_intake_survey_completion_insert(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+
+        payload = {
+            "activity": "Survey Completion",
+            "eventType": "The Basics",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "submitted_complete"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00Z"
+                },
+            ]
+        }
+
+        test_time = datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+        participant_event_activities = self.ppsc_participant_activity_dao.get_all()
+        self.assertEqual(1, len(participant_event_activities))
+
+        self.assertEqual(test_time, participant_event_activities[0].created)
+        self.assertEqual(test_time, participant_event_activities[0].modified)
+        self.assertEqual(participant.id, participant_event_activities[0].participant_id)
+        self.assertEqual(payload, participant_event_activities[0].resource)
+        self.assertEqual(3, participant_event_activities[0].activity_id)
+
+        survey_events = self.survey_completion_event_dao.get_all()
+        self.assertEqual(2, len(survey_events))
+        self.assertEqual(test_time, survey_events[0].created)
+        self.assertEqual(test_time, survey_events[0].modified)
+        self.assertEqual(1, survey_events[0].event_id)
+        self.assertEqual(participant.id, survey_events[0].participant_id)
+        self.assertEqual('The Basics', survey_events[0].event_type_name)
+        self.assertEqual('activity_status', survey_events[0].data_element_name)
+        self.assertEqual('submitted_complete', survey_events[0].data_element_value)
+
+        self.assertEqual(test_time, survey_events[1].created)
+        self.assertEqual(test_time, survey_events[1].modified)
+        self.assertEqual(1, survey_events[1].event_id)
+        self.assertEqual(participant.id, survey_events[1].participant_id)
+        self.assertEqual('The Basics', survey_events[1].event_type_name)
+        self.assertEqual('activity_date_time', survey_events[1].data_element_name)
+        self.assertEqual("2024-05-20T14:30:00Z", survey_events[1].data_element_value)
+
+    def test_intake_profile_updates_event_type_validation(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+
+        payload = {
+            "activity": "Profile Updates",
+            "eventType": "Pepperoni",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "first_name",
+                    "dataElementValue": "Jane"
+                },
+                {
+                    "dataElementName": "last_name",
+                    "dataElementValue": "Eyre"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00Z"
+                },
+            ]
+        }
+
+        response = self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
+        self.assertEqual(response.status_code, 400)
+
+    def test_intake_profile_updates_insert(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+
+        payload = {
+            "activity": "Profile Updates",
+            "eventType": "Profile Data",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "first_name",
+                    "dataElementValue": "Jane"
+                },
+                {
+                    "dataElementName": "last_name",
+                    "dataElementValue": "Eyre"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00Z"
+                },
+            ]
+        }
+
+        test_time = datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+        participant_event_activities = self.ppsc_participant_activity_dao.get_all()
+        self.assertEqual(1, len(participant_event_activities))
+
+        self.assertEqual(test_time, participant_event_activities[0].created)
+        self.assertEqual(test_time, participant_event_activities[0].modified)
+        self.assertEqual(participant.id, participant_event_activities[0].participant_id)
+        self.assertEqual(payload, participant_event_activities[0].resource)
+        self.assertEqual(4, participant_event_activities[0].activity_id)
+
+        profile_update_events = self.profile_updates_event_dao.get_all()
+        self.assertEqual(3, len(profile_update_events))
+
+        self.assertEqual(test_time, profile_update_events[0].created)
+        self.assertEqual(test_time, profile_update_events[0].modified)
+        self.assertEqual(1, profile_update_events[0].event_id)
+        self.assertEqual(participant.id, profile_update_events[0].participant_id)
+        self.assertEqual('Profile Data', profile_update_events[0].event_type_name)
+        self.assertEqual('first_name', profile_update_events[0].data_element_name)
+        self.assertEqual('Jane', profile_update_events[0].data_element_value)
+
+        self.assertEqual(test_time, profile_update_events[1].created)
+        self.assertEqual(test_time, profile_update_events[1].modified)
+        self.assertEqual(1, profile_update_events[1].event_id)
+        self.assertEqual(participant.id, profile_update_events[1].participant_id)
+        self.assertEqual('Profile Data', profile_update_events[1].event_type_name)
+        self.assertEqual('last_name', profile_update_events[1].data_element_name)
+        self.assertEqual("Eyre", profile_update_events[1].data_element_value)
+
+        self.assertEqual(test_time, profile_update_events[2].created)
+        self.assertEqual(test_time, profile_update_events[2].modified)
+        self.assertEqual(1, profile_update_events[2].event_id)
+        self.assertEqual(participant.id, profile_update_events[2].participant_id)
+        self.assertEqual('Profile Data', profile_update_events[2].event_type_name)
+        self.assertEqual('activity_date_time', profile_update_events[2].data_element_name)
+        self.assertEqual("2024-05-20T14:30:00Z", profile_update_events[2].data_element_value)
+
+
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("ppsc.activity")
         self.clear_table_after_test("ppsc.participant")
         self.clear_table_after_test("ppsc.participant_event_activity")
         self.clear_table_after_test("ppsc.consent_event")
+        self.clear_table_after_test("ppsc.survey_completion_event")
+        self.clear_table_after_test("ppsc.profile_update_event")

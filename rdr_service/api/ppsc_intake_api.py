@@ -9,7 +9,7 @@ from rdr_service.app_util import auth_required
 from rdr_service import config, clock
 from rdr_service.dao.ppsc_dao import PPSCDefaultBaseDao
 from rdr_service.model.ppsc import ParticipantEventActivity, Activity, \
-    ConsentEvent, ProfileUpdateEvent, SurveyCompletionEvent
+    ConsentEvent, ProfileUpdatesEvent, SurveyCompletionEvent
 
 
 class PPSCIntakeAPI(BaseApi):
@@ -18,7 +18,7 @@ class PPSCIntakeAPI(BaseApi):
         self.intake_activities = config.getSettingJson("ppsc_intake_activities")
         self.activity_records = PPSCDefaultBaseDao(model_type=Activity).get_all()
         self.consent_event_dao = PPSCDefaultBaseDao(model_type=ConsentEvent)
-        self.profile_updates_event_dao = PPSCDefaultBaseDao(model_type=ProfileUpdateEvent)
+        self.profile_updates_event_dao = PPSCDefaultBaseDao(model_type=ProfileUpdatesEvent)
         self.survey_completion_event_dao = PPSCDefaultBaseDao(model_type=SurveyCompletionEvent)
         self.activity_date_time_value = None
         super().__init__(self.participant_event_activity_dao)
@@ -28,27 +28,37 @@ class PPSCIntakeAPI(BaseApi):
         log_api_request(log=request.log_record)
 
         # Validate
-        req_data = self.get_request_json()
+        self.validate_payload(req_data=self.get_request_json())
+
+        # Route to correct activity and insert events
+        inserted_event = self.handle_event_insert(
+            req_data=self.get_request_json(),
+        )
+        return self._make_response(obj=inserted_event)
+
+    def validate_payload(self, *, req_data: dict):
         required_keys = ['activity', 'eventType', 'participantId', 'dataElements']
 
-        # Check keys in payload
+        # Check required keys in payload
         if all([key in req_data for key in required_keys]) \
                 and all([val for val in req_data.values() if val is not None]):
             pass
         else:
             raise BadRequest(f'Invalid Intake API Payload: Required keys: {required_keys}')
 
+        # Check Activity is valid
         if req_data['activity'] not in self.intake_activities:
             raise BadRequest(f'Invalid Intake API Payload: Invalid Activity: {req_data["activity"]}')
 
         event_type_lookup_str = 'ppsc_intake_' + req_data['activity'].lower().replace(' ', '_') + '_event_types'
 
+        # Check Event Type is valid
         if req_data['eventType'] not in config.getSettingJson(event_type_lookup_str):
-            raise BadRequest(f'Invalid Intake API Payload: Invalid EventType: {req_data["eventType"] }')
+            raise BadRequest(f'Invalid Intake API Payload: Invalid EventType: {req_data["eventType"]}')
 
         # Check for Event Authored Date
         self.activity_date_time_value = next((item['dataElementValue'] for item in req_data['dataElements'] if
-                                         item['dataElementName'] == 'activity_date_time'), None)
+                                              item['dataElementName'] == 'activity_date_time'), None)
 
         # Check if the activity_date_time_value is not None
         if self.activity_date_time_value is not None:
@@ -66,12 +76,6 @@ class PPSCIntakeAPI(BaseApi):
                 raise BadRequest("The activity_date_time_value is not valid.")
         else:
             raise BadRequest("No activity_date_time_value provided.")
-
-        # Route to correct activity and insert events
-        inserted_event = self.handle_event_insert(
-            req_data=req_data,
-        )
-        return self._make_response(obj=inserted_event)
 
     def handle_event_insert(self, *, req_data: dict) -> dict:
         activity_record = list(filter(lambda x: x.name.lower() == req_data['activity'].lower(),
@@ -93,7 +97,7 @@ class PPSCIntakeAPI(BaseApi):
             raise NotFound(f"Participant with ID {req_data['participantId']} not found")
 
         # get correct [Activity]Event DAO
-        dao_str = f"{req_data['activity'].lower()}_event_dao"
+        dao_str = f"{req_data['activity'].lower().replace(' ', '_')}_event_dao"
         activity_event_dao = self.__dict__.get(dao_str)
 
         records_to_insert = []

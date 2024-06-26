@@ -2,7 +2,7 @@ from datetime import datetime
 
 from rdr_service import clock
 from rdr_service.dao import database_factory
-from rdr_service.model.ppsc import Participant, Activity, EnrollmentEventType, ConsentEvent, ProfileUpdateEvent, \
+from rdr_service.model.ppsc import Participant, Activity, EnrollmentEventType, ConsentEvent, ProfileUpdatesEvent, \
     SurveyCompletionEvent
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -79,7 +79,7 @@ class PPSCDataGenerator(PPSCBaseDataGenerator):
 
     @staticmethod
     def _profile_update_event(**kwargs):
-        return ProfileUpdateEvent(**kwargs)
+        return ProfileUpdatesEvent(**kwargs)
 
     def create_database_profile_update_event(self, **kwargs):
         profile_update_event = self._profile_update_event(**kwargs)

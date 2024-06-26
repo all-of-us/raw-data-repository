@@ -112,8 +112,8 @@ event.listen(ConsentEvent, "before_insert", model_insert_listener)
 event.listen(ConsentEvent, "before_update", model_update_listener)
 
 
-class ProfileUpdateEvent(PPSCBase):
-    __tablename__ = "profile_update_event"
+class ProfileUpdatesEvent(PPSCBase):
+    __tablename__ = "profile_updates_event"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime, index=True)
@@ -130,8 +130,8 @@ class ProfileUpdateEvent(PPSCBase):
     dev_note = Column(String(512))
 
 
-event.listen(ProfileUpdateEvent, "before_insert", model_insert_listener)
-event.listen(ProfileUpdateEvent, "before_update", model_update_listener)
+event.listen(ProfileUpdatesEvent, "before_insert", model_insert_listener)
+event.listen(ProfileUpdatesEvent, "before_update", model_update_listener)
 
 
 class SurveyCompletionEvent(PPSCBase):
