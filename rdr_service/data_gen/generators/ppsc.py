@@ -78,13 +78,13 @@ class PPSCDataGenerator(PPSCBaseDataGenerator):
         return consent_event
 
     @staticmethod
-    def _profile_update_event(**kwargs):
+    def _profile_updates_event(**kwargs):
         return ProfileUpdatesEvent(**kwargs)
 
-    def create_database_profile_update_event(self, **kwargs):
-        profile_update_event = self._profile_update_event(**kwargs)
-        self._commit_to_database(profile_update_event)
-        return profile_update_event
+    def create_database_profile_updates_event(self, **kwargs):
+        profile_updates_event = self._profile_updates_event(**kwargs)
+        self._commit_to_database(profile_updates_event)
+        return profile_updates_event
 
     @staticmethod
     def _survey_completion_event(**kwargs):
