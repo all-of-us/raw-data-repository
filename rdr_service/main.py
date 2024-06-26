@@ -34,6 +34,7 @@ from rdr_service.api.participant_summary_api import ParticipantSummaryApi, \
     ParticipantSummaryModifiedApi, ParticipantSummaryCheckLoginApi
 from rdr_service.api.patient_status import PatientStatusApi, PatientStatusHistoryApi
 from rdr_service.api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
+from rdr_service.api.ppsc_intake_api import PPSCIntakeAPI
 from rdr_service.api.ppsc_participant_api import PPSCParticipantAPI
 from rdr_service.api.profile_update_api import ProfileUpdateApi
 from rdr_service.api.public_metrics_api import PublicMetricsApi
@@ -427,6 +428,13 @@ api.add_resource(
     PPSCParticipantAPI,
     API_PREFIX + 'createParticipant',
     endpoint='ppsc.create_participant',
+    methods=['POST']
+)
+
+api.add_resource(
+    PPSCIntakeAPI,
+    API_PREFIX + 'Intake',
+    endpoint='ppsc.intake',
     methods=['POST']
 )
 

@@ -45,6 +45,7 @@ class ParticipantEventActivity(PPSCBase):
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT, default=0)
+    ignore_reason = Column(String(512))
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     activity_id = Column(Integer, ForeignKey("activity.id"))
     resource = Column(JSON, nullable=True)
@@ -78,6 +79,7 @@ class EnrollmentEvent(PPSCBase):
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT, default=0)
+    ignore_reason = Column(String(512))
     event_authored_time = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
@@ -86,3 +88,69 @@ class EnrollmentEvent(PPSCBase):
 
 event.listen(EnrollmentEvent, "before_insert", model_insert_listener)
 event.listen(EnrollmentEvent, "before_update", model_update_listener)
+
+
+class ConsentEvent(PPSCBase):
+    __tablename__ = "consent_event"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime, index=True)
+    modified = Column(UTCDateTime)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    event_type_name = Column(String(128), index=True)
+    event_authored_time = Column(UTCDateTime, index=True)
+    data_element_name = Column(String(512), index=True)
+    data_element_value = Column(String(512), index=True)
+    ignore_flag = Column(TINYINT, default=0)
+    ignore_reason = Column(String(512))
+    is_correction_flag = Column(TINYINT, default=0)
+    dev_note = Column(String(512))
+
+
+event.listen(ConsentEvent, "before_insert", model_insert_listener)
+event.listen(ConsentEvent, "before_update", model_update_listener)
+
+
+class ProfileUpdateEvent(PPSCBase):
+    __tablename__ = "profile_update_event"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime, index=True)
+    modified = Column(UTCDateTime)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    event_type_name = Column(String(128), index=True)
+    event_authored_time = Column(UTCDateTime, index=True)
+    data_element_name = Column(String(512), index=True)
+    data_element_value = Column(String(512), index=True)
+    ignore_flag = Column(TINYINT, default=0)
+    ignore_reason = Column(String(512))
+    is_correction_flag = Column(TINYINT, default=0)
+    dev_note = Column(String(512))
+
+
+event.listen(ProfileUpdateEvent, "before_insert", model_insert_listener)
+event.listen(ProfileUpdateEvent, "before_update", model_update_listener)
+
+
+class SurveyCompletionEvent(PPSCBase):
+    __tablename__ = "survey_completion_event"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime, index=True)
+    modified = Column(UTCDateTime)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    event_type_name = Column(String(128), index=True)
+    event_authored_time = Column(UTCDateTime, index=True)
+    data_element_name = Column(String(512), index=True)
+    data_element_value = Column(String(512), index=True)
+    ignore_flag = Column(TINYINT, default=0)
+    ignore_reason = Column(String(512))
+    is_correction_flag = Column(TINYINT, default=0)
+    dev_note = Column(String(512))
+
+
+event.listen(SurveyCompletionEvent, "before_insert", model_insert_listener)
+event.listen(SurveyCompletionEvent, "before_update", model_update_listener)
