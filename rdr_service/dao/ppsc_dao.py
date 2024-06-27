@@ -1,3 +1,5 @@
+from typing import List, Dict
+
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.ppsc import Participant
 
@@ -22,5 +24,15 @@ class PPSCDefaultBaseDao(BaseDao):
     def from_client_json(self):
         pass
 
+    def to_client_json(self, payload):
+        return f"Event Record Created for: {payload['participantId']}"
+
     def get_id(self, obj):
         return obj.id
+
+    def insert_bulk(self, batch: List[Dict]) -> None:
+        with self.session() as session:
+            session.bulk_insert_mappings(
+                self.model_type,
+                batch
+            )

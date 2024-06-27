@@ -2,7 +2,8 @@ from datetime import datetime
 
 from rdr_service import clock
 from rdr_service.dao import database_factory
-from rdr_service.model.ppsc import Participant, Activity, EnrollmentEventType
+from rdr_service.model.ppsc import Participant, Activity, EnrollmentEventType, ConsentEvent, ProfileUpdatesEvent, \
+    SurveyCompletionEvent
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 TIME = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
@@ -66,3 +67,30 @@ class PPSCDataGenerator(PPSCBaseDataGenerator):
         event_type = self._enrollment_event_type(**kwargs)
         self._commit_to_database(event_type)
         return event_type
+
+    @staticmethod
+    def _consent_event(**kwargs):
+        return ConsentEvent(**kwargs)
+
+    def create_database_consent_event(self, **kwargs):
+        consent_event = self._consent_event(**kwargs)
+        self._commit_to_database(consent_event)
+        return consent_event
+
+    @staticmethod
+    def _profile_updates_event(**kwargs):
+        return ProfileUpdatesEvent(**kwargs)
+
+    def create_database_profile_updates_event(self, **kwargs):
+        profile_updates_event = self._profile_updates_event(**kwargs)
+        self._commit_to_database(profile_updates_event)
+        return profile_updates_event
+
+    @staticmethod
+    def _survey_completion_event(**kwargs):
+        return SurveyCompletionEvent(**kwargs)
+
+    def create_database_survey_completion_event(self, **kwargs):
+        survey_completion_event = self._survey_completion_event(**kwargs)
+        self._commit_to_database(survey_completion_event)
+        return survey_completion_event
