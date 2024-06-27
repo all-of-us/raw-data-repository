@@ -4100,6 +4100,21 @@ class GenomicGemDao(BaseDao):
             )
             return records.all()
 
+    def get_a3_records(self):
+        with self.session() as session:
+            return session.query(
+                GenomicSetMember.biobankId,
+                GenomicSetMember.sampleId,
+                sqlalchemy.func.date_format(GenomicSetMember.reportConsentRemovalDate, '%Y-%m-%dT%TZ'),
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY
+            ).all()
+
 
 class GenomicShortReadDao(BaseDao):
 

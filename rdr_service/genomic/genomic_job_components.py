@@ -3449,7 +3449,8 @@ class ManifestDefinitionProvider:
             GenomicManifestTypes.GEM_A3: {
                 'job_run_field': 'gemA3ManifestJobRunId',
                 'output_filename': f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_A3_manifest_{now_formatted}.csv',
-                'signal': 'manifest-generated'
+                'signal': 'manifest-generated',
+                'query': self.gem_dao.get_a3_records,
             },
             GenomicManifestTypes.CVL_W1IL_PGX: {
                 'job_run_field': 'cvlW1ilPgxJobRunId',
