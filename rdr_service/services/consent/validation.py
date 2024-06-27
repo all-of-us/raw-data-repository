@@ -96,6 +96,7 @@ class EhrStatusUpdater(ConsentMetadataUpdater):
             participant_id=participant_id,
             session=self._session
         )
+        self._session.refresh(participant_summary)
         did_modify_status = False
 
         if participant_summary.consentForElectronicHealthRecords == status_check:
@@ -1016,15 +1017,19 @@ class ConsentValidator:
             ).filter(ParticipantSummary.participantId == guardian_id_list.pop()).one_or_none()
 
         # compare first and last name to parsed string
-        file_guardian_name_parts = result.guardian_printed_name.lower().split(' ')
-        if (
-            not guardian_summary
-            or len(file_guardian_name_parts) < 2
-            or guardian_summary.firstName.lower() != file_guardian_name_parts[0]
-            or guardian_summary.lastName.lower() != file_guardian_name_parts[-1]
-        ):
+        if not result.guardian_printed_name:
             self._append_other_error(ConsentOtherErrors.UNEXPECTED_GUARDIAN_NAME, result)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
+        else:
+            file_guardian_name_parts = result.guardian_printed_name.lower().split(' ')
+            if (
+                not guardian_summary
+                or len(file_guardian_name_parts) < 2
+                or guardian_summary.firstName.lower() != file_guardian_name_parts[0]
+                or guardian_summary.lastName.lower() != file_guardian_name_parts[-1]
+            ):
+                self._append_other_error(ConsentOtherErrors.UNEXPECTED_GUARDIAN_NAME, result)
+                result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
     def _additional_ehr_checks(self, consent: files.EhrConsentFile, result: ParsingResult):
         self._validate_is_va_file(consent, result)
