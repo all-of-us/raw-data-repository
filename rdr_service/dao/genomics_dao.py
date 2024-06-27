@@ -51,7 +51,8 @@ from rdr_service.model.genomics import (
     GenomicSampleSwap, GenomicAppointmentEvent, GenomicResultWithdrawals, GenomicAppointmentEventMetrics,
     GenomicAppointmentEventNotified, GenomicStorageUpdate, GenomicGCROutreachEscalationNotified, GenomicLongRead,
     GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, GenomicRRRaw, GenomicR1Raw, GenomicLRRaw,
-    GenomicL1Raw, GenomicAW4Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, GenomicL3Raw, GenomicP3Raw, GenomicP2Raw)
+    GenomicL1Raw, GenomicAW4Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, GenomicL3Raw, GenomicP3Raw, GenomicP2Raw,
+    GenomicA1Raw)
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -4027,6 +4028,92 @@ class GenomicQueriesDao(BaseDao):
                 GenomicSetMember.participantId
             )
             return records.all()
+
+
+class GenomicGemDao(BaseDao):
+
+    def __init__(self):
+        super().__init__(GenomicSetMember, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    def get_a1_records(self):
+        with self.session() as session:
+            records = session.query(
+                GenomicSetMember.biobankId,
+                GenomicSetMember.sampleId,
+                GenomicSetMember.sexAtBirth,
+                func.IF(
+                    ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                    sqlalchemy.sql.expression.literal("yes"),
+                    sqlalchemy.sql.expression.literal("no")),
+                ParticipantSummary.consentForGenomicsRORAuthored,
+                GenomicGCValidationMetrics.chipwellbarcode,
+                func.upper(GenomicSetMember.gcSiteId),
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).join(
+                ConsentFile,
+                and_(
+                    ConsentFile.participant_id == GenomicSetMember.participantId,
+                    ConsentFile.type == ConsentType.GROR,
+                )
+            ).outerjoin(
+                GenomicA1Raw,
+                GenomicA1Raw.sample_id == GenomicSetMember.sampleId
+            ).filter(
+                GenomicGCValidationMetrics.processingStatus == 'pass',
+                GenomicGCValidationMetrics.ignoreFlag != 1,
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                GenomicSetMember.blockResults != 1,
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                ConsentFile.sync_status.in_([
+                    ConsentSyncStatus.READY_FOR_SYNC,
+                    ConsentSyncStatus.SYNC_COMPLETE
+                ])
+            ).group_by(
+                GenomicSetMember.biobankId,
+                GenomicSetMember.sampleId,
+                GenomicSetMember.sexAtBirth,
+                sqlalchemy.func.IF(
+                    ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                    sqlalchemy.sql.expression.literal("yes"),
+                    sqlalchemy.sql.expression.literal("no")),
+                ParticipantSummary.consentForGenomicsRORAuthored,
+                GenomicGCValidationMetrics.chipwellbarcode,
+                sqlalchemy.func.upper(GenomicSetMember.gcSiteId),
+            ).order_by(
+                ParticipantSummary.consentForGenomicsRORAuthored
+            ).limit(
+                config.getSetting(config.A1_LIMIT)
+            )
+            return records.all()
+
+    def get_a3_records(self):
+        with self.session() as session:
+            return session.query(
+                GenomicSetMember.biobankId,
+                GenomicSetMember.sampleId,
+                sqlalchemy.func.date_format(GenomicSetMember.reportConsentRemovalDate, '%Y-%m-%dT%TZ'),
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY
+            ).all()
 
 
 class GenomicShortReadDao(BaseDao):

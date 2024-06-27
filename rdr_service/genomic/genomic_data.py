@@ -5,10 +5,9 @@ from rdr_service import config
 from rdr_service.genomic_enums import GenomicSubProcessResult, GenomicWorkflowState, GenomicManifestTypes, \
     GenomicContaminationCategory
 from rdr_service.model.config_utils import get_biobank_id_prefix
-from rdr_service.model.consent_file import ConsentFile, ConsentType, ConsentSyncStatus
 from rdr_service.model.genomics import GenomicGCValidationMetrics, GenomicSetMember, GenomicFileProcessed
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus, QuestionnaireStatus
+from rdr_service.participant_enums import QuestionnaireStatus
 
 
 class GenomicQueryClass:
@@ -20,88 +19,6 @@ class GenomicQueryClass:
         self.aliases = {'gsm': aliased(GenomicSetMember)}
 
         self.genomic_data_config = {
-            GenomicManifestTypes.GEM_A1: (sqlalchemy.select(
-                [
-                    GenomicSetMember.biobankId,
-                    GenomicSetMember.sampleId,
-                    GenomicSetMember.sexAtBirth,
-                    sqlalchemy.func.IF(
-                        ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
-                        sqlalchemy.sql.expression.literal("yes"),
-                        sqlalchemy.sql.expression.literal("no")),
-                    ParticipantSummary.consentForGenomicsRORAuthored,
-                    GenomicGCValidationMetrics.chipwellbarcode,
-                    sqlalchemy.func.upper(GenomicSetMember.gcSiteId),
-                ]
-            ).select_from(
-                sqlalchemy.join(
-                    ParticipantSummary,
-                    GenomicSetMember,
-                    GenomicSetMember.participantId == ParticipantSummary.participantId
-                ).join(
-                    GenomicGCValidationMetrics,
-                    GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
-                ).join(
-                    ConsentFile,
-                    sqlalchemy.and_(
-                        ConsentFile.participant_id == GenomicSetMember.participantId,
-                        ConsentFile.type == ConsentType.GROR,
-                    )
-                ).outerjoin(
-                    self.aliases['gsm'],
-                    sqlalchemy.and_(
-                        self.aliases['gsm'].participantId == GenomicSetMember.participantId,
-                        self.aliases['gsm'].genomeType == "aou_array",
-                        self.aliases['gsm'].gemA1ManifestJobRunId.isnot(None),
-                        self.aliases['gsm'].ignoreFlag == 0,
-                    )
-                )
-            ).where(
-                (GenomicGCValidationMetrics.processingStatus == 'pass') &
-                (GenomicGCValidationMetrics.ignoreFlag != 1) &
-                (GenomicSetMember.ignoreFlag != 1) &
-                (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
-                (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == "aou_array") &
-                (self.aliases['gsm'].id.is_(None)) &
-                (GenomicSetMember.blockResults != 1) &
-                (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
-                (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
-                (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) &
-                (ConsentFile.sync_status.in_([
-                    ConsentSyncStatus.READY_FOR_SYNC,
-                    ConsentSyncStatus.SYNC_COMPLETE
-                ]))
-            ).group_by(
-                GenomicSetMember.biobankId,
-                GenomicSetMember.sampleId,
-                GenomicSetMember.sexAtBirth,
-                sqlalchemy.func.IF(
-                    ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
-                    sqlalchemy.sql.expression.literal("yes"),
-                    sqlalchemy.sql.expression.literal("no")),
-                ParticipantSummary.consentForGenomicsRORAuthored,
-                GenomicGCValidationMetrics.chipwellbarcode,
-                sqlalchemy.func.upper(GenomicSetMember.gcSiteId),
-            ).order_by(ParticipantSummary.consentForGenomicsRORAuthored).limit(
-                config.getSetting(config.A1_LIMIT)
-            )),
-            GenomicManifestTypes.GEM_A3: (sqlalchemy.select(
-                [
-                    GenomicSetMember.biobankId,
-                    GenomicSetMember.sampleId,
-                    sqlalchemy.func.date_format(GenomicSetMember.reportConsentRemovalDate, '%Y-%m-%dT%TZ'),
-                ]
-            ).select_from(
-                sqlalchemy.join(ParticipantSummary,
-                                GenomicSetMember,
-                                GenomicSetMember.participantId == ParticipantSummary.participantId)
-            ).where(
-                (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_RPT_PENDING_DELETE) &
-                (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == "aou_array")
-            )
-            ),
             GenomicManifestTypes.AW2F: (
                 sqlalchemy.select(
                     [
