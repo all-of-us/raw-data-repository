@@ -25,8 +25,7 @@ class PPSCDefaultBaseDao(BaseDao):
         pass
 
     def to_client_json(self, payload):
-        # pylint: disable=unused-argument
-        return "Event Record Created"
+        return f"Event Record Created for: {payload['participantId']}"
 
     def get_id(self, obj):
         return obj.id
