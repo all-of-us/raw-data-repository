@@ -61,7 +61,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     UserEventMetricsDao,
     GenomicCVLSecondSampleDao, GenomicAppointmentEventMetricsDao, GenomicLongReadDao, GenomicPRDao, GenomicRNADao,
-    GenomicShortReadDao, GenomicCVLDao)
+    GenomicShortReadDao, GenomicCVLDao, GenomicGemDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -3189,6 +3189,7 @@ class ManifestDefinitionProvider:
         self.cvl_dao = GenomicCVLDao()
         self.pr_dao = GenomicPRDao()
         self.rna_dao = GenomicRNADao()
+        self.gem_dao = GenomicGemDao()
 
         self.manifest_columns_config = {
             GenomicManifestTypes.GEM_A1: (
@@ -3442,7 +3443,8 @@ class ManifestDefinitionProvider:
             GenomicManifestTypes.GEM_A1: {
                 'job_run_field': 'gemA1ManifestJobRunId',
                 'output_filename': f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_A1_manifest_{now_formatted}.csv',
-                'signal': 'manifest-generated'
+                'signal': 'manifest-generated',
+                'query': self.gem_dao.get_a1_records,
             },
             GenomicManifestTypes.GEM_A3: {
                 'job_run_field': 'gemA3ManifestJobRunId',
