@@ -7,7 +7,7 @@ from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchWorks
 #--PDR-2517: Disabling PDR resource generators, commenting out old code
 # from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
 #     res_institutional_affiliations_batch_update, res_researcher_batch_update
-
+# from rdr_service.services.system_utils import list_chunks
 
 
 class BaseRedcapApi(BaseApi):
