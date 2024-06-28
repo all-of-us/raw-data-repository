@@ -33,6 +33,10 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchResearcherAccessTierShortName, WorkbenchResearcherEthnicCategory, WorkbenchResearcherSexualOrientationV2, \
     WorkbenchResearcherGenderIdentity, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2,\
     WorkbenchResearcherEducationV2
+#--PDR-2517:  Disabling resource data builds for PDR, commenting out code
+# from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+# from rdr_service.config import GAE_PROJECT
+# from rdr_service.dao.bq_workbench_dao import rebuild_bq_wb_researchers
 
 
 class WorkbenchWorkspaceDao(UpdatableDao):

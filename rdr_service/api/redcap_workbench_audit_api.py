@@ -3,10 +3,11 @@ from rdr_service.api.base_api import BaseApi
 from werkzeug.exceptions import BadRequest
 from rdr_service.api_util import REDCAP_AND_RDR
 from rdr_service.app_util import auth_required
-from rdr_service.config import GAE_PROJECT
-from rdr_service.dao.bq_workbench_dao import rebuild_bq_audit
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchWorkspaceAuditDao
-from rdr_service.services.system_utils import list_chunks
+#--PDR-2517: Disabling PDR resource generators, commenting out old code
+# from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
+#     res_institutional_affiliations_batch_update, res_researcher_batch_update
+
 
 
 class BaseRedcapApi(BaseApi):
@@ -62,19 +63,21 @@ class RedcapWorkbenchAuditApi(BaseRedcapApi):
 
     def _do_insert(self, m):
         audit_records = super()._do_insert(m)
-        # Generate tasks to build PDR records.
-        if GAE_PROJECT == 'localhost':
-            rebuild_bq_audit(audit_records)
-        else:
-            ids = list()
-            for obj in audit_records:
-                ids.append(obj.id)
 
-            if len(ids) > 0:
-                for chunk in list_chunks(ids, chunk_size=250):
-                    payload = {'table': 'audit', 'ids': chunk}
-                    self._task.execute('rebuild_research_workbench_table_records_task', payload=payload,
-                                 in_seconds=30, queue='resource-rebuild')
+        # -- PDR-2517:  Disabling old RDR-PDR pipeline build tasks, leaving commented out code for now
+        # Generate tasks to build PDR records.
+        # if GAE_PROJECT == 'localhost':
+        #     rebuild_bq_audit(audit_records)
+        # else:
+        #     ids = list()
+        #     for obj in audit_records:
+        #         ids.append(obj.id)
+        #
+        #     if len(ids) > 0:
+        #         for chunk in list_chunks(ids, chunk_size=250):
+        #             payload = {'table': 'audit', 'ids': chunk}
+        #             self._task.execute('rebuild_research_workbench_table_records_task', payload=payload,
+        #                          in_seconds=30, queue='resource-rebuild')
         return audit_records
 
 class RedcapResearcherAuditApi(BaseRedcapApi):

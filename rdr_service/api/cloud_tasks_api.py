@@ -13,8 +13,11 @@ from rdr_service.dao.bq_organization_dao import bq_organization_update_all
 from rdr_service.dao.bq_site_dao import bq_site_update_all
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
-from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
-    bq_institutional_affiliations_batch_update, bq_researcher_batch_update, bq_audit_batch_update
+# -- PDR-2517:  Disabling old RDR-PDR pipeline code
+# from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
+#     bq_institutional_affiliations_batch_update, bq_researcher_batch_update, bq_audit_batch_update
+# from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
+#     res_institutional_affiliations_batch_update, res_researcher_batch_update
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
 from rdr_service.offline import retention_eligible_import
@@ -22,8 +25,6 @@ from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
 from rdr_service.resource.generators.code import rebuild_codebook_resources_task
 from rdr_service.resource.generators.participant import participant_summary_update_resource_task
-from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
-    res_institutional_affiliations_batch_update, res_researcher_batch_update
 from rdr_service.resource.generators.onsite_id_verification import onsite_id_verification_build_task, \
     onsite_id_verification_batch_rebuild_task
 from rdr_service.resource.tasks import batch_rebuild_participants_task, batch_rebuild_retention_metrics_task, \
@@ -236,26 +237,29 @@ class RebuildResearchWorkbenchTableRecordsApi(Resource):
         log_task_headers()
         data = request.get_json(force=True)
         table = data['table']
-        batch = data['ids']
 
-        logging.info(f'Rebuilding {len(batch)} records for table {table}.')
+        # -- PDR-2517 Don't expect to reach this after disabling build tasks.  Log a warning and exit
+        # Leaving disabled code commented out
+        logging.warning(f'Resource/BigQuery builds for table {table} are disabled')
 
-        if table == 'workspace':
-            bq_workspace_batch_update(batch)
-            res_workspace_batch_update(batch)
-        elif table == 'workspace_user':
-            bq_workspace_user_batch_update(batch)
-            res_workspace_user_batch_update(batch)
-        elif table == 'institutional_affiliations':
-            bq_institutional_affiliations_batch_update(batch)
-            res_institutional_affiliations_batch_update(batch)
-        elif table == 'researcher':
-            bq_researcher_batch_update(batch)
-            res_researcher_batch_update(batch)
-        elif table == 'audit':
-            bq_audit_batch_update(batch)
-
-        logging.info(f'Rebuild complete.')
+        # logging.info(f'Rebuilding {len(batch)} records for table {table}.')
+        # batch = data['ids']
+        # if table == 'workspace':
+        #     bq_workspace_batch_update(batch)
+        #     res_workspace_batch_update(batch)
+        # elif table == 'workspace_user':
+        #     bq_workspace_user_batch_update(batch)
+        #     res_workspace_user_batch_update(batch)
+        # elif table == 'institutional_affiliations':
+        #     bq_institutional_affiliations_batch_update(batch)
+        #     res_institutional_affiliations_batch_update(batch)
+        # elif table == 'researcher':
+        #     bq_researcher_batch_update(batch)
+        #     res_researcher_batch_update(batch)
+        # elif table == 'audit':
+        #     bq_audit_batch_update(batch)
+        #
+        # logging.info(f'Rebuild complete.')
         return '{"success": "true"}'
 
 
