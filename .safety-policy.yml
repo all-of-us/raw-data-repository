@@ -13,7 +13,7 @@ security: # configuration for the `safety check` command
             expires: '2022-10-21' # datetime string - date this ignore will expire, best practice to use this variable
         51668:
             reason: using SQLAlchemy versions >=1.4.0 is causing failures # optional, for internal note purposes to communicate with your team. This reason will be reported in the Safety reports
-            expires: '2024-06-30' # datetime string - date this ignore will expire, best practice to use this variable
+            expires: '2024-12-30' # datetime string - date this ignore will expire, best practice to use this variable
         65213:
             reason: RDR code not run on PowerPC architecture
             expires: '2030-01-01'
