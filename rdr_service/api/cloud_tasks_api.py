@@ -13,11 +13,6 @@ from rdr_service.dao.bq_organization_dao import bq_organization_update_all
 from rdr_service.dao.bq_site_dao import bq_site_update_all
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
-# -- PDR-2517:  Disabling old RDR-PDR pipeline code
-# from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
-#     bq_institutional_affiliations_batch_update, bq_researcher_batch_update, bq_audit_batch_update
-# from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
-#     res_institutional_affiliations_batch_update, res_researcher_batch_update
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
 from rdr_service.offline import retention_eligible_import
@@ -33,6 +28,13 @@ from rdr_service.services.participant_data_validation import ParticipantDataVali
 from rdr_service.services.slack_utils import SlackMessageHandler
 from rdr_service import config
 from rdr_service.config import RDR_SLACK_WEBHOOKS
+# -- PDR-2517:  Disabling old RDR-PDR pipeline code, leaving commented out
+# from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
+#    res_institutional_affiliations_batch_update, res_researcher_batch_update
+# from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
+#     bq_institutional_affiliations_batch_update, bq_researcher_batch_update, bq_audit_batch_update
+# from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
+#     res_institutional_affiliations_batch_update, res_researcher_batch_update
 
 
 def log_task_headers():

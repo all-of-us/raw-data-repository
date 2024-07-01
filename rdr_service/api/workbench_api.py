@@ -9,6 +9,7 @@ from rdr_service.dao.metadata_dao import WORKBENCH_LAST_SYNC_KEY, MetadataDao
 #-- PDR-2517 Disabling PDR BigQuery/Resource data builds
 # from rdr_service.config import GAE_PROJECT
 # from rdr_service.dao.bq_workbench_dao import rebuild_bq_workpaces
+
 class WorkbenchWorkspaceApi(BaseApi):
     def __init__(self):
         super().__init__(WorkbenchWorkspaceDao(), get_returns_children=True)
