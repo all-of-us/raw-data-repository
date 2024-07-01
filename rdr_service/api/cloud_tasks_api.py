@@ -28,13 +28,6 @@ from rdr_service.services.participant_data_validation import ParticipantDataVali
 from rdr_service.services.slack_utils import SlackMessageHandler
 from rdr_service import config
 from rdr_service.config import RDR_SLACK_WEBHOOKS
-# -- PDR-2517:  Disabling old RDR-PDR pipeline code, leaving commented out
-# from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
-#    res_institutional_affiliations_batch_update, res_researcher_batch_update
-# from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
-#     bq_institutional_affiliations_batch_update, bq_researcher_batch_update, bq_audit_batch_update
-# from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
-#     res_institutional_affiliations_batch_update, res_researcher_batch_update
 
 
 def log_task_headers():
@@ -240,28 +233,8 @@ class RebuildResearchWorkbenchTableRecordsApi(Resource):
         data = request.get_json(force=True)
         table = data['table']
 
-        # -- PDR-2517 Don't expect to reach this after disabling build tasks.  Log a warning and exit
-        # Leaving disabled code commented out
+        # PDR-2517 Don't expect to reach this endpoint after deleting RWB old pipeline build tasks.  Log a warning
         logging.warning(f'Resource/BigQuery builds for table {table} are disabled')
-
-        # logging.info(f'Rebuilding {len(batch)} records for table {table}.')
-        # batch = data['ids']
-        # if table == 'workspace':
-        #     bq_workspace_batch_update(batch)
-        #     res_workspace_batch_update(batch)
-        # elif table == 'workspace_user':
-        #     bq_workspace_user_batch_update(batch)
-        #     res_workspace_user_batch_update(batch)
-        # elif table == 'institutional_affiliations':
-        #     bq_institutional_affiliations_batch_update(batch)
-        #     res_institutional_affiliations_batch_update(batch)
-        # elif table == 'researcher':
-        #     bq_researcher_batch_update(batch)
-        #     res_researcher_batch_update(batch)
-        # elif table == 'audit':
-        #     bq_audit_batch_update(batch)
-        #
-        # logging.info(f'Rebuild complete.')
         return '{"success": "true"}'
 
 
