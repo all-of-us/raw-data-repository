@@ -940,20 +940,15 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         # test workbench audit
         result = self.send_get('workbench/audit/workspace/snapshots')
         self.assertEqual(len(result), 2)
+        # Note: These asserts require both the content and order (including in nested arrays) to match exactly.
+        # If changes to the underlying APIs cause any JSON content to be ordered differently, may need to change the
+        # validation to check individual items (e.g., workspaceResearchers array matches on content regardless of order)
         self.assertIn({'snapshotId': 1, 'workspaceId': 0, 'name': 'workspace name str',
                        'creationTime': '2019-11-25T17:43:41.085000', 'modifiedTime': '2019-11-25T17:43:41.085000',
                        'status': 'ACTIVE',
                        'workspaceUsers': [{'userId': 0, 'role': 'READER', 'status': 'ACTIVE', 'isCreator': True},
                                           {'userId': 1, 'role': 'OWNER', 'status': 'ACTIVE', 'isCreator': False}],
                        'workspaceResearchers': [
-                           {'userId': 0, 'creationTime': '2019-11-26T21:21:13.056000',
-                            'modifiedTime': '2019-11-26T21:21:13.056000', 'givenName': 'given name 1',
-                            'familyName': 'family name 1', 'email': None, 'accessTier': 'REGISTERED',
-                            'verifiedInstitutionalAffiliation': {},
-                            'affiliations': [
-                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]},
                            {'userId': 1, 'creationTime': '2019-11-27T21:21:13.056000',
                             'modifiedTime': '2019-11-27T21:21:13.056000', 'givenName': 'given name 2',
                             'familyName': 'family name 2', 'email': None, 'accessTier': 'REGISTERED_AND_CONTROLLED',
@@ -963,7 +958,16 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                                  'isVerified': None, 'nonAcademicAffiliation': 'UNSET'},
                                 {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
                                  'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]}],
+                            ]},
+                           {'userId': 0, 'creationTime': '2019-11-26T21:21:13.056000',
+                            'modifiedTime': '2019-11-26T21:21:13.056000', 'givenName': 'given name 1',
+                            'familyName': 'family name 1', 'email': None, 'accessTier': 'REGISTERED',
+                            'verifiedInstitutionalAffiliation': {},
+                            'affiliations': [
+                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
+                                 'nonAcademicAffiliation': 'INDUSTRY'}
+                            ]}
+                       ],
                        'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': True,
                        'reviewRequested': False, 'diseaseFocusedResearch': True,
                        'diseaseFocusedResearchName': 'disease focused research name str',
@@ -983,6 +987,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            'others': 'string'},
                        'cdrVersion': cdr_version
                        }, result)
+
         self.assertIn({'snapshotId': 2, 'workspaceId': 1, 'name': 'workspace name str 2',
                        'creationTime': '2019-11-25T17:43:41.085000', 'modifiedTime': '2019-11-25T17:43:41.085000',
                        'status': 'INACTIVE',
@@ -991,14 +996,6 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            {'userId': 1, 'role': 'READER', 'status': 'ACTIVE', 'isCreator': False}
                        ],
                        'workspaceResearchers': [
-                           {'userId': 0, 'creationTime': '2019-11-26T21:21:13.056000',
-                            'modifiedTime': '2019-11-26T21:21:13.056000', 'givenName': 'given name 1',
-                            'familyName': 'family name 1', 'email': None, 'accessTier': 'REGISTERED',
-                            'verifiedInstitutionalAffiliation': {},
-                            'affiliations': [
-                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
-                                 'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]},
                            {'userId': 1, 'creationTime': '2019-11-27T21:21:13.056000',
                             'modifiedTime': '2019-11-27T21:21:13.056000', 'givenName': 'given name 2',
                             'familyName': 'family name 2', 'email': None, 'accessTier': 'REGISTERED_AND_CONTROLLED',
@@ -1008,7 +1005,16 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                                  'nonAcademicAffiliation': 'UNSET'},
                                 {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
                                  'nonAcademicAffiliation': 'INDUSTRY'}
-                            ]}],
+                            ]},
+                           {'userId': 0, 'creationTime': '2019-11-26T21:21:13.056000',
+                            'modifiedTime': '2019-11-26T21:21:13.056000', 'givenName': 'given name 1',
+                            'familyName': 'family name 1', 'email': None, 'accessTier': 'REGISTERED',
+                            'verifiedInstitutionalAffiliation': {},
+                            'affiliations': [
+                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
+                                 'nonAcademicAffiliation': 'INDUSTRY'}
+                            ]},
+                       ],
                        'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': False,
                        'reviewRequested': False, 'diseaseFocusedResearch': True,
                        'diseaseFocusedResearchName': 'disease focused research name str 2',
