@@ -105,6 +105,25 @@ class PPSCParticipantAPITest(BaseTestCase):
         self.assertEqual(response.json['message'], f'Participant {payload.get("participantId")} already exists')
         self.assertEqual(current_participant.id, int(payload.get("participantId")[1:]))
 
+    def test_biobank_id_exists_validation(self):
+        current_participant = self.ppsc_data_gen.create_database_participant(
+            **{
+                'id': 21,
+                'biobank_id': 24,
+            }
+        )
+        payload = {
+            'participantId': 'P22',
+            'biobankId': 'T24',
+            'registeredDate': '2024-03-26T13:24:03.935Z'
+        }
+
+        response = self.send_post('createParticipant', request_data=payload, expected_status=http.client.FORBIDDEN)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json['message'], f'Participant with Biobank ID {payload.get("biobankId")}'
+                                                   f' already exists')
+        self.assertEqual(current_participant.biobank_id, int(payload.get("biobankId")[1:]))
+
     def test_payload_inserts_participant_records(self):
 
         payload = {
