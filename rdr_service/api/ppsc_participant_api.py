@@ -40,6 +40,11 @@ class PPSCParticipantAPI(BaseApi):
             ):
                 raise Forbidden(f'Participant {req_data.get("participantId")} already exists')
 
+            if self.dao.get_participant_by_biobank_id(
+                biobank_id=int(converted_dict.get('biobank_id'))
+            ):
+                raise Forbidden(f'Participant with Biobank ID {req_data.get("biobankId")} already exists')
+
             inserted_participant = self.handle_participant_insert(
                 participant_data=converted_dict,
                 req_data=req_data

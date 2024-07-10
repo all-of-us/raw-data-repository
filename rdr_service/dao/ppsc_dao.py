@@ -16,6 +16,10 @@ class ParticipantDao(BaseDao):
         with self.session() as session:
             return session.query(Participant).filter(Participant.id == participant_id).all()
 
+    def get_participant_by_biobank_id(self, *, biobank_id: int):
+        with self.session() as session:
+            return session.query(Participant).filter(Participant.biobank_id == biobank_id).all()
+
 
 class PPSCDefaultBaseDao(BaseDao):
     def __init__(self, model_type):

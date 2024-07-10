@@ -8,9 +8,6 @@ from sqlalchemy.orm import subqueryload, aliased
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
 from datetime import datetime
-from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
-from rdr_service.config import GAE_PROJECT
-from rdr_service.dao.bq_workbench_dao import rebuild_bq_wb_researchers
 from rdr_service.dao.metadata_dao import MetadataDao, WORKBENCH_LAST_SYNC_KEY
 from rdr_service.model.workbench_workspace import (
     WorkbenchWorkspaceApproved,
@@ -36,8 +33,6 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchResearcherAccessTierShortName, WorkbenchResearcherEthnicCategory, WorkbenchResearcherSexualOrientationV2, \
     WorkbenchResearcherGenderIdentity, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2,\
     WorkbenchResearcherEducationV2
-from rdr_service.services.system_utils import list_chunks
-
 
 class WorkbenchWorkspaceDao(UpdatableDao):
     def __init__(self):
@@ -1162,30 +1157,6 @@ class WorkbenchResearcherDao(UpdatableDao):
             session.add(history)
             hist_researchers.append(history)
         session.commit()
-
-        # Generate tasks to build PDR records.
-        if GAE_PROJECT == 'localhost':
-            rebuild_bq_wb_researchers(hist_researchers)
-        else:
-            researcher_ids = list()
-            affiliation_ids = list()
-            for obj in hist_researchers:
-                researcher_ids.append(obj.id)
-                if obj.workbenchInstitutionalAffiliations:
-                    for aff in obj.workbenchInstitutionalAffiliations:
-                        affiliation_ids.append(aff.id)
-
-            task = GCPCloudTask()
-            if researcher_ids:
-                for chunk in list_chunks(researcher_ids, chunk_size=250):
-                    payload = {'table': 'researcher', 'ids': chunk}
-                    task.execute('rebuild_research_workbench_table_records_task', payload=payload,
-                                   in_seconds=30, queue='resource-rebuild')
-            if affiliation_ids:
-                for chunk in list_chunks(affiliation_ids, chunk_size=250):
-                    payload = {'table': 'institutional_affiliations', 'ids': chunk}
-                    task.execute('rebuild_research_workbench_table_records_task', payload=payload,
-                                   in_seconds=30, queue='resource-rebuild')
 
     @staticmethod
     def get_researcher_by_user_id_with_session(session, user_id):
