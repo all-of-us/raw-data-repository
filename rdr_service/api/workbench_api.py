@@ -1,13 +1,11 @@
 from rdr_service import app_util
 from rdr_service import clock
 from flask import request
-from rdr_service.config import GAE_PROJECT
+
 from rdr_service.api.base_api import BaseApi
 from rdr_service.api_util import WORKBENCH_AND_REDCAP_AND_RDR
-from rdr_service.dao.bq_workbench_dao import rebuild_bq_workpaces
 from rdr_service.dao.workbench_dao import WorkbenchWorkspaceDao, WorkbenchResearcherDao
 from rdr_service.dao.metadata_dao import WORKBENCH_LAST_SYNC_KEY, MetadataDao
-
 
 class WorkbenchWorkspaceApi(BaseApi):
     def __init__(self):
@@ -25,24 +23,6 @@ class WorkbenchWorkspaceApi(BaseApi):
 
     def _do_insert(self, m):
         workspaces = super()._do_insert(m)
-
-        if GAE_PROJECT == 'localhost':
-            rebuild_bq_workpaces(workspaces)
-        else:
-            workspaces_payload = {'table': 'workspace', 'ids': []}
-            workspace_users_payload = {'table': 'workspace_user', 'ids': []}
-            for obj in workspaces:
-                workspaces_payload['ids'].append(obj.id)
-                if obj.workbenchWorkspaceUser:
-                    for user in obj.workbenchWorkspaceUser:
-                        workspace_users_payload['ids'].append(user.id)
-
-            if len(workspaces_payload['ids']) > 0:
-                self._task.execute('rebuild_research_workbench_table_records_task', payload=workspaces_payload,
-                                   in_seconds=30, queue='resource-rebuild')
-            if len(workspace_users_payload['ids']) > 0:
-                self._task.execute('rebuild_research_workbench_table_records_task', payload=workspace_users_payload,
-                                   in_seconds=30, queue='resource-rebuild')
         return workspaces
 
 
@@ -59,5 +39,4 @@ class WorkbenchResearcherApi(BaseApi):
 
     def _do_insert(self, m):
         researchers = super()._do_insert(m)
-        # Note: Moved PDR rebuild task to: workbench_dao.py:1152 WorkbenchWorkspaceHistoryDao._insert_history() method.
         return researchers
