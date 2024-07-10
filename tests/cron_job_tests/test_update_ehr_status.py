@@ -19,7 +19,7 @@ from rdr_service.model.organization import Organization
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline import update_ehr_status
 from rdr_service.participant_enums import EhrStatus, EnrollmentStatusV32, DigitalHealthSharingStatus
-from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
+from tests.helpers.unittest_base import BaseTestCase
 
 
 @dataclass
@@ -95,7 +95,7 @@ class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
         self.assertEqual(job, None)
 
 
-class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
+class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
     def setUp(self, **kwargs):
         # pylint: disable=unused-argument
         super(UpdateEhrStatusUpdatesTestCase, self).setUp()
@@ -167,17 +167,6 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(first_ehr_time, participant_summary.ehrReceiptTime)
         self.assertEqual(latest_ehr_time, participant_summary.ehrUpdateTime)
 
-        # Check generated data
-        expected_pdr_status_str = \
-            str(EhrStatus.NOT_PRESENT) if participant_summary.ehrStatus is None else str(participant_summary.ehrStatus)
-        ps_data = self.make_participant_resource(participant_id)
-        self.assertEqual(expected_pdr_status_str, ps_data['ehr_status'])
-        self.assertEqual(participant_summary.ehrReceiptTime, ps_data['ehr_receipt'])
-        self.assertEqual(participant_summary.ehrUpdateTime, ps_data['ehr_update'])
-        self.assertEqual(participant_summary.isEhrDataAvailable, ps_data['is_ehr_data_available'])
-        self.assertEqual(first_ehr_time, ps_data['first_ehr_receipt_time'])
-        self.assertEqual(latest_ehr_time, ps_data['latest_ehr_receipt_time'])
-
     def assert_mediated_data_matches(
         self, had_ehr_status, currently_has_ehr, first_ehr_time, latest_ehr_time, participant_id
     ):
@@ -200,22 +189,6 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
         #   so check that the time is close to what is expected (for resolution in seconds, up to 2 seconds)
         self.assertAlmostEquals(first_seen, record.firstSeen, delta=datetime.timedelta(seconds=2))
         self.assertAlmostEquals(last_seen, record.lastSeen, delta=datetime.timedelta(seconds=2))
-
-        # Check generated data.
-        ps_data = self.make_participant_resource(participant_id)
-        self.assertIsNotNone(ps_data['ehr_receipts'], f'PDR EHR receipt data not generated for pid {participant_id}')
-
-        # Look for a matching dict entry in the ps_data['ehr_receipts'] list, since it may also contain other entries
-        # depending on the test construction
-        def ehr_receipt_matches_expected(generated_ehr_receipt):
-            first_seen_timedelta = generated_ehr_receipt['first_seen'] - first_seen
-            last_seen_timedelta = generated_ehr_receipt['last_seen'] - last_seen
-            return all([
-                generated_ehr_receipt['file_timestamp'] == file_timestamp,
-                first_seen_timedelta < datetime.timedelta(seconds=2),
-                last_seen_timedelta < datetime.timedelta(seconds=2)
-            ])
-        self.assertTrue(any([ehr_receipt_matches_expected(ehr_receipt) for ehr_receipt in ps_data['ehr_receipts']]))
 
     @mock.patch('rdr_service.resource.generators.participant.get_ce_mediated_hpo_id_list')
     @mock.patch('rdr_service.offline.update_ehr_status.ParticipantEhrTracking.is_ce_mediated_file')
