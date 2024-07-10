@@ -1384,10 +1384,11 @@ class BQPDRRemoteIdVerificationSurveyView(BQModuleView):
 # List of modules classes that are sent to PDR.
 #
 
-# Disabling most module builds in the old RDR-PDR pipeline, leaving withdrawal modules in place pending PDR partner
-# (MITRE) migration to new pipeline data
+# Disabling most module builds in the old RDR-PDR pipeline, leaving some remaining modules in place where there are
+# are still some PDR downstream dependencies that haven't been fully migrated to the new pipeline
 # Note: the resource tool can redefine the module list if needed to manually build/add back other modules
 PDR_MODULE_LIST = (
+    BQPDRTheBasics,
     BQPDRStopParticipating,
     BQPDRWithdrawalIntro
 )
