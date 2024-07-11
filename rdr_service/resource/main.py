@@ -9,7 +9,7 @@ from rdr_service.api import cloud_tasks_api, genomic_cloud_tasks_api, message_br
     ancillary_study_cloud_tasks_api
 from rdr_service.api.resource_api import ResourceRequestApi
 
-from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop
+from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop, flask_warmup
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
 
@@ -272,6 +272,7 @@ def _build_resource_app():
         methods=['POST']
     )
 
+    _app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=flask_warmup, methods=["GET"])
     _app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
     _app.add_url_rule('/_ah/stop', endpoint='stop', view_func=flask_stop, methods=["GET"])
 
