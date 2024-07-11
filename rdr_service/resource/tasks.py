@@ -77,7 +77,6 @@ def batch_rebuild_participants_task(payload, project_id=None):
                 if not table:
                     continue
 
-                # TODO: Switch this to ResourceDataDAO, but make sure we don't break anything when the switch is made.
                 w_dao = BigQuerySyncDao()
                 with w_dao.session() as w_session:
                     for mod_bqr in mod_bqrs:

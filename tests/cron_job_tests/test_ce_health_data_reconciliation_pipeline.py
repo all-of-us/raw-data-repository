@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from rdr_service.clock import FakeClock
 from rdr_service import config
 from rdr_service.api_util import open_cloud_file
-from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
+from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.offline.ce_health_data_reconciliation_pipeline import CeHealthDataReconciliationPipeline, \
     _RECONCILIATION_FILE_SUBDIR, _MISSING_REPORT_SUBDIR, _SLACK_WEBHOOK_NAME
 from rdr_service.model.ce_health_reconciliation import CeHealthReconciliation
@@ -21,7 +21,7 @@ TIME_1 = datetime(2021, 12, 10, 1, 30, 30)
 TIME_2 = datetime(2021, 11, 10, 2, 20, 20)
 
 
-class CeHealthDataReconciliationPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
+class CeHealthDataReconciliationPipelineTest(BaseTestCase):
     def setUp(self):
         super(CeHealthDataReconciliationPipelineTest, self).setUp()
         self.temporarily_override_config_setting(config.CE_HEALTH_DATA_BUCKET_NAME, [_FAKE_BUCKET])

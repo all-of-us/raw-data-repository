@@ -1383,36 +1383,14 @@ class BQPDRRemoteIdVerificationSurveyView(BQModuleView):
 #
 # List of modules classes that are sent to PDR.
 #
-# TODO: Include any new modules added PDR to this list.
+
+# Disabling most module builds in the old RDR-PDR pipeline, leaving some remaining modules in place where there are
+# are still some PDR downstream dependencies that haven't been fully migrated to the new pipeline
+# Note: the resource tool can redefine the module list if needed to manually build/add back other modules
 PDR_MODULE_LIST = (
-    BQPDRConsentPII,
     BQPDRTheBasics,
-    BQPDRLifestyle,
-    BQPDROverallHealth,
-    BQPDREHRConsentPII,
-    BQPDRDVEHRSharing,
-    BQPDRGROR,
-    BQPDRCOPEMay,
-    BQPDRCOPENov,
-    BQPDRCOPEDec,
-    BQPDRCOPEFeb,
-    BQPDRCOPEVaccine1,
-    BQPDRCOPEVaccine2,
-    BQPDRFamilyHistory,
-    BQPDRPersonalMedicalHistory,
-    BQPDRHealthcareAccess,
     BQPDRStopParticipating,
-    BQPDRWithdrawalIntro,
-    BQPDRSDOH,
-    BQPDRCOPEVaccine3,
-    BQPDRCOPEVaccine4,
-    BQPDRPersonalFamilyHistory,
-    BQPDRGeneralFeedback,
-    BQPDRPostPMBFeedback,
-    BQPDRPPIModuleFeedback,
-    BQPDRWearConsent,
-    BQPDRLifeFunctioningSurvey,
-    BQPDRRemoteIdVerificationSurvey
+    BQPDRWithdrawalIntro
 )
 
 # Create a dictionary of module codes and table object references.

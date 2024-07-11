@@ -28,7 +28,7 @@ from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value,\
     SampleCollectionMethod
 from tests import test_data
-from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
+from tests.helpers.unittest_base import BaseTestCase
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = "rdr_fake_bucket"
@@ -36,7 +36,7 @@ _FAKE_BUCKET = "rdr_fake_bucket"
 FakeBlob = namedtuple('FakeBlob', ['name', 'updated'])
 
 
-class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
+class BiobankSamplesPipelineTest(BaseTestCase):
     def setUp(self):
         super(BiobankSamplesPipelineTest, self).setUp()
         config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, _BASELINE_TESTS)

@@ -48,7 +48,7 @@ from rdr_service.participant_enums import (
 from tests.api_tests.test_participant_summary_api import participant_summary_default_values,\
     participant_summary_default_values_no_basics
 from tests.test_data import data_path, load_biobank_order_json
-from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin, BiobankTestMixin
+from tests.helpers.unittest_base import BaseTestCase, BiobankTestMixin
 from rdr_service.code_constants import RACE_NONE_OF_THESE_CODE
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -61,7 +61,7 @@ def _questionnaire_response_url(participant_id):
     return "Participant/%s/QuestionnaireResponse" % participant_id
 
 
-class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorTestMixin):
+class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
 
     def setUp(self):
         super(QuestionnaireResponseApiTest, self).setUp()
@@ -992,12 +992,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED')
 
-        ps_json = self.make_bq_participant_summary(participant_id)
-        gror = self.get_generated_items(ps_json['modules'], item_key='mod_module', item_value='GROR',
-                                        sort_key='mod_authored')
-        self.assertEqual(len(gror), 1)
-        self.assertEqual(gror[0].get('mod_status', None), 'SUBMITTED')
-
     def test_consent_with_extension_language(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
@@ -1244,25 +1238,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.assertEqual(len(answers), 2)
         for answer in answers:
             self.assertIn(answer.codeId, [code1.codeId, code2.codeId])
-
-        # Confirm the PDR bigquery_sync data generator builds the correct races item, e.g.
-        # bqs_data['races'] = [
-        #   { 'race':  'WhatRaceEthnicity_White', 'race_id': <code_id integer> },
-        #   { 'race': 'WhatRaceEthnicity_Hispanic', 'race_id': <code_id integer> }
-        # ]
-        bqs_data = self.make_bq_participant_summary(participant_id)
-        self.assertEqual(len(bqs_data['races']), 2)
-        for answer in bqs_data['races']:
-            self.assertIn(answer.get('race'), [code1.value, code2.value])
-            self.assertIn(answer.get('race_id'), [code1.codeId, code2.codeId])
-
-        # Repeat the PDR data test for the resource generator output
-        ps_rsrc_data = self.make_participant_resource(participant_id, get_data=True)
-
-        self.assertEqual(len(ps_rsrc_data['races']), 2)
-        for answer in ps_rsrc_data['races']:
-            self.assertIn(answer.get('race'), [code1.value, code2.value])
-            self.assertIn(answer.get('race_id'), [code1.codeId, code2.codeId])
 
         # resubmit the answers, old value should be removed
         resource = self._load_response_json(
@@ -1538,30 +1513,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
             ParticipantSummary.participantId == from_client_participant_id(participant_id)
         ).one()
         self.assertIsNone(participant_summary.questionnaireOnTheBasics)
-
-        # PDR- 235 Add checks of the PDR generator data for module
-        # response status of the "in progress" TheBasics test response
-        ps_rsrc_data = self.make_participant_resource(participant_summary.participantId)
-
-        # Check data from the resource generator
-        basics_mod = self.get_generated_items(ps_rsrc_data['modules'], item_key='module', item_value='TheBasics')
-        self.assertEqual(basics_mod[0].get('response_status', None), 'IN_PROGRESS')
-        self.assertEqual(basics_mod[0].get('response_status_id', None), 0)
-
-        # Check data from the bigquery_sync participant summary DAO / generator
-        basics_mod = self.get_generated_items(ps_rsrc_data['modules'], item_key='module',
-                                                   item_value='TheBasics')
-        self.assertEqual(basics_mod[0].get('response_status', None), 'IN_PROGRESS')
-        self.assertEqual(basics_mod[0].get('response_status_id', None), 0)
-
-        # Check the bigquery_sync questionnaire response DAO / generator
-        # TODO:  Validate Resource generator data for questionnaire response when implemented
-        bqrs = self.make_bq_questionnaire_response(participant_summary.participantId, 'TheBasics', latest=True)
-
-        # bqrs is a list of BQRecord types;  validating the field name values
-        self.assertEqual(len(bqrs), 1)
-        self.assertEqual(bqrs[0].status, 'IN_PROGRESS')
-        self.assertEqual(bqrs[0].status_id, 0)
 
     @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
     def test_link_id_does_not_exist(self, mock_logging):
@@ -2006,23 +1957,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         ).one()
         self.assertEqual(response['id'], str(stored_response.questionnaireResponseId))
 
-        # Verify PDR data generation, including the mapping of new answer codes to be consistent with existing PDR data
-        pdr_rsc = self.make_participant_resource(consented_participant.participantId)
-        mod_data = self.get_generated_items(pdr_rsc['modules'])
-        self.assertEqual(len(mod_data), 1)
-        self.assertEqual(mod_data[0]['module'], 'ConsentPII')
-        # EXTRA_CONSENT_YES ==> CONSENT_PERMISSION_YES_CODE for PDR
-        self.assertEqual(mod_data[0]['consent_value'], CONSENT_PERMISSION_YES_CODE)
-        self.assertEqual(mod_data[0]['status'], 'SUBMITTED')
-
-        pdr_rsc = self.make_participant_resource(no_participant.participantId)
-        mod_data = self.get_generated_items(pdr_rsc['modules'])
-        self.assertEqual(len(mod_data), 1)
-        self.assertEqual(mod_data[0]['module'], 'ConsentPII')
-        # EXTRA_CONSENT_NO ==> CONSENT_PERMISSION_NO_CODE for PDR
-        self.assertEqual(mod_data[0]['consent_value'], CONSENT_PERMISSION_NO_CODE)
-        self.assertEqual(mod_data[0]['status'], 'SUBMITTED_NO_CONSENT')
-
     def test_pediatrics_overall_health(self):
         """
         Check that the pediatrics version of the OverallHealth survey maps to the correct field on participant summary
@@ -2169,15 +2103,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin, PDRGeneratorT
         self.session.refresh(participant_summary)
         self.assertEqual(1, participant_summary.numCompletedPPIModules)
         self.assertEqual(1, participant_summary.numCompletedBaselinePPIModules)
-
-        # PDR-2210: Verify PDR BigQuery generator maps the mod name to NIH-requested value, and identifies it
-        # as baseline module
-        bqs_rsc = self.make_bq_participant_summary(participant_id)
-        mod_list = self.get_generated_items(bqs_rsc['modules'])
-        self.assertEqual(1, len(mod_list))
-        mod_data = mod_list[0]
-        self.assertEqual(mod_data['mod_module'], 'ped_environmental_exposures')
-        self.assertEqual(mod_data['mod_baseline_module'], 1)
 
     def test_pediatrics_permission(self):
         """

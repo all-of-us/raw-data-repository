@@ -13,10 +13,10 @@ from rdr_service.model.hpo import HPO
 from rdr_service.offline.export_va_workqueue import generate_workqueue_report, delete_old_reports
 from rdr_service.participant_enums import WithdrawalStatus
 
-from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
+from tests.helpers.unittest_base import BaseTestCase
 
 
-class ExportVaWorkQueueTest(BaseTestCase, PDRGeneratorTestMixin):
+class ExportVaWorkQueueTest(BaseTestCase):
 
     def setUp(self, *args, **kwargs):
         super().setUp(*args, **kwargs)

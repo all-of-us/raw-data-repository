@@ -57,7 +57,7 @@ from tests.test_data import (
     login_phone_number_code,
     to_client_participant_id
 )
-from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
+from tests.helpers.unittest_base import BaseTestCase
 
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -82,7 +82,7 @@ def with_id(resource, id_):
     return json.dumps(resource_json)
 
 
-class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
+class QuestionnaireResponseDaoTest(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.code_dao = CodeDao()
@@ -974,93 +974,41 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
         base_setup = self.setup_cope_minute_base_survey(module_num=1)
 
         summary = base_setup['summary']
-        participant = base_setup['participant']
         authored_date = base_setup['authored_date']
 
         self.assertEqual(QuestionnaireStatus.SUBMITTED, summary.questionnaireOnCopeVaccineMinute1)
         self.assertEqual(authored_date, summary.questionnaireOnCopeVaccineMinute1Authored)
         self.assertEqual(base_setup['num_completed_ppi_after_setup'] + 1, summary.numCompletedPPIModules)
 
-        participant_res_data = self.make_participant_resource(participant.participantId)
-
-        [vaccine_module_data] = self.get_generated_items(
-            participant_res_data['modules'],
-            item_key='module',
-            item_value=COPE_VACCINE_MINUTE_1_MODULE_CODE
-        )
-
-        self.assertIsNotNone(vaccine_module_data)
-        self.assertEqual(str(QuestionnaireStatus.SUBMITTED), vaccine_module_data['status'])
-        self.assertEqual(authored_date, vaccine_module_data['module_authored'])
-
     def test_cope_second_minute_survey(self):
         base_setup = self.setup_cope_minute_base_survey(module_num=2)
 
         summary = base_setup['summary']
-        participant = base_setup['participant']
         authored_date = base_setup['authored_date']
 
         self.assertEqual(QuestionnaireStatus.SUBMITTED, summary.questionnaireOnCopeVaccineMinute2)
         self.assertEqual(authored_date, summary.questionnaireOnCopeVaccineMinute2Authored)
         self.assertEqual(base_setup['num_completed_ppi_after_setup'] + 1, summary.numCompletedPPIModules)
 
-        participant_res_data = self.make_participant_resource(participant.participantId)
-
-        [vaccine_module_data] = self.get_generated_items(
-            participant_res_data['modules'],
-            item_key='module',
-            item_value=COPE_VACCINE_MINUTE_2_MODULE_CODE
-        )
-
-        self.assertIsNotNone(vaccine_module_data)
-        self.assertEqual(str(QuestionnaireStatus.SUBMITTED), vaccine_module_data['status'])
-        self.assertEqual(authored_date, vaccine_module_data['module_authored'])
-
     def test_cope_third_minute_survey(self):
         base_setup = self.setup_cope_minute_base_survey(module_num=3)
 
         summary = base_setup['summary']
-        participant = base_setup['participant']
         authored_date = base_setup['authored_date']
 
         self.assertEqual(QuestionnaireStatus.SUBMITTED, summary.questionnaireOnCopeVaccineMinute3)
         self.assertEqual(authored_date, summary.questionnaireOnCopeVaccineMinute3Authored)
         self.assertEqual(base_setup['num_completed_ppi_after_setup'] + 1, summary.numCompletedPPIModules)
 
-        participant_res_data = self.make_participant_resource(participant.participantId)
-
-        [vaccine_module_data] = self.get_generated_items(
-            participant_res_data['modules'],
-            item_key='module',
-            item_value=COPE_VACCINE_MINUTE_3_MODULE_CODE
-        )
-
-        self.assertIsNotNone(vaccine_module_data)
-        self.assertEqual(str(QuestionnaireStatus.SUBMITTED), vaccine_module_data['status'])
-        self.assertEqual(authored_date, vaccine_module_data['module_authored'])
-
     def test_cope_fourth_minute_survey(self):
         base_setup = self.setup_cope_minute_base_survey(module_num=4)
 
         summary = base_setup['summary']
-        participant = base_setup['participant']
         authored_date = base_setup['authored_date']
 
         self.assertEqual(QuestionnaireStatus.SUBMITTED, summary.questionnaireOnCopeVaccineMinute4)
         self.assertEqual(authored_date, summary.questionnaireOnCopeVaccineMinute4Authored)
         self.assertEqual(base_setup['num_completed_ppi_after_setup'] + 1, summary.numCompletedPPIModules)
-
-        participant_res_data = self.make_participant_resource(participant.participantId)
-
-        [vaccine_module_data] = self.get_generated_items(
-            participant_res_data['modules'],
-            item_key='module',
-            item_value=COPE_VACCINE_MINUTE_4_MODULE_CODE
-        )
-
-        self.assertIsNotNone(vaccine_module_data)
-        self.assertEqual(str(QuestionnaireStatus.SUBMITTED), vaccine_module_data['status'])
-        self.assertEqual(authored_date, vaccine_module_data['module_authored'])
 
     def test_ppi_questionnaire_count_field_not_found(self):
         """Make sure QuestionnaireResponseDao doesn't fail when an unknown field is part of the list"""

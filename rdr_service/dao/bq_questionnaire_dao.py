@@ -100,13 +100,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
 
         table = PDR_CODE_TO_MODULE_LIST.get(module_id, None)
         if table is None:
-            logging.info('Generator: ignoring questionnaire module id [{0}].'.format(module_id))
             return None, list()
 
-        # This section refactors how the module answer data is built, replacing  the sp_get_questionnaire_answers
-        # stored procedure.  That procedure's logic was no longer consistent with how codebook structures are defined
-        # in the new REDCap-managed DRC process.  TODO: tech debt for PDR PostgreSQL to consider changes to the
-        #  code table so we can more robustly handle the codebook definitions we get from REDCap
         with self.ro_dao.session() as session:
             question_codes = session.execute(_question_code_sql, {'module_id': module_id, 'system': PPI_SYSTEM})
             pdr_schema = table().get_schema()
