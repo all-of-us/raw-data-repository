@@ -37,7 +37,7 @@ from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetric
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
-from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
+from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task, sync_bigquery_handler
 from rdr_service.resource import generators
 from rdr_service.resource.generators.onsite_id_verification import onsite_id_verification_batch_rebuild
 from rdr_service.resource.constants import SKIP_TEST_PIDS_FOR_PDR
@@ -175,6 +175,24 @@ class CleanPDRDataClass(object):
             # bigquery_sync.pk_id matches the resource_data.resource_pk_id for the resource_type_id specified.
             if self.args.resource_type_id:
                 self.delete_resource_pk_ids_from_resource_data(self.args.resource_type_id)
+
+class BigQuerySyncDryRunClass(object):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject, pk_id_list: None):
+        self.args = args
+        self.gcp_env = gcp_env
+        self.pk_id_list = pk_id_list
+
+    def run(self):
+        clr = self.gcp_env.terminal_colors
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nBigQuerySync dry run test (run in debug mode)', clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('')
+        self.gcp_env.activate_sql_proxy()
+        sync_bigquery_handler(project_id=self.args.project, dryrun=True)
 
 
 class ParticipantResourceClass(object):
@@ -1251,6 +1269,7 @@ def run():
     batch_parser = argparse.ArgumentParser(add_help=False)
     batch_parser.add_argument("--batch", help="submit resource ids in batches to Cloud Tasks", default=False,
                                 action="store_true")
+
     # End common subparser arguments.
 
     def update_argument(p, dest, help=None):  # pylint: disable=redefined-builtin
@@ -1363,6 +1382,9 @@ def run():
                                    help='resource_type_id whose resource_data records should be cleaned')
     clean_pdr_data_parser.add_argument('--pdr-mod-responses', default=False, action='store_true',
                                         help="clean all pdr_mod_* tables based on questionnaire_response_id list")
+
+    bigquery_sync_dryrun_parser = subparser.add_parser('bigquery-sync-dryrun') # pylint: disable=unused-variable
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -1407,6 +1429,9 @@ def run():
 
         elif args.resource == 'clean-pdr-data':
             process = CleanPDRDataClass(args, gcp_env, ids)
+            exit_code = process.run()
+        elif args.resource == 'bigquery-sync-dryrun':
+            process = BigQuerySyncDryRunClass(args, gcp_env, ids)
             exit_code = process.run()
         else:
             _logger.info('Please select an option to run. For help use "[resource] --help".')
