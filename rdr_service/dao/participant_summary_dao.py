@@ -42,6 +42,7 @@ from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_incentives_dao import ParticipantIncentivesDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
+from rdr_service.dao.sample_summary_dao import SampleSummaryDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.domain_model.ehr import ParticipantEhrFile
 from rdr_service.logic.enrollment_info import EnrollmentCalculation, EnrollmentDependencies
@@ -1086,7 +1087,9 @@ class ParticipantSummaryDao(UpdatableDao):
                       and summary.consentForElectronicHealthRecords is None
                       and summary.consentForDvElectronicHealthRecordsSharing == QuestionnaireStatus.SUBMITTED
         )
-        summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
+        summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(
+            consent, summary, session=session
+        )
 
         if pdr_pubsub:
             # Capture any enrollment status history records that have been added to the session.
@@ -1144,7 +1147,7 @@ class ParticipantSummaryDao(UpdatableDao):
         else:
             return None
 
-    def calculate_core_minus_pm_time(self, consent, participant_summary, enrollment_status):
+    def calculate_core_minus_pm_time(self, consent, participant_summary, enrollment_status, session):
         if (
             consent
             and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
@@ -1157,7 +1160,7 @@ class ParticipantSummaryDao(UpdatableDao):
         ) or enrollment_status == EnrollmentStatus.CORE_MINUS_PM:
 
             max_core_sample_time = self.calculate_max_core_sample_time(
-                participant_summary, field_name_prefix="sampleStatus"
+                participant_summary, field_name_prefix="sampleStatus", session=session
             )
 
             if max_core_sample_time and participant_summary.enrollmentStatusCoreStoredSampleTime:
@@ -1169,7 +1172,7 @@ class ParticipantSummaryDao(UpdatableDao):
         else:
             return None
 
-    def calculate_core_stored_sample_time(self, consent, participant_summary):
+    def calculate_core_stored_sample_time(self, consent, participant_summary, session):
         if (
             consent
             and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
@@ -1180,7 +1183,7 @@ class ParticipantSummaryDao(UpdatableDao):
         ) or participant_summary.enrollmentStatus == EnrollmentStatus.FULL_PARTICIPANT:
 
             max_core_sample_time = self.calculate_max_core_sample_time(
-                participant_summary, field_name_prefix="sampleStatus"
+                participant_summary, field_name_prefix="sampleStatus", session=session
             )
 
             if max_core_sample_time and participant_summary.enrollmentStatusCoreStoredSampleTime:
@@ -1190,7 +1193,7 @@ class ParticipantSummaryDao(UpdatableDao):
         else:
             return None
 
-    def calculate_core_ordered_sample_time(self, consent, participant_summary):
+    def calculate_core_ordered_sample_time(self, consent, participant_summary, session):
         if (
             consent
             and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
@@ -1202,7 +1205,7 @@ class ParticipantSummaryDao(UpdatableDao):
         ) or participant_summary.enrollmentStatus == EnrollmentStatus.FULL_PARTICIPANT:
 
             max_core_sample_time = self.calculate_max_core_sample_time(
-                participant_summary, field_name_prefix="sampleOrderStatus"
+                participant_summary, field_name_prefix="sampleOrderStatus", session=session
             )
 
             if max_core_sample_time and participant_summary.enrollmentStatusCoreOrderedSampleTime:
@@ -1212,12 +1215,24 @@ class ParticipantSummaryDao(UpdatableDao):
         else:
             return None
 
-    def calculate_max_core_sample_time(self, participant_summary, field_name_prefix="sampleStatus"):
+    def calculate_max_core_sample_time(self, participant_summary, session, field_name_prefix="sampleStatus"):
 
-        keys = [field_name_prefix + "%sTime" % test for test in config.getSettingList(config.DNA_SAMPLE_TEST_CODES)]
-        sample_time_list = [v for k, v in participant_summary if k in keys and v is not None]
-
-        sample_time = min(sample_time_list) if sample_time_list else None
+        use_sample_status_table = config.getSettingJson(config.ENABLE_SAMPLE_STATUS_TABLE, default=False)
+        if not use_sample_status_table:
+            keys = [field_name_prefix + "%sTime" % test for test in config.getSettingList(config.DNA_SAMPLE_TEST_CODES)]
+            sample_time_list = [v for k, v in participant_summary if k in keys and v is not None]
+            sample_time = min(sample_time_list) if sample_time_list else None
+        else:
+            if 'Order' in field_name_prefix:
+                status_getter = SampleSummaryDao.get_order_samples
+            else:
+                status_getter = SampleSummaryDao.get_receipt_samples
+            sample_list = status_getter(
+                participant_id=participant_summary.participantId,
+                test_code_list=config.getSettingList(config.DNA_SAMPLE_TEST_CODES),
+                session=session
+            )
+            sample_time = min(sample_received.status_time for sample_received in sample_list) if sample_list else None
 
         if sample_time is not None:
             return max([time for time in

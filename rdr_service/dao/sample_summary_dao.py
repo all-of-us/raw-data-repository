@@ -74,6 +74,24 @@ class SampleSummaryDao:
             )
 
     @classmethod
+    def get_receipt_samples(
+        cls, participant_id: int, test_code_list: List[str], session: Session
+    ) -> List[SampleReceiptStatus]:
+        return session.query(SampleReceiptStatus).filter(
+            SampleReceiptStatus.participant_id == participant_id,
+            SampleReceiptStatus.test_code.in_(test_code_list)
+        ).all()
+
+    @classmethod
+    def get_order_samples(
+        cls, participant_id: int, test_code_list: List[str], session: Session
+    ) -> List[SampleOrderStatus]:
+        return session.query(SampleOrderStatus).filter(
+            SampleOrderStatus.participant_id == participant_id,
+            SampleOrderStatus.test_code.in_(test_code_list)
+        ).all()
+
+    @classmethod
     def _latest_confirmed_sample(cls, sample_list: List[BiobankStoredSample]) -> BiobankStoredSample:
         timestamp = None
         result = None

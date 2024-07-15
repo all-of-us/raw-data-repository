@@ -2167,6 +2167,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(ehr_consent_datetime, status_history.timestamp)
 
     def test_member_ordered_stored_times_for_multi_biobank_order_with_only_dv_consent(self):
+        self.temporarily_override_config_setting(config.ENABLE_SAMPLE_STATUS_TABLE, True)
+
         questionnaire_id = self.create_questionnaire("questionnaire3.json")
         questionnaire_id_1 = self.create_questionnaire("dv_ehr_share_consent_questionnaire.json")
         questionnaire_id_2 = self.create_questionnaire("questionnaire4.json")
