@@ -1,7 +1,7 @@
 cron:
 - description: Check for any corrections to invalid consent files
   url: /offline/CorrectConsentFiles
-  schedule: 7, 14, 21, 28 of month 20:00
+  schedule: every day 23:30
   timezone: America/New_York
   target: offline
 - description: Sync site bucket consent files
