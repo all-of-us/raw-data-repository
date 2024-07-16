@@ -273,8 +273,12 @@ def _build_validation_controller(session, consent_dao):
 
 @app_util.auth_required_cron
 def check_for_consent_corrections():
-    validation_controller = _build_validation_controller()
-    with validation_controller.consent_dao.session() as session:
+    consent_dao = ConsentDao()
+    with consent_dao.session() as session:
+        validation_controller = _build_validation_controller(
+            session=session,
+            consent_dao=consent_dao
+        )
         validation_controller.check_for_corrections(session)
     return '{"success": "true"}'
 
