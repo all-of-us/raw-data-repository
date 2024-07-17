@@ -40,6 +40,7 @@ BQ_PDR_ENABLED_TABLES = [
     ('rdr_ops_data_view', 'hpo'),
     ('rdr_ops_data_view', 'organization'),
     ('rdr_ops_data_view', 'site'),
+    ('rdr_ops_data_view', 'code'),
     ('rdr_ops_data_view', 'pdr_mod_stopparticipating'),
     ('rdr_ops_data_view', 'pdr_mod_thebasics'),
     ('rdr_ops_data_view', 'pdr_mod_withdrawalintro'),
