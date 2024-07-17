@@ -8,7 +8,6 @@ from rdr_service.storage import GoogleCloudStorageProvider
 from tests.helpers.unittest_base import BaseTestCase
 
 
-@mock.patch('rdr_service.offline.sync_consent_files.dispatch_rebuild_consent_metrics_tasks')
 class ConsentSyncControllerTest(BaseTestCase):
     def __init__(self, *args, **kwargs):
         super(ConsentSyncControllerTest, self).__init__(*args, **kwargs)
@@ -70,7 +69,7 @@ class ConsentSyncControllerTest(BaseTestCase):
         self.bar_file = ConsentFile(id=3, file_path='/source_bucket_b/bar.pdf', participant_id=self.bar_participant_id)
         self.consent_dao_mock.get_files_ready_to_sync.return_value = [self.bob_file, self.foo_file, self.bar_file]
 
-    def test_sync_of_ready_files(self, mock_dispatch_rebuild):
+    def test_sync_of_ready_files(self):
         """Test that files ready to sync are copied"""
         first_file = ConsentFile(id=4, file_path='/source_bucket/test/one.pdf', participant_id=self.bob_participant_id)
         second_file = ConsentFile(id=5, file_path='/source_bucket/test/two.pdf', participant_id=self.bob_participant_id)
@@ -87,9 +86,8 @@ class ConsentSyncControllerTest(BaseTestCase):
             ],
             any_order=True
         )
-        mock_dispatch_rebuild.assert_called_once_with([first_file.id, second_file.id, third_file.id])
 
-    def test_file_destinations(self, mock_dispatch_rebuild):
+    def test_file_destinations(self):
         """Test that consent files sync to the correct destinations based on participant data"""
 
         self.sync_controller.sync_ready_files()
@@ -128,15 +126,8 @@ class ConsentSyncControllerTest(BaseTestCase):
             ],
             any_order=True
         )
-        mock_dispatch_rebuild.assert_has_calls(
-            [
-                mock.call([self.bob_file.id]),
-                mock.call([self.foo_file.id]),
-                mock.call([self.bar_file.id]),
-            ], any_order=True
-        )
 
-    def test_zipping_specified_orgs(self, mock_dispatch_rebuild):
+    def test_zipping_specified_orgs(self):
         """Test that the controller zips consents for organizations that give that they should be zipped"""
         self.temporarily_override_config_setting(
             key=config.CONSENT_SYNC_BUCKETS,
@@ -172,14 +163,7 @@ class ConsentSyncControllerTest(BaseTestCase):
             mode='w'
         )
 
-        mock_dispatch_rebuild.assert_has_calls(
-            [
-                mock.call([self.bob_file.id]),
-                mock.call([self.foo_file.id]),
-            ], any_order=True
-        )
-
-    def test_unpaired_participants(self, mock_dispatch_rebuild):
+    def test_unpaired_participants(self):
         """Test that any participants that aren't paired are ignored"""
         # Return empty list, indicating that the participants are not paired to organizations
         self.participant_dao_mock.get_pairing_data_for_ids.return_value = []
@@ -188,9 +172,8 @@ class ConsentSyncControllerTest(BaseTestCase):
 
         # If no participants are paired, then nothing should sync
         self.storage_provider_mock.copy_blob.assert_not_called()
-        self.assertEqual(mock_dispatch_rebuild.call_count, 0)
 
-    def test_ignore_unrecognized_orgs(self, mock_dispatch_rebuild):
+    def test_ignore_unrecognized_orgs(self):
         """Test that the sync ignores participants paired to an organization that isn't specified in the config"""
         # Return empty list, indicating that the participants are not paired to organizations
         self.participant_dao_mock.get_pairing_data_for_ids.return_value = [
@@ -201,9 +184,8 @@ class ConsentSyncControllerTest(BaseTestCase):
 
         # If no participants are paired, then nothing should sync
         self.storage_provider_mock.copy_blob.assert_not_called()
-        self.assertEqual(mock_dispatch_rebuild.call_count, 0)
 
-    def test_only_loading_consents_that_will_sync(self, mock_dispatch_rebuild):
+    def test_only_loading_consents_that_will_sync(self):
         """
         Currently there are only a few organizations in the config to sync.
         For performance, we just load the files that will be copied.
@@ -215,16 +197,7 @@ class ConsentSyncControllerTest(BaseTestCase):
         for expected_key in [self.bob_org_name, self.foo_org_name]:
             self.assertIn(expected_key, org_name_keys)
 
-        # All files still had their sync_status updated
-        mock_dispatch_rebuild.assert_has_calls(
-            [
-                mock.call([self.bob_file.id]),
-                mock.call([self.foo_file.id]),
-                mock.call([self.bar_file.id]),
-            ], any_order=True
-        )
-
-    def test_building_sync_filters(self, _):
+    def test_building_sync_filters(self):
         """Verify that the controller reads the config and sends consent types to exclude"""
         self.temporarily_override_config_setting(
             key=config.CONSENT_SYNC_BUCKETS,

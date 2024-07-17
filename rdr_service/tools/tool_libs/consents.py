@@ -15,7 +15,6 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_dao import ParticipantHistoryDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
-from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.gcp_utils import gcp_make_auth_header
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType, CONSENT_TYPE_MODULE_NAMES
 from rdr_service.model.consent_response import ConsentResponse
@@ -243,8 +242,6 @@ class ConsentTool(ToolBase):
                 )
                 self._consent_dao.batch_update_consent_files([file], session)
                 session.commit()
-                dispatch_rebuild_consent_metrics_tasks([file.id],
-                                                       project_id=self.gcp_env.project, build_locally=True)
 
     def validate_consents(self):
         consent_types = None
@@ -317,9 +314,6 @@ class ConsentTool(ToolBase):
                     setattr(consent_file, field_name, value)
 
                 file_ids_modified.append(consent_file.id)
-
-        if file_ids_modified:
-            dispatch_rebuild_consent_metrics_tasks(file_ids_modified, project_id=self.gcp_env.project)
 
     @classmethod
     def _get_date_error_details(cls, file: ConsentFile, verbose: bool = False):
