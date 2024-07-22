@@ -2,7 +2,7 @@ from flask import request
 
 from rdr_service import app_util, config
 from rdr_service.api.base_api import BaseApi, DEFAULT_MAX_RESULTS, log_api_request
-from rdr_service.api_util import HEALTHPRO, PTC, PTC_AND_HEALTHPRO
+from rdr_service.api_util import HEALTHPRO, PTC, PPSC
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.query import FieldFilter, Operator, Query
 
@@ -11,15 +11,15 @@ class PhysicalMeasurementsApi(BaseApi):
     def __init__(self):
         super(PhysicalMeasurementsApi, self).__init__(PhysicalMeasurementsDao())
 
-    @app_util.auth_required(PTC_AND_HEALTHPRO)
+    @app_util.auth_required([HEALTHPRO, PTC, PPSC])
     def get(self, id_=None, p_id=None):
         return super(PhysicalMeasurementsApi, self).get(id_, participant_id=p_id)
 
-    @app_util.auth_required(HEALTHPRO)
+    @app_util.auth_required([HEALTHPRO, PPSC])
     def post(self, p_id):
         return super(PhysicalMeasurementsApi, self).post(p_id)
 
-    @app_util.auth_required(HEALTHPRO)
+    @app_util.auth_required([HEALTHPRO, PPSC])
     def patch(self, id_, p_id):
         resource = self.get_request_json()
         obj = self.dao.patch(id_, resource, p_id)
