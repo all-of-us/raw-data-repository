@@ -198,10 +198,22 @@
     "stable-nph-sample-data-biobank"
   ],
   "sensitive_ehr_release_date": "2100-01-01",
-  "ppsc_intake_activities": ["Consent", "Survey Completion", "Profile Updates"],
+  "ppsc_intake_activities": [
+    "Consent",
+    "Survey Completion",
+    "Profile Updates",
+    "Withdrawal",
+    "Deactivation",
+    "Participant Status",
+    "Site Attribution"
+  ],
   "ppsc_intake_consent_event_types": ["Primary Consent", "Adult EHR Authorization"],
   "ppsc_intake_survey_completion_event_types": ["The Basics"],
   "ppsc_intake_profile_updates_event_types": ["Profile Data"],
+  "ppsc_intake_withdrawal_event_types": ["Withdrawal"],
+  "ppsc_intake_deactivation_event_types": ["Deactivation"],
+  "ppsc_intake_participant_status_event_types": ["Participant Status"],
+  "ppsc_intake_site_attribution_event_types": ["Site Attribution"],
   "enabled_status_field_list": [
     "enrollmentStatusV3_2",
     "enrollmentStatusParticipantV3_2Time",
