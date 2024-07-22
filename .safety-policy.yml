@@ -23,6 +23,9 @@ security: # configuration for the `safety check` command
         70612:
           reason: jinja2 version 3.1.4 has a vulnerability
           expires: '2025-05-31'
+        71684:
+          reason: cryptography version 42.0.5 has a vulnerability -> dep package of pdfminer uses earlier version, so cannot bump the version
+          expires: '2025-07-22'
     continue-on-vulnerability-error: False # Suppress non-zero exit codes when vulnerabilities are found. Enable this in pipelines and CI/CD processes if you want to pass builds that have vulnerabilities. We recommend you set this to False.
 alert: # configuration for the `safety alert` command
     security:
