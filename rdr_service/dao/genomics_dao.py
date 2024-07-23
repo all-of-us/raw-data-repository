@@ -4082,7 +4082,7 @@ class GenomicGemDao(BaseDao):
                     ConsentSyncStatus.READY_FOR_SYNC,
                     ConsentSyncStatus.SYNC_COMPLETE
                 ]),
-                # GenomicA1Raw.id.is_(None)
+                GenomicA1Raw.id.is_(None)
             ).group_by(
                 GenomicSetMember.biobankId,
                 GenomicSetMember.sampleId,
