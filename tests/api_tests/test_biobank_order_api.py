@@ -1,9 +1,13 @@
 import datetime
 import http.client
+from copy import deepcopy
+
 import mock
 from unittest.mock import Mock
 from typing import Dict, Any
 
+from rdr_service import config
+from rdr_service.api_util import PPSC, REDCAP
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, RACE_NONE_OF_THESE_CODE
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
@@ -57,6 +61,11 @@ class BiobankOrderApiTest(BaseTestCase):
         )
         mayolinkapi_patcher.start()
         self.addCleanup(mayolinkapi_patcher.stop)
+
+    def overwrite_test_user_roles(self, roles):
+        new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
+        new_user_info['example@example.com']['roles'] = roles
+        self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
 
     @mock.patch('rdr_service.dao.biobank_order_dao.get_account_origin_id')
     def test_create_quest_order(self, quest_origin):
@@ -804,6 +813,22 @@ class BiobankOrderApiTest(BaseTestCase):
         qr = self.make_questionnaire_response_json(participant_id, questionnaire_id)
         with FakeClock(time):
             self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
+
+    def test_ppsc_roles(self):
+        self.overwrite_test_user_roles([PPSC])
+
+        self.summary_dao.insert(self.participant_summary(self.participant))
+        order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")
+        response = self.send_post(self.path, order_json)
+        self.assertTrue(response is not None)
+
+        get_path = "Participant/%s/BiobankOrder" % to_client_participant_id(self.participant.participantId)
+        response = self.send_get(get_path)
+        self.assertTrue(response is not None)
+
+        self.overwrite_test_user_roles([REDCAP])
+        response = self.send_post(self.path, order_json, expected_status=http.client.FORBIDDEN)
+        self.assertTrue(response.status_code == 403)
 
 
 def _strip_fields(order_json):
