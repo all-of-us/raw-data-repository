@@ -115,8 +115,7 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
 
     def test_changing_existing_record(self, logger_mock):
 
-        with mock.patch('rdr_service.tools.tool_libs.consents.input') as input_mock,\
-             mock.patch('rdr_service.tools.tool_libs.consents.dispatch_rebuild_consent_metrics_tasks') as dispatch_mock:
+        with mock.patch('rdr_service.tools.tool_libs.consents.input') as input_mock:
             file_to_update = ConsentFile(
                 id=24,
                 participant_id=1234,
@@ -145,10 +144,6 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             self.assertEqual(file_to_update.id, updated_file.id)
             self.assertEqual(ConsentType.CABOR, updated_file.type)
             self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, updated_file.sync_status)
-            # Verify the associated resource data consent metrics record was rebuilt
-            dispatch_mock.assert_called_once()
-            dispatch_rebuild_ids = dispatch_mock.call_args_list[0].args[0]
-            self.assertEqual(dispatch_rebuild_ids, [updated_file.id])
 
     def test_validating_participants_from_file(self, _):
         self.temporarily_override_config_setting(
@@ -201,9 +196,7 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
 
     def test_record_upload(self, _):
         with mock.patch('rdr_service.tools.tool_libs.consents.csv') as csv_mock, \
-                mock.patch('rdr_service.tools.tool_libs.consents.dispatch_rebuild_consent_metrics_tasks') \
-                    as dispatch_consent_metrics_rebuild_mock, \
-                mock.patch('rdr_service.tools.tool_libs.consents.open'):
+             mock.patch('rdr_service.tools.tool_libs.consents.open'):
             csv_file_mock = csv_mock.DictReader.return_value
             csv_file_mock.__iter__.return_value = [
                 {
@@ -251,10 +244,4 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             self.assertFalse(second_file_mock.file_exists)
             self.assertIsNone(second_file_mock.file_path)
             self.assertEqual(ConsentSyncStatus.NEEDS_CORRECTING, second_file_mock.sync_status)
-
-            # Confirm the consent metrics resource data rebuild tasks were dispatched for updated records
-            dispatch_consent_metrics_rebuild_mock.assert_called_once()
-            dispatch_rebuild_ids = dispatch_consent_metrics_rebuild_mock.call_args_list[0].args[0]
-            uploaded_ids = [1, 2]
-            self.assertCountEqual(dispatch_rebuild_ids, uploaded_ids)
 
