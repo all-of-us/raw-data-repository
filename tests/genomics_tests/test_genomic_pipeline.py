@@ -2626,6 +2626,8 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(withdraw_time):
             genomic_gem_pipeline.gem_a3_manifest_workflow()  # run_id 6
 
+        self.clear_table_after_test('genomic_a1_raw')
+
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_gem_a3_manifest_workflow(self, cloud_task):
         # Create A1 manifest job run: id = 1
