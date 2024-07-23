@@ -2612,7 +2612,7 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(a1_time):
             genomic_gem_pipeline.gem_a1_manifest_workflow()  # run_id = 3
 
-        current_file_records = [obj for obj in self.file_processed_dao.get_all() if 'gem_a1' in obj.file_name.lower()]
+        current_file_records = [obj for obj in self.file_processed_dao.get_all() if 'gem_a1' in obj.fileName.lower()]
         self.assertEqual(len(current_file_records), 1)
 
         # Test Withdrawn and then Reconsented
