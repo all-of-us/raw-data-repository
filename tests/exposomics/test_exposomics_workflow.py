@@ -115,7 +115,7 @@ class ExposomicsWorkflowTest(BaseTestCase):
     def test_exposomics_m1_ingestion_and_send_copy_manifest(self):
         bucket_name = 'test_expo_bucket'
         subfolder = 'expo_subfolder'
-        file_name = 'AoU_mO_Plasma_8579309_2024.csv'
+        file_name = 'AoU_m1_Plasma_865485_2022-07-07-00-30-10.csv'
 
         self.execute_base_exposomics_ingestion(
             test_data_filename=file_name,
