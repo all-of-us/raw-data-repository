@@ -61,9 +61,10 @@ class QuestionnaireAnswersBackfillTool(ToolBase):
                     latest_id = response_data.questionnaireResponseId
 
                 if found_responses:
-                    print(f'got to {latest_id}')
                     print('committing')
                     session.commit()
+                    print('session commit complete')
+                    print(f'got to {latest_id}')
 
     @staticmethod
     def _get_questionnaire(questionnaire_id):
