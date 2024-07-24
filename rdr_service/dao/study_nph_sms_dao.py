@@ -1,5 +1,6 @@
+import logging
 from typing import List, Dict
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func, and_, or_, case
 from sqlalchemy.orm import aliased
 
 from rdr_service import clock
@@ -156,6 +157,13 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsSample.ignore_flag == 0
             ).subquery()
 
+            parent_fields = session.query(
+                OrderedSample.id,
+                OrderedSample.supplemental_fields
+            ).filter(
+                OrderedSample.parent_sample_id is None
+            ).subquery()
+
             sample_well = aliased(SmsN1Mc1)
             query = session.query(
                 SmsSample.sample_id,
@@ -225,13 +233,44 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             if 'pbrc' in kwargs.get('recipient').lower():
                 query = query.add_columns(
                     SmsSample.body_weight_kg,
-                    func.json_extract(OrderedSample.supplemental_fields, '$.dlwDose.batchid').label('dlw_dose_batch'),
-                    func.json_extract(
-                        OrderedSample.supplemental_fields, '$.dlwDose.doseAdministered'
+                    OrderedSample.supplemental_fields.label('test_fields'),
+                    parent_fields.c.supplemental_fields.label('test_parent_fields'),
+                    case(
+                        [(
+                            OrderedSample.supplemental_fields.isnot(None),
+                            func.json_extract(
+                                OrderedSample.supplemental_fields, '$.dlwDose.batchid'
+                            )
+                        )],
+                        else_=func.json_extract(
+                            parent_fields.c.supplemental_fields, '$.dlwDose.batchid'
+                        )
+                    ).label('dlw_dose_batch'),
+                    case(
+                        [(
+                            OrderedSample.supplemental_fields.isnot(None),
+                            func.json_extract(
+                                OrderedSample.supplemental_fields, '$.dlwDose.doseAdministered'
+                            )
+                        )],
+                        else_=func.json_extract(
+                            parent_fields.c.supplemental_fields, '$.dlwDose.doseAdministered'
+                        )
                     ).label('dlw_dose_date_time'),
-                    func.json_extract(
-                        OrderedSample.supplemental_fields, '$.dlwDose.dose'
+                    case(
+                        [(
+                            OrderedSample.supplemental_fields.isnot(None),
+                            func.json_extract(
+                                OrderedSample.supplemental_fields, '$.dlwDose.dose'
+                            )
+                        )],
+                        else_=func.json_extract(
+                            parent_fields.c.supplemental_fields, '$.dlwDose.dose'
+                        )
                     ).label('dlw_dose_grams')
+                ).outerjoin(
+                    parent_fields,
+                    OrderedSample.parent_sample_id == parent_fields.c.id
                 )
             else:
                 query = query.add_columns(
@@ -253,4 +292,5 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 )
             ).distinct().order_by(SmsN0.id)
 
-            return query.all()
+            results = query.all()
+            return results
