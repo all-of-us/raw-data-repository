@@ -23,7 +23,6 @@ from rdr_service.model.consent_file import ConsentFile as ParsingResult, Consent
 from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import ParticipantCohort, QuestionnaireStatus
-from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.consent import files
 from rdr_service.storage import GoogleCloudStorageProvider
 
@@ -209,7 +208,6 @@ class StoreResultStrategy(ValidationOutputStrategy):
         if new_results_to_store:
             updated_ids = [result.id for result in new_results_to_store]
             updated_ids.extend([file.id for file in self._reconsented_files])
-            dispatch_rebuild_consent_metrics_tasks(updated_ids, project_id=self.project_id)
 
         EhrStatusUpdater(session=self._session, project_name=self.project_id).process_results(new_results_to_store)
 
@@ -281,7 +279,6 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
         if results_to_update:
             updated_ids = [result.id for result in results_to_update]
             updated_ids.extend([file.id for file in self._reconsented_files])
-            dispatch_rebuild_consent_metrics_tasks(updated_ids, project_id=self.project_id)
 
         EhrStatusUpdater(session=self.session, project_name=self.project_id).process_results(results_to_update)
 
@@ -362,9 +359,6 @@ class UpdateResultStrategy(ReplacementStoringStrategy):
                         self.session.add(ready_for_sync)
 
         self.session.commit()
-
-        if results_to_build:
-            dispatch_rebuild_consent_metrics_tasks([r.id for r in results_to_build], project_id=self.project_id)
 
         EhrStatusUpdater(session=self.session, project_name=self.project_id).process_results(results_to_build)
 

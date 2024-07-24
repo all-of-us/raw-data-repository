@@ -76,6 +76,7 @@ class ModuleDataAnalyzer(ToolBase):
             QuestionnaireResponse.answerHash,
             QuestionnaireResponse.authored,
             QuestionnaireResponse.externalId,
+            QuestionnaireResponse.classificationType,
             QuestionnaireResponseAnswer.valueString,  # used for determining redaction logic
             Code.value.label('question_code_value'),
             func.coalesce(answer.value,
@@ -127,6 +128,7 @@ class ModuleDataAnalyzer(ToolBase):
         response_dict['answerHash'] = meta_row.answerHash if meta_row else None
         response_dict['authored'] = meta_row.authored if meta_row else None
         response_dict['externalId'] = meta_row.externalId if meta_row else None
+        response_dict['classificationType'] = meta_row.classificationType if meta_row else None
 
         return response_dict
 
@@ -184,6 +186,7 @@ class ModuleDataAnalyzer(ToolBase):
             dup_of = rsp.get('duplicate_of', None)
             reason = rsp.get('reason', '')
             ans_hash = rsp.get('answer_hash')
+            classification = rsp.get('classification_type')
 
             curr_answers = response_list[idx].get('answers', None)
             print('\n'.join([f'{"Participant":52}:\tP{pid}',
@@ -191,6 +194,7 @@ class ModuleDataAnalyzer(ToolBase):
                              f'{"Authored":52}:\t{authored}',
                              f'{"Form entry id (external id)":52}:\t{ext_id}',
                              f'{"Answer hash":52}:\t{ans_hash}',
+                             f'{"Current Classification":52}:\t{classification}',
                              f'{"Payload inspection result":52}:\t{payload}',
                              f'{"Duplicate of":52}:\t{int(dup_of) if dup_of else None}',
                              f'{"Reason":52}:\t{reason}']))
@@ -242,6 +246,7 @@ class ModuleDataAnalyzer(ToolBase):
             if last_authored and last_authored == curr_authored and last_response_type != curr_response_type:
                 curr_response['reason'] = 'Same authored ts as last payload (indeterminate order)'
 
+            response_list[curr_position]['classification_type'] = curr_response_type
             if curr_response_type == QuestionnaireResponseClassificationType.COMPLETE:
                 # Notable if more than one COMPLETED survey is encountered, or if the first COMPLETE survey was
                 # not the first response in the participant's history.  Does not impact classification

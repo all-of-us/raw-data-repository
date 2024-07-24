@@ -31,7 +31,6 @@ from rdr_service.model.site import Site
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.participant_enums import QuestionnaireStatus
 
-from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.gcp_utils import gcp_cp
 from rdr_service.storage import GoogleCloudStorageProvider, GoogleCloudStorageZipFile
 
@@ -311,9 +310,6 @@ class ConsentSyncController:
                 if len(files_synced):
                     self.consent_dao.batch_update_consent_files(session=session, consent_files=files_synced)
                     session.commit()
-
-                    # Queue tasks to rebuild consent metrics resource data records (for PDR)
-                    dispatch_rebuild_consent_metrics_tasks([file.id for file in files_synced])
 
     def _build_participant_pairing_map(self, files: List[ConsentFile]) -> Dict[int, ParticipantPairingInfo]:
         """
