@@ -33,11 +33,6 @@ class ConsentControllerTest(BaseTestCase):
         )
         consent_factory_patch.start()
         self.addCleanup(consent_factory_patch.stop)
-        consent_metrics_dispatch_rebuild_patch = mock.patch(
-            'rdr_service.services.consent.validation.dispatch_rebuild_consent_metrics_tasks'
-        )
-        self.dispatch_rebuild_consent_metrics_mock = consent_metrics_dispatch_rebuild_patch.start()
-        self.addCleanup(consent_metrics_dispatch_rebuild_patch.stop)
         consent_metrics_dispatch_check_errors_patch = mock.patch(
             'rdr_service.services.consent.validation.dispatch_check_consent_errors_task'
         )
@@ -139,9 +134,6 @@ class ConsentControllerTest(BaseTestCase):
                 ),
             ]
         )
-        # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
-        # values from the expected_updates list
-        self.assertDispatchRebuildConsentMetricsCalled([2, 5, 6, 4], call_count=2)
 
     def test_validating_specific_consents(self):
         """Make sure only the provided consent types are validated when specified"""
@@ -184,9 +176,6 @@ class ConsentControllerTest(BaseTestCase):
         )
         self.store_strategy.process_results()
         self.assertConsentValidationResultsUpdated(expected_updates=[ehr_file, gror_file])
-        # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
-        # values from the expected_updates list
-        self.assertDispatchRebuildConsentMetricsCalled([ehr_file.id, gror_file.id])
 
     @mock.patch('rdr_service.dao.consent_dao.ConsentDao.get_files_for_participant')
     def test_finding_reconsented_files(self, get_files_mock):
@@ -212,19 +201,6 @@ class ConsentControllerTest(BaseTestCase):
             consent_type=ConsentType.EHR,
             session=mock.ANY
         )
-
-    def assertDispatchRebuildConsentMetricsCalled(self, expected_id_list, call_count=1, call_number=1):
-        """
-        Confirm the mocked dispatch_rebuild_consent_metrics_tasks method was called with the expected id list
-        Most test cases should only expect a single call to the dispatch method, but a different expected call_count
-        and a different (1-based) call_number whose id_list argument should be validated can be specified
-        """
-        self.assertEqual(call_count, self.dispatch_rebuild_consent_metrics_mock.call_count)
-        # Testing first (0th) arg: dispatch_rebuild_consent_metrics_task(id_list, <more kwargs>). kwargs ignored (_)
-        # Adjust call_number for 0-based indexing.  assertCountEqual tests list equivalence regardless of the order of
-        # the values in the compared lists
-        args, _ = self.dispatch_rebuild_consent_metrics_mock.call_args_list[call_number - 1]
-        self.assertCountEqual(args[0], expected_id_list)
 
     def assertConsentValidationResultsUpdated(self, expected_updates: List[ConsentFile]):
         """Make sure the validation results are sent to the dao"""

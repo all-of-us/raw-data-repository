@@ -18,7 +18,6 @@ from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.resource import generators
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 from rdr_service.resource.generators.consent_metrics import ConsentErrorReportGenerator
-from rdr_service.services.system_utils import list_chunks
 
 
 def batch_rebuild_participants_task(payload, project_id=None):
@@ -121,6 +120,7 @@ def batch_rebuild_consent_metrics_task(payload):
      Rebuild a batch of consent metrics records based on ids from the consent_file table
      :param payload: Dict object with list of ids to work on.
      """
+    logging.warning('batch_rebuild_consent_metrics_task invoked but PDR sync has been disabled.  Please investigate')
     res_gen = generators.ConsentMetricGenerator()
     batch = payload.get('batch')
 
@@ -149,33 +149,6 @@ def batch_rebuild_user_event_metrics_task(payload):
 
     logging.info(f'End time: {datetime.utcnow()}, rebuilt {count} User Event Metrics records.')
 
-# TODO:  Look at consolidating dispatch_participant_rebuild_tasks() from offline/bigquery_sync.py and this into a
-# generic dispatch routine also available for other resource type rebuilds.  May need to have
-# endpoint-specific logic and/or some fancy code to dynamically populate the task.execute() args (or to allow for
-# local rebuilds vs. cloud tasks)
-def dispatch_rebuild_consent_metrics_tasks(id_list, in_seconds=30, quiet=True, batch_size=150,
-                                           project_id=None, build_locally=False):
-    """
-    Helper method to handle queuing batch rebuild requests for rebuilding consent metrics resource data
-    """
-    if project_id is None:
-        project_id = config.GAE_PROJECT
-
-    if not all(isinstance(id, int) for id in id_list):
-        raise (ValueError, "Invalid id list; must be a list that contains only integer consent_file ids")
-
-    if build_locally or project_id == 'localhost':
-        batch_rebuild_consent_metrics_task({'batch': id_list})
-    else:
-        completed_batches = 0
-        task = GCPCloudTask()
-        for batch in list_chunks(id_list, batch_size):
-            payload = {'batch': batch}
-            task.execute('batch_rebuild_consent_metrics_task', payload=payload, in_seconds=in_seconds,
-                         queue='resource-rebuild', quiet=quiet, project_id=project_id)
-            completed_batches += 1
-
-        logging.info(f'Dispatched {completed_batches} batch_rebuild_consent_metrics tasks of max size {batch_size}')
 
 def dispatch_check_consent_errors_task(in_seconds=30, quiet=True, origin=None,
                                        project_id=config.GAE_PROJECT, build_locally=False):

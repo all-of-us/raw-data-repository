@@ -2608,6 +2608,13 @@ class GenomicPipelineTest(BaseTestCase):
         for attribute in GenomicA1Raw.__table__.columns:
             self.assertTrue(all(getattr(obj, str(attribute).split('.')[1]) is not None for obj in gem_raw_records))
 
+        # run second time same samples, should not pick up, so only one file generated
+        with clock.FakeClock(a1_time):
+            genomic_gem_pipeline.gem_a1_manifest_workflow()  # run_id = 3
+
+        current_file_records = [obj for obj in self.file_processed_dao.get_all() if 'gem_a1' in obj.fileName.lower()]
+        self.assertEqual(len(current_file_records), 1)
+
         # Test Withdrawn and then Reconsented
         # Do withdraw GROR
         withdraw_time = datetime.datetime(2020, 4, 2, 0, 0, 0, 0)
@@ -2618,6 +2625,8 @@ class GenomicPipelineTest(BaseTestCase):
         # Run A3 manifest
         with clock.FakeClock(withdraw_time):
             genomic_gem_pipeline.gem_a3_manifest_workflow()  # run_id 6
+
+        self.clear_table_after_test('genomic_a1_raw')
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_gem_a3_manifest_workflow(self, cloud_task):
