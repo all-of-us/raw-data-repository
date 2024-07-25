@@ -314,7 +314,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
     def create_data_pbrc_n1_mc1_generation(destination="PBRC"):
         sms_datagen = NphSmsDataGenerator()
 
-        parent_sample = sms_datagen.create_database_ordered_sample(
+        sms_datagen.create_database_ordered_sample(
             id=5,
             nph_sample_id=10004,
             supplemental_fields={
