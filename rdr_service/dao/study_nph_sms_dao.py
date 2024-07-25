@@ -1,4 +1,3 @@
-import logging
 from typing import List, Dict
 from sqlalchemy import func, and_, or_, case
 from sqlalchemy.orm import aliased
@@ -160,8 +159,6 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             parent_fields = session.query(
                 OrderedSample.id,
                 OrderedSample.supplemental_fields
-            ).filter(
-                OrderedSample.parent_sample_id is None
             ).subquery()
 
             sample_well = aliased(SmsN1Mc1)
@@ -233,8 +230,6 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             if 'pbrc' in kwargs.get('recipient').lower():
                 query = query.add_columns(
                     SmsSample.body_weight_kg,
-                    OrderedSample.supplemental_fields.label('test_fields'),
-                    parent_fields.c.supplemental_fields.label('test_parent_fields'),
                     case(
                         [(
                             OrderedSample.supplemental_fields.isnot(None),
@@ -292,5 +287,4 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 )
             ).distinct().order_by(SmsN0.id)
 
-            results = query.all()
-            return results
+            return query.all()

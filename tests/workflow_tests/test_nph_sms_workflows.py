@@ -433,9 +433,6 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
         self.assertEqual(csv_rows[0]['sample_id'], '10005')
         self.assertEqual(csv_rows[0]['matrix_id'], "1111")
-        print(csv_rows[0]['test_fields'])
-        print('---------------------------')
-        print(csv_rows[0]['test_parent_fields'])
 
         n1_mcac_dao = SmsN1Mc1Dao()
         manifest_records = n1_mcac_dao.get_all()
