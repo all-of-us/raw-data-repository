@@ -34,6 +34,19 @@ class BigQueryJobError(BaseException):
 # Only perform BQ/Resource operations in these environments.
 _bq_env = ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-sandbox', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']
 
+# PDR-2517: Selectively enable which remaining old PDR pipeline tables are being synced to BigQuery, until the pipeline
+# migration is fully complete and the bigquery_sync cron job is deleted
+BQ_PDR_ENABLED_TABLES = [
+    ('rdr_ops_data_view', 'hpo'),
+    ('rdr_ops_data_view', 'organization'),
+    ('rdr_ops_data_view', 'site'),
+    ('rdr_ops_data_view', 'code'),
+    ('rdr_ops_data_view', 'pdr_mod_stopparticipating'),
+    ('rdr_ops_data_view', 'pdr_mod_thebasics'),
+    ('rdr_ops_data_view', 'pdr_mod_withdrawalintro'),
+    ('rdr_ops_data_view', 'pdr_participant')
+]
+
 
 def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_PROJECT, build_locally=None,
                                        build_modules=True, build_participant_summary=True):
@@ -199,7 +212,7 @@ def insert_batch_into_bq(bq, project_id, dataset, table, batch, dryrun=False):
     return True, resp
 
 
-def sync_bigquery_handler(dryrun=False):
+def sync_bigquery_handler(dryrun=False, project_id=None):
     """
     Cron entry point, Sync MySQL records to bigquery.
     :param dryrun: Don't send to bigquery if True
@@ -209,7 +222,8 @@ def sync_bigquery_handler(dryrun=False):
     # https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata/insertAll
     # https://cloud.google.com/bigquery/troubleshooting-errors#streaming
     """
-    if config.GAE_PROJECT not in _bq_env:
+    project = config.GAE_PROJECT if not project_id else project_id
+    if project not in _bq_env:
         return
 
     ro_dao = BigQuerySyncDao(backup=True)
@@ -232,7 +246,9 @@ def sync_bigquery_handler(dryrun=False):
 
         # don't always process the list in the same order so we don't get stuck processing the same table each run.
         for table_row in tables:
-            table_list.append((table_row.projectId, table_row.datasetId, table_row.tableId))
+            # PDR-2517: Skip any destinations in the bigquery_sync table that have been disabled in the old PDR pipeline
+            if (table_row.datasetId, table_row.tableId) in BQ_PDR_ENABLED_TABLES:
+                table_list.append((table_row.projectId, table_row.datasetId, table_row.tableId))
         random.shuffle(table_list)
 
         for item in table_list:
