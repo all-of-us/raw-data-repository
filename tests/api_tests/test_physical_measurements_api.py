@@ -1,8 +1,10 @@
 import datetime
 import http.client
 import json
+from copy import deepcopy
 
-from rdr_service import main
+from rdr_service import main, config
+from rdr_service.api_util import PPSC, REDCAP
 from rdr_service.clock import FakeClock
 from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -24,6 +26,11 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.participant_id_2 = self.create_participant()
         self.time1 = datetime.datetime(2018, 1, 1)
         self.time2 = datetime.datetime(2018, 2, 2)
+
+    def overwrite_test_user_roles(self, roles):
+        new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
+        new_user_info['example@example.com']['roles'] = roles
+        self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
 
     def _insert_measurements(self, now=None):
         measurements_1 = load_measurement_json(self.participant_id, now)
@@ -718,3 +725,19 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
 
         participant = self.session.query(Participant).filter(Participant.participantId == summary.participantId).one()
         self.assertEqual(pitt_org.organizationId, participant.organizationId)
+
+    def test_ppsc_roles(self):
+        self.overwrite_test_user_roles([PPSC])
+        summary = self.data_generator.create_database_participant_summary()
+        payload = load_measurement_json(summary.participantId)
+
+        response = self.send_post(f'Participant/P{summary.participantId}/PhysicalMeasurements', payload)
+        self.assertTrue(response is not None)
+
+        response = self.send_get(f'Participant/P{summary.participantId}/PhysicalMeasurements', payload)
+        self.assertTrue(response is not None)
+
+        self.overwrite_test_user_roles([REDCAP])
+        response = self.send_post(f'Participant/P{summary.participantId}/PhysicalMeasurements', payload,
+                                  expected_status=http.client.FORBIDDEN)
+        self.assertTrue(response.status_code == 403)

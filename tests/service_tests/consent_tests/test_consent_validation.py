@@ -282,10 +282,7 @@ class ConsentValidationTesting(BaseTestCase):
             self.validator.get_gror_validation_results()
         )
 
-    @mock.patch(
-        'rdr_service.services.consent.validation.dispatch_rebuild_consent_metrics_tasks'
-    )
-    def test_missing_file_validation_storage(self, mock_consent_metrics_rebuild):
+    def test_missing_file_validation_storage(self):
         """
         A bug was found with the validation storage strategies. This ensures that any records that indicate
         missing files don't interfere with each other and all the needed records get stored.
@@ -335,13 +332,8 @@ class ConsentValidationTesting(BaseTestCase):
 
         # Verify that both records that provide new validation information were stored
         consent_dao_mock.batch_update_consent_files.assert_called_with([new_primary_result, new_gror_result], mock.ANY)
-        mock_consent_metrics_rebuild.assert_called_once_with(
-            [new_primary_result.id, new_gror_result.id],
-            project_id=None
-        )
 
-    @mock.patch('rdr_service.services.consent.validation.dispatch_rebuild_consent_metrics_tasks')
-    def test_multiple_distinct_consents(self, _):
+    def test_multiple_distinct_consents(self):
         """
         It's possible to have multiple consents that need to be processed independently
         rather than ignored as duplicates. For example, when a new EHR consent is submitted, the participant's

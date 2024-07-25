@@ -9,7 +9,8 @@ from rdr_service.app_util import auth_required
 from rdr_service import config, clock
 from rdr_service.dao.ppsc_dao import PPSCDefaultBaseDao
 from rdr_service.model.ppsc import ParticipantEventActivity, Activity, \
-    ConsentEvent, ProfileUpdatesEvent, SurveyCompletionEvent
+    ConsentEvent, ProfileUpdatesEvent, SurveyCompletionEvent, WithdrawalEvent, DeactivationEvent, \
+    ParticipantStatusEvent, SiteAttributionEvent
 
 
 class PPSCIntakeAPI(BaseApi):
@@ -20,6 +21,10 @@ class PPSCIntakeAPI(BaseApi):
         self.consent_event_dao = PPSCDefaultBaseDao(model_type=ConsentEvent)
         self.profile_updates_event_dao = PPSCDefaultBaseDao(model_type=ProfileUpdatesEvent)
         self.survey_completion_event_dao = PPSCDefaultBaseDao(model_type=SurveyCompletionEvent)
+        self.withdrawal_event_dao = PPSCDefaultBaseDao(model_type=WithdrawalEvent)
+        self.deactivation_event_dao = PPSCDefaultBaseDao(model_type=DeactivationEvent)
+        self.participant_status_event_dao = PPSCDefaultBaseDao(model_type=ParticipantStatusEvent)
+        self.site_attribution_event_dao = PPSCDefaultBaseDao(model_type=SiteAttributionEvent)
         self.activity_date_time_value = None
         super().__init__(self.participant_event_activity_dao)
 
