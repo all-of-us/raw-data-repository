@@ -859,7 +859,7 @@ def gcp_app_services_split_traffic(service: str, versions: list, split_by: str =
 
 def gcp_deploy_app(project, config_files: list, version: str = None, promote: bool = False):
     """
-    Deploy an app to App Engine.
+    Deploy an app to App Engine.croN
     :param project: project name
     :param config_files: Path to app configuration yaml file.
     :param version: Deploy as different version if needed.
