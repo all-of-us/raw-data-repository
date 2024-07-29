@@ -242,3 +242,14 @@ class SiteAttributionEvent(PPSCBase):
 
 event.listen(SiteAttributionEvent, "before_insert", model_insert_listener)
 event.listen(SiteAttributionEvent, "before_update", model_update_listener)
+
+
+class Site(PPSCBase):
+    __tablename__ = "site"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime, index=True)
+    modified = Column(UTCDateTime)
+
+event.listen(Site, "before_insert", model_insert_listener)
+event.listen(Site, "before_update", model_update_listener)

@@ -36,6 +36,7 @@ from rdr_service.api.patient_status import PatientStatusApi, PatientStatusHistor
 from rdr_service.api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
 from rdr_service.api.ppsc_intake_api import PPSCIntakeAPI
 from rdr_service.api.ppsc_participant_api import PPSCParticipantAPI
+from rdr_service.api.ppsc_site_api import PPSCSiteAPI
 from rdr_service.api.profile_update_api import ProfileUpdateApi
 from rdr_service.api.public_metrics_api import PublicMetricsApi
 from rdr_service.api.questionnaire_api import QuestionnaireApi
@@ -424,20 +425,6 @@ api.add_resource(
     methods=['GET']
 )
 
-api.add_resource(
-    PPSCParticipantAPI,
-    API_PREFIX + 'createParticipant',
-    endpoint='ppsc.create_participant',
-    methods=['POST']
-)
-
-api.add_resource(
-    PPSCIntakeAPI,
-    API_PREFIX + 'Intake',
-    endpoint='ppsc.intake',
-    methods=['POST']
-)
-
 app.add_url_rule(
     API_PREFIX + "PhysicalMeasurements/_history",
     endpoint="physicalMeasurementsSync",
@@ -456,6 +443,28 @@ api.add_resource(
     API_PREFIX + "Onsite/Id/Verification/<participant_id:p_id>",
     endpoint="onsite_id_verification",
     methods=["POST", "GET"],
+)
+
+# PPSC
+api.add_resource(
+    PPSCParticipantAPI,
+    API_PREFIX + 'createParticipant',
+    endpoint='ppsc.create_participant',
+    methods=['POST']
+)
+
+api.add_resource(
+    PPSCIntakeAPI,
+    API_PREFIX + 'Intake',
+    endpoint='ppsc.intake',
+    methods=['POST']
+)
+
+api.add_resource(
+    PPSCSiteAPI,
+    API_PREFIX + 'Site',
+    endpoint='ppsc.site',
+    methods=['POST']
 )
 
 app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=flask_warmup, methods=["GET"])

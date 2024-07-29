@@ -1,7 +1,7 @@
 from typing import List, Dict
 
-from rdr_service.dao.base_dao import BaseDao
-from rdr_service.model.ppsc import Participant
+from rdr_service.dao.base_dao import BaseDao, UpdatableDao
+from rdr_service.model.ppsc import Participant, Site
 
 
 class ParticipantDao(BaseDao):
@@ -21,7 +21,14 @@ class ParticipantDao(BaseDao):
             return session.query(Participant).filter(Participant.biobank_id == biobank_id).all()
 
 
+class SiteDao(UpdatableDao):
+
+    def __init__(self):
+        super().__init__(Site)
+
+
 class PPSCDefaultBaseDao(BaseDao):
+
     def __init__(self, model_type):
         super().__init__(model_type)
 
