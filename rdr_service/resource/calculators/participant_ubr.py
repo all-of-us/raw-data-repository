@@ -327,7 +327,7 @@ class ParticipantUBRCalculator:
         if answer in [None, 'PMI_Skip']:
             return UBRValueEnum.NotAnswer_Skip
         if not consent_time:
-            return UBRValueEnum.RBR
+            return None
         # Convert date string to date object if needed.
         if isinstance(answer, str):
             answer = parse(answer)
@@ -398,6 +398,7 @@ class ParticipantUBRCalculator:
                                None) == 'DelayedFillingRxToSaveMoney_Yes'):
             return UBRValueEnum.UBR
 
+        # Remaining questions that, in combination of 2 or more qualifying answers, calculate to UBR
         answer_count = 0
         for k in ['delayedmedicalcare_transportation', 'delayedmedicalcare_timeoffwork', 'delayedmedicalcare_childcare',
                   'delayedmedicalcare_elderlycare', 'healthproviderracereligion_delayedornocare']:
@@ -440,35 +441,35 @@ class PedParticipantUBRCalculator(ParticipantUBRCalculator):
         :return: UBRValueEnum
         """
         # nsch_2 series of questions on whether child uses more medical care mental health/educational services
-        # ped_basics1 = "Yes" response;  all three must be yes
-        if (answers.get('nsch_2', None) == 'ped_basics1'
-                and answers.get('nsch_2_condition', None) == 'ped_basics1'
-                and answers.get('nsch_2_condition_12months', None) == 'ped_basics1'):
+        # pedbasics_1 = "Yes" response;  all three must be yes
+        if (answers.get('nsch_2', None) == 'pedbasics_1'
+                and answers.get('nsch_2_condition', None) == 'pedbasics_1'
+                and answers.get('nsch_2_condition_12months', None) == 'pedbasics_1'):
             return UBRValueEnum.UBR
 
         # nsch_3 series of questions on whether child is limited/prevented from doing things other children can
-        # All must be "Yes"/ped_basics1
-        if (answers.get('nsch_3', None) == 'ped_basics1'
-                and answers.get('nsch_3_condition', None) == 'ped_basics1'
-                and answers.get('nsch_3_condition_12months', None) == 'ped_basics1'):
+        # All must be "Yes"/pedbasics_1
+        if (answers.get('nsch_3', None) == 'pedbasics_1'
+                and answers.get('nsch_3_condition', None) == 'pedbasics_1'
+                and answers.get('nsch_3_condition_12months', None) == 'pedbasics_1'):
             return UBRValueEnum.UBR
 
         # nsch_4 series of questions on whether child needs/gets specialized therapy
-        # All must be "Yes"/ped_basics1
-        if (answers.get('nsch_4', None) == 'ped_basics1'
-                and answers.get('nsch_4_condition', None) == 'ped_basics1'
-                and answers.get('nsch_4_condition_12months', None) == 'ped_basics1'):
+        # All must be "Yes"/pedbasics_1
+        if (answers.get('nsch_4', None) == 'pedbasics_1'
+                and answers.get('nsch_4_condition', None) == 'pedbasics_1'
+                and answers.get('nsch_4_condition_12months', None) == 'pedbasics_1'):
             return UBRValueEnum.UBR
 
         # nsch_5 questions on whether child has developmental/behavioral problems needing treatment
-        # Both must be "Yes"/ped_basics1
-        if (answers.get('nsch_5', None) == 'ped_basics1'
-                and answers.get('nsch_5_condition_12months', None) == 'ped_basics1'):
+        # Both must be "Yes"/pedbasics_1
+        if (answers.get('nsch_5', None) == 'pedbasics_1'
+                and answers.get('nsch_5_condition_12months', None) == 'pedbasics_1'):
             return UBRValueEnum.UBR
 
         # aou_1 questions on hearing/vision/speech/cognitive/physical impairments
-        # Both must be "Yes"/ped_basics1
-        if answers.get('aou_1', None) == 'ped_basics1' and answers.get('aou_1_12months', None) == 'ped_basics1':
+        # Both must be "Yes"/pedbasics_1
+        if answers.get('aou_1', None) == 'pedbasics_1' and answers.get('aou_1_12months', None) == 'pedbasics_1':
             return UBRValueEnum.UBR
 
         # Check and see if all question answers are either Null, 'Prefer Not To Answer' or PMI_Skip.
@@ -506,7 +507,7 @@ class PedParticipantUBRCalculator(ParticipantUBRCalculator):
 
         if (answers.get('delaydmedicalcare_ped', None) == 'DelayedCare_Yes'
                 and (answers.get('cantaffordcare_skippedmedtosavemoney_ped', None) == 'SkippedMedToSaveMoney_Yes'
-                     or answers.get('cantaffordcare_tooklessmedtosavemoney_pd', None) == 'TookLessMedToSaveMoney_Yes'
+                     or answers.get('cantaffordcare_tooklessmedtosavemoney_ped', None) == 'TookLessMedToSaveMoney_Yes'
                      or answers.get('cantaffordcare_delayedfillingfxtosavemoney_ped',
                                     None) == 'DelayedFillingRxToSaveMoney_Yes'
                      or answers.get('cantaffordcare_pharmacy_ped', None) == 'Pharmacy_Yes'
