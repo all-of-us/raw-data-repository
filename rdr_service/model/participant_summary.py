@@ -28,6 +28,8 @@ from rdr_service.model.account_link import AccountLink
 from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
 from rdr_service.model.duplicate_account import DuplicateAccount
 from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
+from rdr_service.model.sample_order_status import SampleOrderStatus
+from rdr_service.model.sample_receipt_status import SampleReceiptStatus
 from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import (
     EhrStatus,
@@ -1973,6 +1975,20 @@ class ParticipantSummary(Base):
             foreign(participantId) == remote(DuplicateAccount.participant_a_id),
             foreign(participantId) == remote(DuplicateAccount.participant_b_id)
         ),
+        uselist=True,
+        lazy='noload'
+    )
+
+    samplesOrdered: List[SampleOrderStatus] = relationship(
+        SampleOrderStatus,
+        primaryjoin=foreign(participantId) == remote(SampleOrderStatus.participant_id),
+        uselist=True,
+        lazy='noload'
+    )
+
+    samplesReceived: List[SampleReceiptStatus] = relationship(
+        SampleReceiptStatus,
+        primaryjoin=foreign(participantId) == remote(SampleReceiptStatus.participant_id),
         uselist=True,
         lazy='noload'
     )

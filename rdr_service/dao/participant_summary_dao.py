@@ -450,7 +450,9 @@ class ParticipantSummaryDao(UpdatableDao):
                 ParticipantSummary.firstName,
                 ParticipantSummary.lastName
             ),
-            joinedload(ParticipantSummary.duplicationData)
+            joinedload(ParticipantSummary.duplicationData),
+            joinedload(ParticipantSummary.samplesOrdered),
+            joinedload(ParticipantSummary.samplesReceived)
         ]
 
     def get_by_hpo(self, hpo, session, yield_batch_size=1000):
@@ -1497,6 +1499,8 @@ class ParticipantSummaryDao(UpdatableDao):
                 ):
                     result['enrollmentStatusV3_2'] = str(EnrollmentStatusV32.ENROLLED_PARTICIPANT)
 
+        self._populate_sample_status_fields(summary_obj=obj, summary_json=result)
+
         # Check to see if we should hide digital health sharing fields
         if not config.getSettingJson(config.ENABLE_HEALTH_SHARING_STATUS_3, default=False):
             del result['healthDataStreamSharingStatus']
@@ -1583,6 +1587,34 @@ class ParticipantSummaryDao(UpdatableDao):
                 result[field_name] = UNSET
 
         return {k: v for k, v in list(result.items()) if v is not None}
+
+    @classmethod
+    def _populate_sample_status_fields(cls, summary_obj: ParticipantSummary, summary_json: dict):
+        test_code_list = config.BIOSPECIMEN_TEST_CODES
+        order_status_found_map = {test_code: False for test_code in test_code_list}
+        receipt_status_found_map = {test_code: False for test_code in test_code_list}
+
+        for order_status in summary_obj.samplesOrdered:
+            test_code = order_status.test_code
+            order_status_found_map[test_code] = True
+            summary_json[f'sampleOrderStatus{test_code.upper()}'] = str(order_status.status)
+            summary_json[f'sampleOrderStatus{test_code.upper()}'] = order_status.status_time.isoformat()
+
+        for receipt_status in summary_obj.samplesReceived:
+            test_code = receipt_status.test_code
+            receipt_status_found_map[test_code] = True
+            summary_json[f'sampleStatus{test_code.upper()}'] = str(receipt_status.status)
+            summary_json[f'sampleStatus{test_code.upper()}'] = receipt_status.status_time.isoformat()
+
+        for missing_order_code in [
+            test_code for test_code, has_status in order_status_found_map.items() if not has_status
+        ]:
+            summary_json[f'sampleOrderStatus{missing_order_code.upper()}'] = UNSET
+        for missing_receipt_code in [
+            test_code for test_code, has_status in receipt_status_found_map.items() if not has_status
+        ]:
+            summary_json[f'sampleStatus{missing_receipt_code.upper()}'] = UNSET
+
 
     @staticmethod
     def get_aliased_field_map():
