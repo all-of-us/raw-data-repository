@@ -922,7 +922,10 @@ class VibrentEtmConsentFile(EtmConsentFile):
 class VibrentPediatricPrimaryConsentFile(PediatricPrimaryConsentFile, VibrentPrimaryConsentFile):
     def _get_signature_page(self):
         return self.pdf.get_page_number_of_text([
-            ('I freely and willingly choose', 'Decido participar libremente y por voluntad propia')
+            (
+                'I freely and willingly choose',
+                'Elijo libre y voluntariamente inscribir a mi menor de edad en el Programa Científico'
+            )
         ])
 
     def _get_signature_elements(self):
