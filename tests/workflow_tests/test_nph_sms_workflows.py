@@ -315,6 +315,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         sms_datagen = NphSmsDataGenerator()
 
         sms_datagen.create_database_ordered_sample(
+            id=5,
             nph_sample_id=10004,
             supplemental_fields={
                 "dlwDose": {
@@ -326,6 +327,10 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 }
             }
         )
+        sms_datagen.create_database_ordered_sample(
+            nph_sample_id=10005,
+            parent_sample_id=5
+        )
         sms_datagen.create_database_sms_sample(
             ethnicity="test",
             race="test",
@@ -333,13 +338,13 @@ class NphSmsWorkflowsTest(BaseTestCase):
             diet="LMT",
             sex_at_birth="M",
             sample_identifier="test",
-            sample_id=10004,
+            sample_id=10005,
             lims_sample_id="000200",
             destination=destination,
             body_weight_kg="123.4"
         )
         sms_datagen.create_database_sms_n0(
-            sample_id=10004,
+            sample_id=10005,
             matrix_id=1111,
             package_id="test",
             storage_unit_id="test",
@@ -426,7 +431,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             csv_reader = csv.DictReader(cloud_file, delimiter='\t')
             csv_rows = list(csv_reader)
 
-        self.assertEqual(csv_rows[0]['sample_id'], '10004')
+        self.assertEqual(csv_rows[0]['sample_id'], '10005')
         self.assertEqual(csv_rows[0]['matrix_id'], "1111")
 
         n1_mcac_dao = SmsN1Mc1Dao()
@@ -457,7 +462,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[2].well_box_position, "A4")
 
         self.assertEqual(manifest_records[3].file_path, pbrc_csv_path)
-        self.assertEqual(manifest_records[3].sample_id, "10004")
+        self.assertEqual(manifest_records[3].sample_id, "10005")
         self.assertEqual(manifest_records[3].matrix_id, "1111")
         self.assertEqual(manifest_records[3].bmi, "28")
         self.assertEqual(manifest_records[3].diet, "LMT")

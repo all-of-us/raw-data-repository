@@ -127,9 +127,13 @@ def _get_ordered_samples(order_id: int) -> List[OrderedSample]:
 
 
 def get_processing_timestamp(ordered_sample: OrderedSample) -> Optional[datetime]:
-    """Get finalized ts for stool samples & collected ts for other samples."""
-    if ordered_sample.test is not None and ordered_sample.test.startswith("ST"):
+    """Get freezed ts for stool samples & collected ts for other samples.
+       Default to finalized for stool samples without freezed"""
+    if (ordered_sample.test is not None and ordered_sample.test.startswith("ST")
+            and "freezed" in ordered_sample.supplemental_fields):
         return datetime.strptime(ordered_sample.supplemental_fields["freezed"], "%Y-%m-%dT%H:%M:%SZ")
+    elif ordered_sample.test is not None and ordered_sample.test.startswith("ST"):
+        return ordered_sample.finalized
     elif ordered_sample.parent is not None:
         return ordered_sample.collected
     return None
