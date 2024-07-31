@@ -75,10 +75,10 @@ class QuestionnaireAnswersBackfillTool(ToolBase):
     def _add_answers(code_id_map, answers, questionnaire_response_id):
         answers_to_insert = []
         for answer, system_and_code in answers:
+            answer.questionnaireResponseId = questionnaire_response_id
             if system_and_code:
                 system, code = system_and_code
                 answer.valueCodeId = code_id_map.get(system, code)
-                answer.questionnaireResponseId = questionnaire_response_id
             answers_to_insert.append(answer)
         return answers_to_insert
 
