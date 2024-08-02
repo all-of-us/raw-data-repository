@@ -208,7 +208,7 @@ def get_withdrawal_report_query(start_date: datetime):
     ceremony_answer_subquery = _participant_answer_subquery(WITHDRAWAL_CEREMONY_QUESTION_CODE)
     return (
         Query([
-            func.concat(get_biobank_id_prefix(), Participant.biobankId.label('biobank_id')),
+            func.concat(get_biobank_id_prefix(), Participant.biobankId).label('biobank_id'),
             func.date_format(Participant.withdrawalTime, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
             case([(ParticipantSummary.aian, 'Y')], else_='N').label('is_native_american'),
             case(
