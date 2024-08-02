@@ -146,6 +146,13 @@ def run_biobank_samples_pipeline():
 
 
 @app_util.auth_required_cron
+def generate_withdrawal_report():
+    logging.info("Generating withdrawal report...")
+    biobank_samples_pipeline.write_withdrawal_report()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 def biobank_monthly_reconciliation_report():
     # make sure this cron job is executed after import_biobank_samples
     sample_file_path, sample_file, timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info(monthly=True)
@@ -1025,6 +1032,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "BiobankSamplesPipeline",
         endpoint="biobankSamplesPipeline",
         view_func=run_biobank_samples_pipeline,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "BiobankWithdrawalReport",
+        endpoint="biobankSamplesPipeline",
+        view_func=generate_withdrawal_report,
         methods=["GET"],
     )
 
