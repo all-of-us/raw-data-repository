@@ -1037,7 +1037,7 @@ def _build_pipeline_app():
 
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "BiobankWithdrawalReport",
-        endpoint="biobankSamplesPipeline",
+        endpoint="biobankWithdrawalReport",
         view_func=generate_withdrawal_report,
         methods=["GET"],
     )
