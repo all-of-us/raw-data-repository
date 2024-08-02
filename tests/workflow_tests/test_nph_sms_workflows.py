@@ -329,6 +329,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         )
         sms_datagen.create_database_ordered_sample(
             nph_sample_id=10005,
+            aliquot_id=4,
             parent_sample_id=5
         )
         sms_datagen.create_database_sms_sample(
@@ -338,13 +339,13 @@ class NphSmsWorkflowsTest(BaseTestCase):
             diet="LMT",
             sex_at_birth="M",
             sample_identifier="test",
-            sample_id=10005,
+            sample_id=4,
             lims_sample_id="000200",
             destination=destination,
             body_weight_kg="123.4"
         )
         sms_datagen.create_database_sms_n0(
-            sample_id=10005,
+            sample_id=4,
             matrix_id=1111,
             package_id="test",
             storage_unit_id="test",
@@ -408,35 +409,9 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(csv_rows[0]['urine_clarity'], '"Clean"')
         self.assertEqual(csv_rows[0]['manufacturer_lot'], '256837')
 
-        self.create_data_pbrc_n1_mc1_generation()
-
-        generation_data = {
-            "job": "FILE_GENERATION",
-            "file_type": "N1_MC1",
-            "recipient": "PBRC",
-            "package_id": "test"
-        }
-        with clock.FakeClock(self.TIME_1):
-            from rdr_service.resource import main as resource_main
-            self.send_post(
-                local_path='NphSmsGenerationTaskApi',
-                request_data=generation_data,
-                prefix="/resource/task/",
-                test_client=resource_main.app.test_client(),
-            )
-
-        pbrc_csv_path = "test-bucket-unc-meta/n1_manifests/PBRC_n1_2023-04-25T15:13:00.txt"
-
-        with open_cloud_file(pbrc_csv_path, mode='r') as cloud_file:
-            csv_reader = csv.DictReader(cloud_file, delimiter='\t')
-            csv_rows = list(csv_reader)
-
-        self.assertEqual(csv_rows[0]['sample_id'], '10005')
-        self.assertEqual(csv_rows[0]['matrix_id'], "1111")
-
         n1_mcac_dao = SmsN1Mc1Dao()
         manifest_records = n1_mcac_dao.get_all()
-        self.assertEqual(len(manifest_records), 4)
+        self.assertEqual(len(manifest_records), 3)
         self.assertEqual(manifest_records[0].file_path, expected_csv_path)
         self.assertEqual(manifest_records[0].sample_id, "10001")
         self.assertEqual(manifest_records[0].matrix_id, "1111")
@@ -461,19 +436,6 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
         self.assertEqual(manifest_records[2].well_box_position, "A4")
 
-        self.assertEqual(manifest_records[3].file_path, pbrc_csv_path)
-        self.assertEqual(manifest_records[3].sample_id, "10005")
-        self.assertEqual(manifest_records[3].matrix_id, "1111")
-        self.assertEqual(manifest_records[3].bmi, "28")
-        self.assertEqual(manifest_records[3].diet, "LMT")
-        self.assertEqual(manifest_records[3].collection_site, "UNC")
-        self.assertEqual(manifest_records[3].manufacturer_lot, '256837')
-        self.assertEqual(manifest_records[3].collection_date_time, api_util.parse_date("2023-04-20T15:54:33"))
-        self.assertEqual(manifest_records[3].body_weight_kg, '123.4')
-        self.assertEqual(manifest_records[3].dlw_dose_batch, '12345678')
-        self.assertEqual(manifest_records[3].dlw_dose_date_time, '"2024-04-08T15:11:00"')
-        self.assertEqual(manifest_records[3].dlw_dose_grams, '456.7')
-
         # Test Ignore and rerun
         with n1_mcac_dao.session() as session:
             manifest_records[0].ignore_flag = 1
@@ -489,6 +451,51 @@ class NphSmsWorkflowsTest(BaseTestCase):
             )
         manifest_records = n1_mcac_dao.get_all()
         self.assertEqual(len(manifest_records), 4)
+
+    def test_n1_mc1_pbrc_generation(self):
+        self.create_data_pbrc_n1_mc1_generation()
+
+        generation_data = {
+            "job": "FILE_GENERATION",
+            "file_type": "N1_MC1",
+            "recipient": "PBRC",
+            "package_id": "test"
+        }
+        with clock.FakeClock(self.TIME_1):
+            from rdr_service.resource import main as resource_main
+            self.send_post(
+                local_path='NphSmsGenerationTaskApi',
+                request_data=generation_data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+        pbrc_csv_path = "test-bucket-unc-meta/n1_manifests/PBRC_n1_2023-04-25T15:13:00.txt"
+
+        with open_cloud_file(pbrc_csv_path, mode='r') as cloud_file:
+            csv_reader = csv.DictReader(cloud_file, delimiter='\t')
+            csv_rows = list(csv_reader)
+
+        self.assertEqual(csv_rows[0]['sample_id'], '4')
+        self.assertEqual(csv_rows[0]['matrix_id'], "1111")
+        self.assertEqual(csv_rows[0]['dlw_dose_batch'], "12345678")
+        self.assertEqual(csv_rows[0]['dlw_dose_date_time'], '"2024-04-08T15:11:00"')
+        self.assertEqual(csv_rows[0]['dlw_dose_grams'], "456.7")
+
+        n1_dao = SmsN1Mc1Dao()
+        manifest_records = n1_dao.get_all()
+        self.assertEqual(manifest_records[0].file_path, pbrc_csv_path)
+        self.assertEqual(manifest_records[0].sample_id, "4")
+        self.assertEqual(manifest_records[0].matrix_id, "1111")
+        self.assertEqual(manifest_records[0].bmi, "28")
+        self.assertEqual(manifest_records[0].diet, "LMT")
+        self.assertEqual(manifest_records[0].collection_site, "UNC")
+        self.assertEqual(manifest_records[0].manufacturer_lot, '256837')
+        self.assertEqual(manifest_records[0].collection_date_time, api_util.parse_date("2023-04-20T15:54:33"))
+        self.assertEqual(manifest_records[0].body_weight_kg, '123.4')
+        self.assertEqual(manifest_records[0].dlw_dose_batch, '12345678')
+        self.assertEqual(manifest_records[0].dlw_dose_date_time, '"2024-04-08T15:11:00"')
+        self.assertEqual(manifest_records[0].dlw_dose_grams, '456.7')
 
     @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
     def test_n1_mc1_raises_error_on_data_validation_failure(self, mock_send_message_to_webhook):
