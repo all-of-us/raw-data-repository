@@ -5,7 +5,7 @@ import mock
 import random
 import os
 
-from rdr_service import clock, config
+from rdr_service import clock, config, participant_enums
 from rdr_service.api_util import open_cloud_file, get_blob
 from rdr_service.code_constants import BIOBANK_TESTS
 from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
@@ -24,7 +24,6 @@ from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline import biobank_samples_pipeline
-from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value,\
     SampleCollectionMethod
 from tests import test_data
@@ -444,23 +443,37 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 'NA',  # sex at birth flag
             )])
 
-    def _generate_withdrawal_report(self):
-        with mock.patch('rdr_service.offline.sql_exporter.csv.writer') as mock_writer_class,\
-                mock.patch('rdr_service.offline.sql_exporter.SqlExporter.upload_export_file'):
+    def test_withdrawal_report(self):
+        withdrawal_time = datetime(2024, 2, 17)
+        participant = self.data_generator.create_database_participant(
+            withdrawalStatus=participant_enums.WithdrawalStatus.NO_USE,
+            withdrawalTime=withdrawal_time,
+            withdrawalReasonJustification='testing report'
+        )
+        self.data_generator.create_database_biobank_stored_sample(
+            biobankId=participant.biobankId
+        )
 
-            # Generate the withdrawal report
-            day_range_of_report = 10
-            biobank_samples_pipeline._query_and_write_withdrawal_report(
-                SqlExporter(''), '', day_range_of_report, datetime.now()
-            )
+        with (
+            mock.patch('rdr_service.offline.sql_exporter.csv.writer') as mock_writer_class,
+            mock.patch('rdr_service.offline.sql_exporter.SqlExporter.upload_export_file') as mock_upload,
+            clock.FakeClock(datetime(2024, 3, 1))
+        ):
+            biobank_samples_pipeline.write_withdrawal_report()
 
-            # Check the header values written
-            mock_writer_class.return_value.writerow.assert_called_with(
-                ['biobank_id', 'withdrawal_time', 'is_native_american', 'needs_disposal_ceremony', 'participant_origin']
-            )
-
-            mock_write_rows = mock_writer_class.return_value.writerows
-            return mock_write_rows.call_args[0][0] if mock_write_rows.called else []
+            mock_writer_class.return_value.writerows.assert_called_with([(
+                f'Z{participant.biobankId}',
+                f'{withdrawal_time.isoformat()}Z',
+                'N',        # is_native_american
+                'NA',       # needs_disposal_ceremony
+                'example',  # participant_origin
+                'UNSET',    # paired_hpo
+                'UNSET',    # paired_org
+                'UNSET',    # paired_site
+                'testing report',
+                participant_enums.DeceasedStatus.UNSET
+            )])
+            mock_upload.assert_called_with(mock.ANY, 'reconciliation/report_2024-02_withdrawals.csv', None)
 
     def test_cumulative_received_report(self):
         current_datetime = datetime.now()

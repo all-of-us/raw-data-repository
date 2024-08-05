@@ -178,10 +178,9 @@ class BiobankReportToolTest(ToolTestMixin, BaseTestCase):
 
     def _assert_participant_in_report_rows(self, participant: Participant, rows, withdrawal_date_str,
                                            withdrawal_reason_justification, as_native_american: bool = False,
-                                           needs_ceremony_indicator: str = 'NA', paired_hpo='UNSET', paired_org=None,
-                                           paired_site=None, deceased_status='UNSET'):
+                                           needs_ceremony_indicator: str = 'NA', paired_hpo='UNSET', paired_org='UNSET',
+                                           paired_site='UNSET', deceased_status='UNSET'):
         expected_data = {
-            'participant_id': f'P{participant.participantId}',
             'biobank_id': f'Z{participant.biobankId}',
             'withdrawal_time': withdrawal_date_str,
             'is_native_american': 'Y' if as_native_american else 'N',
