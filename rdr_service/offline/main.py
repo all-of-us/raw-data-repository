@@ -654,7 +654,6 @@ def genomic_cvl_w2w_workflow():
 
 @app_util.auth_required_cron
 @check_genomic_cron_job('cvl_w3sr_manifest_workflow')
-@interval_genomic_run_schedule(GenomicJob.CVL_W3SR_WORKFLOW, 'bi_week')
 def genomic_cvl_w3sr_workflow():
     genomic_cvl_pipeline.cvl_w3sr_manifest_workflow()
     return '{"success": "true"}'
