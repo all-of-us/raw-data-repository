@@ -464,7 +464,7 @@ api.add_resource(
     PPSCSiteAPI,
     API_PREFIX + 'Site',
     endpoint='ppsc.site',
-    methods=['POST']
+    methods=['POST', 'DELETE']
 )
 
 app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=flask_warmup, methods=["GET"])

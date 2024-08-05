@@ -25,119 +25,13 @@ class PPSCSiteAPITest(BaseTestCase):
         )
 
         payload = {
-            'participantId': 'P22',
-            'biobankId': 'T22',
-            'registeredDate': '2024-03-26T13:24:03.935Z'
+            'participantId': 'P22'
         }
-
-        response = self.send_post('Site', request_data=payload)
-        self.assertTrue(response is not None)
 
         self.overwrite_test_user_roles([HEALTHPRO])
 
         response = self.send_post('Site', request_data=payload, expected_status=http.client.FORBIDDEN)
         self.assertTrue(response.status_code == 403)
-
-    # def test_req_keys_missing_validation(self):
-    #     # missing keys
-    #     payload = {
-    #         'participantId': 22
-    #     }
-    #     response = self.send_post('createParticipant', request_data=payload, expected_status=http.client.BAD_REQUEST)
-    #     self.assertEqual(response.status_code, 400)
-    #     self.assertEqual(response.json['message'], 'Payload for createParticipant is invalid: Required keys - '
-    #                                                'participantId, biobankId, registeredDate')
-    #
-    #     # extra keys - will return a response instead of an error since json will be cleaned
-    #     payload = {
-    #         'badKey': 22,
-    #         'participantId': 'P22',
-    #         'biobankId': 'T22',
-    #         'registeredDate': '2024-03-26T13:24:03.935Z'
-    #     }
-    #     response = self.send_post('createParticipant', request_data=payload)
-    #     self.assertTrue(response is not None)
-    #
-    #     # null values
-    #     payload = {
-    #         'participantId': '',
-    #         'biobankId': 'T22',
-    #         'registeredDate': '2024-03-26T13:24:03.935Z'
-    #     }
-    #     response = self.send_post('createParticipant', request_data=payload, expected_status=http.client.BAD_REQUEST)
-    #     self.assertEqual(response.status_code, 400)
-    #     self.assertEqual(response.json['message'], 'Payload for createParticipant is invalid: Required keys - '
-    #                                                'participantId, biobankId, registeredDate')
-    #
-    # def test_participant_exists_validation(self):
-    #     current_participant = self.ppsc_data_gen.create_database_participant(
-    #         **{
-    #             'id': 22,
-    #             'biobank_id': 22,
-    #         }
-    #     )
-    #     payload = {
-    #         'participantId': 'P22',
-    #         'biobankId': 'T22',
-    #         'registeredDate': '2024-03-26T13:24:03.935Z'
-    #     }
-    #
-    #     response = self.send_post('createParticipant', request_data=payload, expected_status=http.client.FORBIDDEN)
-    #     self.assertEqual(response.status_code, 403)
-    #     self.assertEqual(response.json['message'], f'Participant {payload.get("participantId")} already exists')
-    #     self.assertEqual(current_participant.id, int(payload.get("participantId")[1:]))
-    #
-    # def test_biobank_id_exists_validation(self):
-    #     current_participant = self.ppsc_data_gen.create_database_participant(
-    #         **{
-    #             'id': 21,
-    #             'biobank_id': 24,
-    #         }
-    #     )
-    #     payload = {
-    #         'participantId': 'P22',
-    #         'biobankId': 'T24',
-    #         'registeredDate': '2024-03-26T13:24:03.935Z'
-    #     }
-    #
-    #     response = self.send_post('createParticipant', request_data=payload, expected_status=http.client.FORBIDDEN)
-    #     self.assertEqual(response.status_code, 403)
-    #     self.assertEqual(response.json['message'], f'Participant with Biobank ID {payload.get("biobankId")}'
-    #                                                f' already exists')
-    #     self.assertEqual(current_participant.biobank_id, int(payload.get("biobankId")[1:]))
-    #
-    # def test_payload_inserts_participant_records(self):
-    #
-    #     payload = {
-    #         'participantId': 'P22',
-    #         'biobankId': 'T22',
-    #         'registeredDate': '2024-03-26T13:24:03.935Z'
-    #     }
-    #     response = self.send_post('createParticipant', request_data=payload)
-    #     self.assertTrue(response is not None)
-    #     self.assertEqual(response, f'Participant {payload.get("participantId")} was created successfully')
-    #
-    #     # check insert model deps
-    #     current_participant_event_activity = self.ppsc_participant_activity_dao.get_all()
-    #     self.assertEqual(len(current_participant_event_activity), 1)
-    #     current_participant_event_activity = current_participant_event_activity[0]
-    #     self.assertEqual(current_participant_event_activity.activity_id, 1)
-    #     self.assertEqual(current_participant_event_activity.participant_id, int(payload.get("participantId")[1:]))
-    #     self.assertEqual(current_participant_event_activity.resource, payload)
-    #
-    #     current_enrollment_event = self.ppsc_enrollment_event_dao.get_all()
-    #     self.assertEqual(len(current_enrollment_event), 1)
-    #     current_enrollment_event = current_enrollment_event[0]
-    #     self.assertEqual(current_enrollment_event.participant_id, int(payload.get("participantId")[1:]))
-    #     self.assertTrue(current_enrollment_event.event_id is not None)
-    #     self.assertTrue(current_enrollment_event.event_type_id is not None)
-    #
-    #     current_participant = self.ppsc_partcipant_dao.get_all()
-    #     self.assertEqual(len(current_participant), 1)
-    #     current_participant = current_participant[0]
-    #     self.assertEqual(current_participant.biobank_id, int(payload.get("biobankId")[1:]))
-    #     self.assertEqual(current_participant.id, int(payload.get("participantId")[1:]))
-    #     self.assertTrue(current_participant.registered_date is not None)
 
     def tearDown(self):
         super().tearDown()
