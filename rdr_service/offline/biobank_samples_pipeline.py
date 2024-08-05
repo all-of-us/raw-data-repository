@@ -12,9 +12,10 @@ import pytz
 from sqlalchemy import case
 from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import func, or_
+from sqlalchemy.sql.functions import coalesce
 from typing import Dict
 
-from rdr_service import config
+from rdr_service import clock, config
 from rdr_service.api_util import list_blobs
 from rdr_service.code_constants import (
     WITHDRAWAL_CEREMONY_YES, WITHDRAWAL_CEREMONY_NO, WITHDRAWAL_CEREMONY_QUESTION_CODE
@@ -173,6 +174,15 @@ def write_reconciliation_report(now, report_type="daily"):
     )
 
 
+def write_withdrawal_report():
+    """Uploads the monthly withdrawal report to the Biobank bucket."""
+    two_months_ago = clock.CLOCK.now() - datetime.timedelta(weeks=8)
+    start_date = datetime.datetime(two_months_ago.year, two_months_ago.month, 27)
+
+    bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
+    _query_and_write_withdrawal_report(SqlExporter(bucket_name), start_date)
+
+
 def _get_report_paths(report_datetime, report_type="daily"):
     """Returns a list of output filenames for samples: (received, late, missing, withdrawals, salivary_missing)."""
 
@@ -198,8 +208,7 @@ def get_withdrawal_report_query(start_date: datetime):
     ceremony_answer_subquery = _participant_answer_subquery(WITHDRAWAL_CEREMONY_QUESTION_CODE)
     return (
         Query([
-            Participant.participantId.label('participant_id'),
-            Participant.biobankId.label('biobank_id'),
+            func.concat(get_biobank_id_prefix(), Participant.biobankId).label('biobank_id'),
             func.date_format(Participant.withdrawalTime, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
             case([(ParticipantSummary.aian, 'Y')], else_='N').label('is_native_american'),
             case(
@@ -211,10 +220,10 @@ def get_withdrawal_report_query(start_date: datetime):
             ).label('needs_disposal_ceremony'),
             Participant.participantOrigin.label('participant_origin'),
             HPO.name.label('paired_hpo'),
-            Organization.externalId.label('paired_org'),
-            Site.googleGroup.label('paired_site'),
+            coalesce(Organization.externalId, 'UNSET').label('paired_org'),
+            coalesce(Site.googleGroup, 'UNSET').label('paired_site'),
             Participant.withdrawalReasonJustification.label('withdrawal_reason_justification'),
-            ParticipantSummary.deceasedStatus.label('deceased_status')
+            coalesce(ParticipantSummary.deceasedStatus, 0).label('deceased_status')
         ])
         .select_from(Participant)
         .outerjoin(ceremony_answer_subquery, ceremony_answer_subquery.c.participant_id == Participant.participantId)
@@ -261,6 +270,16 @@ def _query_and_write_received_report(exporter, report_path, query_params, report
         backup=True,
         predicate=report_predicate
     )
+    logging.info(f"Completed {report_path} report.")
+
+
+def _query_and_write_withdrawal_report(exporter, start_date):
+    query = get_withdrawal_report_query(start_date)
+    one_month_ago = clock.CLOCK.now() - datetime.timedelta(weeks=4)
+    date_str = f'{one_month_ago.year}-{str(one_month_ago.month).zfill(2)}'
+    report_path = f'{_REPORT_SUBDIR}/report_{date_str}_withdrawals.csv'
+
+    exporter.run_export(report_path, query, backup=True)
     logging.info(f"Completed {report_path} report.")
 
 

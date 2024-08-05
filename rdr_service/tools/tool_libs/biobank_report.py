@@ -3,7 +3,6 @@ import csv
 from datetime import datetime, timedelta
 
 from rdr_service import clock, config
-from rdr_service.model.utils import to_client_participant_id
 from rdr_service.offline.biobank_samples_pipeline import get_withdrawal_report_query
 from rdr_service.participant_enums import DeceasedStatus
 from rdr_service.storage import GoogleCloudStorageProvider
@@ -38,7 +37,6 @@ class BiobankReportTool(ToolBase):
         logger.info(f'Generating withdrawal report for data since {start_date}')
         with self.get_session() as session, open(file_path, 'w') as output_file:
             csv_writer = csv.DictWriter(output_file, [
-                'participant_id',
                 'biobank_id',
                 'withdrawal_time',
                 'is_native_american',
@@ -52,8 +50,6 @@ class BiobankReportTool(ToolBase):
             ])
             csv_writer.writeheader()
 
-            server_config = self.get_server_config()
-
             report_query = get_withdrawal_report_query(start_date=start_date)
             result_list = session.execute(report_query)
             for result in result_list:
@@ -62,8 +58,7 @@ class BiobankReportTool(ToolBase):
                     deceased_status = DeceasedStatus.UNSET
 
                 csv_writer.writerow({
-                    'participant_id': to_client_participant_id(result.participant_id),
-                    'biobank_id': f'{server_config[config.BIOBANK_ID_PREFIX][0]}{result.biobank_id}',
+                    'biobank_id': result.biobank_id,
                     'withdrawal_time': result.withdrawal_time,
                     'is_native_american': result.is_native_american,
                     'needs_disposal_ceremony': result.needs_disposal_ceremony,
