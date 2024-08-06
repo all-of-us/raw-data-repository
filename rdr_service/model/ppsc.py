@@ -90,14 +90,11 @@ event.listen(EnrollmentEvent, "before_insert", model_insert_listener)
 event.listen(EnrollmentEvent, "before_update", model_update_listener)
 
 
-class ConsentEvent(PPSCBase):
-    __tablename__ = "consent_event"
+class EventBase:
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime, index=True)
     modified = Column(UTCDateTime)
-    participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_name = Column(String(128), index=True)
     event_authored_time = Column(UTCDateTime, index=True)
     data_element_name = Column(String(512), index=True)
@@ -106,149 +103,124 @@ class ConsentEvent(PPSCBase):
     ignore_reason = Column(String(512))
     is_correction_flag = Column(TINYINT, default=0)
     dev_note = Column(String(512))
+
+
+class ConsentEvent(PPSCBase, EventBase):
+    __tablename__ = "consent_event"
+
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
 
 
 event.listen(ConsentEvent, "before_insert", model_insert_listener)
 event.listen(ConsentEvent, "before_update", model_update_listener)
 
 
-class ProfileUpdatesEvent(PPSCBase):
+class ProfileUpdatesEvent(PPSCBase, EventBase):
     __tablename__ = "profile_updates_event"
 
-    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
-    modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
-    ignore_flag = Column(TINYINT, default=0)
-    ignore_reason = Column(String(512))
-    is_correction_flag = Column(TINYINT, default=0)
-    dev_note = Column(String(512))
 
 
 event.listen(ProfileUpdatesEvent, "before_insert", model_insert_listener)
 event.listen(ProfileUpdatesEvent, "before_update", model_update_listener)
 
 
-class SurveyCompletionEvent(PPSCBase):
+class SurveyCompletionEvent(PPSCBase, EventBase):
     __tablename__ = "survey_completion_event"
 
-    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
-    modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
-    ignore_flag = Column(TINYINT, default=0)
-    ignore_reason = Column(String(512))
-    is_correction_flag = Column(TINYINT, default=0)
-    dev_note = Column(String(512))
 
 
 event.listen(SurveyCompletionEvent, "before_insert", model_insert_listener)
 event.listen(SurveyCompletionEvent, "before_update", model_update_listener)
 
 
-class WithdrawalEvent(PPSCBase):
+class WithdrawalEvent(PPSCBase, EventBase):
     __tablename__ = "withdrawal_event"
 
-    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
-    modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
-    ignore_flag = Column(TINYINT, default=0)
-    ignore_reason = Column(String(512))
-    is_correction_flag = Column(TINYINT, default=0)
-    dev_note = Column(String(512))
 
 
 event.listen(WithdrawalEvent, "before_insert", model_insert_listener)
 event.listen(WithdrawalEvent, "before_update", model_update_listener)
 
 
-class DeactivationEvent(PPSCBase):
+class DeactivationEvent(PPSCBase, EventBase):
     __tablename__ = "deactivation_event"
 
-    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
-    modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
-    ignore_flag = Column(TINYINT, default=0)
-    ignore_reason = Column(String(512))
-    is_correction_flag = Column(TINYINT, default=0)
-    dev_note = Column(String(512))
 
 
 event.listen(DeactivationEvent, "before_insert", model_insert_listener)
 event.listen(DeactivationEvent, "before_update", model_update_listener)
 
 
-class ParticipantStatusEvent(PPSCBase):
+class ParticipantStatusEvent(PPSCBase, EventBase):
     __tablename__ = "participant_status_event"
 
-    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
-    modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
-    ignore_flag = Column(TINYINT, default=0)
-    ignore_reason = Column(String(512))
-    is_correction_flag = Column(TINYINT, default=0)
-    dev_note = Column(String(512))
 
 
 event.listen(ParticipantStatusEvent, "before_insert", model_insert_listener)
 event.listen(ParticipantStatusEvent, "before_update", model_update_listener)
 
 
-class SiteAttributionEvent(PPSCBase):
+class SiteAttributionEvent(PPSCBase, EventBase):
     __tablename__ = "site_attribution_event"
 
-    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
-    modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
-    ignore_flag = Column(TINYINT, default=0)
-    ignore_reason = Column(String(512))
-    is_correction_flag = Column(TINYINT, default=0)
-    dev_note = Column(String(512))
 
 
 event.listen(SiteAttributionEvent, "before_insert", model_insert_listener)
 event.listen(SiteAttributionEvent, "before_update", model_update_listener)
 
 
+# Partner action models
+
+class PartnerActivity(PPSCBase):
+    __tablename__ = "partner_activity"
+
+    id = Column("id", Integer, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    name = Column(String(128))
+    rdr_note = Column(String(1024), nullable=True)
+    rule_codes = Column(JSON, nullable=True)
+
+
+event.listen(PartnerActivity, "before_insert", model_insert_listener)
+event.listen(PartnerActivity, "before_update", model_update_listener)
+
+
+class PartnerEventActivity(PPSCBase):
+    __tablename__ = "partner_event_activity"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    ignore_reason = Column(String(512))
+    activity_id = Column(Integer, ForeignKey("partner_activity.id"))
+    resource = Column(JSON, nullable=True)
+
+
+event.listen(PartnerEventActivity, "before_insert", model_insert_listener)
+event.listen(PartnerEventActivity, "before_update", model_update_listener)
+
+
 class Site(PPSCBase):
     __tablename__ = "site"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
+    created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     awardee_id = Column(String(128), index=True, nullable=False)
     org_id = Column(String(128), index=True, nullable=False)

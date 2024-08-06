@@ -33,9 +33,23 @@ class PPSCSiteAPITest(BaseTestCase):
         response = self.send_post('Site', request_data=payload, expected_status=http.client.FORBIDDEN)
         self.assertTrue(response.status_code == 403)
 
+    def test_site_data_inserts(self):
+        ...
+
+    def test_site_data_updates(self):
+        ...
+
+    def test_site_data_deletes(self):
+        ...
+
+    def test_site_data_insert_event_deps(self):
+        ...
+
+    def test_extra_keys_removed(self):
+        ...
+
+    def test_site_action_updates_rdr_schema_tables(self):
+        ...
+
     def tearDown(self):
         super().tearDown()
-        # self.clear_table_after_test("ppsc.activity")
-        # self.clear_table_after_test("ppsc.participant")
-        # self.clear_table_after_test("ppsc.enrollment_event_type")
-        # self.clear_table_after_test("ppsc.enrollment_event")

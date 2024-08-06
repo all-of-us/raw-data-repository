@@ -23,8 +23,13 @@ class ParticipantDao(BaseDao):
 
 class SiteDao(UpdatableDao):
 
+    validate_version_match = False
+
     def __init__(self):
         super().__init__(Site)
+
+    def to_client_json(self, site_data: dict) -> str:
+        return f'Site {site_data["id"]} was created successfully'
 
 
 class PPSCDefaultBaseDao(BaseDao):

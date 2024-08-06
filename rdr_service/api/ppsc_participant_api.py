@@ -27,8 +27,8 @@ class PPSCParticipantAPI(BaseApi):
         required_keys = ['participantId', 'biobankId', 'registeredDate']
 
         # check req keys in payload
-        if all([key in req_data for key in required_keys]) \
-                and all([val for val in req_data.values() if val is not None]):
+        if all(key in req_data for key in required_keys) \
+                and all(val for val in req_data.values() if val is not None):
 
             converted_dict: dict = {
                 self.dao.camel_to_snake(k): self.dao.extract_prefix_from_val(v) for (k, v)
