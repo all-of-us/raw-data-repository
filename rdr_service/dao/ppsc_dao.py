@@ -1,6 +1,6 @@
 from typing import List, Dict
 
-from rdr_service.dao.base_dao import BaseDao, UpdatableDao
+from rdr_service.dao.base_dao import BaseDao, UpsertableDao
 from rdr_service.model.ppsc import Participant, Site
 
 
@@ -21,15 +21,13 @@ class ParticipantDao(BaseDao):
             return session.query(Participant).filter(Participant.biobank_id == biobank_id).all()
 
 
-class SiteDao(UpdatableDao):
-
-    validate_version_match = False
+class SiteDao(UpsertableDao):
 
     def __init__(self):
         super().__init__(Site)
 
-    def to_client_json(self, site_data: dict) -> str:
-        return f'Site {site_data["id"]} was created successfully'
+    def to_client_json(self, obj: Site, action_type: str) -> str:
+        return f'Site {obj.site_identifier} was {action_type} successfully'
 
 
 class PPSCDefaultBaseDao(BaseDao):

@@ -22,8 +22,7 @@ event.listen(Participant, "before_insert", model_insert_listener)
 event.listen(Participant, "before_update", model_update_listener)
 
 
-class Activity(PPSCBase):
-    __tablename__ = "activity"
+class BaseActivity:
 
     id = Column("id", Integer, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -32,6 +31,10 @@ class Activity(PPSCBase):
     name = Column(String(128))
     rdr_note = Column(String(1024), nullable=True)
     rule_codes = Column(JSON, nullable=True)
+
+
+class Activity(PPSCBase, BaseActivity):
+    __tablename__ = "activity"
 
 
 event.listen(Activity, "before_insert", model_insert_listener)
@@ -184,16 +187,8 @@ event.listen(SiteAttributionEvent, "before_update", model_update_listener)
 
 # Partner action models
 
-class PartnerActivity(PPSCBase):
+class PartnerActivity(PPSCBase, BaseActivity):
     __tablename__ = "partner_activity"
-
-    id = Column("id", Integer, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime)
-    modified = Column(UTCDateTime)
-    ignore_flag = Column(TINYINT, default=0)
-    name = Column(String(128))
-    rdr_note = Column(String(1024), nullable=True)
-    rule_codes = Column(JSON, nullable=True)
 
 
 event.listen(PartnerActivity, "before_insert", model_insert_listener)
