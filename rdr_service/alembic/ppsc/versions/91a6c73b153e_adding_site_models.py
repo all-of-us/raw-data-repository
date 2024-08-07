@@ -83,6 +83,13 @@ def upgrade_ppsc():
     sa.PrimaryKeyConstraint('id'),
     schema='ppsc'
     )
+    op.execute(
+        """
+        INSERT INTO ppsc.partner_activity (created, modified, name, ignore_flag)
+        VALUES(now(), now(), 'Site Update', 0)
+        ;
+        """
+    )
     # ### end Alembic commands ###
 
 
