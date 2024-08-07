@@ -116,6 +116,9 @@ class PPSCSiteAPITest(BaseTestCase):
 
         # update site
         time.sleep(5)
+
+        self.base_payload['email'] = 'support_two@awesome-testing.com'
+
         response = self.send_post('Site', request_data=self.base_payload)
 
         self.assertTrue(response is not None)
@@ -128,6 +131,7 @@ class PPSCSiteAPITest(BaseTestCase):
         current_site = current_site_data[0]
 
         self.assertGreater(current_site.modified, current_site.created)
+        self.assertEqual(current_site.email, self.base_payload.get('email'))
 
     def test_site_data_deactivates(self):
 
@@ -161,8 +165,33 @@ class PPSCSiteAPITest(BaseTestCase):
 
         self.assertEqual(current_site_data[0].active, 0)
 
-    # def test_site_data_insert_event_deps(self):
-    #     ...
+    def test_site_data_insert_event_deps(self):
+
+        # creating site
+        response = self.send_post('Site', request_data=self.base_payload)
+
+        self.assertTrue(response is not None)
+        self.assertEqual(response, 'Site hpo-site-monroeville was created successfully')
+
+        current_site_data = [obj for obj in self.site_dao.get_all()
+                             if obj.site_identifier == self.base_payload.get('site_identifier')]
+
+        self.assertEqual(len(current_site_data), 1)
+
+        # update site
+        time.sleep(5)
+        response = self.send_post('Site', request_data=self.base_payload)
+
+        self.assertTrue(response is not None)
+        self.assertEqual(response, 'Site hpo-site-monroeville was updated successfully')
+
+        current_site_data = [obj for obj in self.site_dao.get_all()
+                             if obj.site_identifier == self.base_payload.get('site_identifier')]
+
+        self.assertEqual(len(current_site_data), 1)
+        current_site = current_site_data[0]
+
+        self.assertGreater(current_site.modified, current_site.created)
 
     def tearDown(self):
         super().tearDown()

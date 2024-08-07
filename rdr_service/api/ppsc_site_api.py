@@ -26,14 +26,14 @@ class PPSCSiteAPI(BaseApi):
 
         try:
             site_record = self.dao.get_site_by_identifier(site_identifier=req_data.get('site_identifier'))
+            action_type = 'created'
 
             if site_record:
-                site_record = site_record.asdict()
-                site_record = self.handle_site_updates(site_data=site_record)
-                return self.dao.to_client_json(obj=site_record, action_type='updated')
+                req_data['id'] = site_record.id
+                action_type = 'updated'
 
             site_record = self.handle_site_updates(site_data=req_data)
-            return self.dao.to_client_json(obj=site_record, action_type='created')
+            return self.dao.to_client_json(obj=site_record, action_type=action_type)
 
         except Exception as e:
             logging.warning(f'Error when creating/updating site record: {e}')
@@ -52,7 +52,6 @@ class PPSCSiteAPI(BaseApi):
                 site_record = site_record.asdict()
                 site_record['active'] = False
                 site_record = self.handle_site_updates(site_data=site_record)
-
                 return self.dao.to_client_json(obj=site_record, action_type='deactivated')
 
             raise BadRequest(f'Cannot find site record with identifier'
@@ -63,7 +62,9 @@ class PPSCSiteAPI(BaseApi):
             raise BadRequest('Error when deactivating site record')
 
     def handle_site_updates(self, *, site_data: dict) -> Site:
+        # site data
         site_data['modified'] = datetime.datetime.now()
         site_record = self.dao.upsert(self.dao.model_type(**site_data))
+        # event tracking
         return site_record
 
