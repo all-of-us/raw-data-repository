@@ -29,6 +29,10 @@ class SiteDao(UpsertableDao):
     def to_client_json(self, obj: Site, action_type: str) -> str:
         return f'Site {obj.site_identifier} was {action_type} successfully'
 
+    def get_site_by_identifier(self, *, site_identifier: str):
+        with self.session() as session:
+            return session.query(Site).filter(site_identifier == Site.site_identifier).first()
+
 
 class PPSCDefaultBaseDao(BaseDao):
 

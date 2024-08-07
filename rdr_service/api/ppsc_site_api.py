@@ -1,4 +1,5 @@
 import logging
+import datetime
 
 from flask import request
 from werkzeug.exceptions import BadRequest
@@ -24,29 +25,45 @@ class PPSCSiteAPI(BaseApi):
         req_data, site_record = self.get_request_json(), None
 
         try:
-            site_record = self.handle_site_updates(req_data=req_data)
+            site_record = self.dao.get_site_by_identifier(site_identifier=req_data.get('site_identifier'))
+
+            if site_record:
+                site_record = site_record.asdict()
+                site_record = self.handle_site_updates(site_data=site_record)
+                return self.dao.to_client_json(obj=site_record, action_type='updated')
+
+            site_record = self.handle_site_updates(site_data=req_data)
+            return self.dao.to_client_json(obj=site_record, action_type='created')
+
         except Exception as e:
             logging.warning(f'Error when creating/updating site record: {e}')
             raise BadRequest('Error when creating/updating site record')
-
-        return self.dao.to_client_json(obj=site_record, action_type='created/updated')
 
     @auth_required([PPSC, RDR])
     def delete(self):
         log_api_request(log=request.log_record)
 
         req_data, site_record = self.get_request_json(), None
-        req_data['active'] = False
 
         try:
-            site_record = self.handle_site_updates(req_data=req_data)
+            site_record = self.dao.get_site_by_identifier(site_identifier=req_data.get('site_identifier'))
+
+            if site_record:
+                site_record = site_record.asdict()
+                site_record['active'] = False
+                site_record = self.handle_site_updates(site_data=site_record)
+
+                return self.dao.to_client_json(obj=site_record, action_type='deactivated')
+
+            raise BadRequest(f'Cannot find site record with identifier'
+                             f' {req_data.get("site_identifier")} for deactivation')
+
         except Exception as e:
             logging.warning(f'Error when deactivating site record: {e}')
             raise BadRequest('Error when deactivating site record')
 
-        return self.dao.to_client_json(obj=site_record, action_type='deactivated')
-
-    def handle_site_updates(self, *, req_data: dict) -> Site:
-        site_record = self.dao.upsert(self.dao.model_type(**req_data))
+    def handle_site_updates(self, *, site_data: dict) -> Site:
+        site_data['modified'] = datetime.datetime.now()
+        site_record = self.dao.upsert(self.dao.model_type(**site_data))
         return site_record
 

@@ -1,5 +1,6 @@
 import http.client
 import random
+import time
 from copy import deepcopy
 
 from rdr_service import config
@@ -73,7 +74,7 @@ class PPSCSiteAPITest(BaseTestCase):
         response = self.send_post('Site', request_data=self.base_payload)
 
         self.assertTrue(response is not None)
-        self.assertEqual(response, 'Site hpo-site-monroeville was created/updated successfully')
+        self.assertEqual(response, 'Site hpo-site-monroeville was created successfully')
 
         current_site_data = [obj for obj in self.site_dao.get_all()
                                 if obj.site_identifier == self.base_payload.get('site_identifier')]
@@ -100,58 +101,65 @@ class PPSCSiteAPITest(BaseTestCase):
 
         self.assertEqual(len(current_site_data), 0)
 
-    # def test_site_data_upserts_correctly(self):
-    #
-    #     # creating site
-    #     response = self.send_post('Site', request_data=self.base_payload)
-    #
-    #     self.assertTrue(response is not None)
-    #     self.assertEqual(response, 'Site hpo-site-monroeville was created/updated successfully')
-    #
-    #     current_site_data = [obj for obj in self.site_dao.get_all()
-    #                          if obj.site_identifier == self.base_payload.get('site_identifier')]
-    #
-    #     self.assertEqual(len(current_site_data), 1)
-    #
-    #     # update site
-    #     response = self.send_post('Site', request_data=self.base_payload)
-    #
-    #     self.assertTrue(response is not None)
-    #     self.assertEqual(response, 'Site hpo-site-monroeville was created/updated successfully')
-    #
-    #     self.assertGreater()
+    def test_site_data_upserts_correctly(self):
 
-    # def test_site_data_deactivates(self):
-    #
-    #     # create site record
-    #     response = self.send_post('Site', request_data=self.base_payload)
-    #
-    #     self.assertTrue(response is not None)
-    #     self.assertEqual(response, 'Site hpo-site-monroeville was created/updated successfully')
-    #
-    #     current_site_data = [obj for obj in self.site_dao.get_all()
-    #                          if obj.site_identifier == self.base_payload.get('site_identifier')]
-    #
-    #     self.assertEqual(len(current_site_data), 1)
-    #
-    #     deactivate_payload = {
-    #         "awardee_id": "PITT",
-    #         "org_id": "PITT_UPMC",
-    #         "site_name": "UPMC Urgent Care Monroeville",
-    #         "site_identifier": "hpo-site-monroeville"
-    #     }
-    #
-    #     response = self.send_delete('Site', request_data=deactivate_payload)
-    #
-    #     self.assertTrue(response is not None)
-    #     self.assertEqual(response, 'Site hpo-site-monroeville was deactivated successfully')
-    #
-    #     current_site_data = [obj for obj in self.site_dao.get_all()
-    #                          if obj.site_identifier == self.base_payload.get('site_identifier')]
-    #
-    #     self.assertEqual(len(current_site_data), 1)
-    #
-    #     self.assertEqual(current_site_data[0].active, 0)
+        # creating site
+        response = self.send_post('Site', request_data=self.base_payload)
+
+        self.assertTrue(response is not None)
+        self.assertEqual(response, 'Site hpo-site-monroeville was created successfully')
+
+        current_site_data = [obj for obj in self.site_dao.get_all()
+                             if obj.site_identifier == self.base_payload.get('site_identifier')]
+
+        self.assertEqual(len(current_site_data), 1)
+
+        # update site
+        time.sleep(5)
+        response = self.send_post('Site', request_data=self.base_payload)
+
+        self.assertTrue(response is not None)
+        self.assertEqual(response, 'Site hpo-site-monroeville was updated successfully')
+
+        current_site_data = [obj for obj in self.site_dao.get_all()
+                             if obj.site_identifier == self.base_payload.get('site_identifier')]
+
+        self.assertEqual(len(current_site_data), 1)
+        current_site = current_site_data[0]
+
+        self.assertGreater(current_site.modified, current_site.created)
+
+    def test_site_data_deactivates(self):
+
+        # create site record
+        response = self.send_post('Site', request_data=self.base_payload)
+
+        self.assertTrue(response is not None)
+        self.assertEqual(response, 'Site hpo-site-monroeville was created successfully')
+
+        current_site_data = [obj for obj in self.site_dao.get_all()
+                             if obj.site_identifier == self.base_payload.get('site_identifier')]
+
+        self.assertEqual(len(current_site_data), 1)
+
+        deactivate_payload = {
+            "awardee_id": "PITT",
+            "org_id": "PITT_UPMC",
+            "site_name": "UPMC Urgent Care Monroeville",
+            "site_identifier": "hpo-site-monroeville"
+        }
+
+        response = self.send_delete('Site', request_data=deactivate_payload)
+
+        self.assertTrue(response is not None)
+        self.assertEqual(response, 'Site hpo-site-monroeville was deactivated successfully')
+
+        current_site_data = [obj for obj in self.site_dao.get_all()
+                             if obj.site_identifier == self.base_payload.get('site_identifier')]
+
+        self.assertEqual(len(current_site_data), 1)
+
+        self.assertEqual(current_site_data[0].active, 0)
 
     # def test_site_data_insert_event_deps(self):
     #     ...
