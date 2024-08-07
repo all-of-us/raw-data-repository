@@ -64,7 +64,7 @@ class PPSCDataGenerator(PPSCBaseDataGenerator):
         return PartnerActivity(**kwargs)
 
     def create_database_partner_activity(self, **kwargs):
-        partner_activity = self._activity(**kwargs)
+        partner_activity = self._partner_activity(**kwargs)
         self._commit_to_database(partner_activity)
         return partner_activity
 

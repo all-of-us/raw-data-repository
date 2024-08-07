@@ -1,5 +1,4 @@
 import logging
-import datetime
 
 from flask import request
 from werkzeug.exceptions import BadRequest
@@ -8,7 +7,7 @@ from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RDR, PPSC
 from rdr_service.app_util import auth_required
 from rdr_service.dao.ppsc_dao import SiteDao, PPSCDefaultBaseDao
-from rdr_service.model.ppsc import PartnerActivity, Site
+from rdr_service.model.ppsc import PartnerActivity, Site, PartnerEventActivity
 
 
 class PPSCSiteAPI(BaseApi):
@@ -16,6 +15,7 @@ class PPSCSiteAPI(BaseApi):
     def __init__(self):
         super().__init__(SiteDao())
         self.current_activities = PPSCDefaultBaseDao(model_type=PartnerActivity).get_all()
+        self.partner_event_activity_dao = PPSCDefaultBaseDao(model_type=PartnerEventActivity)
 
     @auth_required([PPSC, RDR])
     def post(self):
@@ -63,8 +63,21 @@ class PPSCSiteAPI(BaseApi):
 
     def handle_site_updates(self, *, site_data: dict) -> Site:
         # site data
-        site_data['modified'] = datetime.datetime.now()
         site_record = self.dao.upsert(self.dao.model_type(**site_data))
+
         # event tracking
+        site_data.pop("created", None)
+        site_data.pop("modified", None)
+        current_partner_activity = list(filter(lambda x: x.name.lower() == 'site update', self.current_activities))
+        current_partner_activity = current_partner_activity[0]
+        participant_event_activity_dict = {
+            'activity_id': current_partner_activity.id,
+            'resource': site_data
+        }
+        self.partner_event_activity_dao.insert(
+            self.partner_event_activity_dao.model_type(
+                **participant_event_activity_dict
+            )
+        )
         return site_record
 

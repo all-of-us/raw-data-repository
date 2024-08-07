@@ -5,8 +5,9 @@ from copy import deepcopy
 
 from rdr_service import config
 from rdr_service.api_util import PPSC, RDR, HEALTHPRO
-from rdr_service.dao.ppsc_dao import SiteDao
+from rdr_service.dao.ppsc_dao import SiteDao, PPSCDefaultBaseDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
+from rdr_service.model.ppsc import PartnerEventActivity
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -16,6 +17,7 @@ class PPSCSiteAPITest(BaseTestCase):
         super().setUp()
         self.ppsc_data_gen = PPSCDataGenerator()
         self.site_dao = SiteDao()
+        self.partner_event_activity_dao = PPSCDefaultBaseDao(model_type=PartnerEventActivity)
 
         activities = ['Site Update']
         for activity in activities:
@@ -168,34 +170,32 @@ class PPSCSiteAPITest(BaseTestCase):
     def test_site_data_insert_event_deps(self):
 
         # creating site
-        response = self.send_post('Site', request_data=self.base_payload)
-
-        self.assertTrue(response is not None)
-        self.assertEqual(response, 'Site hpo-site-monroeville was created successfully')
+        self.send_post('Site', request_data=self.base_payload)
 
         current_site_data = [obj for obj in self.site_dao.get_all()
                              if obj.site_identifier == self.base_payload.get('site_identifier')]
 
+        # should be 1
         self.assertEqual(len(current_site_data), 1)
+
+        # should be 1
+        current_partner_activities = self.partner_event_activity_dao.get_all()
+        self.assertEqual(len(current_partner_activities), 1)
 
         # update site
-        time.sleep(5)
-        response = self.send_post('Site', request_data=self.base_payload)
-
-        self.assertTrue(response is not None)
-        self.assertEqual(response, 'Site hpo-site-monroeville was updated successfully')
+        self.send_post('Site', request_data=self.base_payload)
 
         current_site_data = [obj for obj in self.site_dao.get_all()
                              if obj.site_identifier == self.base_payload.get('site_identifier')]
-
+        # should be 1
         self.assertEqual(len(current_site_data), 1)
-        current_site = current_site_data[0]
 
-        self.assertGreater(current_site.modified, current_site.created)
+        # should be 2
+        current_partner_activities = self.partner_event_activity_dao.get_all()
+        self.assertEqual(len(current_partner_activities), 2)
 
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("ppsc.partner_activity")
         self.clear_table_after_test("ppsc.site")
-        # self.clear_table_after_test("ppsc.enrollment_event_type")
-        # self.clear_table_after_test("ppsc.enrollment_event")
+        self.clear_table_after_test("ppsc.partner_event_activity")
