@@ -1,7 +1,7 @@
 from typing import List, Dict
 
-from rdr_service.dao.base_dao import BaseDao
-from rdr_service.model.ppsc import Participant
+from rdr_service.dao.base_dao import BaseDao, UpsertableDao
+from rdr_service.model.ppsc import Participant, Site
 
 
 class ParticipantDao(BaseDao):
@@ -21,7 +21,21 @@ class ParticipantDao(BaseDao):
             return session.query(Participant).filter(Participant.biobank_id == biobank_id).all()
 
 
+class SiteDao(UpsertableDao):
+
+    def __init__(self):
+        super().__init__(Site)
+
+    def to_client_json(self, obj: Site, action_type: str) -> str:
+        return f'Site {obj.site_identifier} was {action_type} successfully'
+
+    def get_site_by_identifier(self, *, site_identifier: str):
+        with self.session() as session:
+            return session.query(Site).filter(site_identifier == Site.site_identifier).first()
+
+
 class PPSCDefaultBaseDao(BaseDao):
+
     def __init__(self, model_type):
         super().__init__(model_type)
 

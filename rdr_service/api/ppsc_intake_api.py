@@ -45,8 +45,8 @@ class PPSCIntakeAPI(BaseApi):
         required_keys = ['activity', 'eventType', 'participantId', 'dataElements']
 
         # Check required keys in payload
-        if all([key in req_data for key in required_keys]) \
-                and all([val for val in req_data.values() if val is not None]):
+        if all(key in req_data for key in required_keys) \
+                and all(val for val in req_data.values() if val is not None):
             pass
         else:
             raise BadRequest(f'Invalid Intake API Payload: Required keys: {required_keys}')
