@@ -156,12 +156,12 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsSample.ignore_flag == 0
             ).subquery()
 
-            parent_fields = session.query(
-                OrderedSample.id,
-                OrderedSample.supplemental_fields
-            ).subquery()
+            parent_fields = aliased(OrderedSample)
 
             sample_well = aliased(SmsN1Mc1)
+
+            aliquot_sample = aliased(OrderedSample)
+
             query = session.query(
                 SmsSample.sample_id,
                 SmsN0.matrix_id,
@@ -190,7 +190,6 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsSample.diet,
                 func.json_extract(OrderedSample.supplemental_fields, "$.color").label('urine_color'),
                 func.json_extract(OrderedSample.supplemental_fields, "$.clarity").label('urine_clarity'),
-                func.json_extract(OrderedSample.supplemental_fields, "$.bowelMovement").label('bowel_movement'),
             ).outerjoin(
                 SmsSample,
                 and_(
@@ -232,43 +231,47 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                     SmsSample.body_weight_kg,
                     case(
                         [(
-                            OrderedSample.supplemental_fields.isnot(None),
+                            func.json_length(aliquot_sample.supplemental_fields) > 0,
                             func.json_extract(
-                                OrderedSample.supplemental_fields, '$.dlwDose.batchid'
+                                aliquot_sample.supplemental_fields, '$.dlwDose.batchid'
                             )
                         )],
                         else_=func.json_extract(
-                            parent_fields.c.supplemental_fields, '$.dlwDose.batchid'
+                            parent_fields.supplemental_fields, '$.dlwDose.batchid'
                         )
                     ).label('dlw_dose_batch'),
                     case(
                         [(
-                            OrderedSample.supplemental_fields.isnot(None),
+                            func.json_length(aliquot_sample.supplemental_fields) > 0,
                             func.json_extract(
-                                OrderedSample.supplemental_fields, '$.dlwDose.doseAdministered'
+                                aliquot_sample.supplemental_fields, '$.dlwDose.doseAdministered'
                             )
                         )],
                         else_=func.json_extract(
-                            parent_fields.c.supplemental_fields, '$.dlwDose.doseAdministered'
+                            parent_fields.supplemental_fields, '$.dlwDose.doseAdministered'
                         )
                     ).label('dlw_dose_date_time'),
                     case(
                         [(
-                            OrderedSample.supplemental_fields.isnot(None),
+                            func.json_length(aliquot_sample.supplemental_fields) > 0,
                             func.json_extract(
-                                OrderedSample.supplemental_fields, '$.dlwDose.dose'
+                                aliquot_sample.supplemental_fields, '$.dlwDose.dose'
                             )
                         )],
                         else_=func.json_extract(
-                            parent_fields.c.supplemental_fields, '$.dlwDose.dose'
+                            parent_fields.supplemental_fields, '$.dlwDose.dose'
                         )
                     ).label('dlw_dose_grams')
                 ).outerjoin(
+                    aliquot_sample,
+                    SmsSample.sample_id == aliquot_sample.aliquot_id
+                ).outerjoin(
                     parent_fields,
-                    OrderedSample.parent_sample_id == parent_fields.c.id
+                    aliquot_sample.parent_sample_id == parent_fields.id
                 )
             else:
                 query = query.add_columns(
+                    func.json_extract(OrderedSample.supplemental_fields, "$.bowelMovement").label('bowel_movement'),
                     func.json_extract(
                         OrderedSample.supplemental_fields, '$.bowelMovementQuality'
                     ).label('bowel_movement_quality')
