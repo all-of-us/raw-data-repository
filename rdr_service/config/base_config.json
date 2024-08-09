@@ -209,11 +209,19 @@
     "Site Attribution"
   ],
   "ppsc_intake_consent_event_types": ["Primary Consent", "Adult EHR Authorization"],
-  "ppsc_intake_survey_completion_event_types": ["The Basics"],
-  "ppsc_intake_profile_updates_event_types": ["Profile Data"],
+  "ppsc_intake_survey_completion_event_types": ["The Basics", "Basics Data"],
+  "ppsc_intake_profile_updates_event_types": ["Profile Data", "Account Type"],
   "ppsc_intake_withdrawal_event_types": ["Withdrawal"],
   "ppsc_intake_deactivation_event_types": ["Deactivation"],
-  "ppsc_intake_participant_status_event_types": ["Participant Status"],
+  "ppsc_intake_participant_status_event_types": [
+    "Participant Status",
+    "Test Flag",
+    "Death",
+    "Enrollment Status",
+    "UBR Status",
+    "Retention Status",
+    "Patient Status"
+  ],
   "ppsc_intake_site_attribution_event_types": ["Site Attribution"],
   "pm_height_codes": ["height", "8302-2"],
   "pm_weight_codes": ["weight", "29463-7", "pre-pregnancy-weight"]
