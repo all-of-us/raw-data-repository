@@ -690,17 +690,17 @@ class SpotTool(ToolBase):
                 }
 
                 yield new_birthdate_row
+            else:
+                new_row = {
+                    'participant_id': row.participantId,
+                    'research_id': row.researchId,
+                    'data_element_id': row.data_element_id,
+                    'value_string': str(row.value_string),
+                    'created_timestamp': row.created_timestamp.isoformat(),
+                    'authored_timestamp': row.authored_timestamp.isoformat()
+                }
 
-            new_row = {
-                'participant_id': row.participantId,
-                'research_id': row.researchId,
-                'data_element_id': row.data_element_id,
-                'value_string': str(row.value_string),
-                'created_timestamp': row.created_timestamp.isoformat(),
-                'authored_timestamp': row.authored_timestamp.isoformat()
-            }
-
-            yield new_row
+                yield new_row
 
     @staticmethod
     def pivot_member_data(data_elements, data):
