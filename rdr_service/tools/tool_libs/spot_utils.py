@@ -860,7 +860,7 @@ def run():
                         default=False)  # noqa
     parser.add_argument("--genome-type", help=f"Value to use for genome type",
                         default=None,
-                        required=True)
+                        required=False)
 
     args = parser.parse_args()
 
