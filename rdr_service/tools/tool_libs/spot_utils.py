@@ -15,17 +15,21 @@ from dateutil.parser import parse
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
 from sqlalchemy.orm import aliased
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_
 from sqlalchemy import case
 
 from rdr_service.dao import database_factory
 from rdr_service.clock import Clock
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
-from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
+from rdr_service.model.genomics import (GenomicSetMember, GenomicGCValidationMetrics, GenomicAW1Raw, GenomicAW2Raw,
+                                        GenomicAW3Raw, GenomicAW4Raw)
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.site import Site
 from rdr_service.participant_enums import QuestionnaireResponseClassificationType
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.spot.value_normalizer import ValueNormalizer
@@ -56,6 +60,11 @@ def validate_args(arg_string):
                     _logger.error("--cutoff-date required for operation")
                     return 1
                 obj.args.cutoff_date = parse(obj.args.cutoff_date)
+            if arg_string == "genome-type":
+                if obj.args.genome_type is None:
+                    _logger.error("--genome-type required for operation")
+                    return 1
+                obj.args.genome_type = parse(obj.args.genome_type)
             if arg_string == "ods_table":
                 valid_ods_tables = []
                 if meth.__name__ == 'purge_duplicate_values':
@@ -299,12 +308,16 @@ class SpotTool(ToolBase):
         sys.exit()
 
     @validate_args(arg_string="cutoff_date")
+    @validate_args(arg_string="genome_type")
     def load_ods_sample_data_element(self):
         """
         Main function for extracting RDR genomic data, pivoting the data,
         and loading it into rdr_ods.sample_data_element
         """
         self.gcp_env.activate_sql_proxy()
+        pipeline_id = 'cidr_egt_1'
+        if self.args.genome_type == 'aou_wgs':
+            pipeline_id = 'dragen_3.7.8'
 
         # get data elements from registry
         registered_member_data_elements = list(self.get_data_elements_from_registry("sample_data_element",
@@ -312,7 +325,9 @@ class SpotTool(ToolBase):
 
         # Get all newly modified members (with aw4)
         modified_members = self.get_modified_member_data(registered_member_data_elements,
-                                                         last_update_date=self.args.cutoff_date)
+                                                         last_update_date=self.args.cutoff_date,
+                                                         genome_type=self.args.genome_type,
+                                                         pipeline_id=pipeline_id)
 
         # Pivot registered
         pivoted_data = self.pivot_member_data(registered_member_data_elements, modified_members)
@@ -497,7 +512,7 @@ class SpotTool(ToolBase):
         return set_a.union(set_b)
 
     @staticmethod
-    def get_modified_member_data(data_elements, last_update_date):
+    def get_modified_member_data(data_elements, last_update_date, genome_type, pipeline_id):
         """
         Retrieves genomic modified data since last_update_date
         Builds selection columns dynamically based on data_elements
@@ -519,7 +534,7 @@ class SpotTool(ToolBase):
 
         session = database_factory.get_database().make_session()
 
-        query = session.query(
+        query = (session.query(
             *rdr_attributes
         ).join(
             Participant,
@@ -529,18 +544,59 @@ class SpotTool(ToolBase):
             Participant.participantId == ParticipantSummary.participantId
         ).join(
             GenomicGCValidationMetrics,
-            GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            and_(
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
+                GenomicGCValidationMetrics.pipelineId == pipeline_id
+            )
+        ).join(
+            BiobankStoredSample,
+            BiobankStoredSample.biobankStoredSampleId == GenomicSetMember.collectionTubeId
+        ).join(
+            BiobankOrderIdentifier,
+            BiobankStoredSample.biobankOrderIdentifier == BiobankOrderIdentifier.value
+        ).join(
+            BiobankOrder,
+            BiobankOrderIdentifier.biobankOrderId == BiobankOrder.biobankOrderId
+        ).outerjoin(
+            Site,
+            BiobankOrder.collectedSiteId == Site.siteId
+        ).join(
+            GenomicAW1Raw,
+            and_(
+                GenomicAW1Raw.sample_id == GenomicSetMember.sampleId,
+                GenomicAW1Raw.genome_type == genome_type,
+            )
+        ).join(
+            GenomicAW2Raw,
+            and_(
+                GenomicAW2Raw.sample_id == GenomicSetMember.sampleId,
+                GenomicAW2Raw.genome_type == genome_type,
+                GenomicAW2Raw.pipeline_id == pipeline_id
+            )
+        ).join(
+            GenomicAW3Raw,
+            and_(
+                GenomicAW3Raw.sample_id == GenomicSetMember.sampleId,
+                GenomicAW3Raw.genome_type == genome_type,
+                GenomicAW3Raw.pipeline_id == pipeline_id
+            )
+        ).join(
+            GenomicAW4Raw,
+            and_(
+                GenomicAW4Raw.sample_id == GenomicSetMember.sampleId,
+                GenomicAW4Raw.genome_type == genome_type
+            )
         ).filter(
-            GenomicSetMember.aw4ManifestJobRunID.isnot(None),
             GenomicSetMember.ignoreFlag == 0,
             GenomicGCValidationMetrics.ignoreFlag == 0,
+            BiobankOrder.is_not_ignored(),
             or_(
                 GenomicSetMember.modified > last_update_date,
                 GenomicGCValidationMetrics.modified > last_update_date,
-                ),
+            ),
             # GenomicSetMember.participantId.in_(),  # TODO: Add param
-            GenomicSetMember.genomeType.in_(["aou_wgs", "aou_array"])
-        )
+            GenomicSetMember.genomeType.in_([genome_type])
+        ))
         return query.all()
 
     @staticmethod
@@ -562,6 +618,7 @@ class SpotTool(ToolBase):
             Participant.researchId,
             question_code.value.label('question_code'),
             answer_code.value.label('value_string'),
+            QuestionnaireResponseAnswer.valueDate,
             QuestionnaireResponse.authored.label("authored_timestamp"),
             func.now().label('created_timestamp'),
         ]
@@ -591,7 +648,7 @@ class SpotTool(ToolBase):
         ).join(
             question_code,
             question_code.codeId == QuestionnaireQuestion.codeId
-        ).join(
+        ).outerjoin(
             answer_code,
             answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId
         ).join(
@@ -615,6 +672,18 @@ class SpotTool(ToolBase):
         """
 
         for row in data:
+            if row.value_string is None:
+                new_birthdate_row = {
+                    'participant_id': row.participantId,
+                    'research_id': row.researchId,
+                    'data_element_id': row.data_element_id,
+                    'value_string': str(row.valueDate),
+                    'created_timestamp': row.created_timestamp.isoformat(),
+                    'authored_timestamp': row.authored_timestamp.isoformat()
+                }
+
+                yield new_birthdate_row
+
             new_row = {
                 'participant_id': row.participantId,
                 'research_id': row.researchId,
@@ -782,6 +851,9 @@ def run():
     parser.add_argument("--new-ids", help="creates new uuids if loading rdr_ods.data_element",
                         action="store_true",
                         default=False)  # noqa
+    parser.add_argument("--genome-type", help=f"Value to use for genome type",
+                        default=None,
+                        required=True)
 
     args = parser.parse_args()
 
