@@ -582,9 +582,16 @@ class SpotTool(ToolBase):
             )
         ).join(
             GenomicAW4Raw,
-            and_(
-                GenomicAW4Raw.sample_id == GenomicSetMember.sampleId,
-                GenomicAW4Raw.genome_type == genome_type
+            or_(
+                and_(
+                    GenomicAW4Raw.sample_id == GenomicSetMember.sampleId,
+                    GenomicAW4Raw.genome_type == 'aou_array'
+                ),
+                and_(
+                    GenomicAW4Raw.sample_id == GenomicSetMember.sampleId,
+                    GenomicAW4Raw.genome_type == 'aou_wgs',
+                    GenomicAW4Raw.pipeline_id == pipeline_id
+                )
             )
         ).filter(
             GenomicSetMember.ignoreFlag == 0,
