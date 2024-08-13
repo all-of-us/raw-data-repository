@@ -157,8 +157,8 @@ class OrganizationHierarchySyncDao(BaseDao):
                 self.hpo_dao.insert_with_session(session, entity)
         bq_hpo_update_by_id(hpo_id)
 
-    # def update_organization(self, site_data_obj: dict) -> None:
-    #     ...
+    def update_organization(self, site_data_obj: dict) -> None:
+        print(site_data_obj)
 
     def _update_organization(self, hierarchy_org_obj):
         if hierarchy_org_obj.id is None:
@@ -202,8 +202,8 @@ class OrganizationHierarchySyncDao(BaseDao):
         org_id = self.organization_dao.get_by_external_id(organization_id.upper()).organizationId
         bq_organization_update_by_id(org_id)
 
-    # def update_site(self, site_data_obj: dict) -> None:
-    #     ...
+    def update_site(self, site_data_obj: dict) -> None:
+        print(site_data_obj)
 
     def _update_site(self, hierarchy_org_obj):
 
