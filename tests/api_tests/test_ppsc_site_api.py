@@ -5,7 +5,10 @@ from copy import deepcopy
 
 from rdr_service import config
 from rdr_service.api_util import PPSC, RDR, HEALTHPRO
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.ppsc_dao import SiteDao, PPSCDefaultBaseDao
+from rdr_service.dao.site_dao import SiteDao as LegacySiteDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.ppsc import PartnerEventActivity
 from tests.helpers.unittest_base import BaseTestCase
@@ -18,6 +21,10 @@ class PPSCSiteAPITest(BaseTestCase):
         self.ppsc_data_gen = PPSCDataGenerator()
         self.site_dao = SiteDao()
         self.partner_event_activity_dao = PPSCDefaultBaseDao(model_type=PartnerEventActivity)
+
+        self.hpo_dao = HPODao()
+        self.organization_dao = OrganizationDao()
+        self.legacy_site_dao = LegacySiteDao()
 
         activities = ['Site Update']
         for activity in activities:
@@ -193,6 +200,53 @@ class PPSCSiteAPITest(BaseTestCase):
         # should be 2
         current_partner_activities = self.partner_event_activity_dao.get_all()
         self.assertEqual(len(current_partner_activities), 2)
+
+    def test_awardee_insert_sync_rdr_schema(self):
+
+        update_payload = {
+            'awardee_id': 'PITTS'
+        }
+        self.base_payload.update(update_payload)
+
+        response = self.send_post('Site', request_data=self.base_payload)
+        self.assertTrue(response is not None)
+
+        current_hpo = [obj for obj in self.hpo_dao.get_all() if obj.name == self.base_payload.get('awardee_id')]
+
+        # add more db value tests when payload is confirmed
+        self.assertEqual(len(current_hpo), 1)
+        self.assertEqual(current_hpo[0].name, update_payload.get('awardee_id'))
+        self.assertTrue(current_hpo[0].resourceId is not None)
+
+    def test_awardee_update_sync_rdr_schema(self):
+
+        response = self.send_post('Site', request_data=self.base_payload)
+        self.assertTrue(response is not None)
+
+        current_hpo = [obj for obj in self.hpo_dao.get_all() if obj.name == self.base_payload.get('awardee_id')]
+
+        # add more db value tests when payload is confirmed
+        self.assertEqual(len(current_hpo), 1)
+
+    # def test_site_update_sync_rdr_schema(self):
+    #
+    #     response = self.send_post('Site', request_data=self.base_payload)
+    #     self.assertTrue(response is not None)
+    #
+    # def test_site_insert_sync_rdr_schema(self):
+    #
+    #     response = self.send_post('Site', request_data=self.base_payload)
+    #     self.assertTrue(response is not None)
+    #
+    # def test_org_insert_sync_rdr_schema(self):
+    #
+    #     response = self.send_post('Site', request_data=self.base_payload)
+    #     self.assertTrue(response is not None)
+    #
+    # def test_org_update_sync_rdr_schema(self):
+    #
+    #     response = self.send_post('Site', request_data=self.base_payload)
+    #     self.assertTrue(response is not None)
 
     def tearDown(self):
         super().tearDown()

@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from flask import request
 from werkzeug.exceptions import BadRequest
@@ -6,8 +7,10 @@ from werkzeug.exceptions import BadRequest
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RDR, PPSC
 from rdr_service.app_util import auth_required
+from rdr_service.dao.organization_hierarchy_sync_dao import OrganizationHierarchySyncDao
 from rdr_service.dao.ppsc_dao import SiteDao, PPSCDefaultBaseDao
 from rdr_service.model.ppsc import PartnerActivity, Site, PartnerEventActivity
+# pylint: disable=broad-except
 
 
 class PPSCSiteAPI(BaseApi):
@@ -79,5 +82,45 @@ class PPSCSiteAPI(BaseApi):
                 **participant_event_activity_dict
             )
         )
+
+        self.sync_to_rdr_schema(site_data=site_data)
         return site_record
 
+    @classmethod
+    def sync_to_rdr_schema(cls, *, site_data):
+        try:
+            SiteDataSync(site_data=site_data).run_site_sync()
+        except Exception as e:
+            logging.warning(f'Error when syncing data to RDR schema: {e}')
+
+
+class SiteDataSync:
+
+    def __init__(self, *, site_data: dict):
+        self.legacy_site_dao = OrganizationHierarchySyncDao()
+        self.site_data_struct = {}
+        self.site_data = site_data
+
+    def generate_append_resource_id(self) -> None:
+        resource_id = uuid.uuid4()
+        self.site_data['resource_id'] = resource_id
+
+    # remove when payload confirmed
+    def add_temp_els(self):
+        self.site_data['awardee_name'] = 'Test Display Name'
+        self.site_data['awardee_type'] = 'HPO'
+
+    def build_site_data_dict(self) -> None:
+        self.generate_append_resource_id()
+        self.add_temp_els() # remove when payload confirmed
+        self.site_data_struct['awardee'] = self.legacy_site_dao.update_awardee
+        self.site_data_struct['organization'] = self.legacy_site_dao.update_organization
+        self.site_data_struct['site'] = self.legacy_site_dao.update_site
+
+    def send_site_data_elements(self) -> None:
+        self.build_site_data_dict()
+        for update_value in self.site_data_struct.values():
+            update_value(self.site_data)
+
+    def run_site_sync(self):
+        self.send_site_data_elements()
