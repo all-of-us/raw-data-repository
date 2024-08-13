@@ -242,3 +242,69 @@ class SiteAttributionEvent(PPSCBase):
 
 event.listen(SiteAttributionEvent, "before_insert", model_insert_listener)
 event.listen(SiteAttributionEvent, "before_update", model_update_listener)
+
+
+class PartnerActivity(PPSCBase):
+    __tablename__ = "partner_activity"
+
+    id = Column("id", Integer, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    name = Column(String(128))
+    rdr_note = Column(String(1024), nullable=True)
+    rule_codes = Column(JSON, nullable=True)
+
+
+event.listen(PartnerActivity, "before_insert", model_insert_listener)
+event.listen(PartnerActivity, "before_update", model_update_listener)
+
+
+class PartnerEventActivity(PPSCBase):
+    __tablename__ = "partner_event_activity"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    ignore_reason = Column(String(512))
+    activity_id = Column(Integer, ForeignKey("partner_activity.id"))
+    resource = Column(JSON, nullable=True)
+
+
+event.listen(PartnerEventActivity, "before_insert", model_insert_listener)
+event.listen(PartnerEventActivity, "before_update", model_update_listener)
+
+
+class Site(PPSCBase):
+    __tablename__ = "site"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    awardee_id = Column(String(128), index=True, nullable=False)
+    org_id = Column(String(128), index=True, nullable=False)
+    site_name = Column(String(512), index=True, nullable=False)
+    site_identifier = Column(String(128), index=True, nullable=False)
+
+    notes = Column(String(512))
+    scheduling_instructions = Column(String(1028))
+    enrollment_status_active = Column(TINYINT, default=0)
+    digital_scheduling_status_active = Column(TINYINT, default=0)
+    scheduling_status_active = Column(TINYINT, default=0)
+    anticipated_launch_date = Column(String(128))
+    location_name = Column(String(512))
+    directions = Column(String(1028))
+    mayo_link_id = Column(String(128))
+    active = Column(TINYINT, default=0)
+    address_line = Column(String(1028))
+    city = Column(String(128))
+    state = Column(String(128))
+    postal_code = Column(String(128))
+    phone = Column(String(128))
+    email = Column(String(512))
+    url = Column(String(512))
+
+
+event.listen(Site, "before_insert", model_insert_listener)
+event.listen(Site, "before_update", model_update_listener)

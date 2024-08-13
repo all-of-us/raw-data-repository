@@ -3,7 +3,7 @@ from datetime import datetime
 from rdr_service import clock
 from rdr_service.dao import database_factory
 from rdr_service.model.ppsc import Participant, Activity, EnrollmentEventType, ConsentEvent, ProfileUpdatesEvent, \
-    SurveyCompletionEvent
+    SurveyCompletionEvent, PartnerActivity
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 TIME = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
@@ -58,6 +58,15 @@ class PPSCDataGenerator(PPSCBaseDataGenerator):
         activity = self._activity(**kwargs)
         self._commit_to_database(activity)
         return activity
+
+    @staticmethod
+    def _partner_activity(**kwargs):
+        return PartnerActivity(**kwargs)
+
+    def create_database_partner_activity(self, **kwargs):
+        partner_activity = self._partner_activity(**kwargs)
+        self._commit_to_database(partner_activity)
+        return partner_activity
 
     @staticmethod
     def _enrollment_event_type(**kwargs):

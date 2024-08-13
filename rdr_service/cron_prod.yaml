@@ -136,7 +136,7 @@ cron:
   timezone: America/New_York
 - description: Test Participant Cleanup Reminder
   url: /offline/PTSCTestParticipantCleanupRequest
-  schedule: 1 of december, march, june, september, 09:00
+  schedule: 1 of december, march, june, september 09:00
   target: offline
   timezone: America/New_York
 - description: Daily Duplicate Account Check
@@ -149,3 +149,8 @@ cron:
   target: offline
   timezone: America/New_York
   url: /offline/detect_etm_response_duplicates
+- description: Monthly withdrawal report
+  url: /offline/BiobankWithdrawalReport
+  schedule: 1 of month 07:00
+  timezone: America/New_York
+  target: offline
