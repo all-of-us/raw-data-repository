@@ -254,6 +254,7 @@ class HierarchyContentApiTest(BaseTestCase):
                 '_get_lat_long_for_site')
     @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
                 '_get_time_zone')
+    # organiztion HERE
     def test_create_hpo_org_site(self, time_zone, lat_long):
         # NOTE: These payloads received direct from PTC on 11-19-19
         hpo_json = {
