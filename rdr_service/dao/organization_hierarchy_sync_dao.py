@@ -158,7 +158,33 @@ class OrganizationHierarchySyncDao(BaseDao):
         bq_hpo_update_by_id(hpo_id)
 
     def update_organization(self, site_data_obj: dict) -> None:
-        print(site_data_obj)
+        # waiting on payload confirm
+        hpo = self.hpo_dao.get_by_resource_id(site_data_obj.get('resource_id'))
+        if not hpo:
+            raise BadRequest(f'Cannot link hpo to organization: {site_data_obj.get("org_id").upper()}')
+
+        entity_dict = {
+            'externalId': site_data_obj.get('org_id').upper(),
+            'displayName': site_data_obj.get('organization_name'),
+            'hpoId': hpo.hpoId,
+            'isObsolete': ObsoleteStatus('OBSOLETE') if not site_data_obj.get('active') else None,
+            'resourceId': site_data_obj.get('resource_id'),
+        }
+
+        entity = self.organization_dao.model_type(**entity_dict)
+
+        existing_map = {entity.externalId: entity for entity in self.organization_dao.get_all(refresh_cache=True)}
+        existing_record = existing_map.get(entity_dict.get('externalId'))
+
+        org_id = self.organization_dao.get_by_external_id(site_data_obj.get('org_id').upper()).organizationId
+
+        if existing_record:
+            self.organization_dao.update(entity)
+            bq_organization_update_by_id(org_id)
+            return
+
+        self.organization_dao.insert(entity)
+        bq_organization_update_by_id(org_id)
 
     def _update_organization(self, hierarchy_org_obj):
         if hierarchy_org_obj.id is None:

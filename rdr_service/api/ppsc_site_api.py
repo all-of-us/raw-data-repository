@@ -109,6 +109,7 @@ class SiteDataSync:
     def add_temp_els(self):
         self.site_data['awardee_name'] = 'Test Display Name'
         self.site_data['awardee_type'] = 'HPO'
+        self.site_data['organization_name'] = 'The organization name'
 
     def build_site_data_dict(self) -> None:
         self.generate_append_resource_id()

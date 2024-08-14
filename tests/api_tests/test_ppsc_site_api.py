@@ -228,16 +228,17 @@ class PPSCSiteAPITest(BaseTestCase):
         # add more db value tests when payload is confirmed
         self.assertEqual(len(current_hpo), 1)
 
-    # def test_site_update_sync_rdr_schema(self):
-    #
-    #     response = self.send_post('Site', request_data=self.base_payload)
-    #     self.assertTrue(response is not None)
-    #
-    # def test_site_insert_sync_rdr_schema(self):
-    #
-    #     response = self.send_post('Site', request_data=self.base_payload)
-    #     self.assertTrue(response is not None)
-    #
+    def test_site_update_sync_rdr_schema(self):
+
+        response = self.send_post('Site', request_data=self.base_payload)
+        self.assertTrue(response is not None)
+
+    def test_site_insert_sync_rdr_schema(self):
+
+        response = self.send_post('Site', request_data=self.base_payload)
+        self.assertTrue(response is not None)
+
+    # wating on paylaod confirm for relationship to HPO
     # def test_org_insert_sync_rdr_schema(self):
     #
     #     response = self.send_post('Site', request_data=self.base_payload)
