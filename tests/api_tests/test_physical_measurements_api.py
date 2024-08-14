@@ -278,6 +278,73 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         for em in [em1, bp1, bp2, bp3, q1, em2, q2, em3, em4, em5]:
             self.assertEqual(em.asdict(follow={"measurements": {}, "qualifiers": {}}), m.get(em.measurementId))
 
+    def test_insert_ppsc_remote(self):
+        self.send_consent(self.participant_id)
+        self.send_consent(self.participant_id_2)
+        # now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = self.time1
+        self._insert_measurements(now.isoformat())
+
+        response = self.send_get("Participant/%s/PhysicalMeasurements" % self.participant_id)
+        self.assertEqual("Bundle", response["resourceType"])
+        self.assertEqual("searchset", response["type"])
+        self.assertFalse(response.get("link"))
+        self.assertTrue(response.get("entry"))
+        self.assertEqual(1, len(response["entry"]))
+
+        physical_measurements_id = response["entry"][0]["resource"]["id"]
+        pm_id = int(physical_measurements_id)
+        physical_measurements = PhysicalMeasurementsDao().get_with_children(physical_measurements_id)
+        self.assertEqual(physical_measurements.createdSiteId, 1)
+        self.assertIsNone(physical_measurements.createdUsername)
+        self.assertEqual(physical_measurements.finalizedSiteId, 2)
+        self.assertIsNone(physical_measurements.finalizedUsername)
+        # Default json has height and weight
+        self.assertTrue(physical_measurements.satisfiesHeightRequirements)
+        self.assertTrue(physical_measurements.satisfiesWeightRequirements)
+
+        em1 = Measurement(
+            measurementId=pm_id * 1000,
+            physicalMeasurementsId=pm_id,
+            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+            codeValue="systolic-diastolic-blood-pressure-1",
+            measurementTime=now,
+            bodySiteCodeSystem="http://snomed.info/sct",
+            bodySiteCodeValue="368209003",
+        )
+        bp1 = Measurement(
+            measurementId=pm_id * 1000 + 1,
+            physicalMeasurementsId=pm_id,
+            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+            codeValue="systolic-blood-pressure-1",
+            measurementTime=now,
+            valueDecimal=109.0,
+            valueUnit="mm[Hg]",
+            parentId=em1.measurementId,
+        )
+        bp2 = Measurement(
+            measurementId=pm_id * 1000 + 2,
+            physicalMeasurementsId=pm_id,
+            codeSystem="http://loinc.org",
+            codeValue="8462-4",
+            measurementTime=now,
+            valueDecimal=44.0,
+            valueUnit="mm[Hg]",
+            parentId=em1.measurementId,
+        )
+        m1 = physical_measurements.measurements[0]
+        self.assertEqual(em1.asdict(), m1.asdict())
+        self.assertEqual(2, len(m1.measurements))
+        self.assertEqual(bp1.asdict(), m1.measurements[0].asdict())
+        self.assertEqual(bp2.asdict(), m1.measurements[1].asdict())
+
+        response = self.send_get("Participant/%s/PhysicalMeasurements" % self.participant_id_2)
+        self.assertEqual("Bundle", response["resourceType"])
+        self.assertEqual("searchset", response["type"])
+        self.assertFalse(response.get("link"))
+        self.assertTrue(response.get("entry"))
+        self.assertEqual(1, len(response["entry"]))
+
     def test_physical_measurements_sync(self):
         self.send_consent(self.participant_id)
         self.send_consent(self.participant_id_2)
