@@ -205,15 +205,36 @@
     "Withdrawal",
     "Deactivation",
     "Participant Status",
-    "Site Attribution"
+    "Site Attribution",
+    "NPH Opt In"
   ],
   "ppsc_intake_consent_event_types": ["Primary Consent", "Adult EHR Authorization"],
-  "ppsc_intake_survey_completion_event_types": ["The Basics"],
+  "ppsc_intake_survey_completion_event_types": [
+    "The Basics",
+    "Basics Data",
+    "Overall Health",
+    "Lifestyle",
+    "Health Care Access & Utilization",
+    "Personal and Family Health History",
+    "Social Determinants of Health",
+    "Life Functioning Survey",
+    "Emotional Health History and Well-Being",
+    "Behavioral Health & Personality"
+  ],
   "ppsc_intake_profile_updates_event_types": ["Profile Data"],
   "ppsc_intake_withdrawal_event_types": ["Withdrawal"],
   "ppsc_intake_deactivation_event_types": ["Deactivation"],
-  "ppsc_intake_participant_status_event_types": ["Participant Status"],
+  "ppsc_intake_participant_status_event_types": [
+    "Participant Status",
+    "Test Flag",
+    "Death",
+    "Enrollment Status",
+    "UBR Status",
+    "Retention Status",
+    "Patient Status"
+  ],
   "ppsc_intake_site_attribution_event_types": ["Site Attribution"],
+  "ppsc_intake_nph_opt_in_event_types": ["NPH Opt In"],
   "enabled_status_field_list": [
     "enrollmentStatusV3_2",
     "enrollmentStatusParticipantV3_2Time",
