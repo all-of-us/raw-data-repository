@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, Conflict, MethodNotAllowed
 
 from rdr_service.api.base_api import UpdatableApi
-from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO, PPSC, DV_FHIR_URL, DV_ORDER_URL
+from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO, PTC_AND_PPSC, DV_FHIR_URL, DV_ORDER_URL
 from rdr_service.app_util import ObjDict, auth_required, get_oauth_id, get_account_origin_id
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
@@ -30,7 +30,7 @@ class MailKitOrderApi(UpdatableApi):
         except KeyError:
             raise MethodNotAllowed("Method not allowed for resource type {}".format(resource_type))
 
-    @auth_required([PTC, PPSC])
+    @auth_required(PTC_AND_PPSC)
     def post(self):
         try:
             resource = request.get_json(force=True)
