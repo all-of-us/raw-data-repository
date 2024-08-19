@@ -304,8 +304,11 @@ class Site(PPSCBase):
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
+    awardee_type = Column(String(128), index=True, nullable=False)
     awardee_id = Column(String(128), index=True, nullable=False)
+    awardee_name = Column(String(128), index=True, nullable=False)
     org_id = Column(String(128), index=True, nullable=False)
+    organization_name = Column(String(128), index=True, nullable=False)
     site_name = Column(String(512), index=True, nullable=False)
     site_identifier = Column(String(128), index=True, nullable=False)
 

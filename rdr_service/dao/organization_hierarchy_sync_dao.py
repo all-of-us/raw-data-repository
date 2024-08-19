@@ -78,8 +78,7 @@ class OrganizationHierarchySyncDao(BaseDao):
             'name': site_data_obj.get('awardee_id').upper(),
             'displayName': site_data_obj.get('awardee_name'),
             'organizationType': OrganizationType(site_data_obj.get('awardee_type')),
-            'isObsolete': ObsoleteStatus('OBSOLETE') if not site_data_obj.get('active') else None,
-            'resourceId':  site_data_obj.get('resource_id'),
+            'isObsolete': ObsoleteStatus('OBSOLETE') if not site_data_obj.get('active') else None
         }
 
         entity = self.hpo_dao.model_type(**entity_dict)
@@ -158,32 +157,29 @@ class OrganizationHierarchySyncDao(BaseDao):
         bq_hpo_update_by_id(hpo_id)
 
     def update_organization(self, site_data_obj: dict) -> None:
-        # waiting on payload confirm
-        hpo = self.hpo_dao.get_by_resource_id(site_data_obj.get('resource_id'))
+        hpo = self.hpo_dao.get_by_name(site_data_obj.get('awardee_id'))
         if not hpo:
-            raise BadRequest(f'Cannot link hpo to organization: {site_data_obj.get("org_id").upper()}')
+            raise BadRequest(f'Cannot link HPO to organization: {site_data_obj.get("org_id").upper()}')
 
         entity_dict = {
             'externalId': site_data_obj.get('org_id').upper(),
             'displayName': site_data_obj.get('organization_name'),
             'hpoId': hpo.hpoId,
             'isObsolete': ObsoleteStatus('OBSOLETE') if not site_data_obj.get('active') else None,
-            'resourceId': site_data_obj.get('resource_id'),
         }
-
-        entity = self.organization_dao.model_type(**entity_dict)
 
         existing_map = {entity.externalId: entity for entity in self.organization_dao.get_all(refresh_cache=True)}
         existing_record = existing_map.get(entity_dict.get('externalId'))
 
-        org_id = self.organization_dao.get_by_external_id(site_data_obj.get('org_id').upper()).organizationId
+        entity = self.organization_dao.model_type(**entity_dict)
 
         if existing_record:
+            entity.organizationId = existing_record.organizationId
             self.organization_dao.update(entity)
-            bq_organization_update_by_id(org_id)
-            return
+        else:
+            self.organization_dao.insert(entity)
 
-        self.organization_dao.insert(entity)
+        org_id = self.organization_dao.get_by_external_id(site_data_obj.get('org_id').upper()).organizationId
         bq_organization_update_by_id(org_id)
 
     def _update_organization(self, hierarchy_org_obj):
@@ -230,6 +226,79 @@ class OrganizationHierarchySyncDao(BaseDao):
 
     def update_site(self, site_data_obj: dict) -> None:
         print(site_data_obj)
+        # hpo = self.hpo_dao.get_by_name(site_data_obj.get('awardee_id'))
+        # if not hpo:
+        #     raise BadRequest(f'Cannot link HPO to organization: {site_data_obj.get("org_id").upper()}')
+
+        # entity = Site(siteName=name,
+        #               googleGroup=google_group,
+        #               mayolinkClientNumber=mayolink_client_number,
+        #               organizationId=organization.organizationId,
+        #               hpoId=organization.hpoId,
+        #               siteType=site_type,
+        #               siteStatus=site_status,
+        #               enrollingStatus=enrolling_status,
+        #               inPersonOperationsStatus=in_person_status,
+        #               digitalSchedulingStatus=digital_scheduling_status,
+        #               scheduleInstructions=schedule_instructions,
+        #               scheduleInstructions_ES='',
+        #               launchDate=launch_date,
+        #               notes=notes,
+        #               notes_ES=notes_spanish,
+        #               directions=directions,
+        #               physicalLocationName=physical_location_name,
+        #               address1=address_1,
+        #               address2=address_2,
+        #               city=city,
+        #               state=state,
+        #               zipCode=zip_code,
+        #               phoneNumber=phone,
+        #               adminEmails=admin_email_addresses,
+        #               link=link,
+        #               isObsolete=is_obsolete,
+        #               resourceId=hierarchy_org_obj.id)
+
+        # entity_dict = {
+        #     'siteName': site_data_obj.get('site_name').upper(),
+        #     'googleGroup': site_data_obj.get('site_identifier'),
+        #     'mayolinkClientNumber': site_data_obj.get('mayo_link_id'),
+        #
+        #     'organizationId': '',
+        #     'hpoId': hpo.hpoId,
+        #     'siteType': '',
+        #     'siteStatus': '',
+        #
+        #     'enrollingStatus': site_data_obj.get('enrollemnt_status_active'),
+        #     'digitalSchedulingStatus': site_data_obj.get('digital_scheduling_status'),
+        #     'scheduleInstructions': site_data_obj.get('scheduling_instructions'),
+        #     'launchDate': site_data_obj.get('anticipated_launch_date'),
+        #     'notes': site_data_obj.get('notes'),
+        #     'directions': site_data_obj.get('directions'),
+        #     'physicalLocationName': site_data_obj.get('location_name'),
+        #     'address1': site_data_obj.get('address_line'),
+        #     'city': site_data_obj.get('city'),
+        #     'state': site_data_obj.get('state'),
+        #     'zipCode': site_data_obj.get('postal_code'),
+        #     'phoneNumber': site_data_obj.get('phone'),
+        #     'adminEmails': site_data_obj.get('email'),
+        #     'link': site_data_obj.get('url'),
+        #     'isObsolete': ObsoleteStatus('OBSOLETE') if not site_data_obj.get('active') else None
+        # }
+        #
+        # entity = self.site_dao.model_type(**entity_dict)
+
+        # existing_map = {entity.externalId: entity for entity in self.organization_dao.get_all(refresh_cache=True)}
+        # existing_record = existing_map.get(entity_dict.get('externalId'))
+        #
+        # org_id = self.organization_dao.get_by_external_id(site_data_obj.get('org_id').upper()).organizationId
+        #
+        # if existing_record:
+        #     self.organization_dao.update(entity)
+        #     bq_organization_update_by_id(org_id)
+        #     return
+        #
+        # self.organization_dao.insert(entity)
+        # bq_organization_update_by_id(org_id)
 
     def _update_site(self, hierarchy_org_obj):
 

@@ -11,6 +11,7 @@ from rdr_service.dao.ppsc_dao import SiteDao, PPSCDefaultBaseDao
 from rdr_service.dao.site_dao import SiteDao as LegacySiteDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.ppsc import PartnerEventActivity
+from rdr_service.participant_enums import OrganizationType
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -33,8 +34,11 @@ class PPSCSiteAPITest(BaseTestCase):
             )
 
         self.base_payload = {
+            "awardee_type": "HPO",
             "awardee_id": "PITT",
+            "awardee_name": "Pittsburgh awardee",
             "org_id": "PITT_UPMC",
+            "organization_name": "Pittsburgh Health",
             "site_name": "UPMC Urgent Care Monroeville",
             "site_identifier": "hpo-site-monroeville",
             "enrollment_status_active": True,
@@ -213,41 +217,71 @@ class PPSCSiteAPITest(BaseTestCase):
 
         current_hpo = [obj for obj in self.hpo_dao.get_all() if obj.name == self.base_payload.get('awardee_id')]
 
-        # add more db value tests when payload is confirmed
         self.assertEqual(len(current_hpo), 1)
-        self.assertEqual(current_hpo[0].name, update_payload.get('awardee_id'))
-        self.assertTrue(current_hpo[0].resourceId is not None)
+        self.assertEqual(current_hpo[0].name, self.base_payload.get('awardee_id'))
+        self.assertEqual(current_hpo[0].displayName, self.base_payload.get('awardee_name'))
+        self.assertTrue(current_hpo[0].isObsolete is None)
+        self.assertEqual(current_hpo[0].organizationType, OrganizationType.HPO)
 
     def test_awardee_update_sync_rdr_schema(self):
+
+        update_payload = {
+            'awardee_id': 'PITTS',
+            'awardee_name': 'Pittsburgh Health Place'
+        }
+        self.base_payload.update(update_payload)
 
         response = self.send_post('Site', request_data=self.base_payload)
         self.assertTrue(response is not None)
 
         current_hpo = [obj for obj in self.hpo_dao.get_all() if obj.name == self.base_payload.get('awardee_id')]
 
-        # add more db value tests when payload is confirmed
         self.assertEqual(len(current_hpo), 1)
+        self.assertEqual(current_hpo[0].displayName, update_payload.get('awardee_name'))
 
-    # def test_site_update_sync_rdr_schema(self):
-    #
-    #     response = self.send_post('Site', request_data=self.base_payload)
-    #     self.assertTrue(response is not None)
-    #
-    # def test_site_insert_sync_rdr_schema(self):
-    #
-    #     response = self.send_post('Site', request_data=self.base_payload)
-    #     self.assertTrue(response is not None)
+    def test_org_insert_sync_rdr_schema(self):
 
-    # wating on payload confirm for relationship to HPO
-    # def test_org_insert_sync_rdr_schema(self):
-    #
-    #     response = self.send_post('Site', request_data=self.base_payload)
-    #     self.assertTrue(response is not None)
-    #
-    # def test_org_update_sync_rdr_schema(self):
-    #
-    #     response = self.send_post('Site', request_data=self.base_payload)
-    #     self.assertTrue(response is not None)
+        response = self.send_post('Site', request_data=self.base_payload)
+        self.assertTrue(response is not None)
+
+        current_org = [obj for obj in
+                       self.organization_dao.get_all() if obj.externalId == self.base_payload.get('org_id')]
+
+        self.assertEqual(len(current_org), 1)
+        self.assertEqual(current_org[0].displayName, self.base_payload.get('organization_name'))
+        self.assertEqual(current_org[0].externalId, self.base_payload.get('org_id'))
+        self.assertTrue(current_org[0].isObsolete is None)
+
+        current_hpos = [obj for obj in self.hpo_dao.get_all() if obj.name == self.base_payload.get('awardee_id')]
+        self.assertEqual(len(current_hpos), 1)
+
+        self.assertEqual(current_org[0].hpoId, current_hpos[0].hpoId)
+
+    def test_org_update_sync_rdr_schema(self):
+
+        current_hpo = self.data_generator.create_database_hpo()
+        current_org = self.data_generator.create_database_organization(
+            hpoId=current_hpo.hpoId,
+            externalId=self.base_payload.get('org_id')
+        )
+
+        self.base_payload['org_id'] = current_org.externalId
+
+        response = self.send_post('Site', request_data=self.base_payload)
+        self.assertTrue(response is not None)
+
+        current_org = [obj for obj in
+                       self.organization_dao.get_all() if obj.externalId == self.base_payload.get('org_id')]
+
+        self.assertEqual(len(current_org), 1)
+        self.assertEqual(current_org[0].displayName, self.base_payload.get('organization_name'))
+        self.assertEqual(current_org[0].externalId, self.base_payload.get('org_id'))
+        self.assertTrue(current_org[0].isObsolete is None)
+
+        current_hpos = [obj for obj in self.hpo_dao.get_all() if obj.name == self.base_payload.get('awardee_id')]
+        self.assertEqual(len(current_hpos), 1)
+
+        self.assertEqual(current_org[0].hpoId, current_hpos[0].hpoId)
 
     def tearDown(self):
         super().tearDown()
