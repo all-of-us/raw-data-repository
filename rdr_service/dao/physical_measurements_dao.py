@@ -741,6 +741,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 measurement = PhysicalMeasurementsDao.from_observation(observation, fullUrl, qualifier_map, first_pass)
                 if measurement:
                     measurements.append(measurement)
+        if created_username == "REMOTE":
+            collect_type = PhysicalMeasurementsCollectType.SELF_REPORTED
+        else:
+            collect_type = PhysicalMeasurementsCollectType.SITE
         record = PhysicalMeasurements(
             participantId=participant_id,
             measurements=measurements,
@@ -749,7 +753,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
             finalizedSiteId=finalized_site_id,
             finalizedUsername=finalized_username,
             origin='hpro',
-            collectType=PhysicalMeasurementsCollectType.SITE,
+            collectType=collect_type,
             originMeasurementUnit=OriginMeasurementUnit.UNSET
         )
         record = self.store_record_fhir_doc(record, resource_json)
