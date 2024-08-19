@@ -46,7 +46,7 @@ class PPSCSiteAPITest(BaseTestCase):
             "scheduling_status_active": True,
             "notes": "This is a note about an organization",
             "scheduling_instructions": "Please schedule appointments up to a week before intended date.",
-            "anticipated_launch_date": "07-02-2010",
+            "anticipated_launch_date": "2024-03-26",
             "location_name": "Thompson Building",
             "directions": "Exit 95 N and make a left onto Fake Street",
             "mayo_link_id": "123456",
@@ -282,6 +282,27 @@ class PPSCSiteAPITest(BaseTestCase):
         self.assertEqual(len(current_hpos), 1)
 
         self.assertEqual(current_org[0].hpoId, current_hpos[0].hpoId)
+
+    def test_site_insert_sync_rdr_schema(self):
+
+        self.base_payload['site_identifier'] = 'hpo-site-pittsville'
+
+        response = self.send_post('Site', request_data=self.base_payload)
+        self.assertTrue(response is not None)
+
+        current_site = [obj for obj in
+                        self.legacy_site_dao.get_all() if obj.googleGroup == self.base_payload.get('site_identifier')]
+        self.assertEqual(len(current_site), 1)
+
+        self.assertEqual(current_site[0].googleGroup, self.base_payload.get('site_identifier'))
+        self.assertEqual(current_site[0].siteName, self.base_payload.get('site_name'))
+
+        current_orgs = [obj for obj in self.organization_dao.get_all() if obj.externalId
+                        == self.base_payload.get('org_id')]
+
+        self.assertEqual(len(current_orgs), 1)
+
+        self.assertEqual(current_site[0].organizationId, current_orgs[0].organizationId)
 
     def tearDown(self):
         super().tearDown()
