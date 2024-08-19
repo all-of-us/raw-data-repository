@@ -244,6 +244,28 @@ event.listen(SiteAttributionEvent, "before_insert", model_insert_listener)
 event.listen(SiteAttributionEvent, "before_update", model_update_listener)
 
 
+class NPHOptInEvent(PPSCBase):
+    __tablename__ = "nph_opt_in_event"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime, index=True)
+    modified = Column(UTCDateTime)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    event_type_name = Column(String(128), index=True)
+    event_authored_time = Column(UTCDateTime, index=True)
+    data_element_name = Column(String(512), index=True)
+    data_element_value = Column(String(512), index=True)
+    ignore_flag = Column(TINYINT, default=0)
+    ignore_reason = Column(String(512))
+    is_correction_flag = Column(TINYINT, default=0)
+    dev_note = Column(String(512))
+
+
+event.listen(NPHOptInEvent, "before_insert", model_insert_listener)
+event.listen(NPHOptInEvent, "before_update", model_update_listener)
+
+
 class PartnerActivity(PPSCBase):
     __tablename__ = "partner_activity"
 
@@ -282,8 +304,11 @@ class Site(PPSCBase):
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
+    awardee_type = Column(String(128), index=True, nullable=False)
     awardee_id = Column(String(128), index=True, nullable=False)
+    awardee_name = Column(String(128), index=True, nullable=False)
     org_id = Column(String(128), index=True, nullable=False)
+    organization_name = Column(String(128), index=True, nullable=False)
     site_name = Column(String(512), index=True, nullable=False)
     site_identifier = Column(String(128), index=True, nullable=False)
 

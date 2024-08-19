@@ -971,8 +971,16 @@ class VibrentPediatricEhrConsentFile(PediatricEhrConsentFile, VibrentEhrConsentF
 
     def _get_date_elements(self):
         signature_page_number = self._get_signature_page_number()
-        return self.pdf.get_elements_intersecting_box(
+        elements = self.pdf.get_elements_intersecting_box(
             Rect.from_edges(left=175, right=280, bottom=85, top=90),
+            page=signature_page_number
+        )
+        if elements:
+            return elements
+
+        # check again higher up for Spanish versions
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=175, right=280, bottom=103, top=108),
             page=signature_page_number
         )
 

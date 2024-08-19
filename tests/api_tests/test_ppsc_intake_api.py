@@ -8,7 +8,7 @@ from rdr_service.api_util import HEALTHPRO, PPSC, RDR
 from rdr_service.dao.ppsc_dao import PPSCDefaultBaseDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.ppsc import ParticipantEventActivity, ConsentEvent, SurveyCompletionEvent, ProfileUpdatesEvent, \
-    WithdrawalEvent, DeactivationEvent, ParticipantStatusEvent, SiteAttributionEvent
+    WithdrawalEvent, DeactivationEvent, ParticipantStatusEvent, SiteAttributionEvent, NPHOptInEvent
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -24,6 +24,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.deactivation_event_dao = PPSCDefaultBaseDao(model_type=DeactivationEvent)
         self.participant_status_event_dao = PPSCDefaultBaseDao(model_type=ParticipantStatusEvent)
         self.site_attribution_event_dao = PPSCDefaultBaseDao(model_type=SiteAttributionEvent)
+        self.nph_opt_in_event_dao = PPSCDefaultBaseDao(model_type=NPHOptInEvent)
 
         activities = [
             "ENROLLMENT",
@@ -33,7 +34,8 @@ class PPSCIntakeAPITest(BaseTestCase):
             "Withdrawal",
             "Deactivation",
             "Participant Status",
-            "Site Attribution"
+            "Site Attribution",
+            "NPH Opt In"
         ]
         for activity in activities:
             self.ppsc_data_gen.create_database_activity(
@@ -750,6 +752,78 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual('Site Attribution', site_attribution_events[1].event_type_name)
         self.assertEqual('activity_date_time', site_attribution_events[1].data_element_name)
         self.assertEqual("2024-05-20T14:30:00Z", site_attribution_events[1].data_element_value)
+
+    def test_intake_nph_opt_in_event_type_validation(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+
+        payload = {
+            "activity": "NPH Opt In",
+            "eventType": "Pepperoni",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "submitted_yes,"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00Z"
+                },
+            ]
+        }
+
+        response = self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
+        self.assertEqual(response.status_code, 400)
+
+    def test_intake_nph_opt_in_insert(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+
+        payload = {
+            "activity": "NPH Opt In",
+            "eventType": "NPH Opt In",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "submitted_yes"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00Z"
+                },
+            ]
+        }
+
+        test_time = datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+        participant_event_activities = self.ppsc_participant_activity_dao.get_all()
+        self.assertEqual(1, len(participant_event_activities))
+
+        self.assertEqual(test_time, participant_event_activities[0].created)
+        self.assertEqual(test_time, participant_event_activities[0].modified)
+        self.assertEqual(participant.id, participant_event_activities[0].participant_id)
+        self.assertEqual(payload, participant_event_activities[0].resource)
+        self.assertEqual(9, participant_event_activities[0].activity_id)
+
+        nph_opt_in_events = self.nph_opt_in_event_dao.get_all()
+        self.assertEqual(2, len(nph_opt_in_events))
+        self.assertEqual(test_time, nph_opt_in_events[0].created)
+        self.assertEqual(test_time, nph_opt_in_events[0].modified)
+        self.assertEqual(1, nph_opt_in_events[0].event_id)
+        self.assertEqual(participant.id, nph_opt_in_events[0].participant_id)
+        self.assertEqual('NPH Opt In', nph_opt_in_events[0].event_type_name)
+        self.assertEqual('activity_status', nph_opt_in_events[0].data_element_name)
+        self.assertEqual('submitted_yes', nph_opt_in_events[0].data_element_value)
+
+        self.assertEqual(test_time, nph_opt_in_events[1].created)
+        self.assertEqual(test_time, nph_opt_in_events[1].modified)
+        self.assertEqual(1, nph_opt_in_events[1].event_id)
+        self.assertEqual(participant.id, nph_opt_in_events[1].participant_id)
+        self.assertEqual('NPH Opt In', nph_opt_in_events[1].event_type_name)
+        self.assertEqual('activity_date_time', nph_opt_in_events[1].data_element_name)
+        self.assertEqual("2024-05-20T14:30:00Z", nph_opt_in_events[1].data_element_value)
 
     def tearDown(self):
         super().tearDown()

@@ -60,6 +60,7 @@ class OrganizationHierarchySyncDao(BaseDao):
         return None
 
     def update(self, hierarchy_org_obj):
+
         obj_type = self._get_type(hierarchy_org_obj)
 
         operation_funcs = {
@@ -73,16 +74,48 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         operation_funcs[obj_type](hierarchy_org_obj)
 
+    def update_awardee(self, site_data_obj: dict) -> None:
+        entity_dict = {
+            'name': site_data_obj.get('awardee_id').upper(),
+            'displayName': site_data_obj.get('awardee_name'),
+            'organizationType': OrganizationType(site_data_obj.get('awardee_type')),
+            'isObsolete': ObsoleteStatus('OBSOLETE') if not site_data_obj.get('active') else None
+        }
+
+        entity = self.hpo_dao.model_type(**entity_dict)
+
+        existing_record = {awardee.name: awardee for awardee in self.hpo_dao.get_all(refresh_cache=True)}
+        existing_record = existing_record.get(entity_dict.get('name'))
+
+        if existing_record:
+            entity.hpoId = existing_record.hpoId
+            self.hpo_dao.update(entity)
+            bq_hpo_update_by_id(entity.hpoId)
+            return
+
+        hpo_id_list = [item.hpoId for item in self.hpo_dao.get_all(refresh_cache=True)]
+        entity.hpoId = max(hpo_id_list) + 1 if len(hpo_id_list) > 0 else 0
+        self.hpo_dao.insert(entity)
+        bq_hpo_update_by_id(entity.hpoId)
+
     def _update_awardee(self, hierarchy_org_obj):
+
         if hierarchy_org_obj.id is None:
             raise BadRequest('No id found in payload data.')
-        awardee_id = self._get_value_from_identifier(hierarchy_org_obj,
-                                                     HIERARCHY_CONTENT_SYSTEM_PREFIX + 'awardee-id')
+
+        awardee_id = self._get_value_from_identifier(
+            hierarchy_org_obj,
+            HIERARCHY_CONTENT_SYSTEM_PREFIX + 'awardee-id'
+        )
         if awardee_id is None:
             raise BadRequest('No organization-identifier info found in payload data.')
+
         is_obsolete = ObsoleteStatus('OBSOLETE') if not hierarchy_org_obj.active else None
-        awardee_type = self._get_value_from_extention(hierarchy_org_obj, HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                      'awardee-type')
+
+        awardee_type = self._get_value_from_extention(
+            hierarchy_org_obj,
+            HIERARCHY_CONTENT_SYSTEM_PREFIX + 'awardee-type'
+        )
 
         try:
             organization_type = OrganizationType(awardee_type)
@@ -92,11 +125,13 @@ class OrganizationHierarchySyncDao(BaseDao):
             raise BadRequest('Invalid organization type {} for awardee {}'
                              .format(awardee_type, awardee_id))
 
-        entity = HPO(name=awardee_id.upper(),
-                     displayName=hierarchy_org_obj.name,
-                     organizationType=organization_type,
-                     isObsolete=is_obsolete,
-                     resourceId=hierarchy_org_obj.id)
+        entity = HPO(
+            name=awardee_id.upper(),
+            displayName=hierarchy_org_obj.name,
+            organizationType=organization_type,
+            isObsolete=is_obsolete,
+            resourceId=hierarchy_org_obj.id
+        )
 
         existing_map = {entity.name: entity for entity in self.hpo_dao.get_all(refresh_cache=True)}
         existing_entity = existing_map.get(entity.name)
@@ -123,7 +158,35 @@ class OrganizationHierarchySyncDao(BaseDao):
                 self.hpo_dao.insert_with_session(session, entity)
         bq_hpo_update_by_id(hpo_id)
 
+    def update_organization(self, site_data_obj: dict) -> None:
+
+        hpo = self.hpo_dao.get_by_name(site_data_obj.get('awardee_id'))
+        if not hpo:
+            raise BadRequest(f'Cannot link HPO to organization: {site_data_obj.get("org_id").upper()}')
+
+        entity_dict = {
+            'externalId': site_data_obj.get('org_id').upper(),
+            'displayName': site_data_obj.get('organization_name'),
+            'hpoId': hpo.hpoId,
+            'isObsolete': ObsoleteStatus('OBSOLETE') if not site_data_obj.get('active') else None,
+        }
+
+        existing_map = {entity.externalId: entity for entity in self.organization_dao.get_all(refresh_cache=True)}
+        existing_record = existing_map.get(entity_dict.get('externalId'))
+
+        entity = self.organization_dao.model_type(**entity_dict)
+
+        if existing_record:
+            entity.organizationId = existing_record.organizationId
+            self.organization_dao.update(entity)
+        else:
+            self.organization_dao.insert(entity)
+
+        org_id = self.organization_dao.get_by_external_id(site_data_obj.get('org_id').upper()).organizationId
+        bq_organization_update_by_id(org_id)
+
     def _update_organization(self, hierarchy_org_obj):
+
         if hierarchy_org_obj.id is None:
             raise BadRequest('No id found in payload data.')
         organization_id = self._get_value_from_identifier(hierarchy_org_obj,
@@ -164,6 +227,52 @@ class OrganizationHierarchySyncDao(BaseDao):
                 self.organization_dao.insert_with_session(session, entity)
         org_id = self.organization_dao.get_by_external_id(organization_id.upper()).organizationId
         bq_organization_update_by_id(org_id)
+
+    def update_site(self, site_data_obj: dict) -> None:
+
+        hpo = self.hpo_dao.get_by_name(site_data_obj.get('awardee_id'))
+        if not hpo:
+            raise BadRequest(f'Cannot link HPO to organization: {site_data_obj.get("org_id").upper()}')
+
+        organization_id = self.organization_dao.get_by_external_id(site_data_obj.get('org_id'))
+
+        entity_dict = {
+            'siteName': site_data_obj.get('site_name'),
+            'googleGroup': site_data_obj.get('site_identifier'),
+            'mayolinkClientNumber': site_data_obj.get('mayo_link_id'),
+            'organizationId': organization_id.organizationId,
+            'hpoId': hpo.hpoId,
+            'siteStatus': SiteStatus('ACTIVE' if site_data_obj.get('active') else 'INACTIVE'),
+            'enrollingStatus': site_data_obj.get('enrollemnt_status_active'),
+            'digitalSchedulingStatus': site_data_obj.get('digital_scheduling_status'),
+            'scheduleInstructions': site_data_obj.get('scheduling_instructions'),
+            'launchDate': parse(site_data_obj.get('anticipated_launch_date')).date(),
+            'notes': site_data_obj.get('notes'),
+            'directions': site_data_obj.get('directions'),
+            'physicalLocationName': site_data_obj.get('location_name'),
+            'address1': site_data_obj.get('address_line'),
+            'city': site_data_obj.get('city'),
+            'state': site_data_obj.get('state'),
+            'zipCode': site_data_obj.get('postal_code'),
+            'phoneNumber': site_data_obj.get('phone'),
+            'adminEmails': site_data_obj.get('email'),
+            'link': site_data_obj.get('url'),
+            'isObsolete': ObsoleteStatus('OBSOLETE') if not site_data_obj.get('active') else None
+        }
+
+        entity = self.site_dao.model_type(**entity_dict)
+
+        existing_map = {entity.googleGroup: entity for entity in self.site_dao.get_all(refresh_cache=True)}
+        existing_record = existing_map.get(site_data_obj.get('site_identifier'))
+
+        if existing_record:
+            entity.siteId = existing_record.siteId
+            self.site_dao.update(entity)
+        else:
+            self.site_dao.insert(entity)
+
+        site_id = self.site_dao.get_by_google_group(site_data_obj.get('site_identifier')).siteId
+        bq_site_update_by_id(site_id)
 
     def _update_site(self, hierarchy_org_obj):
 

@@ -42,7 +42,7 @@ greenlet==3.0.1          # via gevent
 grpc-google-iam-v1==0.12.3  # via google-cloud-tasks
 grpcio==1.59.0           # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
 gspread==5.12.0
-gunicorn==22.0.0          # via -r requirements.in
+gunicorn==23.0.0          # via -r requirements.in
 httplib2==0.19.1          # via google-api-python-client, google-auth-httplib2, oauth2client
 idna==3.7                 # via requests
 isodate==0.6.0            # via fhirclient
