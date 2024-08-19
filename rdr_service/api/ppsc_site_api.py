@@ -8,8 +8,10 @@ from rdr_service.api_util import RDR, PPSC
 from rdr_service.app_util import auth_required
 from rdr_service.dao.ppsc_dao import SiteDao, PPSCDefaultBaseDao
 from rdr_service.model.ppsc import PartnerActivity, Site, PartnerEventActivity
+from rdr_service.services.ppsc.ppsc_site_sync import SiteDataSync
 
 
+# pylint: disable=broad-except
 class PPSCSiteAPI(BaseApi):
 
     def __init__(self):
@@ -79,5 +81,13 @@ class PPSCSiteAPI(BaseApi):
                 **participant_event_activity_dict
             )
         )
+
+        self.sync_to_rdr_schema(site_data=site_data)
         return site_record
 
+    @classmethod
+    def sync_to_rdr_schema(cls, *, site_data):
+        try:
+            SiteDataSync(site_data=site_data).run_site_sync()
+        except Exception as e:
+            logging.warning(f'Error when syncing data to RDR schema: {e}')
