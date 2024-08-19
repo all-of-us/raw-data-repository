@@ -304,6 +304,20 @@ class PPSCSiteAPITest(BaseTestCase):
 
         self.assertEqual(current_site[0].organizationId, current_orgs[0].organizationId)
 
+    def test_site_update_sync_rdr_schema(self):
+
+        self.base_payload['postal_code'] = '11111'
+
+        response = self.send_post('Site', request_data=self.base_payload)
+        self.assertTrue(response is not None)
+
+        current_site = [obj for obj in
+                        self.legacy_site_dao.get_all() if obj.googleGroup == self.base_payload.get('site_identifier')]
+        self.assertEqual(len(current_site), 1)
+
+        self.assertEqual(current_site[0].googleGroup, self.base_payload.get('site_identifier'))
+        self.assertEqual(current_site[0].zipCode, self.base_payload.get('postal_code'))
+
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("ppsc.partner_activity")
