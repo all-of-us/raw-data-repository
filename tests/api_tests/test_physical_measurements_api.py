@@ -278,6 +278,30 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         for em in [em1, bp1, bp2, bp3, q1, em2, q2, em3, em4, em5]:
             self.assertEqual(em.asdict(follow={"measurements": {}, "qualifiers": {}}), m.get(em.measurementId))
 
+    def test_insert_ppsc_remote(self):
+        self.send_consent(self.participant_id)
+
+        # now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = self.time1
+        measurements_1 = load_measurement_json(self.participant_id, now.isoformat(), alternate="ppsc")
+
+        path_1 = f"Participant/{self.participant_id}/PhysicalMeasurements"
+
+        self.send_post(path_1, measurements_1)
+
+        response = self.send_get("Participant/%s/PhysicalMeasurements" % self.participant_id)
+        self.assertEqual("Bundle", response["resourceType"])
+        self.assertEqual("searchset", response["type"])
+        self.assertFalse(response.get("link"))
+        self.assertTrue(response.get("entry"))
+        self.assertEqual(1, len(response["entry"]))
+        self.assertEqual("SELF_REPORTED", response.get("entry")[0].get("resource").get("collectType"))
+
+        physical_measurements_id = response["entry"][0]["resource"]["id"]
+        physical_measurements = PhysicalMeasurementsDao().get_with_children(physical_measurements_id)
+        self.assertEqual("REMOTE", physical_measurements.createdUsername)
+        self.assertEqual("REMOTE", physical_measurements.finalizedUsername)
+
     def test_physical_measurements_sync(self):
         self.send_consent(self.participant_id)
         self.send_consent(self.participant_id_2)

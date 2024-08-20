@@ -53,7 +53,10 @@ def load_measurement_json(participant_id, now=None, alternate=False):
      orders to test against when cancelling/restoring. The alternate has less measurements and
      different processed sites and finalized sites."""
     if alternate:
-        payload = "alternate-measurements-as-fhir.json"
+        if alternate == "ppsc":
+            payload = "measurements-as-fhir-ppsc-remote.json"
+        else:
+            payload = "alternate-measurements-as-fhir.json"
     else:
         payload = "measurements-as-fhir.json"
     with open(data_path(payload)) as measurements_file:

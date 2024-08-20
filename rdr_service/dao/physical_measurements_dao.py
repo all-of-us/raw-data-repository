@@ -32,6 +32,7 @@ _CREATED_STATUS = "created"
 _FINALIZED_STATUS = "finalized"
 _LOCATION_PREFIX = "Location/"
 _AUTHOR_PREFIX = "Practitioner/"
+_PPSC_REMOTE_CODE = "REMOTE"
 _QUALIFIED_BY_RELATED_TYPE = "qualified-by"
 _ALL_EXTENSIONS = set([_AMENDMENT_URL, _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION])
 _BYTE_LIMIT = 65535  # 65535 chars, 64KB
@@ -643,10 +644,13 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
     @staticmethod
     def get_author_username(author_value):
-        if not author_value.startswith(_AUTHOR_PREFIX):
-            logging.warning(f"Invalid author: {author_value}")
-            return None
-        return author_value[len(_AUTHOR_PREFIX) :]
+        if author_value == _PPSC_REMOTE_CODE:
+            return _PPSC_REMOTE_CODE
+        else:
+            if not author_value.startswith(_AUTHOR_PREFIX):
+                logging.warning(f"Invalid author: {author_value}")
+                return None
+            return author_value[len(_AUTHOR_PREFIX) :]
 
     @staticmethod
     def get_authoring_step(extension):
@@ -737,6 +741,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 measurement = PhysicalMeasurementsDao.from_observation(observation, fullUrl, qualifier_map, first_pass)
                 if measurement:
                     measurements.append(measurement)
+        if created_username == _PPSC_REMOTE_CODE:
+            collect_type = PhysicalMeasurementsCollectType.SELF_REPORTED
+        else:
+            collect_type = PhysicalMeasurementsCollectType.SITE
         record = PhysicalMeasurements(
             participantId=participant_id,
             measurements=measurements,
@@ -745,7 +753,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
             finalizedSiteId=finalized_site_id,
             finalizedUsername=finalized_username,
             origin='hpro',
-            collectType=PhysicalMeasurementsCollectType.SITE,
+            collectType=collect_type,
             originMeasurementUnit=OriginMeasurementUnit.UNSET
         )
         record = self.store_record_fhir_doc(record, resource_json)

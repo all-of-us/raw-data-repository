@@ -1,0 +1,586 @@
+{
+  "entry": [
+    {
+      "fullUrl": "urn:example:report",
+      "resource": {
+        "author": [
+          {
+           "extension": [
+             {
+               "url": "http://terminology.pmi-ops.org/StructureDefinition/authoring-step",
+               "valueCode": "created"
+             }
+           ],
+           "reference": "REMOTE"
+         },
+         {
+           "extension": [
+             {
+               "url": "http://terminology.pmi-ops.org/StructureDefinition/authoring-step",
+               "valueCode": "finalized"
+             }
+           ],
+           "reference": "REMOTE"
+         }
+        ],
+        "date": "%(authored_time)s",
+        "resourceType": "Composition",
+        "extension": [
+          {
+            "url": "http://terminology.pmi-ops.org/StructureDefinition/authored-location",
+            "valueString": "Location/hpo-site-monroeville"
+          },
+          {
+            "url": "http://terminology.pmi-ops.org/StructureDefinition/finalized-location",
+            "valueString": "Location/hpo-site-bannerphoenix"
+          }
+        ],
+        "section": [{
+          "entry": [
+            {
+              "reference": "urn:example:blood-pressure-1"
+            },
+            {
+              "reference": "urn:example:blood-pressure-2"
+            },
+            {
+              "reference": "urn:example:blood-pressure-3"
+            },
+            {
+              "reference": "urn:example:height"
+            },
+            {
+              "reference": "urn:example:weight"
+            },
+            {
+              "reference": "urn:example:bmi"
+            },
+            {
+              "reference": "urn:example:heart-rate"
+            },
+            {
+              "reference": "urn:example:waist-circumference-1"
+            },
+            {
+              "reference": "urn:example:waist-circumference-2"
+            },
+            {
+              "reference": "urn:example:waist-circumference-3"
+            },
+            {
+              "reference": "urn:example:hip-circumference-1"
+            },
+            {
+              "reference": "urn:example:hip-circumference-2"
+            },
+            {
+              "reference": "urn:example:hip-circumference-3"
+            }
+          ]
+        }],
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        },
+        "title": "PMI Intake Evaluation",
+        "type": {
+          "coding": [
+            {
+              "code": "intake-exam-v0.0.1",
+              "display": "PMI Intake Evaluation v0.0.1",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/document-type"
+            }
+          ],
+          "text": "PMI Intake Evaluation v0.0.1"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:blood-pressure-1",
+      "resource": {
+        "bodySite": {
+          "coding": [
+            {
+              "code": "368209003",
+              "display": "Right arm",
+              "system": "http://snomed.info/sct"
+            }
+          ],
+          "text": "Right arm"
+        },
+        "code": {
+          "coding": [
+            {
+              "code": "55284-4",
+              "display": "Blood pressure systolic and diastolic",
+              "system": "http://loinc.org"
+            },
+            {
+              "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+              "code": "systolic-diastolic-blood-pressure-1"
+            }
+          ],
+          "text": "Blood pressure systolic and diastolic"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure",
+                  "system": "http://loinc.org"
+                },
+                {
+                  "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+                  "code": "systolic-blood-pressure-1"
+                }
+              ],
+              "text": "Systolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": 109
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8462-4",
+                  "display": "Diastolic blood pressure",
+                  "system": "http://loinc.org"
+                }
+              ],
+              "text": "Diastolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": 44
+            }
+          }
+        ],
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:blood-pressure-2",
+      "resource": {
+        "bodySite": {
+          "coding": [
+            {
+              "code": "368209003",
+              "display": "Right arm",
+              "system": "http://snomed.info/sct"
+            }
+          ],
+          "text": "Right arm"
+        },
+        "code": {
+          "coding": [
+            {
+              "code": "55284-4",
+              "display": "Blood pressure systolic and diastolic",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Blood pressure systolic and diastolic"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure",
+                  "system": "http://loinc.org"
+                }
+              ],
+              "text": "Systolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": 112
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8462-4",
+                  "display": "Diastolic blood pressure",
+                  "system": "http://loinc.org"
+                }
+              ],
+              "text": "Diastolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": 48
+            }
+          }
+        ],
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:blood-pressure-3",
+      "resource": {
+        "bodySite": {
+          "coding": [
+            {
+              "code": "368209003",
+              "display": "Right arm",
+              "system": "http://snomed.info/sct"
+            }
+          ],
+          "text": "Right arm"
+        },
+        "code": {
+          "coding": [
+            {
+              "code": "55284-4",
+              "display": "Blood pressure systolic and diastolic",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Blood pressure systolic and diastolic"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure",
+                  "system": "http://loinc.org"
+                }
+              ],
+              "text": "Systolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": 113
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8462-4",
+                  "display": "Diastolic blood pressure",
+                  "system": "http://loinc.org"
+                }
+              ],
+              "text": "Diastolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": 49
+            }
+          }
+        ],
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:height",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "8302-2",
+              "display": "Body height",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Body height"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        },
+        "valueQuantity": {
+          "code": "cm",
+          "system": "http://unitsofmeasure.org",
+          "unit": "cm",
+          "value": 111.5
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:weight",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "29463-7",
+              "display": "Body weight",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Body weight"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        },
+        "valueQuantity": {
+          "code": "kg",
+          "system": "http://unitsofmeasure.org",
+          "unit": "kg",
+          "value": 30.1
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:bmi",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "39156-5",
+              "display": "Body mass index",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Body mass index"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        },
+        "valueQuantity": {
+          "code": "kg/m2",
+          "system": "http://unitsofmeasure.org",
+          "unit": "kg/m2",
+          "value": 24.2
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:heart-rate",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "8867-4",
+              "display": "Heart rate",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Heart rate"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        },
+        "valueQuantity": {
+          "code": "/min",
+          "system": "http://unitsofmeasure.org",
+          "unit": "/min",
+          "value": 74
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:hip-circumference-1",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "62409-8",
+              "display": "Hip circumference",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Hip circumference"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        },
+        "valueQuantity": {
+          "code": "cm",
+          "system": "http://unitsofmeasure.org",
+          "unit": "cm",
+          "value": 99.1
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:hip-circumference-2",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "62409-8",
+              "display": "Hip circumference",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Hip circumference"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        },
+        "valueQuantity": {
+          "code": "cm",
+          "system": "http://unitsofmeasure.org",
+          "unit": "cm",
+          "value": 98.8
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:hip-circumference-3",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "62409-8",
+              "display": "Hip circumference",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Hip circumference"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        },
+        "valueQuantity": {
+          "code": "cm",
+          "system": "http://unitsofmeasure.org",
+          "unit": "cm",
+          "value": 98.5
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:waist-circumference-1",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "8280-0",
+              "display": "Waist circumference",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Waist circumference"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        },
+        "valueQuantity": {
+          "code": "cm",
+          "system": "http://unitsofmeasure.org",
+          "unit": "cm",
+          "value": 100.3
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:waist-circumference-2",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "56086-2",
+              "display": "Waist circumference",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Waist circumference"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        },
+        "valueQuantity": {
+          "code": "cm",
+          "system": "http://unitsofmeasure.org",
+          "unit": "cm",
+          "value": 100.5
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:waist-circumference-3",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "56086-2",
+              "display": "Waist circumference",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Waist circumference"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        },
+        "valueQuantity": {
+          "code": "cm",
+          "system": "http://unitsofmeasure.org",
+          "unit": "cm",
+          "value": 99.9
+        }
+      }
+    }
+  ],
+  "resourceType": "Bundle",
+  "type": "document"
+}
