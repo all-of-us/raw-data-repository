@@ -741,7 +741,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 measurement = PhysicalMeasurementsDao.from_observation(observation, fullUrl, qualifier_map, first_pass)
                 if measurement:
                     measurements.append(measurement)
-        if created_username == "REMOTE":
+        if created_username == _PPSC_REMOTE_CODE:
             collect_type = PhysicalMeasurementsCollectType.SELF_REPORTED
         else:
             collect_type = PhysicalMeasurementsCollectType.SITE
