@@ -138,6 +138,8 @@ class StoredSample(NphBase):
     lims_id = Column(String(64))
     status = Column(Enum(StoredSampleStatus), default=StoredSampleStatus.SHIPPED)
     disposition = Column(String(256))
+    sample_volume_ul = Column(Integer, default=None)
+    freeze_thaw_count = Column(Integer, default=None)
     participant = relationship(Participant, back_populates="stored_samples")
 
 

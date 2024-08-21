@@ -56,7 +56,11 @@ class NphBiobankWorkflowsTest(BaseTestCase):
         ss_dao = NphStoredSampleDao()
         stored_samples = ss_dao.get_all()
         self.assertEqual(stored_samples[0].sample_id, "00005")
+        self.assertEqual(stored_samples[0].sample_volume_ul, 500)
+        self.assertEqual(stored_samples[0].freeze_thaw_count, 2)
         self.assertEqual(stored_samples[1].sample_id, "00006")
+        self.assertEqual(stored_samples[1].sample_volume_ul, 1000)
+        self.assertEqual(stored_samples[1].freeze_thaw_count, 0)
 
     def test_no_error_on_timestamp(self):
         sms_datagen = NphSmsDataGenerator()

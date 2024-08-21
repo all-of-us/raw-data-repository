@@ -80,7 +80,9 @@ def _convert_csv_row_to_stored_sample_object(csv_obj: Dict[str, Union[str, int]]
         "sample_id": csv_obj["SAMPLE_ID"],
         "lims_id": csv_obj["LIMS_SAMPLE_ID"],
         "status": stored_sample_status.get(csv_obj["STATUS"]),
-        "disposition": stored_sample_status.get(csv_obj["DISPOSITION"])
+        "disposition": stored_sample_status.get(csv_obj["DISPOSITION"]),
+        "specimen_volume_ul": csv_obj.get("SPECIMEN_VOLUME_UL"),
+        "freeze_thaw_count": csv_obj.get("FREEZE_THAW_COUNT")
     }
     return StoredSample(**stored_sample_obj)
 
