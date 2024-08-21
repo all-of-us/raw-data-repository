@@ -53,7 +53,7 @@ from rdr_service.model.genomics import (
     GenomicJobRun,
     GenomicGCValidationMetrics,
     GenomicSampleContamination,
-    GenomicAW3Raw, GenomicAW4Raw, GenomicA3Raw, GenomicA1Raw)
+    GenomicAW3Raw, GenomicAW4Raw, GenomicA3Raw, GenomicA1Raw, GenomicAW5Raw)
 from rdr_service.model.participant import Participant
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
@@ -723,6 +723,8 @@ class GenomicPipelineTest(BaseTestCase):
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         subfolder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
+        aw5_subfolder_wgs = config.getSetting(config.GENOMIC_AW5_WGS_SUBFOLDERS)
+        aw5_subfolder_array = config.getSetting(config.GENOMIC_AW5_ARRAY_SUBFOLDERS)
 
         test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
         pytz.timezone('US/Central').localize(test_date)
@@ -783,9 +785,9 @@ class GenomicPipelineTest(BaseTestCase):
         # ingest AW5 files
         with clock.FakeClock(test_date):
             test_file_name_aw5_array = create_ingestion_test_file('aw5_deletion_array.csv',
-                                                                  bucket_name, folder=subfolder)
+                                                                  bucket_name, folder=aw5_subfolder_array)
             test_file_name_aw5_wgs = create_ingestion_test_file('aw5_deletion_wgs.csv',
-                                                                bucket_name, folder=subfolder)
+                                                                bucket_name, folder=aw5_subfolder_wgs)
         task_data_aw5_wgs = {
             "job": GenomicJob.AW5_WGS_MANIFEST,
             "bucket": bucket_name,
@@ -793,7 +795,7 @@ class GenomicPipelineTest(BaseTestCase):
                 "create_feedback_record": False,
                 "upload_date": test_date.isoformat(),
                 "manifest_type": GenomicManifestTypes.AW5_WGS,
-                "file_path": f"{bucket_name}/{subfolder}/{test_file_name_aw5_wgs}"
+                "file_path": f"{bucket_name}/{aw5_subfolder_wgs}/{test_file_name_aw5_wgs}"
             }
         }
 
@@ -804,7 +806,7 @@ class GenomicPipelineTest(BaseTestCase):
                 "create_feedback_record": False,
                 "upload_date": test_date.isoformat(),
                 "manifest_type": GenomicManifestTypes.AW5_ARRAY,
-                "file_path": f"{bucket_name}/{subfolder}/{test_file_name_aw5_array}"
+                "file_path": f"{bucket_name}/{aw5_subfolder_array}/{test_file_name_aw5_array}"
             }
         }
 
@@ -880,6 +882,36 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(3).runResult)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(4).runResult)
+
+        # Test AW5 Raw table
+        genomic_dispatch.load_manifest_into_raw_table(f"{bucket_name}/{aw5_subfolder_array}/{test_file_name_aw5_array}", "aw5")
+
+        aw5_dao = GenomicDefaultBaseDao(
+            model_type=GenomicAW5Raw
+        )
+        raw_records = aw5_dao.get_all()
+        raw_records.sort(key=lambda x: x.biobank_id)
+
+        with open_cloud_file(os.path.normpath(f"{bucket_name}/{aw5_subfolder_array}/{test_file_name_aw5_array}")) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            file_rows = list(csv_reader)
+
+            # Check rows in file against records in raw table
+            i = 0
+            for file_row in file_rows:
+                for field in file_row.keys():
+                    self.assertEqual(file_row[field], getattr(raw_records[i], field.lower()))
+                expected_genome_type = "aou_array"
+                if i == 1:
+                    expected_genome_type += "_investigation"
+                self.assertEqual(expected_genome_type, raw_records[i].genome_type)
+                i += 1
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(2)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        self.clear_table_after_test('genomic_aw5_raw')
 
     def _update_test_sample_ids(self):
         # update sample ID (mock AW1 manifest)

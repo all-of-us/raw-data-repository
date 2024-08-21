@@ -220,7 +220,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 "cloud_function": True,
             }
 
-            bypass_raw_keys = ['aw5']
+            bypass_raw_keys = []
 
             # Load into raw table
             if manifest_type not in bypass_raw_keys:
