@@ -555,8 +555,6 @@ class GenomicFileIngester:
                 metric_id = existing_metrics_obj.id
                 self.metrics_dao.update_gc_validation_metrics_deleted_flags_from_dict(row_copy, metric_id)
 
-            self.load_raw_manifest_file()
-
             return GenomicSubProcessResult.SUCCESS
 
         except (RuntimeError, KeyError):
