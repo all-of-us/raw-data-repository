@@ -897,15 +897,13 @@ class GenomicPipelineTest(BaseTestCase):
             file_rows = list(csv_reader)
 
             # Check rows in file against records in raw table
-            i = 0
-            for file_row in file_rows:
+            for i, file_row in enumerate(file_rows):
                 for field in file_row.keys():
                     self.assertEqual(file_row[field], getattr(raw_records[i], field.lower()))
                 expected_genome_type = "aou_array"
                 if i == 1:
                     expected_genome_type += "_investigation"
                 self.assertEqual(expected_genome_type, raw_records[i].genome_type)
-                i += 1
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)
