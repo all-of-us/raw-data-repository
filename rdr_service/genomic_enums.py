@@ -134,6 +134,7 @@ class GenomicJob(messages.Enum):
     CHECK_GCR_OUTREACH_ESCALATION = 77
     CHECK_GCR_CE_OUTREACH_ESCALATION = 78
     CREATE_INCIDENT_FROM_CLOUD_TASK = 79
+    LOAD_AW5_TO_RAW_TABLE = 80
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

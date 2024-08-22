@@ -696,6 +696,47 @@ event.listen(GenomicAW4Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicAW4Raw, 'before_update', model_update_listener)
 
 
+class GenomicAW5Raw(Base):
+    """
+    Raw data from AW5 files
+    """
+    __tablename__ = 'genomic_aw5_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+
+    # Auto-Timestamps
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+    dev_note = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True, index=True)
+
+    # Raw AW5 Data
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    biobankidsampleid = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    site_id = Column(String(255), nullable=True, index=True)
+    red_idat = Column(String(255), nullable=True)
+    red_idat_md5 = Column(String(255), nullable=True)
+    red_idat_basename = Column(String(255), nullable=True)
+    red_idat_md5_hash = Column(String(255), nullable=True)
+    green_idat = Column(String(255), nullable=True)
+    green_idat_md5 = Column(String(255), nullable=True)
+    green_idat_basename = Column(String(255), nullable=True)
+    green_idat_md5_hash = Column(String(255), nullable=True)
+    vcf = Column(String(255), nullable=True)
+    vcf_index = Column(String(255), nullable=True)
+    vcf_md5 = Column(String(255), nullable=True)
+    vcf_basename = Column(String(255), nullable=True)
+    vcf_md5_hash = Column(String(255), nullable=True)
+
+event.listen(GenomicAW5Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicAW5Raw, 'before_update', model_update_listener)
+
 class GenomicW1ILRaw(Base):
     """
     Raw data from W1IL files

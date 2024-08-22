@@ -220,16 +220,13 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 "cloud_function": True,
             }
 
-            bypass_raw_keys = ['aw5']
-
             # Load into raw table
-            if manifest_type not in bypass_raw_keys:
-                raw_cloud_task = GCPCloudTask()
-                raw_cloud_task.execute(
-                    f'{self.task_root}LoadRawAWNManifestDataAPI',
-                    payload=data,
-                    queue=task_queue
-                )
+            raw_cloud_task = GCPCloudTask()
+            raw_cloud_task.execute(
+                f'{self.task_root}LoadRawAWNManifestDataAPI',
+                payload=data,
+                queue=task_queue
+            )
 
             cloud_task = GCPCloudTask()
             cloud_task.execute(api_route, payload=data, queue=task_queue)
