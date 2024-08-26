@@ -87,9 +87,11 @@ def batch_rebuild_participants_task(payload, project_id=None):
 
 def batch_rebuild_retention_metrics_task(payload):
     """
+    DEPRECATED
     Rebuild all or a batch of Retention Eligible Metrics
     :param payload: Dict object with list of participants to work on.
     """
+    logging.warning('batch_rebuild_retention_metrics_task invoked but PDR sync has been disabled.  Please investigate')
     res_gen = generators.RetentionEligibleMetricGenerator()
     batch = payload.get('batch')
     count = 0
@@ -138,6 +140,7 @@ def batch_rebuild_user_event_metrics_task(payload):
      Rebuild a batch of user event metrics records based on ids
      :param payload: Dict object with list of ids to work on.
      """
+
     res_gen = generators.GenomicUserEventMetricsSchemaGenerator()
     batch = payload.get('batch')
     count = 0

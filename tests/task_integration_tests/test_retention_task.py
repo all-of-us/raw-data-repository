@@ -41,7 +41,6 @@ class TestRetentionTask(BaseTestCase):
             'rdr_service.dao.biobank_stored_sample_dao.'
             'BiobankStoredSampleDao.get_earliest_confirmed_dna_sample_timestamp'
         )
-        self.mock('rdr_service.dao.retention_eligible_metrics_dao.RetentionEligibleMetricsDao._submit_rebuild_task')
         self.summary_update_mock = self.mock(
             'rdr_service.dao.participant_summary_dao.'
             'ParticipantSummaryDao.update_with_retention_data'

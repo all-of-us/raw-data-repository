@@ -1,14 +1,11 @@
 
 from sqlalchemy.orm import Session
 
-from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
-from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.services.retention_calculation import RetentionEligibility
 from rdr_service.participant_enums import RetentionType
-from rdr_service.resource import generators
 
 
 class RetentionEligibleMetricsDao(UpdatableDao):
@@ -93,26 +90,6 @@ class RetentionEligibleMetricsDao(UpdatableDao):
             )
             session.commit()
 
-            cls._submit_rebuild_task(pids=[participant_id])
-
-    @classmethod
-    def _submit_rebuild_task(cls, pids):
-        """
-        Rebuild Retention Eligible Metrics resource records
-        :param pids: List of participant ids.
-        """
-        # Rebuild participant for BigQuery
-        if GAE_PROJECT == 'localhost':
-            res_gen = generators.RetentionEligibleMetricGenerator()
-            for pid in pids:
-                res = res_gen.make_resource(pid)
-                res.save()
-        else:
-            task = GCPCloudTask()
-            params = {'batch': pids}
-            task.execute('batch_rebuild_retention_eligible_task', queue='resource-tasks', payload=params,
-                         in_seconds=30)
-
     def upsert_all_with_session(self, session, retention_eligible_metrics_records):
         update_queue = list()
         for record in retention_eligible_metrics_records:
@@ -121,6 +98,4 @@ class RetentionEligibleMetricsDao(UpdatableDao):
             update_queue.append(int(record.participantId))
 
         session.commit()
-        if update_queue:
-            self._submit_rebuild_task(update_queue)
         return len(update_queue)
