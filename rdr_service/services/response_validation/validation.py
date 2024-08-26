@@ -726,6 +726,9 @@ class ResponseValidator:
         self._branching_logic.reset_state()
         return dict(errors_by_question)
 
+    def get_survey(self):
+        return self._survey_definition
+
     def _check_for_definition_errors(self, response: response_domain_model.Response,
                                      errors_by_question: Dict[str, List[ValidationError]]):
         for question in self._survey_definition.questions:

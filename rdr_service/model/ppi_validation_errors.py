@@ -8,6 +8,7 @@ from sqlalchemy import (
     Integer,
     String
 )
+from sqlalchemy.orm import relationship
 from rdr_service.model.base import Base
 from rdr_service.model.utils import UTCDateTime
 
@@ -38,3 +39,6 @@ class PpiValidationErrors(Base):
         ForeignKey("questionnaire_response_answer.questionnaire_response_answer_id"),
         nullable=False
     )
+    results_id = Column(BigInteger, ForeignKey('ppi_validation_results.id'))
+
+    result = relationship('PpiValidationResults', foreign_keys=results_id, back_populates='errors')
