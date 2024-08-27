@@ -10,9 +10,8 @@ class PpiValidationErrorsDao(BaseDao):
         super(PpiValidationErrorsDao, self).__init__(PpiValidationErrors)
 
     def insert_with_session(self, session, obj: PpiValidationErrors):
-        insert_result = super(PpiValidationErrorsDao, self).insert_with_session(session, obj)
         submit_pipeline_pubsub_msg_from_model(obj, self.get_connection_database_name())
-        return insert_result
+        return obj
 
     def get(self, validation_error_id):
         with self.session() as session:
