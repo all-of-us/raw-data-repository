@@ -9,6 +9,9 @@ class SiteDataSync:
         self.site_data_struct = {}
         self.site_data = site_data
 
+    def add_conditional_site_data(self) -> None:
+        ...
+
     def build_site_data_dict(self) -> None:
         self.site_data_struct['awardee'] = self.legacy_site_dao.update_awardee
         self.site_data_struct['organization'] = self.legacy_site_dao.update_organization
