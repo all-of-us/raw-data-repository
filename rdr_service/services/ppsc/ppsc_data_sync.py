@@ -1,8 +1,16 @@
+from abc import ABC, abstractmethod
 
 from rdr_service.dao.organization_hierarchy_sync_dao import OrganizationHierarchySyncDao
 
 
-class SiteDataSync:
+class DataSync(ABC):
+
+    @abstractmethod
+    def run_sync(self):
+        ...
+
+
+class SiteDataSync(DataSync):
 
     def __init__(self, *, site_data: dict):
         self.legacy_site_dao = OrganizationHierarchySyncDao()
@@ -22,11 +30,14 @@ class SiteDataSync:
         for update_value in self.site_data_struct.values():
             update_value(self.site_data)
 
-    def run_site_sync(self):
+    def run_sync(self):
         self.send_site_data_elements()
 
 
-class CreateParticipantSync:
+class CreateParticipantSync(DataSync):
 
-    def __init__(self):
+    def __init__(self, participant_data: dict) -> None:
+        self.participant_data = participant_data
+
+    def run_sync(self):
         ...

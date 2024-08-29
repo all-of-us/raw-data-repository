@@ -157,6 +157,17 @@ class PPSCParticipantAPITest(BaseTestCase):
         self.assertEqual(current_participant.id, int(payload.get("participantId")[1:]))
         self.assertTrue(current_participant.registered_date is not None)
 
+    def test_participant_create_sync_rdr_schema(self):
+
+        payload = {
+            'participantId': 'P22',
+            'biobankId': 'T22',
+            'registeredDate': '2024-03-26T13:24:03.935Z'
+        }
+        response = self.send_post('createParticipant', request_data=payload)
+        self.assertTrue(response is not None)
+        self.assertEqual(response, f'Participant {payload.get("participantId")} was created successfully')
+
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("ppsc.activity")

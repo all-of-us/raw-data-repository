@@ -88,6 +88,6 @@ class PPSCSiteAPI(BaseApi):
     @classmethod
     def sync_to_rdr_schema(cls, *, site_data):
         try:
-            SiteDataSync(site_data=site_data).run_site_sync()
+            SiteDataSync(site_data=site_data).run_sync()
         except Exception as e:
             logging.warning(f'Error when syncing data to RDR schema: {e}')
