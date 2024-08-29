@@ -24,3 +24,9 @@ class SiteDataSync:
 
     def run_site_sync(self):
         self.send_site_data_elements()
+
+
+class CreateParticipantSync:
+
+    def __init__(self):
+        ...
