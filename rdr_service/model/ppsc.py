@@ -312,14 +312,11 @@ class Site(PPSCBase):
     site_name = Column(String(512), index=True, nullable=False)
     site_identifier = Column(String(128), index=True, nullable=False)
 
-    notes = Column(String(512))
-    scheduling_instructions = Column(String(1028))
     enrollment_status_active = Column(TINYINT, default=0)
     digital_scheduling_status_active = Column(TINYINT, default=0)
     scheduling_status_active = Column(TINYINT, default=0)
     anticipated_launch_date = Column(String(128))
     location_name = Column(String(512))
-    directions = Column(String(1028))
     mayo_link_id = Column(String(128))
     active = Column(TINYINT, default=0)
     address_line = Column(String(1028))
@@ -327,8 +324,6 @@ class Site(PPSCBase):
     state = Column(String(128))
     postal_code = Column(String(128))
     phone = Column(String(128))
-    email = Column(String(512))
-    url = Column(String(512))
 
 
 event.listen(Site, "before_insert", model_insert_listener)

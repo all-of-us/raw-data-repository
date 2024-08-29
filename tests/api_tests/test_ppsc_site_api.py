@@ -44,11 +44,8 @@ class PPSCSiteAPITest(BaseTestCase):
             "enrollment_status_active": True,
             "digital_scheduling_status_active": True,
             "scheduling_status_active": True,
-            "notes": "This is a note about an organization",
-            "scheduling_instructions": "Please schedule appointments up to a week before intended date.",
             "anticipated_launch_date": "2024-03-26",
             "location_name": "Thompson Building",
-            "directions": "Exit 95 N and make a left onto Fake Street",
             "mayo_link_id": "123456",
             "active": True,
             "address_line": "1234 Fake St.",
@@ -56,8 +53,6 @@ class PPSCSiteAPITest(BaseTestCase):
             "state": "VA",
             "postal_code": "22150",
             "phone": "7031234567",
-            "email": "support@awesome-testing.com",
-            "url": "http://awesome-genomic-testing.com"
         }
 
     def overwrite_test_user_roles(self, roles):
@@ -130,7 +125,7 @@ class PPSCSiteAPITest(BaseTestCase):
         # update site
         time.sleep(5)
 
-        self.base_payload['email'] = 'support_two@awesome-testing.com'
+        self.base_payload['address_line'] = '124 Fake St.'
 
         response = self.send_post('Site', request_data=self.base_payload)
 
@@ -144,7 +139,7 @@ class PPSCSiteAPITest(BaseTestCase):
         current_site = current_site_data[0]
 
         self.assertGreater(current_site.modified, current_site.created)
-        self.assertEqual(current_site.email, self.base_payload.get('email'))
+        self.assertEqual(current_site.address_line, self.base_payload.get('address_line'))
 
     def test_site_data_deactivates(self):
 
