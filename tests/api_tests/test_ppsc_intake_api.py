@@ -8,7 +8,7 @@ from rdr_service.api_util import HEALTHPRO, PPSC, RDR
 from rdr_service.dao.ppsc_dao import PPSCDefaultBaseDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.ppsc import ParticipantEventActivity, ConsentEvent, SurveyCompletionEvent, ProfileUpdatesEvent, \
-    WithdrawalEvent, DeactivationEvent, ParticipantStatusEvent, SiteAttributionEvent, NPHOptInEvent
+    WithdrawalEvent, DeactivationEvent, ParticipantStatusEvent, AttributionEvent, NPHOptInEvent
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -23,7 +23,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.withdrawal_event_dao = PPSCDefaultBaseDao(model_type=WithdrawalEvent)
         self.deactivation_event_dao = PPSCDefaultBaseDao(model_type=DeactivationEvent)
         self.participant_status_event_dao = PPSCDefaultBaseDao(model_type=ParticipantStatusEvent)
-        self.site_attribution_event_dao = PPSCDefaultBaseDao(model_type=SiteAttributionEvent)
+        self.attribution_event_dao = PPSCDefaultBaseDao(model_type=AttributionEvent)
         self.nph_opt_in_event_dao = PPSCDefaultBaseDao(model_type=NPHOptInEvent)
 
         activities = [
@@ -34,7 +34,7 @@ class PPSCIntakeAPITest(BaseTestCase):
             "Withdrawal",
             "Deactivation",
             "Participant Status",
-            "Site Attribution",
+            "Attribution",
             "NPH Opt In"
         ]
         for activity in activities:
@@ -685,7 +685,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         participant = self.ppsc_data_gen.create_database_participant()
 
         payload = {
-            "activity": "Site Attribution",
+            "activity": "Attribution",
             "eventType": "Pepperoni",
             "participantId": f"P{participant.id}",
             "dataElements": [
@@ -703,12 +703,12 @@ class PPSCIntakeAPITest(BaseTestCase):
         response = self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
         self.assertEqual(response.status_code, 400)
 
-    def test_intake_site_attribution_insert(self):
+    def test_intake_attribution_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
 
         payload = {
-            "activity": "Site Attribution",
-            "eventType": "Site Attribution",
+            "activity": "Attribution",
+            "eventType": "Org Attribution",
             "participantId": f"P{participant.id}",
             "dataElements": [
                 {
@@ -735,23 +735,23 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual(payload, participant_event_activities[0].resource)
         self.assertEqual(8, participant_event_activities[0].activity_id)
 
-        site_attribution_events = self.site_attribution_event_dao.get_all()
-        self.assertEqual(2, len(site_attribution_events))
-        self.assertEqual(test_time, site_attribution_events[0].created)
-        self.assertEqual(test_time, site_attribution_events[0].modified)
-        self.assertEqual(1, site_attribution_events[0].event_id)
-        self.assertEqual(participant.id, site_attribution_events[0].participant_id)
-        self.assertEqual('Site Attribution', site_attribution_events[0].event_type_name)
-        self.assertEqual('site_name', site_attribution_events[0].data_element_name)
-        self.assertEqual('test-site-1', site_attribution_events[0].data_element_value)
+        attribution_events = self.attribution_event_dao.get_all()
+        self.assertEqual(2, len(attribution_events))
+        self.assertEqual(test_time, attribution_events[0].created)
+        self.assertEqual(test_time, attribution_events[0].modified)
+        self.assertEqual(1, attribution_events[0].event_id)
+        self.assertEqual(participant.id, attribution_events[0].participant_id)
+        self.assertEqual('Org Attribution', attribution_events[0].event_type_name)
+        self.assertEqual('site_name', attribution_events[0].data_element_name)
+        self.assertEqual('test-site-1', attribution_events[0].data_element_value)
 
-        self.assertEqual(test_time, site_attribution_events[1].created)
-        self.assertEqual(test_time, site_attribution_events[1].modified)
-        self.assertEqual(1, site_attribution_events[1].event_id)
-        self.assertEqual(participant.id, site_attribution_events[1].participant_id)
-        self.assertEqual('Site Attribution', site_attribution_events[1].event_type_name)
-        self.assertEqual('activity_date_time', site_attribution_events[1].data_element_name)
-        self.assertEqual("2024-05-20T14:30:00Z", site_attribution_events[1].data_element_value)
+        self.assertEqual(test_time, attribution_events[1].created)
+        self.assertEqual(test_time, attribution_events[1].modified)
+        self.assertEqual(1, attribution_events[1].event_id)
+        self.assertEqual(participant.id, attribution_events[1].participant_id)
+        self.assertEqual('Org Attribution', attribution_events[1].event_type_name)
+        self.assertEqual('activity_date_time', attribution_events[1].data_element_name)
+        self.assertEqual("2024-05-20T14:30:00Z", attribution_events[1].data_element_value)
 
     def test_intake_nph_opt_in_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()
@@ -836,5 +836,5 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.clear_table_after_test("ppsc.withdrawal_event")
         self.clear_table_after_test("ppsc.deactivation_event")
         self.clear_table_after_test("ppsc.participant_status_event")
-        self.clear_table_after_test("ppsc.site_attribution_event")
+        self.clear_table_after_test("ppsc.attribution_event")
 

@@ -222,8 +222,8 @@ event.listen(ParticipantStatusEvent, "before_insert", model_insert_listener)
 event.listen(ParticipantStatusEvent, "before_update", model_update_listener)
 
 
-class SiteAttributionEvent(PPSCBase):
-    __tablename__ = "site_attribution_event"
+class AttributionEvent(PPSCBase):
+    __tablename__ = "attribution_event"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime, index=True)
@@ -240,8 +240,8 @@ class SiteAttributionEvent(PPSCBase):
     dev_note = Column(String(512))
 
 
-event.listen(SiteAttributionEvent, "before_insert", model_insert_listener)
-event.listen(SiteAttributionEvent, "before_update", model_update_listener)
+event.listen(AttributionEvent, "before_insert", model_insert_listener)
+event.listen(AttributionEvent, "before_update", model_update_listener)
 
 
 class NPHOptInEvent(PPSCBase):
