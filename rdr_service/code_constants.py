@@ -224,6 +224,7 @@ VA_EHR_RECONSENT = 'vaehrreconsent'
 
 # ConsentPII Questions
 RECEIVE_CARE_STATE = "ReceiveCare_PIIState"
+PEDIATRIC_RECEIVE_CARE_STATE = "ChildPermission_LiveandHealthCare_healthcare"
 
 # ConsentPII Answers
 OR_CARE_STATE = "PIIStateCare_OR"
