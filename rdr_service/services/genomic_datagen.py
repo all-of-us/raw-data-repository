@@ -153,10 +153,10 @@ class ParticipantGenerator(GeneratorMixin):
                 ):
                     base_participant = generator_method()
                 else:
-                    participant_id = (self.external_values.get('participant_id') or
-                                      self.genomic_set_member_dao.get_random_id())
-                    biobank_id = (self.external_values.get('biobank_id') or
-                                  self.genomic_set_member_dao.get_random_id())
+                    participant_id = self.external_values.get('participant_id',
+                                                              self.genomic_set_member_dao.get_random_id())
+                    biobank_id = self.external_values.get('biobank_id',
+                                                          self.genomic_set_member_dao.get_random_id())
                     research_id = self.genomic_set_member_dao.get_random_id()
 
                     base_participant = generator_method(
