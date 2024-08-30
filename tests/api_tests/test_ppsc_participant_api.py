@@ -4,6 +4,8 @@ from copy import deepcopy
 
 from rdr_service import config
 from rdr_service.api_util import PPSC, RDR, HEALTHPRO
+from rdr_service.dao.participant_dao import ParticipantDao as LegacyParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.ppsc_dao import ParticipantDao, PPSCDefaultBaseDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.ppsc import ParticipantEventActivity, EnrollmentEvent
@@ -18,6 +20,8 @@ class PPSCParticipantAPITest(BaseTestCase, GenomicDataGenMixin):
         self.ppsc_partcipant_dao = ParticipantDao()
         self.ppsc_participant_activity_dao = PPSCDefaultBaseDao(model_type=ParticipantEventActivity)
         self.ppsc_enrollment_event_dao = PPSCDefaultBaseDao(model_type=EnrollmentEvent)
+        self.legacy_participant_dao = LegacyParticipantDao()
+        self.participant_summary_dao = ParticipantSummaryDao()
 
         activities = ['ENROLLMENT']
         for activity in activities:
@@ -194,6 +198,16 @@ class PPSCParticipantAPITest(BaseTestCase, GenomicDataGenMixin):
         response = self.send_post('createParticipant', request_data=payload)
         self.assertTrue(response is not None)
         self.assertEqual(response, f'Participant {payload.get("participantId")} was created successfully')
+
+        current_participants = self.legacy_participant_dao.get_all()
+        current_participants = [obj for obj in current_participants if obj.participant_id == int(payload.get(
+            "participantId").split('P')[-1])]
+        self.assertEqual(len(current_participants), 1)
+
+        current_summaries = self.participant_summary_dao.get_all()
+        current_participants = [obj for obj in current_summaries if obj.participant_id == int(payload.get(
+            "participantId").split('P')[-1])]
+        self.assertEqual(len(current_participants), 1)
 
     def tearDown(self):
         super().tearDown()

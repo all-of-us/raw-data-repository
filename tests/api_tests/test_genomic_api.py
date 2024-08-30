@@ -2134,7 +2134,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
         # build template datagen w1il template data
         self.build_template_based_data(
             template_name='default',
-            _dict=post_data_map,
+            values=post_data_map,
             project_name='cvl_il'
         )
 
