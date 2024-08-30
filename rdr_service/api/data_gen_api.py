@@ -166,7 +166,6 @@ class DataGenApi(Resource):
                 params = {'fraction': fraction}
                 self._task.execute('generate_bio_samples_task', payload=params)
 
-
     @nonprod
     def put(self):
         resource = request.get_data()

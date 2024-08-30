@@ -73,6 +73,7 @@ class ParticipantGenerator(GeneratorMixin):
         self.num_participants = None
         self.template_type = None
         self.external_values = None
+        self.genomic_member_records = True
         self.logger = logger or logging
 
         self.member_ids = []
@@ -147,12 +148,17 @@ class ParticipantGenerator(GeneratorMixin):
             generator_method = self._get_generator_method(table)
 
             if table == 'participant':
-                if os.environ.get('UNITTEST_FLAG') == "1":
+                if os.environ.get('UNITTEST_FLAG') == "1" and not (
+                    self.external_values.get('participant_id') or self.external_values.get('biobank_id')
+                ):
                     base_participant = generator_method()
                 else:
-                    participant_id = self.genomic_set_member_dao.get_random_id()
-                    biobank_id = self.genomic_set_member_dao.get_random_id()
+                    participant_id = (self.external_values.get('participant_id') or
+                                      self.genomic_set_member_dao.get_random_id())
+                    biobank_id = (self.external_values.get('biobank_id') or
+                                  self.genomic_set_member_dao.get_random_id())
                     research_id = self.genomic_set_member_dao.get_random_id()
+
                     base_participant = generator_method(
                         participantId=participant_id,
                         biobankId=biobank_id,
@@ -195,10 +201,15 @@ class ParticipantGenerator(GeneratorMixin):
             return
 
         if not self.template_records:
+            # try to find and attach to instance variable
             self.template_records = self.datagen_template_dao.get_template_records_template(
                 project=self.project,
                 template_type=self.template_type
             )
+            # not always required if not in database
+            if not self.template_records:
+                return
+
             # will throw exception for invalid expected data struct
             self.validate_template_records(
                 records=self.template_records,
@@ -342,6 +353,7 @@ class ParticipantGenerator(GeneratorMixin):
         self.num_participants = kwargs.get('num_participants')
         self.template_type = kwargs.get('template_type')
         self.external_values = kwargs.get('external_values')
+        self.genomic_member_records = kwargs.get('genomic_member_records')
         self.member_ids, self.template_records = [], []
 
         self.logger.info(f'Running template type {self.template_type} for {self.num_participants} participants.')
@@ -350,11 +362,12 @@ class ParticipantGenerator(GeneratorMixin):
             self.build_participant_default()
             self.build_participant_type_records()
 
-        self.datagen_member_run_dao.batch_insert_member_records(
-            self.run_obj.id,
-            self.template_type,
-            self.member_ids
-        )
+        if self.genomic_member_records:
+            self.datagen_member_run_dao.batch_insert_member_records(
+                self.run_obj.id,
+                self.template_type,
+                self.member_ids
+            )
 
         self.logger.info(f'{self.template_type}: {self.num_participants} created.')
 

@@ -8,9 +8,10 @@ from rdr_service.dao.ppsc_dao import ParticipantDao, PPSCDefaultBaseDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.ppsc import ParticipantEventActivity, EnrollmentEvent
 from tests.helpers.unittest_base import BaseTestCase
+from tests.service_tests.test_genomic_datagen import GenomicDataGenMixin
 
 
-class PPSCParticipantAPITest(BaseTestCase):
+class PPSCParticipantAPITest(BaseTestCase, GenomicDataGenMixin):
     def setUp(self):
         super().setUp()
         self.ppsc_data_gen = PPSCDataGenerator()
@@ -157,7 +158,33 @@ class PPSCParticipantAPITest(BaseTestCase):
         self.assertEqual(current_participant.id, int(payload.get("participantId")[1:]))
         self.assertTrue(current_participant.registered_date is not None)
 
+    def build_ppsc_sync_participant_template_data(self):
+
+        template_post_data_map = {
+            'participant': {
+                'participant_id': 'external_participant_id',
+                'biobank_id': 'external_biobank_id'
+            },
+            'participant_summary': {
+                'participant_id': 'external_participant_id',
+                'biobank_id': 'external_biobank_id',
+                'consent_for_genomics_ror': 1,
+                'consent_for_study_enrollment': 1,
+                'withdrawal_status': 1,
+                'suspension_status': 1,
+                'deceased_status': 0,
+            }
+        }
+
+        self.build_template_based_data(
+            template_name='default',
+            values=template_post_data_map,
+            project_name='ppsc_sync'
+        )
+
     def test_participant_create_sync_rdr_schema(self):
+
+        self.build_ppsc_sync_participant_template_data()
 
         payload = {
             'participantId': 'P22',
@@ -172,5 +199,6 @@ class PPSCParticipantAPITest(BaseTestCase):
         super().tearDown()
         self.clear_table_after_test("ppsc.activity")
         self.clear_table_after_test("ppsc.participant")
+        self.clear_table_after_test("ppsc.participant_event_activity")
         self.clear_table_after_test("ppsc.enrollment_event_type")
         self.clear_table_after_test("ppsc.enrollment_event")

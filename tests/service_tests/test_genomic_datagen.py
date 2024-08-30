@@ -15,10 +15,10 @@ from rdr_service.services.genomic_datagen import ParticipantGenerator, Generator
 from tests.helpers.unittest_base import BaseTestCase
 
 
-class GenomicDataGenMixin(BaseTestCase):
+class GenomicDataGenMixin:
 
-    def build_cvl_template_based_data(self, template_name, _dict, project_name='cvl'):
-        for table, attribute_list in _dict.items():
+    def build_template_based_data(self, template_name: str, values: dict, project_name: str = 'cvl'):
+        for table, attribute_list in values.items():
             for key, val in attribute_list.items():
                 if val == 'system':
                     value = ''
@@ -42,7 +42,7 @@ class GenomicDataGenMixin(BaseTestCase):
                 )
 
 
-class GenomicDataGenParticipantGeneratorTest(GenomicDataGenMixin):
+class GenomicDataGenParticipantGeneratorTest(BaseTestCase, GenomicDataGenMixin):
     def setUp(self):
         super(GenomicDataGenParticipantGeneratorTest, self).setUp()
         self.member_dao = GenomicSetMemberDao()
@@ -59,7 +59,7 @@ class GenomicDataGenParticipantGeneratorTest(GenomicDataGenMixin):
         self.defaults_map = self.get_gen_defaults_map()
 
         # build default datagen template data
-        self.build_cvl_template_based_data('default',  self.defaults_map)
+        self.build_template_based_data('default', self.defaults_map)
 
     @classmethod
     def get_gen_defaults_map(cls):
@@ -283,7 +283,7 @@ class GenomicDataGenParticipantGeneratorTest(GenomicDataGenMixin):
         template_name = 'w1il'
 
         # build template datagen w1il template data
-        self.build_cvl_template_based_data(template_name, w1il_template)
+        self.build_template_based_data(template_name, w1il_template)
 
         with ParticipantGenerator() as participant_generator:
             participant_generator.run_participant_creation(
@@ -329,7 +329,7 @@ class GenomicDataGenParticipantGeneratorTest(GenomicDataGenMixin):
         self.assertEqual(cvl_second_sample_dao.model_type.__tablename__, list(w3ss_template.keys())[0])
 
         # build template datagen w3ss template data
-        self.build_cvl_template_based_data(template_name, w3ss_template)
+        self.build_template_based_data(template_name, w3ss_template)
 
         with ParticipantGenerator() as participant_generator:
             participant_generator.run_participant_creation(
@@ -357,7 +357,7 @@ class GenomicDataGenParticipantGeneratorTest(GenomicDataGenMixin):
         self.clear_table_after_test('genomic_datagen_member_run')
 
 
-class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
+class GenomicDataGeneratorOutputTemplateTest(BaseTestCase, GenomicDataGenMixin):
     def setUp(self):
         super(GenomicDataGeneratorOutputTemplateTest, self).setUp()
         self.datagen_run_dao = GenomicDataGenRunDao()
@@ -376,7 +376,7 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
         self.defaults_map = GenomicDataGenParticipantGeneratorTest.get_gen_defaults_map()
 
         # build default datagen template data
-        self.build_cvl_template_based_data('default', self.defaults_map)
+        self.build_template_based_data('default', self.defaults_map)
 
     def build_default_output_template_records(self, _dict):
         for index, (fieldname, value) in enumerate(_dict.items()):
@@ -478,7 +478,7 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
         template_name = 'w1il'
 
         # build template datagen w1il template data
-        self.build_cvl_template_based_data(template_name, w1il_template)
+        self.build_template_based_data(template_name, w1il_template)
 
         hdr_loop_answer = 'yes'
         pgx_loop_answer = 'no'
@@ -536,6 +536,7 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
 
 
 class GenomicDataGenManifestGeneratorTest(BaseTestCase):
+
     def setUp(self):
         super(GenomicDataGenManifestGeneratorTest, self).setUp()
 
