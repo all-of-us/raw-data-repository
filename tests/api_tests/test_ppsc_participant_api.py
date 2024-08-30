@@ -200,14 +200,18 @@ class PPSCParticipantAPITest(BaseTestCase, GenomicDataGenMixin):
         self.assertEqual(response, f'Participant {payload.get("participantId")} was created successfully')
 
         current_participants = self.legacy_participant_dao.get_all()
-        current_participants = [obj for obj in current_participants if obj.participant_id == int(payload.get(
+        current_participants = [obj for obj in current_participants if obj.participantId == int(payload.get(
             "participantId").split('P')[-1])]
         self.assertEqual(len(current_participants), 1)
+        self.assertEqual(current_participants[0].biobankId, int(payload.get(
+            "biobankId").split('T')[-1]))
 
         current_summaries = self.participant_summary_dao.get_all()
-        current_participants = [obj for obj in current_summaries if obj.participant_id == int(payload.get(
+        current_summaries = [obj for obj in current_summaries if obj.participantId == int(payload.get(
             "participantId").split('P')[-1])]
-        self.assertEqual(len(current_participants), 1)
+        self.assertEqual(len(current_summaries), 1)
+        self.assertEqual(current_summaries[0].biobankId, int(payload.get(
+            "biobankId").split('T')[-1]))
 
     def tearDown(self):
         super().tearDown()
