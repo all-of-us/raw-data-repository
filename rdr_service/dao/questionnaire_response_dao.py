@@ -1722,14 +1722,18 @@ class QuestionnaireResponseDao(BaseDao):
         return answer.value if answer else None
 
     @classmethod
-    def get_latest_answer_for_state_receiving_care(cls, session: Session, participant_id) -> str:
+    def get_latest_answer_for_state_receiving_care(cls, session: Session, participant_id, for_pediatric=False) -> str:
         """
         Return the most recently authored answer code value string for the ReceiveCarePIIState question code
         """
+        if for_pediatric:
+            question_code = code_constants.PEDIATRIC_RECEIVE_CARE_STATE
+        else:
+            question_code = code_constants.RECEIVE_CARE_STATE
         answer = cls.get_latest_answer_to_question(
             session=session,
             participant_id=participant_id,
-            question_code_value=code_constants.RECEIVE_CARE_STATE
+            question_code_value=question_code
         )
         return answer.value if answer else None
 

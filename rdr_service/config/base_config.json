@@ -206,7 +206,7 @@
     "Withdrawal",
     "Deactivation",
     "Participant Status",
-    "Site Attribution",
+    "Attribution",
     "NPH Opt In"
   ],
   "ppsc_intake_consent_event_types": ["Primary Consent", "Adult EHR Authorization"],
@@ -234,7 +234,7 @@
     "Retention Status",
     "Patient Status"
   ],
-  "ppsc_intake_site_attribution_event_types": ["Site Attribution"],
+  "ppsc_intake_attribution_event_types": ["Org Attribution"],
   "ppsc_intake_nph_opt_in_event_types": ["NPH Opt In"],
   "pm_height_codes": ["height", "8302-2"],
   "pm_weight_codes": ["weight", "29463-7", "pre-pregnancy-weight"]
