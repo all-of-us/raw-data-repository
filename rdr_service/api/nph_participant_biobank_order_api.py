@@ -5,10 +5,10 @@ from flask import request
 from werkzeug.exceptions import BadRequest, NotFound
 from sqlalchemy import exc
 
-from rdr_service.api.base_api import UpdatableApi
+from rdr_service.api.base_api import UpdatableApi, BaseApi
 from rdr_service.dao import database_factory
-from rdr_service.dao.study_nph_dao import NphOrderDao
-from rdr_service.api_util import RTI_AND_HEALTHPRO
+from rdr_service.dao.study_nph_dao import NphOrderDao, DlwDosageDao
+from rdr_service.api_util import RTI_AND_HEALTHPRO, RDR_AND_HEALTHPRO
 from rdr_service.app_util import auth_required
 
 
@@ -104,3 +104,13 @@ class NphOrderApi(UpdatableApi):
         except BadRequest as bad_request:
             logging.error(bad_request.description, exc_info=True)
             return construct_response(order), 400
+
+
+class DlwDosageApi(BaseApi):
+
+    def __init__(self):
+        super().__init__(DlwDosageDao())
+
+    @auth_required(RDR_AND_HEALTHPRO)
+    def post(self, nph_participant_id):
+        super().post(participant_id=nph_participant_id)
