@@ -9,11 +9,10 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.ppsc_dao import ParticipantDao, PPSCDefaultBaseDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.ppsc import ParticipantEventActivity, EnrollmentEvent
-from tests.helpers.unittest_base import BaseTestCase
 from tests.service_tests.test_genomic_datagen import GenomicDataGenMixin
 
 
-class PPSCParticipantAPITest(BaseTestCase, GenomicDataGenMixin):
+class PPSCParticipantAPITest(GenomicDataGenMixin):
     def setUp(self):
         super().setUp()
         self.ppsc_data_gen = PPSCDataGenerator()

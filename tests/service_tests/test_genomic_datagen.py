@@ -15,7 +15,7 @@ from rdr_service.services.genomic_datagen import ParticipantGenerator, Generator
 from tests.helpers.unittest_base import BaseTestCase
 
 
-class GenomicDataGenMixin:
+class GenomicDataGenMixin(BaseTestCase):
 
     def build_template_based_data(self, template_name: str, values: dict, project_name: str = 'cvl'):
         for table, attribute_list in values.items():
@@ -42,7 +42,7 @@ class GenomicDataGenMixin:
                 )
 
 
-class GenomicDataGenParticipantGeneratorTest(BaseTestCase, GenomicDataGenMixin):
+class GenomicDataGenParticipantGeneratorTest(GenomicDataGenMixin):
     def setUp(self):
         super(GenomicDataGenParticipantGeneratorTest, self).setUp()
         self.member_dao = GenomicSetMemberDao()
@@ -357,7 +357,7 @@ class GenomicDataGenParticipantGeneratorTest(BaseTestCase, GenomicDataGenMixin):
         self.clear_table_after_test('genomic_datagen_member_run')
 
 
-class GenomicDataGeneratorOutputTemplateTest(BaseTestCase, GenomicDataGenMixin):
+class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
     def setUp(self):
         super(GenomicDataGeneratorOutputTemplateTest, self).setUp()
         self.datagen_run_dao = GenomicDataGenRunDao()
