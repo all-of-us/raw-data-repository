@@ -55,7 +55,7 @@ class CreateParticipantSync(DataSync):
                     'participant_id': self.participant_data.get('id'),
                     'biobank_id': self.participant_data.get('biobank_id')
                 },
-                skip_genomic_member_store=True
+                set_genomic_member_records=False
             )
 
     def run_sync(self):

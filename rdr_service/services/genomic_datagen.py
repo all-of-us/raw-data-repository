@@ -73,7 +73,6 @@ class ParticipantGenerator(GeneratorMixin):
         self.num_participants = None
         self.template_type = None
         self.external_values = None
-        self.genomic_member_records = True
         self.logger = logger or logging
 
         self.member_ids = []
@@ -353,8 +352,8 @@ class ParticipantGenerator(GeneratorMixin):
         self.num_participants = kwargs.get('num_participants')
         self.template_type = kwargs.get('template_type')
         self.external_values = kwargs.get('external_values')
-        self.genomic_member_records = kwargs.get('genomic_member_records')
         self.member_ids, self.template_records = [], []
+        set_genomic_member_records = kwargs.get('set_genomic_member_records', True)
 
         self.logger.info(f'Running template type {self.template_type} for {self.num_participants} participants.')
 
@@ -362,7 +361,7 @@ class ParticipantGenerator(GeneratorMixin):
             self.build_participant_default()
             self.build_participant_type_records()
 
-        if self.genomic_member_records:
+        if set_genomic_member_records:
             self.datagen_member_run_dao.batch_insert_member_records(
                 self.run_obj.id,
                 self.template_type,

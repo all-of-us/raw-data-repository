@@ -212,6 +212,7 @@ class GenomicDataGenParticipantGeneratorTest(GenomicDataGenMixin):
         self.clear_table_after_test('genomic_datagen_member_run')
 
     def test_run_records_inserted_correctly(self):
+
         with ParticipantGenerator() as participant_generator:
             participant_generator.run_participant_creation(
                 num_participants=self.num_participants,
