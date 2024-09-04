@@ -236,7 +236,7 @@ class RetentionEligibleImportTest(BaseTestCase):
                 passively_retained='1'
             ),
             self._build_csv_row(
-                participant_id=ps2.participantId,
+                participant_id=123000,  # participant id that doesn't exist in the database
                 retention_eligible='1',
                 retention_eligible_date='2020-02-20',
                 actively_retained='1',

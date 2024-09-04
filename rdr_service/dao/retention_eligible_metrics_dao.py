@@ -1,6 +1,4 @@
 
-from sqlalchemy.orm import Session
-
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.base_dao import UpdatableDao
@@ -17,21 +15,17 @@ class RetentionEligibleMetricsDao(UpdatableDao):
         super(RetentionEligibleMetricsDao, self).__init__(RetentionEligibleMetrics, order_by_ending=["id"])
 
     @classmethod
-    def find_metric_with_session(cls, session: Session, metrics_obj: RetentionEligibleMetrics) -> (int, bool):
+    def find_metric(cls, metrics_obj: RetentionEligibleMetrics, retention_data_cache) -> (int, bool):
         """
         Used to check the db for existing metrics objects for a participant. If a metrics object exists, then its
         id is returned as the first value. The second parameter is used to indicate whether the database has the
         same values, returning True if an upsert is needed to bring the new data into the database.
         """
 
-        db_result = session.query(RetentionEligibleMetrics).filter(
-            RetentionEligibleMetrics.participantId == metrics_obj.participantId
-        ).first()
+        db_result = retention_data_cache.get(metrics_obj.participantId)
 
         if not db_result:
             return None, True
-
-        needs_update = False
 
         is_same_data = (
             db_result.retentionEligibleStatus == metrics_obj.retentionEligibleStatus
