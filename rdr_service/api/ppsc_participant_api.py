@@ -1,13 +1,17 @@
+import logging
+
 from flask import request
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RDR, PPSC
-from rdr_service.app_util import auth_required
+from rdr_service.app_util import auth_required, nonprod
 from rdr_service.dao.ppsc_dao import ParticipantDao, PPSCDefaultBaseDao
 from rdr_service.model.ppsc import EnrollmentEvent, EnrollmentEventType, ParticipantEventActivity, Activity
+from rdr_service.services.ppsc.ppsc_data_sync import CreateParticipantSync
 
 
+# pylint: disable=broad-except
 class PPSCParticipantAPI(BaseApi):
     def __init__(self):
         super().__init__(ParticipantDao())
@@ -84,5 +88,13 @@ class PPSCParticipantAPI(BaseApi):
             self.ppsc_enrollment_event_dao.model_type(**enrollment_event_dict)
         )
 
+        self.sync_to_rdr_schema(participant_data=inserted_participant.asdict())
         return inserted_participant
 
+    @classmethod
+    @nonprod
+    def sync_to_rdr_schema(cls, *, participant_data):
+        try:
+            CreateParticipantSync(participant_data=participant_data).run_sync()
+        except Exception as e:
+            logging.warning(f'Error when syncing data to RDR schema: {e}')
