@@ -1432,7 +1432,8 @@ class DlwDosageDao(BaseDao):
         if visit_period not in valid_visit_periods:
             raise BadRequest(f'Invalid visitPeriod provided. Visit Period should be in {valid_visit_periods}')
 
-    def from_client_json(self, resource, participant_id, _):
+    # pylint: disable=unused-argument
+    def from_client_json(self, resource, participant_id, client_id):
         self._validate(participant_id, resource)
 
         dlw_dosage = DlwDosage(
