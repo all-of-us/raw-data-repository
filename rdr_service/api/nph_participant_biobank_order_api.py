@@ -5,7 +5,7 @@ from flask import request
 from werkzeug.exceptions import BadRequest, NotFound
 from sqlalchemy import exc
 
-from rdr_service.api.base_api import UpdatableApi, BaseApi
+from rdr_service.api.base_api import UpdatableApi, BaseApi, log_api_request
 from rdr_service.dao import database_factory
 from rdr_service.dao.study_nph_dao import NphOrderDao, DlwDosageDao
 from rdr_service.api_util import RTI_AND_HEALTHPRO, RDR_AND_HEALTHPRO
@@ -113,4 +113,10 @@ class DlwDosageApi(BaseApi):
 
     @auth_required(RDR_AND_HEALTHPRO)
     def post(self, nph_participant_id):
-        super().post(participant_id=nph_participant_id)
+        resource = self.get_request_json()
+        m = self._get_model_to_insert(resource, nph_participant_id)
+        result = self._do_insert(m)
+
+        log_api_request(log=request.log_record, model_obj=result)
+        self._archive_request_log()
+        return self._make_response(result)
