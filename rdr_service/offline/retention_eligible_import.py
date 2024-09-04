@@ -71,7 +71,6 @@ def import_retention_eligible_metrics_file(task_data):
                     record.id = existing_id
                 if needs_update:
                     metrics_cache[record.participantId] = record
-                    _supplement_with_rdr_calculations(record, session)
                     records.append(record)
                     batch_count += 1
 
@@ -80,6 +79,7 @@ def import_retention_eligible_metrics_file(task_data):
                     records.clear()
                     batch_count = 0
             except (IntegrityError, InvalidRequestError):
+                session.rollback()
                 failed_records_count += batch_count
                 records.clear()
                 batch_count = 0
