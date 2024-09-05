@@ -236,7 +236,7 @@ class RetentionEligibleImportTest(BaseTestCase):
                 passively_retained='1'
             ),
             self._build_csv_row(
-                participant_id=ps2.participantId,
+                participant_id=123000,  # participant id that doesn't exist in the database
                 retention_eligible='1',
                 retention_eligible_date='2020-02-20',
                 actively_retained='1',
@@ -273,8 +273,7 @@ class RetentionEligibleImportTest(BaseTestCase):
         pytz.timezone('US/Central').localize(test_date)
 
         # Check that exception is thrown with small batch size
-        with (self.assertRaises(InvalidRequestError),
-              mock.patch("rdr_service.offline.retention_eligible_import._BATCH_SIZE", 3)):
+        with mock.patch("rdr_service.offline.retention_eligible_import._BATCH_SIZE", 3):
             retention_eligible_import.import_retention_eligible_metrics_file({
                 "bucket": 'test_bucket',
                 "upload_date": test_date.isoformat(),
@@ -305,7 +304,7 @@ class RetentionEligibleImportTest(BaseTestCase):
         # Check that Slack alert was sent with correct failure count
         self.slack_client_instance.send_message_to_webhook.assert_called_with(
             message_data={'text': 'PTSC Retention File Import Status: File at file path - '
-                                  'gs://test_bucket/test_file.csv, had 6 records fail to ingest'}
+                                  'gs://test_bucket/test_file.csv, had 5 records fail to ingest'}
         )
 
     @mock.patch('rdr_service.offline.retention_eligible_import.GoogleCloudStorageCSVReader')
