@@ -12,7 +12,7 @@ from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao import database_factory
 from rdr_service.main import app
 from rdr_service.model.study_nph import (
-    StudyCategory, Order, OrderedSample, Participant, SampleUpdate, Site
+    StudyCategory, Order, OrderedSample, Participant, SampleUpdate, Site, DlwDosage
 )
 from tests.workflow_tests.test_data.test_biobank_order_payloads import (SALIVA_DIET_SAMPLE, URINE_DIET_SAMPLE,
                                                                         STOOL_DIET_SAMPLE)
@@ -528,3 +528,86 @@ class TestNPHParticipantOrderAPI(BaseTestCase):
         self.clear_table_after_test("nph.sample_update")
         self.clear_table_after_test("rex.participant_mapping")
         self.clear_table_after_test("rex.study")
+
+
+class DLWDosageApiTest(BaseTestCase):
+
+    def setUp(self, *args, **kwargs) -> None:
+        super().setUp(*args, **kwargs)
+        self.nph_datagen = NphDataGenerator()
+        self.nph_pid = 10000
+        self.nph_datagen.create_database_participant(id=self.nph_pid)
+
+    def test_post(self):
+        payload = {
+            "module": "3",
+            "visitperiod": "Period1DLW",
+            "batchid": "NPHDLW9172397",
+            "participantweight": "56.38",
+            "dose": "84",
+            "calculateddose": "84.57",
+            "dosetime": "2022-11-03T08:45:49Z",
+        }
+        response = app.test_client().post(
+            f"rdr/v1/api/v1/nph/Participant/{self.nph_pid}/DlwDosage", json=payload
+        )
+        self.assertEqual(200, response.status_code)
+
+        dlw_dosage = self.session.query(DlwDosage).filter(DlwDosage.participant_id == self.nph_pid).all()
+
+        self.assertEqual("3", str(dlw_dosage[0].module.number))
+        self.assertEqual("PERIOD1DLW", dlw_dosage[0].visit_period.name)
+        self.assertEqual("NPHDLW9172397", dlw_dosage[0].batch_id)
+        self.assertEqual("56.38", dlw_dosage[0].participant_weight)
+        self.assertEqual("84", dlw_dosage[0].dose)
+        self.assertEqual("84.57", dlw_dosage[0].calculated_dose)
+        self.assertEqual("2022-11-03T08:45:49Z", dlw_dosage[0].dose_time.strftime('%Y-%m-%dT%H:%M:%SZ'))
+
+    def test_post_with_invalid_module_and_visit_period(self):
+        payload_with_invalid_module = {
+            "module": "6",
+            "visitperiod": "Period1DLW",
+            "batchid": "NPHDLW9172397",
+            "participantweight": "56.38",
+            "dose": "84",
+            "calculateddose": "84.57",
+            "dosetime": "2022-11-03T08:45:49Z",
+        }
+        response1 = app.test_client().post(
+            f"rdr/v1/api/v1/nph/Participant/{self.nph_pid}/DlwDosage", json=payload_with_invalid_module
+        )
+        self.assertEqual(400, response1.status_code)
+
+        payload_with_invalid_visit_period = {
+            "module": "2",
+            "visitperiod": "Period6DLW",
+            "batchid": "NPHDLW9172397",
+            "participantweight": "56.38",
+            "dose": "84",
+            "calculateddose": "84.57",
+            "dosetime": "2022-11-03T08:45:49Z",
+        }
+        response2 = app.test_client().post(
+            f"rdr/v1/api/v1/nph/Participant/{self.nph_pid}/DlwDosage", json=payload_with_invalid_visit_period
+        )
+        self.assertEqual(400, response2.status_code)
+
+    def test_post_with_missing_values(self):
+        invalid_payload = {
+            "module": "2",
+            "visitperiod": "",
+            "batchid": "NPHDLW9172397",
+            "participantweight": "56.38",
+            "dose": "84",
+            "calculateddose": "84.57",
+            "dosetime": "2022-11-03T08:45:49Z",
+        }
+        response = app.test_client().post(
+            f"rdr/v1/api/v1/nph/Participant/{self.nph_pid}/DlwDosage", json=invalid_payload
+        )
+        self.assertEqual(400, response.status_code)
+
+    def tearDown(self):
+        super().tearDown()
+        self.clear_table_after_test("nph.participant")
+        self.clear_table_after_test("nph.dlw_dosage")

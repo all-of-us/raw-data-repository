@@ -4,19 +4,23 @@ from copy import deepcopy
 
 from rdr_service import config
 from rdr_service.api_util import PPSC, RDR, HEALTHPRO
+from rdr_service.dao.participant_dao import ParticipantDao as LegacyParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.ppsc_dao import ParticipantDao, PPSCDefaultBaseDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.ppsc import ParticipantEventActivity, EnrollmentEvent
-from tests.helpers.unittest_base import BaseTestCase
+from tests.service_tests.test_genomic_datagen import GenomicDataGenMixin
 
 
-class PPSCParticipantAPITest(BaseTestCase):
+class PPSCParticipantAPITest(GenomicDataGenMixin):
     def setUp(self):
         super().setUp()
         self.ppsc_data_gen = PPSCDataGenerator()
         self.ppsc_partcipant_dao = ParticipantDao()
         self.ppsc_participant_activity_dao = PPSCDefaultBaseDao(model_type=ParticipantEventActivity)
         self.ppsc_enrollment_event_dao = PPSCDefaultBaseDao(model_type=EnrollmentEvent)
+        self.legacy_participant_dao = LegacyParticipantDao()
+        self.participant_summary_dao = ParticipantSummaryDao()
 
         activities = ['ENROLLMENT']
         for activity in activities:
@@ -157,9 +161,61 @@ class PPSCParticipantAPITest(BaseTestCase):
         self.assertEqual(current_participant.id, int(payload.get("participantId")[1:]))
         self.assertTrue(current_participant.registered_date is not None)
 
+    def build_ppsc_sync_participant_template_data(self):
+
+        template_post_data_map = {
+            'participant': {
+                'participant_id': 'external_participant_id',
+                'biobank_id': 'external_biobank_id'
+            },
+            'participant_summary': {
+                'participant_id': 'external_participant_id',
+                'biobank_id': 'external_biobank_id',
+                'consent_for_genomics_ror': 1,
+                'consent_for_study_enrollment': 1,
+                'withdrawal_status': 1,
+                'suspension_status': 1,
+                'deceased_status': 0,
+            }
+        }
+
+        self.build_template_based_data(
+            template_name='default',
+            values=template_post_data_map,
+            project_name='ppsc_sync'
+        )
+
+    def test_participant_create_sync_rdr_schema(self):
+
+        self.build_ppsc_sync_participant_template_data()
+
+        payload = {
+            'participantId': 'P22',
+            'biobankId': 'T22',
+            'registeredDate': '2024-03-26T13:24:03.935Z'
+        }
+        response = self.send_post('createParticipant', request_data=payload)
+        self.assertTrue(response is not None)
+        self.assertEqual(response, f'Participant {payload.get("participantId")} was created successfully')
+
+        current_participants = self.legacy_participant_dao.get_all()
+        current_participants = [obj for obj in current_participants if obj.participantId == int(payload.get(
+            "participantId").split('P')[-1])]
+        self.assertEqual(len(current_participants), 1)
+        self.assertEqual(current_participants[0].biobankId, int(payload.get(
+            "biobankId").split('T')[-1]))
+
+        current_summaries = self.participant_summary_dao.get_all()
+        current_summaries = [obj for obj in current_summaries if obj.participantId == int(payload.get(
+            "participantId").split('P')[-1])]
+        self.assertEqual(len(current_summaries), 1)
+        self.assertEqual(current_summaries[0].biobankId, int(payload.get(
+            "biobankId").split('T')[-1]))
+
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("ppsc.activity")
         self.clear_table_after_test("ppsc.participant")
+        self.clear_table_after_test("ppsc.participant_event_activity")
         self.clear_table_after_test("ppsc.enrollment_event_type")
         self.clear_table_after_test("ppsc.enrollment_event")

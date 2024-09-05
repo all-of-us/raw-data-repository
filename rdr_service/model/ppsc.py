@@ -222,8 +222,8 @@ event.listen(ParticipantStatusEvent, "before_insert", model_insert_listener)
 event.listen(ParticipantStatusEvent, "before_update", model_update_listener)
 
 
-class SiteAttributionEvent(PPSCBase):
-    __tablename__ = "site_attribution_event"
+class AttributionEvent(PPSCBase):
+    __tablename__ = "attribution_event"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime, index=True)
@@ -240,8 +240,8 @@ class SiteAttributionEvent(PPSCBase):
     dev_note = Column(String(512))
 
 
-event.listen(SiteAttributionEvent, "before_insert", model_insert_listener)
-event.listen(SiteAttributionEvent, "before_update", model_update_listener)
+event.listen(AttributionEvent, "before_insert", model_insert_listener)
+event.listen(AttributionEvent, "before_update", model_update_listener)
 
 
 class NPHOptInEvent(PPSCBase):
@@ -312,14 +312,11 @@ class Site(PPSCBase):
     site_name = Column(String(512), index=True, nullable=False)
     site_identifier = Column(String(128), index=True, nullable=False)
 
-    notes = Column(String(512))
-    scheduling_instructions = Column(String(1028))
     enrollment_status_active = Column(TINYINT, default=0)
     digital_scheduling_status_active = Column(TINYINT, default=0)
     scheduling_status_active = Column(TINYINT, default=0)
     anticipated_launch_date = Column(String(128))
     location_name = Column(String(512))
-    directions = Column(String(1028))
     mayo_link_id = Column(String(128))
     active = Column(TINYINT, default=0)
     address_line = Column(String(1028))
@@ -327,8 +324,6 @@ class Site(PPSCBase):
     state = Column(String(128))
     postal_code = Column(String(128))
     phone = Column(String(128))
-    email = Column(String(512))
-    url = Column(String(512))
 
 
 event.listen(Site, "before_insert", model_insert_listener)

@@ -1,6 +1,6 @@
 import datetime
 import logging
-from typing import Optional
+from typing import Optional, List
 
 from dateutil.parser import parse
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
@@ -49,21 +49,28 @@ def import_retention_eligible_metrics_file(task_data):
     batch_count = upsert_count = 0
     records = list()
     failed_records_count = 0
+    participant_ids_seen = set()
     with dao.session() as session:
+        metrics_cache = _build_metrics_cache(session)
+
         for row in csv_reader:
             try:
                 if not row[RetentionEligibleMetricCsvColumns.PARTICIPANT_ID]:
                     continue
                 record = _create_retention_eligible_metrics_obj_from_row(row, upload_date)
 
-                existing_id, needs_update = RetentionEligibleMetricsDao.find_metric_with_session(
-                    session=session,
-                    metrics_obj=record
+                if record.participantId in participant_ids_seen:
+                    continue
+                participant_ids_seen.add(record.participantId)
+
+                existing_id, needs_update = RetentionEligibleMetricsDao.find_metric(
+                    metrics_obj=record,
+                    retention_data_cache=metrics_cache
                 )
                 if existing_id:
                     record.id = existing_id
                 if needs_update:
-                    _supplement_with_rdr_calculations(metrics_data=record, session=session)
+                    metrics_cache[record.participantId] = record
                     records.append(record)
                     batch_count += 1
 
@@ -72,6 +79,7 @@ def import_retention_eligible_metrics_file(task_data):
                     records.clear()
                     batch_count = 0
             except (IntegrityError, InvalidRequestError):
+                session.rollback()
                 failed_records_count += batch_count
                 records.clear()
                 batch_count = 0
@@ -436,6 +444,11 @@ def _get_latest_etm_task_response_timestamp(session, participant_id, task_types=
     etm_responses = EtmResponseRepository.get_etm_responses(session=session, participant_id=participant_id,
                                                             task_types=task_types)
     return max(r.authored for r in etm_responses if r.authored) if etm_responses else None
+
+
+def _build_metrics_cache(session):
+    metric_list: List[RetentionEligibleMetrics] = session.query(RetentionEligibleMetrics).all()
+    return {metric.participantId: metric for metric in metric_list}
 
 
 class RetentionEligibleMetricCsvColumns(object):

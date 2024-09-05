@@ -48,7 +48,7 @@ from rdr_service.api.research_projects_directory_api import ResearchProjectsDire
 from rdr_service.api.redcap_workbench_audit_api import RedcapResearcherAuditApi, RedcapWorkbenchAuditApi
 from rdr_service.api.message_broker_api import MessageBrokerApi
 from rdr_service.api.onsite_verification_api import OnsiteVerificationApi
-from rdr_service.api.nph_participant_biobank_order_api import NphOrderApi
+from rdr_service.api.nph_participant_biobank_order_api import NphOrderApi, DlwDosageApi
 from rdr_service.api.nph_participant_api import nph_participant
 from rdr_service.api.site_hierarchy_api import SiteHierarchyApi
 
@@ -406,6 +406,13 @@ api.add_resource(
     API_PREFIX + '/api/v1/nph/Participant/<string:nph_participant_id>/BiobankOrder/<int:rdr_order_id>',
     endpoint='nph.participant.biobank_order',
     methods=['POST', 'PUT', 'PATCH']
+)
+
+api.add_resource(
+    DlwDosageApi,
+    API_PREFIX + '/api/v1/nph/Participant/<string:nph_participant_id>/DlwDosage',
+    endpoint='nph.participant.dlw_dosage',
+    methods=['POST']
 )
 
 api.add_resource(

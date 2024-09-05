@@ -1015,17 +1015,11 @@ class ConsentValidator:
             self._append_other_error(ConsentOtherErrors.UNEXPECTED_GUARDIAN_NAME, result)
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
         else:
-            file_guardian_name_parts = result.guardian_printed_name.lower().split(' ')
-            if (
-                not guardian_summary
-                or len(file_guardian_name_parts) < 2
-                or guardian_summary.firstName.lower() != file_guardian_name_parts[0]
-                or guardian_summary.lastName.lower() != file_guardian_name_parts[-1]
-            ):
+            if not guardian_summary or not result.guardian_printed_name:
                 self._append_other_error(ConsentOtherErrors.UNEXPECTED_GUARDIAN_NAME, result)
                 result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
-    def _additional_ehr_checks(self, consent: files.EhrConsentFile, result: ParsingResult):
+    def _additional_ehr_checks(self, consent: files.EhrConsentFile, result: ParsingResult, for_pediatric=False):
         self._validate_is_va_file(consent, result)
 
         if self.participant_summary.participantOrigin == 'careevolution':
@@ -1043,7 +1037,8 @@ class ConsentValidator:
 
         state_answer_str = QuestionnaireResponseDao.get_latest_answer_for_state_receiving_care(
             session=self._session,
-            participant_id=self.participant_summary.participantId
+            participant_id=self.participant_summary.participantId,
+            for_pediatric=for_pediatric
         )
         if state_answer_str is None:
             # If we don't yet know the participant's state of care, use their state of residence instead
@@ -1065,7 +1060,7 @@ class ConsentValidator:
     def _additional_pediatric_ehr_checks(self, consent: files.PediatricEhrConsentFile, result: ParsingResult):
         result.guardian_printed_name = consent.get_guardian_name()
         result.guardian_relationship = consent.get_guardian_relationship()
-        self._additional_ehr_checks(consent, result)
+        self._additional_ehr_checks(consent, result, for_pediatric=True)
 
     def _additional_primary_update_checks(self, consent: files.PrimaryConsentUpdateFile, result: ParsingResult):
         self._validate_is_va_file(consent, result)

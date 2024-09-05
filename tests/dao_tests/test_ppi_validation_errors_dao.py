@@ -64,9 +64,10 @@ class PpiValidationErrorsDaoTest(BaseTestCase):
 
     def test_insert_validation_errors(self):
         # Insert errors in table
-        self.ppi_validation_dao.insert(self.error_1)
-        self.ppi_validation_dao.insert(self.error_2)
-        self.ppi_validation_dao.insert(self.error_3)
+        self.session.add(self.error_1)
+        self.session.add(self.error_2)
+        self.session.add(self.error_3)
+        self.session.commit()
 
         self.assertEqual("TheBasics", self.ppi_validation_dao.get(1).survey_code_value)
         self.assertEqual("GROR", self.ppi_validation_dao.get(2).survey_code_value)
@@ -77,12 +78,13 @@ class PpiValidationErrorsDaoTest(BaseTestCase):
 
     def test_get_errors_since(self):
         # Insert errors in table
-        self.ppi_validation_dao.insert(self.error_1)
-        self.ppi_validation_dao.insert(self.error_2)
-        self.ppi_validation_dao.insert(self.error_3)
+        self.session.add(self.error_1)
+        self.session.add(self.error_2)
+        self.session.add(self.error_3)
+        self.session.commit()
 
         since_date_none = datetime(2023, 10, 10)
-        since_date_some= datetime(2023, 10, 2)
+        since_date_some = datetime(2023, 10, 2)
         since_date_all = datetime(2023, 10, 1)
 
         error_list_none = self.ppi_validation_dao.get_errors_since(since_date_none)
@@ -95,9 +97,10 @@ class PpiValidationErrorsDaoTest(BaseTestCase):
 
     def test_get_errors_within_range(self):
         # Insert errors in table
-        self.ppi_validation_dao.insert(self.error_1)
-        self.ppi_validation_dao.insert(self.error_2)
-        self.ppi_validation_dao.insert(self.error_3)
+        self.session.add(self.error_1)
+        self.session.add(self.error_2)
+        self.session.add(self.error_3)
+        self.session.commit()
 
         since_date_none = datetime(2023, 9, 1)
         since_date_some = datetime(2023, 10, 3)
