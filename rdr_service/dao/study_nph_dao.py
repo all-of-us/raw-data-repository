@@ -13,13 +13,14 @@ from sqlalchemy import exc, func, case, and_, literal
 from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service import config
-from rdr_service.ancillary_study_resources.nph.enums import StoredSampleStatus
+from rdr_service.ancillary_study_resources.nph.enums import StoredSampleStatus, VisitPeriod, ModuleTypes
 from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample,
     Activity, ParticipantEventActivity, EnrollmentEventType,
     PairingEventType, PairingEvent, ConsentEventType,
     SampleUpdate, BiobankFileExport, SampleExport,
-    StoredSample, EnrollmentEvent, Incident, ConsentEvent, DietEvent, DeactivationEvent, WithdrawalEvent
+    StoredSample, EnrollmentEvent, Incident, ConsentEvent, DietEvent, DeactivationEvent, WithdrawalEvent,
+    DlwDosage
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
@@ -1397,3 +1398,56 @@ class NphIncidentDao(UpdatableDao):
         obj.message = truncated_value
         with self.session() as session:
             return self.update_with_session(session, obj)
+
+
+class DlwDosageDao(BaseDao):
+
+    def __init__(self):
+        super(DlwDosageDao, self).__init__(DlwDosage)
+        self.participant_dao = NphParticipantDao()
+
+    def get_id(self, obj):
+        pass
+
+    def _validate(self, nph_participant_id, resource):
+        valid_modules = [str(m) for m in list(ModuleTypes.numbers())]
+        valid_visit_periods = list(VisitPeriod.names())
+
+        # Ensure nph participant id exists
+        with self.session() as session:
+            self.participant_dao.get_id(session=session, nph_participant_id=nph_participant_id)
+
+        # Ensure all values are provided
+        for key, val in resource.items():
+            if not val:
+                raise BadRequest(f'{key} is a required field.')
+
+        # Validate Module
+        module = resource.get('module')
+        if module not in valid_modules:
+            raise BadRequest(f'Invalid module provided. Module should be in {valid_modules}')
+
+        # Validate Visit Period
+        visit_period = resource.get('visitperiod', '').upper()
+        if visit_period not in valid_visit_periods:
+            raise BadRequest(f'Invalid visitPeriod provided. Visit Period should be in {valid_visit_periods}')
+
+    # pylint: disable=unused-argument
+    def from_client_json(self, resource, participant_id, client_id):
+        self._validate(participant_id, resource)
+
+        dlw_dosage = DlwDosage(
+            participant_id=participant_id,
+            module=resource.get('module'),
+            visit_period=VisitPeriod.lookup_by_name(resource.get('visitperiod').upper()),
+            batch_id=resource.get('batchid'),
+            participant_weight=resource.get('participantweight'),
+            dose=resource.get("dose"),
+            calculated_dose=resource.get("calculateddose"),
+            dose_time=resource.get("dosetime")
+        )
+
+        return dlw_dosage
+
+    def to_client_json(self, model):
+        pass

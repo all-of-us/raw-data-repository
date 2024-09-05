@@ -5,13 +5,13 @@ from sqlalchemy.dialects.mysql import TINYINT, JSON
 from sqlalchemy.orm import relation, relationship
 
 from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, ParticipantOpsElementTypes, \
-    StoredSampleStatus, IncidentStatus, IncidentType, DietType, DietStatus, ModuleTypes
+    StoredSampleStatus, IncidentStatus, IncidentType, DietType, DietStatus, ModuleTypes, VisitPeriod
 from rdr_service.model.base import NphBase, model_insert_listener, model_update_listener
 from rdr_service.model.utils import UTCDateTime, Enum
 
 
 class Participant(NphBase):
-    # A new participant in this table can only be be added
+    # A new participant in this table can only be added
     # if they exist in rdr.participant table
     __tablename__ = "participant"
 
@@ -414,3 +414,24 @@ class ParticipantOpsDataElement(NphBase):
 
 event.listen(ParticipantOpsDataElement, "before_insert", model_insert_listener)
 event.listen(ParticipantOpsDataElement, "before_update", model_update_listener)
+
+
+class DlwDosage(NphBase):
+    __tablename__ = "dlw_dosage"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"), nullable=False)
+    module = Column(Enum(ModuleTypes), nullable=False)
+    visit_period = Column(Enum(VisitPeriod), nullable=False)
+    batch_id = Column(String(32), nullable=False)
+    participant_weight = Column(String(32), nullable=False)
+    dose = Column(String(32), nullable=False)
+    calculated_dose = Column(String(32), nullable=False)
+    dose_time = Column(UTCDateTime, nullable=False)
+
+
+event.listen(DlwDosage, "before_insert", model_insert_listener)
+event.listen(DlwDosage, "before_update", model_update_listener)

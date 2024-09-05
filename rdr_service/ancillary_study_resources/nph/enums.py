@@ -90,3 +90,9 @@ class DietStatus(messages.Enum):
     CONTINUED = 3
     DISCONTINUED = 4
 
+
+class VisitPeriod(messages.Enum):
+    PERIOD1DLW = 1
+    PERIOD2DLW = 2
+    PERIOD3DLW = 3
+
