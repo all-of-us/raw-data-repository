@@ -268,8 +268,10 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         return pdf.get_page_number_of_text([self.CABOR_TEXT]) is None
 
     def _is_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        name = blob_wrapper.blob.name
-        if not basename(name).startswith('ConsentPII'):
+        file_name = basename(blob_wrapper.blob.name)
+        if not (
+            file_name.startswith('ConsentPII') or file_name.startswith('consentpii')
+        ):
             return False
 
         pdf = blob_wrapper.get_parsed_pdf()
