@@ -1,5 +1,5 @@
 from typing import List, Dict
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func, and_, or_, cast, String
 from sqlalchemy.orm import aliased
 
 from rdr_service import clock
@@ -231,7 +231,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                     SmsSample.body_weight_kg,
                     DlwDosage.batch_id.label('dlw_dose_batch'),
                     DlwDosage.dose_time.label('dlw_dose_date_time'),
-                    DlwDosage.dose.label('dlw_dose_grams')
+                    DlwDosage.calculated_dose.label('dlw_dose_grams')
                 ).outerjoin(
                     aliquot_sample,
                     SmsSample.sample_id == aliquot_sample.aliquot_id
@@ -240,10 +240,10 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                     aliquot_sample.parent_sample_id == parent_fields.id
                 ).outerjoin(
                     Participant,
-                    Participant.biobank_id == func.substr(SmsN0.biobank_id, 2)
+                    cast(Participant.biobank_id, String) == func.substr(SmsN0.biobank_id, 2)
                 ).outerjoin(
                     DlwDosage,
-                    and_(Participant.id == DlwDosage.participant_id, DlwDosage.c.ignore_flag == 0)
+                    and_(Participant.id == DlwDosage.participant_id, DlwDosage.ignore_flag == 0)
                 )
             else:
                 query = query.add_columns(
