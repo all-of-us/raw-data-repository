@@ -62,12 +62,12 @@ class ResponseValidationController:
             self._response_validator_map[response.survey_code] = self._build_validator(survey_code=response.survey_code)
 
         validator = self._response_validator_map.get(response.survey_code)
-        result = PpiValidationResults(
-            questionnaire_response_id=response.id,
-            survey_id=validator.get_survey().id
-        )
-        self._result_list.append(result)
         if validator:
+            result = PpiValidationResults(
+                questionnaire_response_id=response.id,
+                survey_id=validator.get_survey().id
+            )
+            self._result_list.append(result)
             for error_list in validator.get_errors_in_response(response).values():
                 for error in error_list:
                     result.errors.append(
@@ -97,7 +97,11 @@ class ResponseValidationController:
                 joinedload(Survey.questions).joinedload(SurveyQuestion.options).joinedload(SurveyQuestionOption.code)
             )
         )
-        survey = query.one_or_none()
+        survey = query.all()
+
+        if len(survey) != 1:
+            return None
+        survey = survey[0]
 
         if survey:
             return ResponseValidator(survey_definition=survey, session=self._session)
