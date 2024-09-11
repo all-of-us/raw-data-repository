@@ -1519,7 +1519,7 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(1, len(changed_ppts))
 
     @mock.patch('rdr_service.services.email_service.EmailService.send_email')
-    def test_check_gcr_14day_escalation(self, email_mock):
+    def test_check_gcr_escalation(self, email_mock):
         fake_date = parser.parse("2022-09-01T13:43:23")
         fake_date2 = parser.parse("2022-09-02T14:14:00")
         fake_date3 = parser.parse("2022-09-03T15:15:00")
@@ -1628,7 +1628,7 @@ class GenomicJobControllerTest(BaseTestCase):
         }])
 
         with clock.FakeClock(parser.parse('2022-11-1T05:15:00')):
-            escalated_participants = self.report_state_dao.get_hdr_result_positive_no_appointment(num_days=14)
+            escalated_participants = self.report_state_dao.get_hdr_result_positive_no_appointment(num_days=8)
             results = [pid[0] for pid in escalated_participants]
         self.assertIn(pids[2], results)
         self.assertIn(pids[3], results)
@@ -1641,12 +1641,12 @@ class GenomicJobControllerTest(BaseTestCase):
             controller.check_gcr_escalation(controller.job_id)
 
         self.assertEqual(email_mock.call_count, 3)
-        self.assertEqual(email_mock.call_args.args[0].subject, 'GCR Outreach 14 Day Escalation')
+        self.assertEqual(email_mock.call_args.args[0].subject, 'GCR Outreach 8 Day Escalation')
 
         self.clear_table_after_test('genomic_gcr_outreach_escalation_notified')
 
     @mock.patch('rdr_service.services.email_service.EmailService.send_email')
-    def test_check_gcr_14day_escalation_error(self, email_mock):
+    def test_check_gcr_escalation_error(self, email_mock):
         email_mock.side_effect = ForbiddenError(mock.Mock(code=403))
         mock_slack_handler = mock.MagicMock()
 

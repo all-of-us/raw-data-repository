@@ -1952,10 +1952,13 @@ class GenomicJobController:
             self.job_result = GenomicSubProcessResult.NO_RESULTS
 
     def check_gcr_escalation(self, gcr_outreach_job_type):
-        """Alerts color when participant with hdr positive result does not have a scheduled or completed appointment"""
+        """
+        Alerts color when participant with hdr positive result does not have a scheduled or completed appointment
+        :param gcr_outreach_job_type: enum: GenomicJob
+        """
         gcr_outreach = {
             GenomicJob.CHECK_GCR_OUTREACH_ESCALATION: {
-                'num_days': 14,
+                'num_days': 8,
             },
             GenomicJob.CHECK_GCR_CE_OUTREACH_ESCALATION: {
                 'num_days': 30,
