@@ -321,15 +321,6 @@ class NphSmsWorkflowsTest(BaseTestCase):
         sms_datagen.create_database_ordered_sample(
             id=5,
             nph_sample_id=10004,
-            supplemental_fields={
-                "dlwDose": {
-                    "dose": 456.7,
-                    "batchid": 12345678,
-                    "calculateddose": 456.65,
-                    "doseAdministered": "2024-04-08T15:11:00",
-                    "participantweight": 123.4
-                }
-            }
         )
         sms_datagen.create_database_ordered_sample(
             nph_sample_id=10005,
