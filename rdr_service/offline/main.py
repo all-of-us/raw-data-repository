@@ -46,6 +46,8 @@ from rdr_service.offline.service_accounts import ServiceAccountKeyManager
 from rdr_service.offline.sync_consent_files import ConsentSyncController
 from rdr_service.offline.table_exporter import TableExporter
 from rdr_service.offline.tactis_bq_sync import TactisBQDataSync
+from rdr_service.ppsc.ppsc_data_transfer import PPSCDataTransferCore, PPSCDataTransferHealthData, PPSCDataTransferEHR, \
+    PPSCDataTransferBiobank
 from rdr_service.repository.obfuscation_repository import ObfuscationRepository
 from rdr_service.resource.tasks import dispatch_check_consent_errors_task
 from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
@@ -985,25 +987,25 @@ def detect_etm_response_duplicates():
 
 @app_util.auth_required_cron
 def ppsc_data_transfer_core():
-    ...
-    return '{ "success": "true" }'
-
-
-@app_util.auth_required_cron
-def ppsc_data_transfer_health():
-    ...
-    return '{ "success": "true" }'
-
-
-@app_util.auth_required_cron
-def ppsc_data_transfer_biobank():
-    ...
+    PPSCDataTransferCore().run_data_transfer()
     return '{ "success": "true" }'
 
 
 @app_util.auth_required_cron
 def ppsc_data_transfer_ehr():
-    ...
+    PPSCDataTransferEHR().run_data_transfer()
+    return '{ "success": "true" }'
+
+
+@app_util.auth_required_cron
+def ppsc_data_transfer_health():
+    PPSCDataTransferHealthData().run_data_transfer()
+    return '{ "success": "true" }'
+
+
+@app_util.auth_required_cron
+def ppsc_data_transfer_biobank():
+    PPSCDataTransferBiobank().run_data_transfer()
     return '{ "success": "true" }'
 
 

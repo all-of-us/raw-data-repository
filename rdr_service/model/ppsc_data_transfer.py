@@ -5,8 +5,8 @@ from rdr_service.model.base import model_insert_listener, model_update_listener,
 from rdr_service.model.utils import UTCDateTime
 
 
-class PPSCDataSyncAuth(PPSCBase):
-    __tablename__ = "ppsc_data_sync_auth"
+class PPSCDataTransferAuth(PPSCBase):
+    __tablename__ = "ppsc_data_transfer_auth"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -19,12 +19,12 @@ class PPSCDataSyncAuth(PPSCBase):
     last_generated = Column(UTCDateTime)
 
 
-event.listen(PPSCDataSyncAuth, "before_insert", model_insert_listener)
-event.listen(PPSCDataSyncAuth, "before_update", model_update_listener)
+event.listen(PPSCDataTransferAuth, "before_insert", model_insert_listener)
+event.listen(PPSCDataTransferAuth, "before_update", model_update_listener)
 
 
-class PPSCDataSyncEndpoint(PPSCBase):
-    __tablename__ = "ppsc_data_sync_endpoint"
+class PPSCDataTransferEndpoint(PPSCBase):
+    __tablename__ = "ppsc_data_trasnfer_endpoint"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -33,12 +33,12 @@ class PPSCDataSyncEndpoint(PPSCBase):
     data_sync_transfer_type = Column(TINYINT)
 
 
-event.listen(PPSCDataSyncEndpoint, "before_insert", model_insert_listener)
-event.listen(PPSCDataSyncEndpoint, "before_update", model_update_listener)
+event.listen(PPSCDataTransferEndpoint, "before_insert", model_insert_listener)
+event.listen(PPSCDataTransferEndpoint, "before_update", model_update_listener)
 
 
-class PPSCDataSyncRecord(PPSCBase):
-    __tablename__ = "ppsc_data_sync_record"
+class PPSCDataTransferRecord(PPSCBase):
+    __tablename__ = "ppsc_data_transfer_record"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -49,11 +49,11 @@ class PPSCDataSyncRecord(PPSCBase):
     response_code = Column(String(128))
 
 
-event.listen(PPSCDataSyncRecord, "before_insert", model_insert_listener)
-event.listen(PPSCDataSyncRecord, "before_update", model_update_listener)
+event.listen(PPSCDataTransferRecord, "before_insert", model_insert_listener)
+event.listen(PPSCDataTransferRecord, "before_update", model_update_listener)
 
 
-class PPSCDataSyncBase(PPSCBase):
+class PPSCDataBase(PPSCBase):
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -61,45 +61,45 @@ class PPSCDataSyncBase(PPSCBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
 
 
-class PPSCDataSyncCore(PPSCDataSyncBase):
-    __tablename__ = "ppsc_data_sync_core"
+class PPSCCore(PPSCDataBase):
+    __tablename__ = "ppsc_core"
 
     has_core_data = Column(TINYINT, default=0)
     has_core_data_date = Column(UTCDateTime)
 
 
-event.listen(PPSCDataSyncCore, "before_insert", model_insert_listener)
-event.listen(PPSCDataSyncCore, "before_update", model_update_listener)
+event.listen(PPSCCore, "before_insert", model_insert_listener)
+event.listen(PPSCCore, "before_update", model_update_listener)
 
 
-class PPSCDataSyncEHR(PPSCDataSyncBase):
-    __tablename__ = "ppsc_data_sync_ehr"
-
-    first_time_date = Column(UTCDateTime)
-    last_time_date = Column(UTCDateTime)
-
-
-event.listen(PPSCDataSyncEHR, "before_insert", model_insert_listener)
-event.listen(PPSCDataSyncEHR, "before_update", model_update_listener)
-
-
-class PPSCDataSyncBiobankSample(PPSCDataSyncBase):
-    __tablename__ = "ppsc_data_sync_biobank_sample"
+class PPSCEHR(PPSCDataBase):
+    __tablename__ = "ppsc_ehr"
 
     first_time_date = Column(UTCDateTime)
     last_time_date = Column(UTCDateTime)
 
 
-event.listen(PPSCDataSyncBiobankSample, "before_insert", model_insert_listener)
-event.listen(PPSCDataSyncBiobankSample, "before_update", model_update_listener)
+event.listen(PPSCEHR, "before_insert", model_insert_listener)
+event.listen(PPSCEHR, "before_update", model_update_listener)
 
 
-class PPSCDataSyncHealthData(PPSCDataSyncBase):
-    __tablename__ = "ppsc_data_sync_health_data"
+class PPSCBiobankSample(PPSCDataBase):
+    __tablename__ = "ppsc_biobank_sample"
+
+    first_time_date = Column(UTCDateTime)
+    last_time_date = Column(UTCDateTime)
+
+
+event.listen(PPSCBiobankSample, "before_insert", model_insert_listener)
+event.listen(PPSCBiobankSample, "before_update", model_update_listener)
+
+
+class PPSCHealthData(PPSCDataBase):
+    __tablename__ = "ppsc_health_data"
 
     health_data_stream_sharing_status = Column(TINYINT, default=0)
     health_data_stream_sharing_status_date = Column(UTCDateTime)
 
 
-event.listen(PPSCDataSyncCore, "before_insert", model_insert_listener)
-event.listen(PPSCDataSyncCore, "before_update", model_update_listener)
+event.listen(PPSCHealthData, "before_insert", model_insert_listener)
+event.listen(PPSCHealthData, "before_update", model_update_listener)
