@@ -58,12 +58,12 @@ class PPSCDataBase:
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
-    participant_id = Column(BigInteger, ForeignKey("participant.id"))
 
 
 class PPSCCore(PPSCDataBase, PPSCBase):
     __tablename__ = "ppsc_core"
 
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
     has_core_data = Column(TINYINT, default=0)
     has_core_data_date = Column(UTCDateTime)
 
@@ -75,6 +75,7 @@ event.listen(PPSCCore, "before_update", model_update_listener)
 class PPSCEHR(PPSCDataBase, PPSCBase):
     __tablename__ = "ppsc_ehr"
 
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
     first_time_date = Column(UTCDateTime)
     last_time_date = Column(UTCDateTime)
 
@@ -86,6 +87,7 @@ event.listen(PPSCEHR, "before_update", model_update_listener)
 class PPSCBiobankSample(PPSCDataBase, PPSCBase):
     __tablename__ = "ppsc_biobank_sample"
 
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
     first_time_date = Column(UTCDateTime)
     last_time_date = Column(UTCDateTime)
 
@@ -97,6 +99,7 @@ event.listen(PPSCBiobankSample, "before_update", model_update_listener)
 class PPSCHealthData(PPSCDataBase, PPSCBase):
     __tablename__ = "ppsc_health_data"
 
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
     health_data_stream_sharing_status = Column(TINYINT, default=0)
     health_data_stream_sharing_status_date = Column(UTCDateTime)
 
