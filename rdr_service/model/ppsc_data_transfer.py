@@ -53,7 +53,7 @@ event.listen(PPSCDataTransferRecord, "before_insert", model_insert_listener)
 event.listen(PPSCDataTransferRecord, "before_update", model_update_listener)
 
 
-class PPSCDataBase(PPSCBase):
+class PPSCDataBase:
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -61,7 +61,7 @@ class PPSCDataBase(PPSCBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
 
 
-class PPSCCore(PPSCDataBase):
+class PPSCCore(PPSCDataBase, PPSCBase):
     __tablename__ = "ppsc_core"
 
     has_core_data = Column(TINYINT, default=0)
@@ -72,7 +72,7 @@ event.listen(PPSCCore, "before_insert", model_insert_listener)
 event.listen(PPSCCore, "before_update", model_update_listener)
 
 
-class PPSCEHR(PPSCDataBase):
+class PPSCEHR(PPSCDataBase, PPSCBase):
     __tablename__ = "ppsc_ehr"
 
     first_time_date = Column(UTCDateTime)
@@ -83,7 +83,7 @@ event.listen(PPSCEHR, "before_insert", model_insert_listener)
 event.listen(PPSCEHR, "before_update", model_update_listener)
 
 
-class PPSCBiobankSample(PPSCDataBase):
+class PPSCBiobankSample(PPSCDataBase, PPSCBase):
     __tablename__ = "ppsc_biobank_sample"
 
     first_time_date = Column(UTCDateTime)
@@ -94,7 +94,7 @@ event.listen(PPSCBiobankSample, "before_insert", model_insert_listener)
 event.listen(PPSCBiobankSample, "before_update", model_update_listener)
 
 
-class PPSCHealthData(PPSCDataBase):
+class PPSCHealthData(PPSCDataBase, PPSCBase):
     __tablename__ = "ppsc_health_data"
 
     health_data_stream_sharing_status = Column(TINYINT, default=0)
