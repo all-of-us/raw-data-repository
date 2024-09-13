@@ -114,7 +114,7 @@ def include_object_fn(engine_name):
         # stops repeated create/destroys of the constraint on subsequent runs.
         if type_ == "foreign_key_constraint" and obj.table.schema == "metrics":
             return False
-        if type_ == "foreign_key_constraint" and engine_name == "nph":
+        if type_ == "foreign_key_constraint" and engine_name in ["nph", "ppsc"]:
             return False
         if name in autogen_denied_list:
             logger.info("skipping not allowed %s", name)
