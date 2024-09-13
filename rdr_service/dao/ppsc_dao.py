@@ -1,11 +1,11 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import List, Dict
+from sqlalchemy import and_
 
-from rdr_service.dao.base_dao import BaseDao, UpsertableDao
+from rdr_service.dao.base_dao import BaseDao, UpsertableDao, UpdatableDao
 from rdr_service.model.ppsc import Participant, Site
-from rdr_service.model.ppsc_data_transfer import PPSCDataTransferAuth, PPSCDataTransferEndpoint
-from rdr_service.ppsc.ppsc_data_transfer import PPSCDataTransferCore, PPSCDataTransferEHR, PPSCDataTransferBiobank, \
-    PPSCDataTransferHealthData
+from rdr_service.model.ppsc_data_transfer import PPSCDataTransferAuth, PPSCDataTransferEndpoint, PPSCDataTransferRecord
+from rdr_service.ppsc.ppsc_enums import AuthType
 
 
 class ParticipantDao(BaseDao):
@@ -60,7 +60,7 @@ class PPSCDefaultBaseDao(BaseDao):
             )
 
 
-class PPSCDataTransferAuthDao(BaseDao):
+class PPSCDataTransferAuthDao(UpdatableDao):
 
     def __init__(self):
         super().__init__(PPSCDataTransferAuth, order_by_ending=["id"])
@@ -70,6 +70,15 @@ class PPSCDataTransferAuthDao(BaseDao):
 
     def get_id(self, obj):
         pass
+
+    def get_auth_record_from_type(self, auth_type: AuthType):
+        with self.session() as session:
+            return session.query(
+                self.model_type
+            ).filter(
+                self.model_type.auth_type == auth_type,
+                self.model_type.ignore_flag != 1
+            ).one_or_none()
 
 
 class PPSCDataTransferEndpointDao(BaseDao):
@@ -83,8 +92,20 @@ class PPSCDataTransferEndpointDao(BaseDao):
     def get_id(self, obj):
         pass
 
+    def get_endpoint_by_type(self, transfer_type):
+        with self.session() as session:
+            session.query(
+                PPSCDataTransferEndpoint
+            ).filter(
+                PPSCDataTransferEndpoint.data_sync_transfer_type == transfer_type,
+                PPSCDataTransferEndpoint.ignore_flag != 1
+            ).one_or_none()
 
-class PPSCDataBaseDao(ABC, BaseDao):
+
+class PPSCDataTransferBaseDao(ABC, BaseDao):
+
+    def __init__(self, model_type):
+        super().__init__(model_type)
 
     def from_client_json(self):
         pass
@@ -92,9 +113,20 @@ class PPSCDataBaseDao(ABC, BaseDao):
     def get_id(self, obj):
         pass
 
-    @abstractmethod
-    def get_items_for_transfer(self) -> List:
-        ...
+    def get_items_for_transfer(self, *, transfer_type) -> List:
+        with self.session() as session:
+            return session.query(
+                self.model_type
+            ).outerjoin(
+                PPSCDataTransferRecord,
+                and_(
+                    PPSCDataTransferRecord.data_sync_transfer_type == transfer_type,
+                    PPSCDataTransferRecord.participant_id == PPSCDataTransferRecord.participant_id
+                )
+            ).filter(
+                PPSCDataTransferRecord.id.is_(None),
+                self.model_type.ignore_flag != 1
+            )
 
     def insert_bulk(self, batch: List[Dict]) -> None:
         with self.session() as session:
@@ -103,38 +135,3 @@ class PPSCDataBaseDao(ABC, BaseDao):
                 batch
             )
 
-
-class PPSCDataTransferCoreDao(PPSCDataBaseDao):
-
-    def __init__(self):
-        super().__init__(PPSCDataTransferCore, order_by_ending=["id"])
-
-    def get_items_for_transfer(self) -> List:
-        ...
-
-
-class PPSCDataTransferEHRDao(PPSCDataBaseDao):
-
-    def __init__(self):
-        super().__init__(PPSCDataTransferEHR, order_by_ending=["id"])
-
-    def get_items_for_transfer(self) -> List:
-        ...
-
-
-class PPSCDataTransferBiobankDao(PPSCDataBaseDao):
-
-    def __init__(self):
-        super().__init__(PPSCDataTransferBiobank, order_by_ending=["id"])
-
-    def get_items_for_transfer(self) -> List:
-        ...
-
-
-class PPSCDataTransferHealtDataDao(PPSCDataBaseDao):
-
-    def __init__(self):
-        super().__init__(PPSCDataTransferHealthData, order_by_ending=["id"])
-
-    def get_items_for_transfer(self) -> List:
-        ...

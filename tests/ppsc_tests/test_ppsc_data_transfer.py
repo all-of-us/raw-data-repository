@@ -10,6 +10,9 @@ class PPSCDataTransferTest(GenomicDataGenMixin):
     def set_data_elements(self) -> None:
         ...
 
+    def build_endpoint_data(self) -> None:
+        ...
+
     def test_ouath_token_generation(self) -> None:
         ...
 
