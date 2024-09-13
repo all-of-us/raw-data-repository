@@ -1149,7 +1149,9 @@ class NphBiospecimenDao(BaseDao):
                 {
                     "limsID": stored_sample.get('limsID'),
                     "biobankModified": stored_sample.get('biobankModified'),
-                    "status": str(StoredSampleStatus.lookup_by_number(stored_sample.get('status')))
+                    "status": str(StoredSampleStatus.lookup_by_number(stored_sample.get('status'))),
+                    "freezeThawCount": stored_sample.get('freezeThawCount'),
+                    "specimenVolumeUl": stored_sample.get('specimenVolumeUl')
                 } for stored_sample in stored_samples
             ]
         return order_samples
@@ -1168,7 +1170,9 @@ class NphBiospecimenDao(BaseDao):
                             'limsID', StoredSample.lims_id,
                             'biobankModified', StoredSample.biobank_modified,
                             'status', StoredSample.status,
-                            'orderSampleID', StoredSample.sample_id
+                            'orderSampleID', StoredSample.sample_id,
+                            'freezeThawCount', StoredSample.freeze_thaw_count,
+                            'specimenVolumeUl', StoredSample.specimen_volume_ul
                         )
                     ), type_=JSON
                 ).label('orders_sample_biobank_status')
