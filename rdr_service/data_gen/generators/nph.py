@@ -2,9 +2,27 @@ from datetime import datetime
 
 from rdr_service.dao import database_factory
 from rdr_service.model.rex import ParticipantMapping
-from rdr_service.model.study_nph import Participant, Site, PairingEvent, ParticipantEventActivity, Activity, \
-    PairingEventType, ConsentEvent, ConsentEventType, EnrollmentEventType, EnrollmentEvent, WithdrawalEvent, \
-    DeactivationEvent, ParticipantOpsDataElement, OrderedSample, StoredSample, Order, StudyCategory, DietEvent
+from rdr_service.model.study_nph import (
+    Participant,
+    Site,
+    PairingEvent,
+    ParticipantEventActivity,
+    Activity,
+    PairingEventType,
+    ConsentEvent,
+    ConsentEventType,
+    EnrollmentEventType,
+    EnrollmentEvent,
+    WithdrawalEvent,
+    DeactivationEvent,
+    ParticipantOpsDataElement,
+    OrderedSample,
+    StoredSample,
+    Order,
+    StudyCategory,
+    DietEvent,
+    DlwDosage,
+)
 from rdr_service.ancillary_study_resources.nph import enums
 from rdr_service.model.study_nph_sms import SmsJobRun, SmsSample, SmsBlocklist, SmsN0, SmsN1Mc1
 
@@ -342,3 +360,11 @@ class NphSmsDataGenerator(NphBaseGenerator):
         self._commit_to_database(obj)
         return obj
 
+    @staticmethod
+    def _dlw_dosage(**kwargs):
+        return DlwDosage(**kwargs)
+
+    def create_database_dlw_dosage(self, **kwargs):
+        obj = self._dlw_dosage(**kwargs)
+        self._commit_to_database(obj)
+        return obj
