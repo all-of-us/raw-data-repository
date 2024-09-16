@@ -77,7 +77,9 @@ class NphBiospecimenAPITest(BaseTestCase):
                             biobank_id=participant.biobank_id,
                             sample_id=f'11{participant.id}',
                             lims_id=f"33{participant.id}",
-                            status=StoredSampleStatus.RECEIVED
+                            status=StoredSampleStatus.RECEIVED,
+                            freeze_thaw_count=3,
+                            specimen_volume_ul=79
                         )
 
     def test_biospecimen_non_existent_participant_id(self):
@@ -114,7 +116,10 @@ class NphBiospecimenAPITest(BaseTestCase):
             for response_ordered_sample in response_ordered_samples:
                 self.assertIsNotNone(response_ordered_sample.get('biobankStatus'))
                 # should have for stored sample(s) for each ordered sample
-                self.assertEqual(len(response_ordered_sample.get('biobankStatus')), 1)
+                stored_sample_list = response_ordered_sample.get('biobankStatus')
+                self.assertEqual(len(stored_sample_list), 1)
+                self.assertEqual(3, stored_sample_list[0]['freezeThawCount'])
+                self.assertEqual(79, stored_sample_list[0]['specimenVolumeUl'])
 
     def test_biospecimen_by_last_modified_returns_correctly(self):
         fake_date_one = parser.parse('2020-05-28T08:00:01-05:00')
