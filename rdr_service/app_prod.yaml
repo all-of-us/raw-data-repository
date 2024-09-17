@@ -2,8 +2,11 @@
 instance_class: F4
 
 # Have 5 idle instances to prepare for sudden traffic spikes.
+# Setting target_throughput_utilization and target_cpu_utilization to test if it helps in reducing 502 errors
 automatic_scaling:
   min_idle_instances: 5
+  target_throughput_utilization: 0.55
+  target_cpu_utilization: 0.55
 
 # to have fixed outbound US. ip address
 vpc_access_connector:
