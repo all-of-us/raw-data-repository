@@ -5,6 +5,8 @@ instance_class: F4
 # Have 2 idle instances to prepare for sudden traffic spikes.
 automatic_scaling:
   min_idle_instances: 2
+  target_throughput_utilization: 0.55
+  target_cpu_utilization: 0.55
 
 # to have fixed outbound US. ip address
 vpc_access_connector:
