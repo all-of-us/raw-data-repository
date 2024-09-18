@@ -56,6 +56,9 @@ if __name__ == '__main__':
         elif args.resource:
             from rdr_service.resource.main import app
             app.run(host='127.0.0.1', port=8080, debug=args.debug)
+        elif args.ppsc_pipeline:
+            from rdr_service.ppsc_pipeline.main import app
+            app.run(host='127.0.0.1', port=8080, debug=args.debug)
         else:
             from rdr_service.main import app
             app.run(host='127.0.0.1', port=8080, debug=args.debug)
@@ -73,6 +76,8 @@ if __name__ == '__main__':
             command = command.replace('rdr_service.main:app', 'rdr_service.offline.main:app')
         if args.resource:
             command = command.replace('rdr_service.main:app', 'rdr_service.resource.main:app')
+        if args.ppsc_pipeline:
+            command = command.replace('rdr_service.main:app', 'rdr_service.ppsc_pipeline.main:app')
         p_args = shlex.split(command)
         print(p_args)
         p = subprocess.Popen(p_args, env=env)
@@ -83,6 +88,8 @@ if __name__ == '__main__':
         config_file = 'rdr_service/services/supervisor_offline.conf'
     elif args.resource:
         config_file = 'rdr_service/services/supervisor_resource.conf'
+    elif args.ppsc_pipeline:
+        config_file = 'rdr_service/services/supervisor_ppsc_pipeline.conf'
     else:
         config_file = 'rdr_service/services/supervisor.conf'
 

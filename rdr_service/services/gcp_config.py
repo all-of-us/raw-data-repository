@@ -54,7 +54,8 @@ GCP_REPLICA_INSTANCES = {
 GCP_SERVICES = [
     'default',
     'offline',
-    'resource'
+    'resource',
+    'ppsc_pipeline'
 ]
 
 
@@ -79,6 +80,12 @@ GCP_SERVICE_CONFIG_MAP = OrderedDict({
             'type': 'service',
             'default': [
                 'rdr_service/resource.yaml'
+            ]
+        },
+        'ppsc_pipeline': {
+            'type': 'service',
+            'default': [
+                'rdr_service/ppsc_pipeline.yaml'
             ]
         },
         'cron': {
@@ -128,6 +135,12 @@ GCP_SERVICE_CONFIG_MAP = OrderedDict({
             'type': 'service',
             'default': [
                 'rdr_service/resource.yaml'
+            ]
+        },
+        'ppsc_pipeline': {
+            'type': 'service',
+            'default': [
+                'rdr_service/ppsc_pipeline.yaml'
             ]
         },
         'cron': {
