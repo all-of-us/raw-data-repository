@@ -21,6 +21,8 @@ if __name__ == '__main__':
     parser.add_argument("--unittests", help="enable unittest mode", default=False, action="store_true")  # noqa
     parser.add_argument("--offline", help="start offline web app", default=False, action="store_true")  # noqa
     parser.add_argument("--resource", help="start resource web app", default=False, action="store_true")  # noqa
+    parser.add_argument("--ppsc_pipeline",
+                        help="start ppsc_pipeline web app", default=False, action="store_true")  # noqa
 
     args = parser.parse_args()
 
