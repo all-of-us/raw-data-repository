@@ -118,11 +118,19 @@ class PPSCIntakeAPI(BaseApi):
                 'participant_id': self.dao.extract_prefix_from_val(req_data['participantId']),
                 'event_type_name': req_data['eventType'],
                 'event_authored_time': self.activity_date_time_value,
-                'data_element_name': data_element['dataElementName'],
-                'data_element_value': data_element['dataElementValue']
+                'data_element_name': data_element['dataElementName']
             }
 
-            records_to_insert.append(event_dict)
+            # PPSC sends strings or arrays (multi-select)
+            if isinstance(data_element['dataElementValue'], list):
+                # The below iteration is to handle multi-select answers
+                for value in data_element['dataElementValue']:
+                    event_copy = event_dict.copy()
+                    event_copy["data_element_value"] = value
+                    records_to_insert.append(event_copy)
+            else:
+                event_dict["data_element_value"] = data_element['dataElementValue']
+                records_to_insert.append(event_dict)
 
         activity_event_dao.insert_bulk(records_to_insert)
 

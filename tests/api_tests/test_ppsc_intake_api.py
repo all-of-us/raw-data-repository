@@ -376,6 +376,64 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual('activity_date_time', survey_events[1].data_element_name)
         self.assertEqual("2024-05-20T14:30:00Z", survey_events[1].data_element_value)
 
+    def test_intake_survey_data_insert(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+
+        payload = {
+            "activity": "Survey Completion",
+            "eventType": "Basics Data",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "thebasics_birthplace",
+                    "dataElementValue": [
+                        "USA"
+                    ]
+                },
+                {
+                    "dataElementName": "race_whatraceethnicity",
+                    "dataElementValue": [
+                        "WhatRaceEthnicity_AIAN",
+                        "WhatRaceEthnicity_Hispanic"
+                    ]
+                },
+                {
+                    "dataElementName": "biologicalsexatbirth_sexatbirth",
+                    "dataElementValue": [
+                        "SexAtBirth_Male"
+                    ]
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00Z"
+                },
+            ]
+        }
+
+        test_time = datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+        survey_events = self.survey_completion_event_dao.get_all()
+        self.assertEqual(5, len(survey_events))
+        self.assertEqual(participant.id, survey_events[0].participant_id)
+        self.assertEqual('Basics Data', survey_events[0].event_type_name)
+
+        self.assertEqual('thebasics_birthplace', survey_events[0].data_element_name)
+        self.assertEqual('USA', survey_events[0].data_element_value)
+
+        self.assertEqual('race_whatraceethnicity', survey_events[1].data_element_name)
+        self.assertEqual('WhatRaceEthnicity_AIAN', survey_events[1].data_element_value)
+
+        self.assertEqual('race_whatraceethnicity', survey_events[2].data_element_name)
+        self.assertEqual('WhatRaceEthnicity_Hispanic', survey_events[2].data_element_value)
+
+        self.assertEqual('biologicalsexatbirth_sexatbirth', survey_events[3].data_element_name)
+        self.assertEqual('SexAtBirth_Male', survey_events[3].data_element_value)
+
+        self.assertEqual('activity_date_time', survey_events[4].data_element_name)
+        self.assertEqual("2024-05-20T14:30:00Z", survey_events[4].data_element_value)
+
     def test_intake_profile_updates_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()
 
