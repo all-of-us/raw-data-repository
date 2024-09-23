@@ -774,7 +774,7 @@ class UpdatableDao(BaseDao):
     that it matches.
     """
         if not existing_obj:
-            raise NotFound(f"{self.model_type.__name__} with id {id} does not exist")
+            raise NotFound(f"{self.model_type.__name__} with id {obj.id} does not exist")
         if self.validate_version_match and existing_obj.version != obj.version:
             raise PreconditionFailed(
                 f"Expected version was {obj.version}; stored version was {existing_obj.version}"
