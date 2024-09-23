@@ -1404,14 +1404,16 @@ class NphIncidentDao(UpdatableDao):
             return self.update_with_session(session, obj)
 
 
-class DlwDosageDao(BaseDao):
+class DlwDosageDao(UpdatableDao):
+
+    validate_version_match = False
 
     def __init__(self):
         super(DlwDosageDao, self).__init__(DlwDosage)
         self.participant_dao = NphParticipantDao()
 
     def get_id(self, obj):
-        pass
+        return obj.id
 
     def _validate(self, nph_participant_id, resource):
         valid_modules = [str(m) for m in list(ModuleTypes.numbers())]
@@ -1437,21 +1439,26 @@ class DlwDosageDao(BaseDao):
             raise BadRequest(f'Invalid visitPeriod provided. Visit Period should be in {valid_visit_periods}')
 
     # pylint: disable=unused-argument
-    def from_client_json(self, resource, participant_id, client_id):
+    def from_client_json(self, resource, participant_id, client_id, id_=None, expected_version=None):
         self._validate(participant_id, resource)
 
-        dlw_dosage = DlwDosage(
-            participant_id=participant_id,
-            module=resource.get('module'),
-            visit_period=VisitPeriod.lookup_by_name(resource.get('visitperiod').upper()),
-            batch_id=resource.get('batchid'),
-            participant_weight=resource.get('participantweight'),
-            dose=resource.get("dose"),
-            calculated_dose=resource.get("calculateddose"),
-            dose_time=resource.get("dosetime")
-        )
+        dlw_dict = {
+            "participant_id": participant_id,
+            "module": resource.get('module'),
+            "visit_period": VisitPeriod.lookup_by_name(resource.get('visitperiod').upper()),
+            "batch_id": resource.get('batchid'),
+            "participant_weight": resource.get('participantweight'),
+            "dose": resource.get("dose"),
+            "calculated_dose": resource.get("calculateddose"),
+            "dose_time": resource.get("dosetime")
+        }
 
-        return dlw_dosage
+        # Add id to the dictionary if it's a PUT request
+        if id_:
+            dlw_dict.update({"id": id_})
+
+        return DlwDosage(**dlw_dict)
 
     def to_client_json(self, model):
-        pass
+        """Return id in POST, so it can be used when needed to update the resource in PUT"""
+        return model.id

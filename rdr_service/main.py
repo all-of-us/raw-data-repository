@@ -411,8 +411,9 @@ api.add_resource(
 api.add_resource(
     DlwDosageApi,
     API_PREFIX + '/api/v1/nph/Participant/<string:nph_participant_id>/DlwDosage',
+    API_PREFIX + '/api/v1/nph/Participant/<string:nph_participant_id>/DlwDosage/<int:dlw_dosage_id>',
     endpoint='nph.participant.dlw_dosage',
-    methods=['POST']
+    methods=['POST', 'PUT']
 )
 
 api.add_resource(
