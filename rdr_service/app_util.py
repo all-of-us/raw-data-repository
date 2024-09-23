@@ -47,6 +47,16 @@ def auth_required_cron(func):
     return wrapped
 
 
+def auth_required_scheduler(func):
+    """A decorator that ensures that the user is a cloud scheduler job."""
+
+    def wrapped(*args, **kwargs):
+        check_scheduler()
+        return func(*args, **kwargs)
+
+    return wrapped
+
+
 def task_auth_required(func):
     """A decorator that ensures that the user is a task job."""
 
@@ -172,6 +182,14 @@ def check_cron():
     logging.info("User {} NOT ALLOWED for cron endpoint".format(get_oauth_id()))
     raise Forbidden()
 
+
+def check_scheduler():
+    """Raises Forbidden if the current user is not a cloudscheduler job."""
+    if request.headers.get("X-Cloudscheduler"):
+        logging.info("Appengine-Cloudscheduler ALLOWED for endpoint.")
+        return
+    logging.info("User {} NOT ALLOWED for scheduler endpoint".format(get_oauth_id()))
+    raise Forbidden()
 
 def lookup_user_info(user_email):
     return config.getSettingJson(config.USER_INFO, {}).get(user_email)

@@ -1,11 +1,11 @@
 from typing import List, Dict
-from sqlalchemy import func, and_, or_, case
+from sqlalchemy import func, and_, or_, cast, String
 from sqlalchemy.orm import aliased
 
 from rdr_service import clock
 from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao
-from rdr_service.model.study_nph import OrderedSample
+from rdr_service.model.study_nph import Order, OrderedSample, DlwDosage, Participant, StudyCategory
 from rdr_service.model.study_nph_sms import SmsSample, SmsBlocklist, SmsN0, SmsJobRun, SmsN1Mc1
 
 
@@ -156,8 +156,6 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsSample.ignore_flag == 0
             ).subquery()
 
-            parent_fields = aliased(OrderedSample)
-
             sample_well = aliased(SmsN1Mc1)
 
             aliquot_sample = aliased(OrderedSample)
@@ -229,45 +227,31 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             if 'pbrc' in kwargs.get('recipient').lower():
                 query = query.add_columns(
                     SmsSample.body_weight_kg,
-                    case(
-                        [(
-                            func.json_length(aliquot_sample.supplemental_fields) > 0,
-                            func.json_extract(
-                                aliquot_sample.supplemental_fields, '$.dlwDose.batchid'
-                            )
-                        )],
-                        else_=func.json_extract(
-                            parent_fields.supplemental_fields, '$.dlwDose.batchid'
-                        )
-                    ).label('dlw_dose_batch'),
-                    case(
-                        [(
-                            func.json_length(aliquot_sample.supplemental_fields) > 0,
-                            func.json_extract(
-                                aliquot_sample.supplemental_fields, '$.dlwDose.doseAdministered'
-                            )
-                        )],
-                        else_=func.json_extract(
-                            parent_fields.supplemental_fields, '$.dlwDose.doseAdministered'
-                        )
-                    ).label('dlw_dose_date_time'),
-                    case(
-                        [(
-                            func.json_length(aliquot_sample.supplemental_fields) > 0,
-                            func.json_extract(
-                                aliquot_sample.supplemental_fields, '$.dlwDose.dose'
-                            )
-                        )],
-                        else_=func.json_extract(
-                            parent_fields.supplemental_fields, '$.dlwDose.dose'
-                        )
-                    ).label('dlw_dose_grams')
+                    DlwDosage.batch_id.label('dlw_dose_batch'),
+                    DlwDosage.dose_time.label('dlw_dose_date_time'),
+                    DlwDosage.dose.label('dlw_dose_grams')
                 ).outerjoin(
                     aliquot_sample,
                     SmsSample.sample_id == aliquot_sample.aliquot_id
                 ).outerjoin(
-                    parent_fields,
-                    aliquot_sample.parent_sample_id == parent_fields.id
+                    Order,
+                    aliquot_sample.order_id == Order.id
+                ).outerjoin(
+                    StudyCategory,
+                    and_(
+                        StudyCategory.id == Order.category_id,
+                        func.lower(StudyCategory.type_label) == "visitperiod",
+                    )
+                ).outerjoin(
+                    Participant,
+                    cast(Participant.biobank_id, String) == func.substr(SmsN0.biobank_id, 2)
+                ).outerjoin(
+                    DlwDosage,
+                    and_(
+                        Participant.id == DlwDosage.participant_id,
+                        DlwDosage.visit_period == func.regexp_substr(StudyCategory.name, "[0-9]+"),
+                        DlwDosage.ignore_flag == 0,
+                    )
                 )
             else:
                 query = query.add_columns(
