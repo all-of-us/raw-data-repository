@@ -6,6 +6,8 @@ from flask import Flask, got_request_exception
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
+from rdr_service.ppsc.ppsc_data_transfer import PPSCDataTransferCore, PPSCDataTransferHealthData, PPSCDataTransferEHR, \
+    PPSCDataTransferBiobank
 from rdr_service.services.flask import PPSC_PIPELINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
     flask_restful_log_exception_error
@@ -22,6 +24,30 @@ def test_job():
     return '{"success": "true"}'
 
 
+@app_util.auth_required_scheduler
+def ppsc_data_transfer_core():
+    PPSCDataTransferCore().run_data_transfer()
+    return '{ "success": "true" }'
+
+
+@app_util.auth_required_scheduler
+def ppsc_data_transfer_ehr():
+    PPSCDataTransferEHR().run_data_transfer()
+    return '{ "success": "true" }'
+
+
+@app_util.auth_required_scheduler
+def ppsc_data_transfer_health_data():
+    PPSCDataTransferHealthData().run_data_transfer()
+    return '{ "success": "true" }'
+
+
+@app_util.auth_required_scheduler
+def ppsc_data_transfer_biobank_sample():
+    PPSCDataTransferBiobank().run_data_transfer()
+    return '{ "success": "true" }'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     ppsc_pipeline = Flask(__name__)
@@ -31,6 +57,35 @@ def _build_pipeline_app():
         PPSC_PIPELINE_PREFIX + "TestJob",
         endpoint="test_job",
         view_func=test_job,
+        methods=["GET"],
+    )
+
+    # Cloud Scheduler - Scheduler jobs
+    ppsc_pipeline.add_url_rule(
+        PPSC_PIPELINE_PREFIX + "TransferCore",
+        endpoint="ppsc_data_transfer_core",
+        view_func=ppsc_data_transfer_core,
+        methods=["GET"],
+    )
+
+    ppsc_pipeline.add_url_rule(
+        PPSC_PIPELINE_PREFIX + "TransferEHR",
+        endpoint="ppsc_data_transfer_ehr",
+        view_func=ppsc_data_transfer_ehr,
+        methods=["GET"],
+    )
+
+    ppsc_pipeline.add_url_rule(
+        PPSC_PIPELINE_PREFIX + "TransferHealthData",
+        endpoint="ppsc_data_transfer_health_data",
+        view_func=ppsc_data_transfer_health_data,
+        methods=["GET"],
+    )
+
+    ppsc_pipeline.add_url_rule(
+        PPSC_PIPELINE_PREFIX + "TransferBiobankSample",
+        endpoint="ppsc_data_transfer_biobank_sample",
+        view_func=ppsc_data_transfer_biobank_sample,
         methods=["GET"],
     )
 

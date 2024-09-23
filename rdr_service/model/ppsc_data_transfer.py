@@ -15,12 +15,12 @@ class PPSCDataTransferAuth(PPSCBase):
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     auth_type = Column(Enum(AuthType))
-    auth_url = Column(String(512))
-    client_id = Column(String(512))
-    client_secret = Column(String(512))
-    access_token = Column(String(512))
+    auth_url = Column(String(512), nullable=False)
+    client_id = Column(String(512), nullable=False)
+    client_secret = Column(String(512), nullable=False)
+    access_token = Column(String(1024))
     expires = Column(String(256))
-    last_generated = Column(UTCDateTime)
+    last_generated = Column(UTCDateTime6)
     ignore_flag = Column(TINYINT, default=0)
 
 

@@ -62,6 +62,8 @@ class PPSCDefaultBaseDao(BaseDao):
 
 class PPSCDataTransferAuthDao(UpdatableDao):
 
+    validate_version_match = False
+
     def __init__(self):
         super().__init__(PPSCDataTransferAuth, order_by_ending=["id"])
 
@@ -69,7 +71,7 @@ class PPSCDataTransferAuthDao(UpdatableDao):
         pass
 
     def get_id(self, obj):
-        pass
+        return obj.id
 
     def get_auth_record_from_type(self, auth_type: AuthType):
         with self.session() as session:

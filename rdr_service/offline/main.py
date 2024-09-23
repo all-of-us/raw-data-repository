@@ -46,8 +46,6 @@ from rdr_service.offline.service_accounts import ServiceAccountKeyManager
 from rdr_service.offline.sync_consent_files import ConsentSyncController
 from rdr_service.offline.table_exporter import TableExporter
 from rdr_service.offline.tactis_bq_sync import TactisBQDataSync
-from rdr_service.ppsc.ppsc_data_transfer import PPSCDataTransferCore, PPSCDataTransferHealthData, PPSCDataTransferEHR, \
-    PPSCDataTransferBiobank
 from rdr_service.repository.obfuscation_repository import ObfuscationRepository
 from rdr_service.resource.tasks import dispatch_check_consent_errors_task
 from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
@@ -985,30 +983,6 @@ def detect_etm_response_duplicates():
     return '{ "success": "true" }'
 
 
-@app_util.auth_required_cron
-def ppsc_data_transfer_core():
-    PPSCDataTransferCore().run_data_transfer()
-    return '{ "success": "true" }'
-
-
-@app_util.auth_required_cron
-def ppsc_data_transfer_ehr():
-    PPSCDataTransferEHR().run_data_transfer()
-    return '{ "success": "true" }'
-
-
-@app_util.auth_required_cron
-def ppsc_data_transfer_health():
-    PPSCDataTransferHealthData().run_data_transfer()
-    return '{ "success": "true" }'
-
-
-@app_util.auth_required_cron
-def ppsc_data_transfer_biobank():
-    PPSCDataTransferBiobank().run_data_transfer()
-    return '{ "success": "true" }'
-
-
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
@@ -1619,35 +1593,6 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'detect_etm_response_duplicates',
         endpoint="detect_etm_response_duplicates",
         view_func=detect_etm_response_duplicates,
-        methods=["GET"]
-    )
-
-    # PPSC
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + 'PPSCDataTransferCore',
-        endpoint="ppsc_data_transfer_core",
-        view_func=ppsc_data_transfer_core,
-        methods=["GET"]
-    )
-
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + 'PPSCDataTransferHealth',
-        endpoint="ppsc_data_transfer_health",
-        view_func=ppsc_data_transfer_health,
-        methods=["GET"]
-    )
-
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + 'PPSCDataTransferBiobank',
-        endpoint="ppsc_data_transfer_biobank",
-        view_func=ppsc_data_transfer_biobank,
-        methods=["GET"]
-    )
-
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + 'PPSDataTransferEHR',
-        endpoint="ppsc_data_transfer_ehr",
-        view_func=ppsc_data_transfer_ehr,
         methods=["GET"]
     )
 
