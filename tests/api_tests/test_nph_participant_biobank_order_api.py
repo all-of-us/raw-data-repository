@@ -555,6 +555,7 @@ class DLWDosageApiTest(BaseTestCase):
 
         dlw_dosage = self.session.query(DlwDosage).filter(DlwDosage.participant_id == self.nph_pid).all()
 
+        self.assertEqual(dlw_dosage[0].id, response.get_json())
         self.assertEqual("3", str(dlw_dosage[0].module.number))
         self.assertEqual("PERIOD1DLW", dlw_dosage[0].visit_period.name)
         self.assertEqual("NPHDLW9172397", dlw_dosage[0].batch_id)
@@ -606,6 +607,61 @@ class DLWDosageApiTest(BaseTestCase):
             f"rdr/v1/api/v1/nph/Participant/{self.nph_pid}/DlwDosage", json=invalid_payload
         )
         self.assertEqual(400, response.status_code)
+
+    def test_put(self):
+        payload = {
+            "module": "3",
+            "visitperiod": "Period1DLW",
+            "batchid": "NPHDLW9172397",
+            "participantweight": "56.38",
+            "dose": "84",
+            "calculateddose": "84.57",
+            "dosetime": "2022-11-03T08:45:49Z",
+        }
+        response_post = app.test_client().post(
+            f"rdr/v1/api/v1/nph/Participant/{self.nph_pid}/DlwDosage", json=payload
+        )
+        self.assertEqual(200, response_post.status_code)
+
+        # Update "dose" to test if PUT worked
+        payload["dose"] = 90
+        response_put = app.test_client().put(
+            f"rdr/v1/api/v1/nph/Participant/{self.nph_pid}/DlwDosage/1", json=payload
+        )
+
+        self.assertEqual(200, response_put.status_code)
+
+        dlw_dosage = self.session.query(DlwDosage).filter(DlwDosage.participant_id == self.nph_pid).all()
+
+        self.assertEqual("3", str(dlw_dosage[0].module.number))
+        self.assertEqual("PERIOD1DLW", dlw_dosage[0].visit_period.name)
+        self.assertEqual("NPHDLW9172397", dlw_dosage[0].batch_id)
+        self.assertEqual("56.38", dlw_dosage[0].participant_weight)
+        self.assertEqual("90", dlw_dosage[0].dose)
+        self.assertEqual("84.57", dlw_dosage[0].calculated_dose)
+        self.assertEqual("2022-11-03T08:45:49Z", dlw_dosage[0].dose_time.strftime('%Y-%m-%dT%H:%M:%SZ'))
+
+    def test_put_with_incorrect_id(self):
+        payload = {
+            "module": "3",
+            "visitperiod": "Period1DLW",
+            "batchid": "NPHDLW9172397",
+            "participantweight": "56.38",
+            "dose": "84",
+            "calculateddose": "84.57",
+            "dosetime": "2022-11-03T08:45:49Z",
+        }
+        response_post = app.test_client().post(
+            f"rdr/v1/api/v1/nph/Participant/{self.nph_pid}/DlwDosage", json=payload
+        )
+        self.assertEqual(200, response_post.status_code)
+
+        invalid_id = 9
+        response_put = app.test_client().put(
+            f"rdr/v1/api/v1/nph/Participant/{self.nph_pid}/DlwDosage/{invalid_id}", json=payload
+        )
+        self.assertEqual(404, response_put.status_code)
+        self.assertIn(f"{invalid_id} does not exist", response_put.get_json())
 
     def tearDown(self):
         super().tearDown()

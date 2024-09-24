@@ -5,7 +5,7 @@ from flask import request
 from werkzeug.exceptions import BadRequest, NotFound
 from sqlalchemy import exc
 
-from rdr_service.api.base_api import UpdatableApi, BaseApi, log_api_request
+from rdr_service.api.base_api import UpdatableApi, log_api_request
 from rdr_service.dao import database_factory
 from rdr_service.dao.study_nph_dao import NphOrderDao, DlwDosageDao
 from rdr_service.api_util import RTI_AND_HEALTHPRO, RDR_AND_HEALTHPRO
@@ -106,10 +106,13 @@ class NphOrderApi(UpdatableApi):
             return construct_response(order), 400
 
 
-class DlwDosageApi(BaseApi):
+class DlwDosageApi(UpdatableApi):
 
     def __init__(self):
         super().__init__(DlwDosageDao())
+
+    def _make_response(self, obj):
+        return self.dao.to_client_json(model=obj)
 
     @auth_required(RDR_AND_HEALTHPRO)
     def post(self, nph_participant_id):
@@ -119,4 +122,20 @@ class DlwDosageApi(BaseApi):
 
         log_api_request(log=request.log_record, model_obj=result)
         self._archive_request_log()
-        return self._make_response(result)
+        return self._make_response(result), 200
+
+    @auth_required(RDR_AND_HEALTHPRO)
+    def put(self, nph_participant_id: str, dlw_dosage_id: int):
+        try:
+            resource = self.get_request_json()
+            m = self._get_model_to_update(
+                resource=resource, id_=dlw_dosage_id, expected_version=None, participant_id=nph_participant_id
+            )
+            self._do_update(m)
+            return 200
+        except NotFound as not_found:
+            logging.error(not_found.description, exc_info=True)
+            return not_found.description, 404
+        except BadRequest as bad_request:
+            logging.error(bad_request.description, exc_info=True)
+            return bad_request.description, 400
