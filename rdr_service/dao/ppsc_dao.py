@@ -1,4 +1,3 @@
-from abc import ABC
 from typing import List, Dict
 from sqlalchemy import and_
 
@@ -96,7 +95,7 @@ class PPSCDataTransferEndpointDao(BaseDao):
 
     def get_endpoint_by_type(self, transfer_type):
         with self.session() as session:
-            session.query(
+            return session.query(
                 PPSCDataTransferEndpoint
             ).filter(
                 PPSCDataTransferEndpoint.data_sync_transfer_type == transfer_type,
@@ -104,7 +103,26 @@ class PPSCDataTransferEndpointDao(BaseDao):
             ).one_or_none()
 
 
-class PPSCDataTransferBaseDao(ABC, BaseDao):
+class PPSCDataTransferRecordDao(BaseDao):
+
+    def __init__(self):
+        super().__init__(PPSCDataTransferRecord, order_by_ending=["id"])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    def insert_bulk(self, batch: List[Dict]) -> None:
+        with self.session() as session:
+            session.bulk_insert_mappings(
+                self.model_type,
+                batch
+            )
+
+
+class PPSCDataTransferBaseDao(BaseDao):
 
     def __init__(self, model_type):
         super().__init__(model_type)
@@ -128,12 +146,5 @@ class PPSCDataTransferBaseDao(ABC, BaseDao):
             ).filter(
                 PPSCDataTransferRecord.id.is_(None),
                 self.model_type.ignore_flag != 1
-            )
-
-    def insert_bulk(self, batch: List[Dict]) -> None:
-        with self.session() as session:
-            session.bulk_insert_mappings(
-                self.model_type,
-                batch
-            )
+            ).all()
 
