@@ -109,25 +109,6 @@ class PPSCDataGenerator(PPSCBaseDataGenerator):
         self._commit_to_database(survey_completion_event)
         return survey_completion_event
 
-    # here
-    @staticmethod
-    def _survey_completion_event(**kwargs):
-        return SurveyCompletionEvent(**kwargs)
-
-    def create_database_survey_completion_event(self, **kwargs):
-        survey_completion_event = self._survey_completion_event(**kwargs)
-        self._commit_to_database(survey_completion_event)
-        return survey_completion_event
-
-    @staticmethod
-    def _survey_completion_event(**kwargs):
-        return SurveyCompletionEvent(**kwargs)
-
-    def create_database_survey_completion_event(self, **kwargs):
-        survey_completion_event = self._survey_completion_event(**kwargs)
-        self._commit_to_database(survey_completion_event)
-        return survey_completion_event
-
     @staticmethod
     def _ppsc_sync_auth(**kwargs):
         return PPSCDataTransferAuth(**kwargs)
