@@ -10,7 +10,7 @@ from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.ppsc.ppsc_data_transfer import PPSCDataTransferCore, PPSCDataTransferEHR, PPSCDataTransferHealthData, \
     PPSCDataTransferBiobank
 from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType
-from tests.service_tests.test_genomic_datagen import GenomicDataGenMixin
+from tests.helpers.unittest_base import BaseTestCase
 
 
 @dataclass
@@ -18,7 +18,7 @@ class MockedTransferResponse:
     status_code: int = 200
 
 
-class PPSCDataTransferTest(GenomicDataGenMixin):
+class PPSCDataTransferTest(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.ppsc_data_gen = PPSCDataGenerator()
