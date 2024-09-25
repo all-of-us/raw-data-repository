@@ -98,7 +98,7 @@ class PPSCDataTransferCore(BaseDataTransfer):
     def prepare_obj(self, transfer_item):
         updated_obj = self.build_default_obj(transfer_item)
         updated_obj['hasCoreData'] = True
-        updated_obj['hasCoreDataDateTime'] = str(updated_obj['hasCoreDataDateTime'])
+        updated_obj['hasCoreDataDateTime'] = updated_obj['hasCoreDataDateTime'].strftime("%Y-%m-%dT%H:%M:%SZ")
         return updated_obj
 
 
@@ -111,8 +111,8 @@ class PPSCDataTransferEHR(BaseDataTransfer):
 
     def prepare_obj(self, transfer_item):
         updated_obj = self.build_default_obj(transfer_item)
-        updated_obj['firstTimeDateTime'] = str(updated_obj['firstTimeDateTime'])
-        updated_obj['lastTimeDateTime'] = str(updated_obj['lastTimeDateTime'])
+        updated_obj['firstTimeDateTime'] = updated_obj['firstTimeDateTime'].strftime("%Y-%m-%dT%H:%M:%SZ")
+        updated_obj['lastTimeDateTime'] = updated_obj['lastTimeDateTime'].strftime("%Y-%m-%dT%H:%M:%SZ")
         return updated_obj
 
 
@@ -125,8 +125,8 @@ class PPSCDataTransferBiobank(BaseDataTransfer):
 
     def prepare_obj(self, transfer_item):
         updated_obj = self.build_default_obj(transfer_item)
-        updated_obj['firstTimeDateTime'] = str(updated_obj['firstTimeDateTime'])
-        updated_obj['lastTimeDateTime'] = str(updated_obj['lastTimeDateTime'])
+        updated_obj['firstTimeDateTime'] = updated_obj['firstTimeDateTime'].strftime("%Y-%m-%dT%H:%M:%SZ")
+        updated_obj['lastTimeDateTime'] = updated_obj['lastTimeDateTime'].strftime("%Y-%m-%dT%H:%M:%SZ")
         return updated_obj
 
 
@@ -139,5 +139,6 @@ class PPSCDataTransferHealthData(BaseDataTransfer):
 
     def prepare_obj(self, transfer_item):
         updated_obj = self.build_default_obj(transfer_item)
-        updated_obj['healthDataStreamSharingStatusDateTime'] = str(updated_obj['healthDataStreamSharingStatusDateTime'])
+        updated_obj['healthDataStreamSharingStatusDateTime'] = updated_obj[
+            'healthDataStreamSharingStatusDateTime'].strftime("%Y-%m-%dT%H:%M:%SZ")
         return updated_obj
