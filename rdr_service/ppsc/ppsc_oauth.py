@@ -7,7 +7,6 @@ from rdr_service.dao.ppsc_dao import PPSCDataTransferAuthDao
 from rdr_service.ppsc.ppsc_enums import AuthType
 
 
-# pylint: disable=broad-except
 class PPSCTransferOauth:
 
     def __init__(self, auth_type: AuthType):
@@ -36,7 +35,7 @@ class PPSCTransferOauth:
                 logging.warning(f'Error generating token for Oauth: {self.auth_type}: Response {response.status_code}')
                 raise RuntimeError(f'Error generating token for Oauth: '
                                    f'{self.auth_type}: Response {response.status_code}')
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logging.warning(f'Error generating token for Oauth: {self.auth_type}: {e}')
 
     def store_token(self, token_dict: dict):
