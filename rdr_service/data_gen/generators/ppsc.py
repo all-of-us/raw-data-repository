@@ -6,8 +6,7 @@ from rdr_service.model.ppsc import Participant, Activity, EnrollmentEventType, C
     SurveyCompletionEvent, PartnerActivity
 from rdr_service.model.ppsc_data_transfer import (
     PPSCDataTransferAuth, PPSCDataTransferEndpoint,
-    PPSCDataTransferRecord, PPSCCore, PPSCEHR, PPSCBiobankSample,
-    PPSCHealthData, PPSCHealthData, PPSCBiobankSample, PPSCEHR, PPSCCore
+    PPSCDataTransferRecord, PPSCHealthData, PPSCBiobankSample, PPSCEHR, PPSCCore
 )
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"

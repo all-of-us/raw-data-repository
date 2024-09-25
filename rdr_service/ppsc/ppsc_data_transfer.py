@@ -44,7 +44,7 @@ class BaseDataTransfer(ABC):
             if not endpoint:
                 raise RuntimeError(f'Endpoint record cannot be retrieved for {self.transfer_type}')
             return f'{endpoint.base_url}{endpoint.endpoint}'
-        raise RuntimeError(f'Transfer type not initiated on constructor')
+        raise RuntimeError(f'Transfer type {self.transfer_type}  not initiated on constructor')
 
     def get_transfer_items(self):
         return self.dao.get_items_for_transfer(transfer_type=self.transfer_type)
