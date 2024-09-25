@@ -26,25 +26,29 @@ def test_job():
 
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_core():
-    PPSCDataTransferCore().run_data_transfer()
+    with PPSCDataTransferCore() as core_transfer:
+        core_transfer.run_data_transfer()
     return '{ "success": "true" }'
 
 
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_ehr():
-    PPSCDataTransferEHR().run_data_transfer()
+    with PPSCDataTransferEHR() as ehr_transfer:
+        ehr_transfer.run_data_transfer()
     return '{ "success": "true" }'
 
 
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_health_data():
-    PPSCDataTransferHealthData().run_data_transfer()
+    with PPSCDataTransferHealthData() as health_transfer:
+        health_transfer.run_data_transfer()
     return '{ "success": "true" }'
 
 
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_biobank_sample():
-    PPSCDataTransferBiobank().run_data_transfer()
+    with PPSCDataTransferBiobank() as biobank_transfer:
+        biobank_transfer.run_data_transfer()
     return '{ "success": "true" }'
 
 
