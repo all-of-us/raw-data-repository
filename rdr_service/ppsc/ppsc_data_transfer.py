@@ -50,7 +50,6 @@ class BaseDataTransfer(ABC):
         return self.dao.get_items_for_transfer(transfer_type=self.transfer_type)
 
     def get_headers(self):
-        # return {"Authorization": f'Bearer wrwrwrwrwwrwwr'}
         return {"Authorization": f'Bearer {self.ppsc_oauth_data.token}'}
 
     def send_item(self, post_obj: dict):
