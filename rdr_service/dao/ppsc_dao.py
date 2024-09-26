@@ -141,7 +141,8 @@ class PPSCDataTransferBaseDao(BaseDao):
                 PPSCDataTransferRecord,
                 and_(
                     PPSCDataTransferRecord.data_sync_transfer_type == transfer_type,
-                    PPSCDataTransferRecord.participant_id == PPSCDataTransferRecord.participant_id
+                    PPSCDataTransferRecord.participant_id == PPSCDataTransferRecord.participant_id,
+                    PPSCDataTransferRecord.response_code == 200
                 )
             ).filter(
                 PPSCDataTransferRecord.id.is_(None),
