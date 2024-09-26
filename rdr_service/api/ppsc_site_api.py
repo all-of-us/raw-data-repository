@@ -8,7 +8,7 @@ from rdr_service.api_util import RDR, PPSC
 from rdr_service.app_util import auth_required
 from rdr_service.dao.ppsc_dao import SiteDao, PPSCDefaultBaseDao
 from rdr_service.model.ppsc import PartnerActivity, Site, PartnerEventActivity
-from rdr_service.services.ppsc.ppsc_data_sync import SiteDataSync
+from rdr_service.ppsc.ppsc_data_sync import SiteDataSync
 
 
 # pylint: disable=broad-except

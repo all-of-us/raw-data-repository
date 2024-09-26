@@ -8,7 +8,7 @@ from rdr_service.api_util import RDR, PPSC
 from rdr_service.app_util import auth_required, nonprod
 from rdr_service.dao.ppsc_dao import ParticipantDao, PPSCDefaultBaseDao
 from rdr_service.model.ppsc import EnrollmentEvent, EnrollmentEventType, ParticipantEventActivity, Activity
-from rdr_service.services.ppsc.ppsc_data_sync import CreateParticipantSync
+from rdr_service.ppsc.ppsc_data_sync import CreateParticipantSync
 
 
 # pylint: disable=broad-except

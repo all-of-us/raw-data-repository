@@ -4,6 +4,10 @@ from rdr_service import clock
 from rdr_service.dao import database_factory
 from rdr_service.model.ppsc import Participant, Activity, EnrollmentEventType, ConsentEvent, ProfileUpdatesEvent, \
     SurveyCompletionEvent, PartnerActivity
+from rdr_service.model.ppsc_data_transfer import (
+    PPSCDataTransferAuth, PPSCDataTransferEndpoint,
+    PPSCDataTransferRecord, PPSCHealthData, PPSCBiobankSample, PPSCEHR, PPSCCore
+)
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 TIME = datetime.strptime(datetime.now().strftime(DATETIME_FORMAT), DATETIME_FORMAT)
@@ -103,3 +107,66 @@ class PPSCDataGenerator(PPSCBaseDataGenerator):
         survey_completion_event = self._survey_completion_event(**kwargs)
         self._commit_to_database(survey_completion_event)
         return survey_completion_event
+
+    @staticmethod
+    def _ppsc_sync_auth(**kwargs):
+        return PPSCDataTransferAuth(**kwargs)
+
+    def create_database_ppsc_sync_auth(self, **kwargs):
+        auth_event = self._ppsc_sync_auth(**kwargs)
+        self._commit_to_database(auth_event)
+        return auth_event
+
+    @staticmethod
+    def _ppsc_data_sync_endpoint(**kwargs):
+        return PPSCDataTransferEndpoint(**kwargs)
+
+    def create_database_ppsc_data_sync_endpoint(self, **kwargs):
+        ppsc_data_endpoint = self._ppsc_data_sync_endpoint(**kwargs)
+        self._commit_to_database(ppsc_data_endpoint)
+        return ppsc_data_endpoint
+
+    @staticmethod
+    def _ppsc_data_sync_record(**kwargs):
+        return PPSCDataTransferRecord(**kwargs)
+
+    def create_database_ppsc_data_sync_record(self, **kwargs):
+        record = self._ppsc_data_sync_record(**kwargs)
+        self._commit_to_database(record)
+        return record
+
+    @staticmethod
+    def _ppsc_data_core(**kwargs):
+        return PPSCCore(**kwargs)
+
+    def create_database_ppsc_data_core(self, **kwargs):
+        core = self._ppsc_data_core(**kwargs)
+        self._commit_to_database(core)
+        return core
+
+    @staticmethod
+    def _ppsc_data_ehr(**kwargs):
+        return PPSCEHR(**kwargs)
+
+    def create_database_ppsc_data_ehr(self, **kwargs):
+        ehr = self._ppsc_data_ehr(**kwargs)
+        self._commit_to_database(ehr)
+        return ehr
+
+    @staticmethod
+    def _ppsc_data_biobank(**kwargs):
+        return PPSCBiobankSample(**kwargs)
+
+    def create_database_ppsc_data_biobank(self, **kwargs):
+        biobank = self._ppsc_data_biobank(**kwargs)
+        self._commit_to_database(biobank)
+        return biobank
+
+    @staticmethod
+    def _ppsc_data_health_data(**kwargs):
+        return PPSCHealthData(**kwargs)
+
+    def create_database_ppsc_data_health_data(self, **kwargs):
+        health = self._ppsc_data_health_data(**kwargs)
+        self._commit_to_database(health)
+        return health

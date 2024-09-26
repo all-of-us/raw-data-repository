@@ -955,6 +955,7 @@ def ptsc_test_participant_cleanup_request():
         logging.error(f"Failed to send ptsc cleanup email: {e}")
         return {"success": "false"}
 
+
 @app_util.auth_required_cron
 def nph_sms_n1_generation():
     n1_generation()
@@ -975,10 +976,12 @@ def sync_tactis_participants_to_bq():
     data_sync.sync_data_to_bigquery()
     return '{ "success": "true" }'
 
+
 @app_util.auth_required_cron
 def detect_etm_response_duplicates():
     run_etm_duplicate_detector()
     return '{ "success": "true" }'
+
 
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -1592,6 +1595,7 @@ def _build_pipeline_app():
         view_func=detect_etm_response_duplicates,
         methods=["GET"]
     )
+
 
     offline_app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
     offline_app.add_url_rule("/_ah/stop", endpoint="stop", view_func=flask_stop, methods=["GET"])
