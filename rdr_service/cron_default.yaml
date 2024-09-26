@@ -239,24 +239,3 @@ cron:
   schedule: 1 of jan 12:00
   timezone: America/New_York
   target: offline
-#- description: PPSC Data Transfer (Core Data)
-#  url: /offline/PPSCDataTransferCore
-#  schedule: 1 of jan 12:00
-#  timezone: America/New_York
-#  target: offline
-#- description: PPSC Data Transfer (Health Data Stream)
-#  url: /offline/PPSCDataTransferHealth
-#  schedule: 1 of jan 12:00
-#  timezone: America/New_York
-#  target: offline
-#- description: PPSC Data Transfer (Biobank Sample Received)
-#  url: /offline/PPSCDataTransferBiobank
-#  schedule: 1 of jan 12:00
-#  timezone: America/New_York
-#  target: offline
-#- description: PPSC Data Transfer (EHR Receipt)
-#  url: /offline/PPSCDataTransferEHR
-#  schedule: 1 of jan 12:00
-#  timezone: America/New_York
-#  target: offline
-
