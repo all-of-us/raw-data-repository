@@ -2936,7 +2936,8 @@ class GenomicPipelineTest(BaseTestCase):
             "pipeline_id",
             "ai_an",
             "blocklisted",
-            "blocklisted_reason"
+            "blocklisted_reason",
+            "pediatric"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -5380,6 +5381,7 @@ class GenomicPipelineTest(BaseTestCase):
             "test_name",
             "failure_mode",
             "failure_mode_desc",
+            "pediatric"
         ]
 
         aw1_raw_records = self.aw1_raw_dao.get_all()
