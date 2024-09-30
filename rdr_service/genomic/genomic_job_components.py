@@ -1374,7 +1374,8 @@ class GenomicFileValidator:
             "sitename",
             "genometype",
             "failuremode",
-            "failuremodedesc"
+            "failuremodedesc",
+            "pediatric"
         )
         self.GC_METRICS_SCHEMAS = {
             GENOME_TYPE_WGS: (
@@ -2422,20 +2423,19 @@ class GenomicFileValidator:
         try:
             if self.job_id == GenomicJob.METRICS_INGESTION:
                 return self.GC_METRICS_SCHEMAS[self.genome_type]
-            if self.job_id == GenomicJob.AW1_MANIFEST:
+            if self.job_id in (
+                GenomicJob.AW1_MANIFEST, GenomicJob.AW1F_MANIFEST
+                , GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST
+            ):
                 return self.AW1_MANIFEST_SCHEMA
             if self.job_id == GenomicJob.GEM_A2_MANIFEST:
                 return self.GEM_A2_SCHEMA
-            if self.job_id == GenomicJob.AW1F_MANIFEST:
-                return self.AW1_MANIFEST_SCHEMA  # AW1F and AW1 use same schema
             if self.job_id == GenomicJob.GEM_METRICS_INGEST:
                 return self.GEM_METRICS_SCHEMA
             if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
                 return self.AW4_ARRAY_SCHEMA
             if self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
                 return self.AW4_WGS_SCHEMA
-            if self.job_id in (GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST):
-                return self.AW1_MANIFEST_SCHEMA
             if self.job_id == GenomicJob.AW5_WGS_MANIFEST:
                 self.genome_type = GENOME_TYPE_ARRAY
                 return self.AW5_WGS_SCHEMA
