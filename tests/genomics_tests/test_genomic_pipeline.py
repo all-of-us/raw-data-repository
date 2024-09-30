@@ -3268,7 +3268,8 @@ class GenomicPipelineTest(BaseTestCase):
             "pipeline_id",
             "ai_an",
             "blocklisted",
-            "blocklisted_reason"
+            "blocklisted_reason",
+            "pediatric"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -3604,7 +3605,9 @@ class GenomicPipelineTest(BaseTestCase):
             "blocklisted",
             "blocklisted_reason",
             "pipeline_id",
-            "processing_count"
+            "processing_count",
+            "pediatric",
+            "sequencer"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -4169,7 +4172,9 @@ class GenomicPipelineTest(BaseTestCase):
             "blocklisted",
             "blocklisted_reason",
             "pipeline_id",
-            "processing_count"
+            "processing_count",
+            "pediatric",
+            "sequencer"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -4492,7 +4497,9 @@ class GenomicPipelineTest(BaseTestCase):
             "blocklisted",
             "blocklisted_reason",
             "pipeline_id",
-            "processing_count"
+            "processing_count",
+            "pediatric",
+            "sequencer"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
