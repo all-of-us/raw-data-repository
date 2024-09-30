@@ -2075,8 +2075,6 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("SU-0026388097", member.gcManifestBoxStorageUnitId)
                 self.assertEqual("BX-00299188", member.gcManifestBoxPlateId)
                 self.assertEqual(f"A0{member.id}", member.gcManifestWellPosition)
-                # self.assertEqual("", member.gcManifestParentSampleId)
-                # self.assertEqual("", member.gcManifestMatrixId)
                 self.assertEqual("TE", member.gcManifestTreatments)
                 self.assertEqual(40, member.gcManifestQuantity_ul)
                 self.assertEqual(60, member.gcManifestTotalConcentration_ng_per_ul)
