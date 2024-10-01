@@ -683,7 +683,11 @@ class ParticipantSummaryDao(UpdatableDao):
                 lambda query_to_filter: query_to_filter.outerjoin(
                     ParticipantSummary.pediatricData
                 ).filter(
-                    PediatricDataLog.id.is_(None) if value.lower() == 'unset' else PediatricDataLog.id.isnot(None)
+                    PediatricDataLog.id.is_(None) if value.lower() == 'unset'
+                    else and_(
+                        PediatricDataLog.id.isnot(None),
+                        PediatricDataLog.data_type == PediatricDataType.AGE_RANGE
+                    )
                 ),
                 'dateOfBirth'
             )

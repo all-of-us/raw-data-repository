@@ -4906,6 +4906,13 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 value='test'
             )
         )
+        self.session.add(
+            PediatricDataLog(
+                participant_id=pediatric_summary.participantId,
+                data_type=PediatricDataType.ENVIRONMENTAL_EXPOSURES,
+                value='2024-10-10'
+            )
+        )
         adult_summary = self.data_generator.create_database_participant_summary()
 
         adult_response = self.send_get(f"ParticipantSummary?isPediatric=UNSET")
@@ -4915,12 +4922,13 @@ class ParticipantSummaryApiTest(BaseTestCase):
             from_client_participant_id(adult_response['entry'][0]['resource']['participantId'])
         )
 
-        pediatric_response = self.send_get(f"ParticipantSummary?isPediatric=TRUE")
+        pediatric_response = self.send_get(f"ParticipantSummary?isPediatric=TRUE&_includeTotal=true")
         self.assertEqual(1, len(pediatric_response['entry']))
         self.assertEqual(
             pediatric_summary.participantId,
             from_client_participant_id(pediatric_response['entry'][0]['resource']['participantId'])
         )
+        self.assertEqual(1, pediatric_response['total'])
 
     @classmethod
     def _get_summary_response_id_list(self, response):
