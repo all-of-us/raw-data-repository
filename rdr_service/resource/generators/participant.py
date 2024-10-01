@@ -1924,8 +1924,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session:  A read-only session object
         """
 
-        # PDR-2700/DA-4514:  See PR notes for the reason this is a hardcoded return value for this particular response
-        if consent_response_rec.questionnaireResponseId == 888231156:
+        # PDR-2700/DA-4514:  See PR notes for the reason we need hardcoded return values for some responses
+        # Can expand this list or add other override lists (e.g. override_with_submitted_no_consent...) as needed
+        override_with_submitted_qr_id_list = [888231156]
+
+        if consent_response_rec.questionnaireResponseId in override_with_submitted_qr_id_list:
             return BQModuleStatusEnum.SUBMITTED
 
         # Cutoff for avoiding incorrectly assuming SUBMITTED_NOT_VALIDATED.  Timestamp comes from RDR data (could not
