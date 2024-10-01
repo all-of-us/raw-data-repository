@@ -54,7 +54,6 @@ def upgrade_rdr():
     op.add_column('genomic_aw5_raw', sa.Column('sequencer', sa.String(length=80), nullable=True))
     op.create_index(op.f('ix_genomic_aw5_raw_pediatric'), 'genomic_aw5_raw', ['pediatric'], unique=False)
     op.create_index(op.f('ix_genomic_aw5_raw_sequencer'), 'genomic_aw5_raw', ['sequencer'], unique=False)
-    op.drop_column('genomic_aw5_raw', 'biobank_id_sample_id')
     # ### end Alembic commands ###
 
 
