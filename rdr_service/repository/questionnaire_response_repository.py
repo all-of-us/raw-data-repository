@@ -162,13 +162,12 @@ class QuestionnaireResponseRepository:
 
     @classmethod
     def get_interest_in_sharing_ehr_ranges(cls, participant_id, session: Session, default_authored_datetime=None,
-                                           validation_not_required=False):
+                                           validation_required=True):
         """
         :param participant_id:  Participant id (integer)
         :param session:  A session object for querying data
         :param default_authored_datetime: An authored timestamp to match to an EHR consent response, if provided
-        :param validation_not_required: A flag to disable enforcement of successful PDF validation.   When this
-                                        function is called during calculation of retention eligibility, is set to True
+        :param validation_required: A flag which can be overridden to disable enforcement of successful PDF validation.
 
         """
         # Load all EHR and DV_EHR responses
@@ -190,9 +189,8 @@ class QuestionnaireResponseRepository:
 
         # Find all ranges where interest in sharing EHR was expressed (DV_EHR) or consent to share was provided
         ehr_interest_date_ranges = []
-
         skip_validation_check = (config.getSettingJson('ENROLLMENT_STATUS_SKIP_VALIDATION', False)
-                                 or validation_not_required)
+                                 or not validation_required)
         if sharing_response_list:
 
             current_date_range = None

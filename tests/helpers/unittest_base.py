@@ -502,7 +502,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         logger.addHandler(stream_handler)
         self.addCleanup(logger.removeHandler, stream_handler)
 
-        # Change this to logging.ERROR when you want to see API server errors.
+        # Change this from logging.CRITICAL to logging.ERROR when you want to see API server errors.
         logger.setLevel(logging.CRITICAL)
 
         if BaseTestCase._first_setup:

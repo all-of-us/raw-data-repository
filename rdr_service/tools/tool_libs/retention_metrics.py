@@ -128,8 +128,9 @@ class RetentionRecalcClass(RetentionBaseClass):
         return mismatches
 
     @classmethod
-    def recalculate_rdr_retention(cls, session, rem_rec: RetentionEligibleMetrics):
-        _supplement_with_rdr_calculations(metrics_data=rem_rec, session=session)
+    def recalculate_rdr_retention(cls, session, rem_rec: RetentionEligibleMetrics, consent_validation):
+        _supplement_with_rdr_calculations(metrics_data=rem_rec, session=session,
+                                          check_consent_validation=consent_validation)
         return cls.check_for_rdr_mismatches(rem_rec)
 
     def run(self):
@@ -146,7 +147,8 @@ class RetentionRecalcClass(RetentionBaseClass):
                 for pid in pid_list:
                     _logger.info(f'Recalculating P{pid}...')
                     # Error messages will be emitted if there are mismatches after recalculation
-                    self.recalculate_rdr_retention(session, self.get_retention_db_record(session, pid))
+                    self.recalculate_rdr_retention(session, self.get_retention_db_record(session, pid),
+                                                   not self.args.no_consent_validation)
                     count += 1
 
                 session.commit()
@@ -248,7 +250,8 @@ class RetentionQCClass(RetentionBaseClass):
                 elif len(mismatches):
                     # Try recalculating the RDR values to resolve deltas
                     recalculated.append(pid)
-                    mismatches = RetentionRecalcClass.recalculate_rdr_retention(session, db_obj)
+                    mismatches = RetentionRecalcClass.recalculate_rdr_retention(session, db_obj,
+                                                                                not self.args.no_consent_validation)
                     if 'retentionEligible' in mismatches:
                         retention_eligible_mismatches.append(pid)
                     if 'activelyRetained' in mismatches:
@@ -333,7 +336,8 @@ def run():
                                       help='action to perform, such as qc')
 
     load_parser = subparser.add_parser("load")
-    load_parser.add_argument("--file-upload-time", help="bucket file upload time (as string) of metrics file", type=str)
+    load_parser.add_argument("--file-upload-time",
+                             help="bucket file upload time (as string) of metrics file", type=str)
 
     qc_parser = subparser.add_parser("qc")
     qc_parser.add_argument("--bucket-file", help="bucket_file_path", type=str)
@@ -341,7 +345,13 @@ def run():
 
     recalc_parser = subparser.add_parser("recalc")
     recalc_parser.add_argument('--from-file', help='file of ids to recalculate', default='', type=str)  # noqa
-    recalc_parser.add_argument("--id", help="comma-separated list of ids to recalculate", type=str, default=None)
+    recalc_parser.add_argument("--id", help="comma-separated list of ids to recalculate",
+                               type=str, default=None)
+    recalc_parser.add_argument("--no-consent-validation",
+                               help="Do not enforce EHR consent validation when calculating metrics",
+                               action='store_true',
+                               )
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
