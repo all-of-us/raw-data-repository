@@ -1250,43 +1250,6 @@ class GenomicFileValidator:
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'ha', 'rdr')
         self.DRC_BROAD = 'drc_broad'
 
-        self.GC_METRICS_SCHEMAS = {
-            GENOME_TYPE_WGS: (
-                "biobankid",
-                "sampleid",
-                "biobankidsampleid",
-                "limsid",
-                "meancoverage",
-                "genomecoverage",
-                "aouhdrcoverage",
-                "contamination",
-                'samplesource',
-                'mappedreadspct',
-                "sexconcordance",
-                "sexploidy",
-                "alignedq30bases",
-                "arrayconcordance",
-                "processingstatus",
-                "notes",
-                "genometype"
-            ),
-            GENOME_TYPE_ARRAY: (
-                "biobankid",
-                "sampleid",
-                "biobankidsampleid",
-                "limsid",
-                "chipwellbarcode",
-                "callrate",
-                "sexconcordance",
-                "contamination",
-                'samplesource',
-                "processingstatus",
-                "notes",
-                "pipelineid",
-                "genometype"
-            ),
-        }
-
         # CVL pipeline
         self.CVL_W2_SCHEMA = (
             "genomicsetname",
@@ -1365,7 +1328,21 @@ class GenomicFileValidator:
             "healthrelateddatafilename",
             "clinicalanalysistype"
         )
+        # A pipeline
+        self.GEM_A2_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "success",
+            "dateofimport",
+        )
 
+        self.GEM_METRICS_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "ancestryloopresponse",
+            "availableresults",
+            "resultsreleasedat",
+        )
         # AW pipeline
         self.AW1_MANIFEST_SCHEMA = (
             "packageid",
@@ -1397,23 +1374,48 @@ class GenomicFileValidator:
             "sitename",
             "genometype",
             "failuremode",
-            "failuremodedesc"
+            "failuremodedesc",
+            "pediatric"
         )
-
-        self.GEM_A2_SCHEMA = (
-            "biobankid",
-            "sampleid",
-            "success",
-            "dateofimport",
-        )
-
-        self.GEM_METRICS_SCHEMA = (
-            "biobankid",
-            "sampleid",
-            "ancestryloopresponse",
-            "availableresults",
-            "resultsreleasedat",
-        )
+        self.GC_METRICS_SCHEMAS = {
+            GENOME_TYPE_WGS: (
+                "biobankid",
+                "sampleid",
+                "biobankidsampleid",
+                "limsid",
+                "meancoverage",
+                "genomecoverage",
+                "aouhdrcoverage",
+                "contamination",
+                'samplesource',
+                'mappedreadspct',
+                "sexconcordance",
+                "sexploidy",
+                "alignedq30bases",
+                "arrayconcordance",
+                "processingstatus",
+                "notes",
+                "genometype",
+                "pediatric",
+                "sequencer"
+            ),
+            GENOME_TYPE_ARRAY: (
+                "biobankid",
+                "sampleid",
+                "biobankidsampleid",
+                "limsid",
+                "chipwellbarcode",
+                "callrate",
+                "sexconcordance",
+                "contamination",
+                'samplesource',
+                "processingstatus",
+                "notes",
+                "pipelineid",
+                "genometype",
+                "pediatric"
+            ),
+        }
 
         self.AW4_ARRAY_SCHEMA = (
             "biobankid",
@@ -1430,7 +1432,9 @@ class GenomicFileValidator:
             "qcstatus",
             "drcsexconcordance",
             "drccallrate",
-            "passtoresearchpipeline"
+            "passtoresearchpipeline",
+            "pediatric",
+            "sequencer"
         )
 
         self.AW4_WGS_SCHEMA = (
@@ -1457,7 +1461,9 @@ class GenomicFileValidator:
             "drcfpconcordance",
             "passtoresearchpipeline",
             "pipelineid",
-            "processingcount"
+            "processingcount",
+            "pediatric",
+            "sequencer"
         )
 
         self.AW5_WGS_SCHEMA = (
@@ -1485,6 +1491,8 @@ class GenomicFileValidator:
             "gvcfmd5",
             "gvcfbasename",
             "gvcfmd5hash",
+            "pediatric",
+            "sequencer"
         )
 
         self.AW5_ARRAY_SCHEMA = (
@@ -1506,6 +1514,8 @@ class GenomicFileValidator:
             "vcfmd5",
             "vcfbasename",
             "vcfmd5hash",
+            "pediatric",
+            "sequencer"
         )
 
         # Long Read pipeline
@@ -2413,20 +2423,19 @@ class GenomicFileValidator:
         try:
             if self.job_id == GenomicJob.METRICS_INGESTION:
                 return self.GC_METRICS_SCHEMAS[self.genome_type]
-            if self.job_id == GenomicJob.AW1_MANIFEST:
+            if self.job_id in (
+                GenomicJob.AW1_MANIFEST, GenomicJob.AW1F_MANIFEST
+                , GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST
+            ):
                 return self.AW1_MANIFEST_SCHEMA
             if self.job_id == GenomicJob.GEM_A2_MANIFEST:
                 return self.GEM_A2_SCHEMA
-            if self.job_id == GenomicJob.AW1F_MANIFEST:
-                return self.AW1_MANIFEST_SCHEMA  # AW1F and AW1 use same schema
             if self.job_id == GenomicJob.GEM_METRICS_INGEST:
                 return self.GEM_METRICS_SCHEMA
             if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
                 return self.AW4_ARRAY_SCHEMA
             if self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
                 return self.AW4_WGS_SCHEMA
-            if self.job_id in (GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST):
-                return self.AW1_MANIFEST_SCHEMA
             if self.job_id == GenomicJob.AW5_WGS_MANIFEST:
                 self.genome_type = GENOME_TYPE_ARRAY
                 return self.AW5_WGS_SCHEMA
@@ -3283,7 +3292,8 @@ class ManifestDefinitionProvider:
                 "pipeline_id",
                 "ai_an",
                 "blocklisted",
-                "blocklisted_reason"
+                "blocklisted_reason",
+                "pediatric"
             ),
             GenomicManifestTypes.AW3_WGS: (
                 "biobank_id",
@@ -3311,7 +3321,9 @@ class ManifestDefinitionProvider:
                 "blocklisted",
                 "blocklisted_reason",
                 "pipeline_id",
-                "processing_count"
+                "processing_count",
+                "pediatric",
+                "sequencer"
             ),
             GenomicManifestTypes.AW2F: (
                 "PACKAGE_ID",

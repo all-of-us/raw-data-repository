@@ -522,6 +522,7 @@ class GenomicAW1Raw(Base):
     failure_mode = Column("failure_mode", String(255), nullable=True)
     failure_mode_desc = Column("failure_mode_desc", String(255), nullable=True)
     genome_type = Column(String(80), nullable=True, index=True)
+    pediatric = Column(String(80), nullable=True, index=True)
 
 
 event.listen(GenomicAW1Raw, 'before_insert', model_insert_listener)
@@ -574,6 +575,8 @@ class GenomicAW2Raw(Base):
     crai_path = Column(String(255), nullable=True)
     gvcf_path = Column(String(255), nullable=True)
     gvcf_md5_path = Column(String(255), nullable=True)
+    pediatric = Column(String(80), nullable=True, index=True)
+    sequencer = Column(String(80), nullable=True, index=True)
 
 
 event.listen(GenomicAW2Raw, 'before_insert', model_insert_listener)
@@ -634,6 +637,8 @@ class GenomicAW3Raw(Base):
     gvcf_path = Column(String(255), nullable=True)
     gvcf_md5_path = Column(String(255), nullable=True)
     processing_count = Column(String(255), nullable=True)
+    pediatric = Column(String(80), nullable=True, index=True)
+    sequencer = Column(String(80), nullable=True, index=True)
 
 
 event.listen(GenomicAW3Raw, 'before_insert', model_insert_listener)
@@ -690,6 +695,8 @@ class GenomicAW4Raw(Base):
     pass_to_research_pipeline = Column(String(255), nullable=True)
     pipeline_id = Column(String(255), nullable=True, index=True)
     processing_count = Column(String(255), nullable=True)
+    pediatric = Column(String(80), nullable=True, index=True)
+    sequencer = Column(String(80), nullable=True, index=True)
 
 
 event.listen(GenomicAW4Raw, 'before_insert', model_insert_listener)
@@ -733,9 +740,13 @@ class GenomicAW5Raw(Base):
     vcf_md5 = Column(String(255), nullable=True)
     vcf_basename = Column(String(255), nullable=True)
     vcf_md5_hash = Column(String(255), nullable=True)
+    pediatric = Column(String(80), nullable=True, index=True)
+    sequencer = Column(String(80), nullable=True, index=True)
+
 
 event.listen(GenomicAW5Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicAW5Raw, 'before_update', model_update_listener)
+
 
 class GenomicW1ILRaw(Base):
     """

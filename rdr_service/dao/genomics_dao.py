@@ -4173,7 +4173,13 @@ class GenomicShortReadDao(BaseDao):
                     GenomicSetMember.blockResearch == 1,
                     sqlalchemy.sql.expression.literal("True"),
                     sqlalchemy.sql.expression.literal("False")),
-                GenomicSetMember.blockResearchReason
+                GenomicSetMember.blockResearchReason,
+                sqlalchemy.case(
+                    [
+                        (GenomicAW2Raw.pediatric.is_(None), 'N')
+                    ],
+                    else_=GenomicAW2Raw.pediatric
+                ).label('pediatric'),
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
@@ -4183,6 +4189,9 @@ class GenomicShortReadDao(BaseDao):
             ).join(
                 Participant,
                 Participant.participantId == ParticipantSummary.participantId
+            ).outerjoin(
+                GenomicAW2Raw,
+                GenomicAW2Raw.sample_id == GenomicSetMember.sampleId
             ).join(
                 idat_red_path,
                 and_(
@@ -4330,7 +4339,19 @@ class GenomicShortReadDao(BaseDao):
                         (current_processed_count.c.processed_count.is_(None), 1)
                     ],
                     else_=current_processed_count.c.processed_count + 1
-                ).label('processingCount')
+                ).label('processingCount'),
+                sqlalchemy.case(
+                    [
+                        (GenomicAW2Raw.pediatric.is_(None), 'N')
+                    ],
+                    else_=GenomicAW2Raw.pediatric
+                ).label('pediatric'),
+                sqlalchemy.case(
+                    [
+                        (GenomicAW2Raw.sequencer.is_(None), 'N')
+                    ],
+                    else_=GenomicAW2Raw.sequencer
+                ).label('sequencer')
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
@@ -4340,6 +4361,9 @@ class GenomicShortReadDao(BaseDao):
             ).join(
                 Participant,
                 Participant.participantId == ParticipantSummary.participantId
+            ).outerjoin(
+                GenomicAW2Raw,
+                GenomicAW2Raw.sample_id == GenomicSetMember.sampleId
             ).join(
                 array_check,
                 and_(

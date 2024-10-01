@@ -2075,8 +2075,6 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("SU-0026388097", member.gcManifestBoxStorageUnitId)
                 self.assertEqual("BX-00299188", member.gcManifestBoxPlateId)
                 self.assertEqual(f"A0{member.id}", member.gcManifestWellPosition)
-                # self.assertEqual("", member.gcManifestParentSampleId)
-                # self.assertEqual("", member.gcManifestMatrixId)
                 self.assertEqual("TE", member.gcManifestTreatments)
                 self.assertEqual(40, member.gcManifestQuantity_ul)
                 self.assertEqual(60, member.gcManifestTotalConcentration_ng_per_ul)
@@ -2936,7 +2934,8 @@ class GenomicPipelineTest(BaseTestCase):
             "pipeline_id",
             "ai_an",
             "blocklisted",
-            "blocklisted_reason"
+            "blocklisted_reason",
+            "pediatric"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -3267,7 +3266,8 @@ class GenomicPipelineTest(BaseTestCase):
             "pipeline_id",
             "ai_an",
             "blocklisted",
-            "blocklisted_reason"
+            "blocklisted_reason",
+            "pediatric"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -3603,7 +3603,9 @@ class GenomicPipelineTest(BaseTestCase):
             "blocklisted",
             "blocklisted_reason",
             "pipeline_id",
-            "processing_count"
+            "processing_count",
+            "pediatric",
+            "sequencer"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -4168,7 +4170,9 @@ class GenomicPipelineTest(BaseTestCase):
             "blocklisted",
             "blocklisted_reason",
             "pipeline_id",
-            "processing_count"
+            "processing_count",
+            "pediatric",
+            "sequencer"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -4491,7 +4495,9 @@ class GenomicPipelineTest(BaseTestCase):
             "blocklisted",
             "blocklisted_reason",
             "pipeline_id",
-            "processing_count"
+            "processing_count",
+            "pediatric",
+            "sequencer"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -5380,6 +5386,7 @@ class GenomicPipelineTest(BaseTestCase):
             "test_name",
             "failure_mode",
             "failure_mode_desc",
+            "pediatric"
         ]
 
         aw1_raw_records = self.aw1_raw_dao.get_all()
