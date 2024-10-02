@@ -1433,8 +1433,7 @@ class GenomicFileValidator:
             "drcsexconcordance",
             "drccallrate",
             "passtoresearchpipeline",
-            "pediatric",
-            "sequencer"
+            "pediatric"
         )
 
         self.AW4_WGS_SCHEMA = (
@@ -1514,8 +1513,7 @@ class GenomicFileValidator:
             "vcfmd5",
             "vcfbasename",
             "vcfmd5hash",
-            "pediatric",
-            "sequencer"
+            "pediatric"
         )
 
         # Long Read pipeline
