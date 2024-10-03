@@ -923,9 +923,6 @@ class WorkbenchResearcherDao(UpdatableDao):
 
             if item.get("demographicSurveyV2") is not None:
                 survey = item.get("demographicSurveyV2")
-                current_year = clock.CLOCK.now().year
-                if survey.get("yearOfBirth") and current_year - int(survey.get("yearOfBirth")) > 125:
-                    raise BadRequest(f"Invalid birth year: {survey.get('yearOfBirth')} more than 125 years ago")
                 ethnic_categories = []
                 if survey.get("ethnicCategories") is not None:
                     for ethnic_category in survey.get("ethnicCategories"):
