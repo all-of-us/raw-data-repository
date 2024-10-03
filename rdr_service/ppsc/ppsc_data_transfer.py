@@ -1,4 +1,5 @@
 import logging
+import json
 import requests
 from abc import ABC, abstractmethod
 from typing import Union
@@ -50,12 +51,15 @@ class BaseDataTransfer(ABC):
         return self.dao.get_items_for_transfer(transfer_type=self.transfer_type)
 
     def get_headers(self):
-        return {"Authorization": f'Bearer {self.ppsc_oauth_data.token}'}
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f'Bearer {self.ppsc_oauth_data.token}'
+        }
 
     def send_item(self, post_obj: dict):
         response = requests.post(
             self.transfer_url,
-            data=post_obj,
+            data=json.dumps(post_obj),
             headers=self.headers
         )
         return response
@@ -66,7 +70,7 @@ class BaseDataTransfer(ABC):
             self.dao.snake_to_camel(k): v for k, v in
             transfer_item.asdict().items() if k not in filtered_keys
         }
-        updated_obj['participantId'] = f'P{updated_obj["participantId"]}'
+        updated_obj['participantId'] = f"P{updated_obj['participantId']}"
         return updated_obj
 
     def send_items(self):
