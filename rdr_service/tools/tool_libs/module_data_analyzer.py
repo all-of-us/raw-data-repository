@@ -101,8 +101,7 @@ class ModuleDataAnalyzer(ToolBase):
         ).outerjoin(
             answer, QuestionnaireResponseAnswer.valueCodeId == answer.codeId
         ).filter(
-            QuestionnaireResponse.questionnaireResponseId == response_id,
-            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE
+            QuestionnaireResponse.questionnaireResponseId == response_id
         ).order_by(QuestionnaireResponse.authored,
                    QuestionnaireResponse.created
                    ).all()
