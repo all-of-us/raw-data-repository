@@ -229,8 +229,8 @@ class DeployAppClass(ToolBase):
 
             h3. Change Management Description
             System: All of Us DRC, Raw Data Repository (RDR)
-            Developer(s): Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe, Brian Kimmel, Ayaz Amlani,
-            Monique Bristol, Shahwaiz Punjwani, David Konopka
+            Developer(s): Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe, Brian Kimmel,
+            Monique Bristol, Shahwaiz Punjwani, David Konopka, Lance Lopez
             Needed By Date/Event: <target release date>
             Priority: <Low, Medium, High>
             Configuration/Change Manager: Megan Morris
@@ -241,8 +241,8 @@ class DeployAppClass(ToolBase):
             Data Impact: <Data Impact>
 
             Testing
-            Tester(s): Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe, Brian Kimmel, Ayaz Amlani,
-            Monique Bristol, Shahwaiz Punjwani, David Konopka
+            Tester(s): Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe, Brian Kimmel,
+            Monique Bristol, Shahwaiz Punjwani, David Konopka, Lance Lopez
 
             Date Test Was Completed: {today.strftime("%b %-d, %Y")}
             Implementation/Deployment Date: Ongoing
