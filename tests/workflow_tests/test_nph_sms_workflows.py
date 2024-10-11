@@ -404,7 +404,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        expected_csv_path = "test-bucket-unc-meta/n1_manifests/UNC_META_n1_2023-04-25T15:13:00.csv"
+        expected_csv_path = "test-bucket-unc-meta/n1_manifests/UNC_META_n1_2023-04-25T15:13:00.000000.csv"
 
         with open_cloud_file(expected_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file)
@@ -477,7 +477,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        pbrc_csv_path = "test-bucket-unc-meta/n1_manifests/PBRC_n1_2023-04-25T15:13:00.txt"
+        pbrc_csv_path = "test-bucket-unc-meta/n1_manifests/PBRC_n1_2023-04-25T15:13:00.000000.txt"
 
         with open_cloud_file(pbrc_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file, delimiter='\t')
@@ -553,7 +553,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        expected_csv_path = "test-bucket-unc-meta/n1_manifests/UCSD_n1_2023-04-25T15:13:00.txt"
+        expected_csv_path = "test-bucket-unc-meta/n1_manifests/UCSD_n1_2023-04-25T15:13:00.000000.txt"
 
         with open_cloud_file(expected_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file, delimiter='\t')
