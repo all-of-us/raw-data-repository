@@ -319,24 +319,11 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
         nph_datagen.create_database_participant(id=nph_pid, biobank_id=biobank_id)
 
-        sms_datagen.create_database_study_category(
-            id=2,
-            type_label="visitPeriod",
-            name="Diet_Period_3_DLW",
-        )
-
-        sms_datagen.create_database_order(
-            id=6,
-            category_id=2,
-            notes={}
-        )
-
         sms_datagen.create_database_ordered_sample(
             id=5,
             nph_sample_id=10004,
         )
         sms_datagen.create_database_ordered_sample(
-            order_id=6,
             nph_sample_id=10005,
             aliquot_id=4,
             parent_sample_id=5
@@ -378,7 +365,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         sms_datagen.create_database_dlw_dosage(
             participant_id=nph_pid,
             module="3",
-            visit_period=VisitPeriod.lookup_by_name("PERIOD3DLW"),
+            visit_period=VisitPeriod.lookup_by_name("PERIOD1DLW"),
             batch_id="12345678",
             participant_weight="56.8",
             dose="456",
