@@ -319,24 +319,11 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
         nph_datagen.create_database_participant(id=nph_pid, biobank_id=biobank_id)
 
-        sms_datagen.create_database_study_category(
-            id=2,
-            type_label="visitPeriod",
-            name="Diet_Period_3_DLW",
-        )
-
-        sms_datagen.create_database_order(
-            id=6,
-            category_id=2,
-            notes={}
-        )
-
         sms_datagen.create_database_ordered_sample(
             id=5,
             nph_sample_id=10004,
         )
         sms_datagen.create_database_ordered_sample(
-            order_id=6,
             nph_sample_id=10005,
             aliquot_id=4,
             parent_sample_id=5
@@ -378,7 +365,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         sms_datagen.create_database_dlw_dosage(
             participant_id=nph_pid,
             module="3",
-            visit_period=VisitPeriod.lookup_by_name("PERIOD3DLW"),
+            visit_period=VisitPeriod.lookup_by_name("PERIOD1DLW"),
             batch_id="12345678",
             participant_weight="56.8",
             dose="456",
@@ -417,7 +404,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        expected_csv_path = "test-bucket-unc-meta/n1_manifests/UNC_META_n1_2023-04-25T15:13:00.csv"
+        expected_csv_path = "test-bucket-unc-meta/n1_manifests/UNC_META_n1_2023-04-25T15:13:00.000000.csv"
 
         with open_cloud_file(expected_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file)
@@ -490,7 +477,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        pbrc_csv_path = "test-bucket-unc-meta/n1_manifests/PBRC_n1_2023-04-25T15:13:00.txt"
+        pbrc_csv_path = "test-bucket-unc-meta/n1_manifests/PBRC_n1_2023-04-25T15:13:00.000000.txt"
 
         with open_cloud_file(pbrc_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file, delimiter='\t')
@@ -566,7 +553,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        expected_csv_path = "test-bucket-unc-meta/n1_manifests/UCSD_n1_2023-04-25T15:13:00.txt"
+        expected_csv_path = "test-bucket-unc-meta/n1_manifests/UCSD_n1_2023-04-25T15:13:00.000000.txt"
 
         with open_cloud_file(expected_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file, delimiter='\t')

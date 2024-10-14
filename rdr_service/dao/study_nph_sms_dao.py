@@ -5,7 +5,7 @@ from sqlalchemy.orm import aliased
 from rdr_service import clock
 from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao
-from rdr_service.model.study_nph import Order, OrderedSample, DlwDosage, Participant, StudyCategory
+from rdr_service.model.study_nph import Order, OrderedSample, DlwDosage, Participant
 from rdr_service.model.study_nph_sms import SmsSample, SmsBlocklist, SmsN0, SmsJobRun, SmsN1Mc1
 
 
@@ -133,7 +133,8 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
 
         recipient_xfer_dict = {
             "bucket": bucket,
-            "file_name": f"n1_manifests/{recipient}_n1_{clock.CLOCK.now().isoformat(timespec='seconds')}.{extension}",
+            "file_name": f"n1_manifests/{recipient}_n1_{clock.CLOCK.now().isoformat(timespec='microseconds')}"
+                         f".{extension}",
             "delimiter": delimiter_str,
         }
 
@@ -237,19 +238,13 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                     Order,
                     aliquot_sample.order_id == Order.id
                 ).outerjoin(
-                    StudyCategory,
-                    and_(
-                        StudyCategory.id == Order.category_id,
-                        func.lower(StudyCategory.type_label) == "visitperiod",
-                    )
-                ).outerjoin(
                     Participant,
                     cast(Participant.biobank_id, String) == func.substr(SmsN0.biobank_id, 2)
                 ).outerjoin(
                     DlwDosage,
                     and_(
                         Participant.id == DlwDosage.participant_id,
-                        DlwDosage.visit_period == func.regexp_substr(StudyCategory.name, "[0-9]+"),
+                        DlwDosage.visit_period == func.regexp_substr(SmsN0.visit, "[0-9]+"),
                         DlwDosage.ignore_flag == 0,
                     )
                 )
