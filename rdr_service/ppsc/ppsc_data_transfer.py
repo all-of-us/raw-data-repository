@@ -86,6 +86,10 @@ class BaseDataTransfer(ABC):
                 'response_code': response.status_code
             })
 
+    @classmethod
+    def format_timestamp(cls, timestamp) -> str:
+        return f"{timestamp.strftime('%Y-%m-%dT%H:%M:%S')}.{str(timestamp.microsecond)[:3]}Z"
+
     @abstractmethod
     def prepare_obj(self, transfer_item: Union[PPSCCore, PPSCEHR, PPSCBiobankSample, PPSCHealthData]):
         ...
@@ -101,7 +105,7 @@ class PPSCDataTransferCore(BaseDataTransfer):
     def prepare_obj(self, transfer_item):
         updated_obj = self.build_default_obj(transfer_item)
         updated_obj['hasCoreData'] = True
-        updated_obj['hasCoreDataDateTime'] = updated_obj['hasCoreDataDateTime'].strftime("%Y-%m-%dT%H:%M:%SZ")
+        updated_obj['hasCoreDataDateTime'] = self.format_timestamp(updated_obj['hasCoreDataDateTime'])
         return updated_obj
 
 
@@ -114,8 +118,8 @@ class PPSCDataTransferEHR(BaseDataTransfer):
 
     def prepare_obj(self, transfer_item):
         updated_obj = self.build_default_obj(transfer_item)
-        updated_obj['firstTimeDateTime'] = updated_obj['firstTimeDateTime'].strftime("%Y-%m-%dT%H:%M:%SZ")
-        updated_obj['lastTimeDateTime'] = updated_obj['lastTimeDateTime'].strftime("%Y-%m-%dT%H:%M:%SZ")
+        updated_obj['firstTimeDateTime'] = self.format_timestamp(updated_obj['firstTimeDateTime'])
+        updated_obj['lastTimeDateTime'] = self.format_timestamp(updated_obj['lastTimeDateTime'])
         return updated_obj
 
 
@@ -128,8 +132,8 @@ class PPSCDataTransferBiobank(BaseDataTransfer):
 
     def prepare_obj(self, transfer_item):
         updated_obj = self.build_default_obj(transfer_item)
-        updated_obj['firstTimeDateTime'] = updated_obj['firstTimeDateTime'].strftime("%Y-%m-%dT%H:%M:%SZ")
-        updated_obj['lastTimeDateTime'] = updated_obj['lastTimeDateTime'].strftime("%Y-%m-%dT%H:%M:%SZ")
+        updated_obj['firstTimeDateTime'] = self.format_timestamp(updated_obj['firstTimeDateTime'])
+        updated_obj['lastTimeDateTime'] = self.format_timestamp(updated_obj['lastTimeDateTime'])
         return updated_obj
 
 
@@ -142,6 +146,7 @@ class PPSCDataTransferHealthData(BaseDataTransfer):
 
     def prepare_obj(self, transfer_item):
         updated_obj = self.build_default_obj(transfer_item)
-        updated_obj['healthDataStreamSharingStatusDateTime'] = updated_obj[
-            'healthDataStreamSharingStatusDateTime'].strftime("%Y-%m-%dT%H:%M:%SZ")
+        updated_obj['healthDataStreamSharingStatusDateTime'] = self.format_timestamp(
+            updated_obj['healthDataStreamSharingStatusDateTime']
+        )
         return updated_obj
