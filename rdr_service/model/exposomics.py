@@ -56,6 +56,29 @@ class ExposomicsM1(Base, ExposomicsManifestBase):
 
     __tablename__ = 'exposomics_m1'
 
+    package_id = Column(String(255))
+    box_storageunit_id = Column(String(255))
+    box_id_plate_id = Column(String(255))
+    well_position = Column(String(255))
+    biobankid_sampleid = Column(String(255))
+    sample_id = Column(String(255))
+    matrix_id = Column(String(255))
+    parent_sample_id = Column(String(255))
+    collection_tube_id = Column(String(255))
+    collection_date = Column(String(255))
+    sample_type = Column(String(255))
+    treatment_type = Column(String(255))
+    ny_flag = Column(String(255))
+    quantity_ul = Column(String(255))
+    total_concentration_ng_ul = Column(String(255))
+    total_yield_ng = Column(String(255))
+    rqs = Column(String(255))
+    two_sixty_two_thirty = Column(String(255))
+    two_sixty_two_eighty = Column(String(255))
+    study_name = Column(String(255))
+    contact = Column(String(255))
+    email = Column(String(255))
+    tracking_number = Column(String(255))
     copied_path = Column(String(255))
 
 

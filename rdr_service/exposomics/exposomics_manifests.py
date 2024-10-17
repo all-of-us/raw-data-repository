@@ -202,17 +202,18 @@ class ExposomicsM1Workflow(ExposommicsIngestManifestWorkflow):
         for row in self.source_data:
             if row.get('biobank_id'):
                 row = self.handle_special_mappings_row(row=row)
-                manifest_data.append(
-                    {
+                row_copy = row.copy()
+                added_attributes = {
                         'created': clock.CLOCK.now(),
                         'modified': clock.CLOCK.now(),
                         'biobank_id': self.dao.extract_prefix_from_val(row.get('biobank_id')),
                         'file_path': self.file_path,
-                        'row_data': row,
+                        'row_data': row,  # JSON store
                         'file_name': file_path_data[-1],
                         'bucket_name': file_path_data[0]
-                    }
-                )
+                }
+                row_copy.update(added_attributes)
+                manifest_data.append(row_copy)
         if manifest_data:
             self.dao.insert_bulk(manifest_data)
 
