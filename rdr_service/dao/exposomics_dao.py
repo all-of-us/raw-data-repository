@@ -126,35 +126,32 @@ class ExposomicsM1Dao(UpdatableDao, ExposomicsBase):
         pass
 
     def get_manifest_data(self, **kwargs):
-        file_path = kwargs.get('file_path')
         with self.session() as session:
             return session.query(
-                func.json_extract(ExposomicsM1.row_data, "$.package_id").label('package_id'),
-                func.json_extract(ExposomicsM1.row_data, "$.box_storageunit_id").label('box_storageunit_id'),
-                func.json_extract(ExposomicsM1.row_data, "$.box_id_plate_id").label('box_id_plate_id'),
-                func.json_extract(ExposomicsM1.row_data, "$.well_position").label('well_position'),
-                func.json_extract(ExposomicsM1.row_data, "$.biobankid_sampleid").label('biobankid_sampleid'),
+                ExposomicsM1.package_id,
+                ExposomicsM1.box_storageunit_id,
+                ExposomicsM1.box_id_plate_id,
+                ExposomicsM1.well_position,
+                ExposomicsM1.biobankid_sampleid,
                 func.concat(get_biobank_id_prefix(), ExposomicsM1.biobank_id).label('biobank_id'),
-                func.json_extract(ExposomicsM1.row_data, "$.sample_id").label('sample_id'),
-                func.json_extract(ExposomicsM1.row_data, "$.matrix_id").label('matrix_id'),
-                func.json_extract(ExposomicsM1.row_data, "$.parent_sample_id").label('parent_sample_id'),
-                func.json_extract(ExposomicsM1.row_data, "$.collection_tube_id").label('collection_tube_id'),
-                func.json_extract(ExposomicsM1.row_data, "$.sample_type").label('sample_type'),
-                func.json_extract(ExposomicsM1.row_data, "$.ny_flag").label('ny_flag'),
-                func.json_extract(ExposomicsM1.row_data, "$.quantity_ul").label('quantity_ul'),
-                func.json_extract(ExposomicsM1.row_data, "$.total_concentration_ng_ul").label(
-                    'total_concentration_ng_ul'
-                ),
-                func.json_extract(ExposomicsM1.row_data, "$.total_yield_ng").label('total_yield_ng'),
-                func.json_extract(ExposomicsM1.row_data, "$.rqs").label('rqs'),
-                func.json_extract(ExposomicsM1.row_data, "$.two_sixty_two_thirty").label('260_230'),
-                func.json_extract(ExposomicsM1.row_data, "$.two_sixty_two_eighty").label('260_280'),
-                func.json_extract(ExposomicsM1.row_data, "$.study_name").label('study_name'),
-                func.json_extract(ExposomicsM1.row_data, "$.contact").label('contact'),
-                func.json_extract(ExposomicsM1.row_data, "$.email").label('email'),
-                func.json_extract(ExposomicsM1.row_data, "$.tracking_number").label('tracking_number'),
+                ExposomicsM1.sample_id,
+                ExposomicsM1.matrix_id,
+                ExposomicsM1.parent_sample_id,
+                ExposomicsM1.collection_tube_id,
+                ExposomicsM1.sample_type,
+                ExposomicsM1.ny_flag,
+                ExposomicsM1.quantity_ul,
+                ExposomicsM1.total_concentration_ng_ul,
+                ExposomicsM1.total_yield_ng,
+                ExposomicsM1.rqs,
+                ExposomicsM1.two_sixty_two_thirty.label('260_230'),
+                ExposomicsM1.two_sixty_two_eighty.label('260_280'),
+                ExposomicsM1.study_name,
+                ExposomicsM1.contact,
+                ExposomicsM1.email,
+                ExposomicsM1.tracking_number,
             ).filter(
-                ExposomicsM1.file_path == file_path
+                ExposomicsM1.file_path == kwargs.get('file_path')
             ).all()
 
     def get_id_from_file_path(self, *, file_path: str):
