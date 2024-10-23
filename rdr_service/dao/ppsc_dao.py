@@ -1,9 +1,10 @@
+from abc import ABC, abstractmethod
 from typing import List, Dict
 from sqlalchemy import and_
 
 from rdr_service.dao.base_dao import BaseDao, UpsertableDao, UpdatableDao
 from rdr_service.model.ppsc import Participant, Site
-from rdr_service.model.ppsc_data_transfer import PPSCDataTransferAuth, PPSCDataTransferEndpoint, PPSCDataTransferRecord
+from rdr_service.model.ppsc_data_transfer import (PPSCDataTransferAuth,PPSCDataTransferEndpoint, PPSCDataTransferRecord)
 from rdr_service.ppsc.ppsc_enums import AuthType
 
 
@@ -122,16 +123,23 @@ class PPSCDataTransferRecordDao(BaseDao):
             )
 
 
-class PPSCDataTransferBaseDao(BaseDao):
-
-    def __init__(self, model_type):
-        super().__init__(model_type)
+class PPSCDataTransferDao(ABC, BaseDao):
 
     def from_client_json(self):
         pass
 
     def get_id(self, obj):
         pass
+
+    @abstractmethod
+    def get_items_for_transfer_type(self, transfer_type):
+        ...
+
+
+class PPSCDataTransferBaseDao(BaseDao):
+
+    def __init__(self, model_type):
+        super().__init__(model_type)
 
     def get_items_for_transfer(self, *, transfer_type) -> List:
         with self.session() as session:
@@ -141,11 +149,13 @@ class PPSCDataTransferBaseDao(BaseDao):
                 PPSCDataTransferRecord,
                 and_(
                     PPSCDataTransferRecord.data_sync_transfer_type == transfer_type,
-                    PPSCDataTransferRecord.participant_id == PPSCDataTransferRecord.participant_id,
-                    PPSCDataTransferRecord.response_code == 200
+                    PPSCDataTransferRecord.participant_id == self.model_type.participant_id,
+                    PPSCDataTransferRecord.response_code == 200,
+                    PPSCDataTransferRecord.data_type_record_id == self.model_type.id
                 )
             ).filter(
                 PPSCDataTransferRecord.id.is_(None),
                 self.model_type.ignore_flag != 1
-            ).all()
+            ).distinct().all()
+
 
