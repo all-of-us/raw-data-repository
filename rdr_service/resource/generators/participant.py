@@ -1954,12 +1954,16 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 from participant_summary
                 where participant_id = {p_id}
              """
-            result = ro_session.execute(ps_sql).first()
-            if result and (result.consent_for_electronic_health_records_authored and
-                           result.consent_for_electronic_health_records_authored == consent_response_rec.authored and
-                           consent_response_rec.authored > pdf_validation_start_date
+            ps_result = ro_session.execute(ps_sql).first()
+            # If there's a m match of the questionnaire response being validated (a "yes" EHR consent) to either the
+            # current EHR suthored timestamp or the first yes authored timestamp: use status from participant_summary
+            if ps_result and (
+                ps_result.consent_for_electronic_health_records_authored and
+                (ps_result.consent_for_electronic_health_records_authored == consent_response_rec.authored
+                    or ps_result.consent_for_electronic_health_records_first_yes_authored == \
+                       consent_response_rec.authored)
             ):
-                return BQModuleStatusEnum(result.consent_for_electronic_health_records)
+                return BQModuleStatusEnum(ps_result.consent_for_electronic_health_records)
 
             # Look for consent validation results matching this EHR consent response
             qr_ids = []
@@ -1988,11 +1992,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             """
             result = ro_session.execute(validation_status_sql, {'qr_ids': qr_ids}).fetchone()
             if result:
-                if (result.created > pdf_validation_start_date and
-                       result.sync_status in (int(ConsentSyncStatus.NEEDS_CORRECTING),
-                                              int(ConsentSyncStatus.OBSOLETE))):
+                if (consent_response_rec.authored >= pdf_validation_start_date
+                       and result.sync_status in (int(ConsentSyncStatus.NEEDS_CORRECTING),
+                                                  int(ConsentSyncStatus.OBSOLETE))):
                     status = BQModuleStatusEnum.SUBMITTED_INVALID
-            elif consent_response_rec.authored and consent_response_rec.authored > pdf_validation_start_date:
+                    # Else: authored consents that precede the validation start date will fall through to return
+                    # the default SUBMITTED status
+            elif consent_response_rec.authored and consent_response_rec.authored >= pdf_validation_start_date:
                 # No consent_file (consent_response) record yet to match to the questionnaire_response_id
                 status = BQModuleStatusEnum.SUBMITTED_NOT_VALIDATED
         else:
