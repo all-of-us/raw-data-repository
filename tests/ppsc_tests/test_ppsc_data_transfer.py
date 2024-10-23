@@ -9,7 +9,7 @@ from rdr_service.dao.ppsc_dao import PPSCDataTransferAuthDao, PPSCDataTransferEn
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.ppsc.ppsc_data_transfer import PPSCDataTransferCore, PPSCDataTransferEHR, PPSCDataTransferHealthData, \
     PPSCDataTransferBiobank
-from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType
+from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType, SpecimenType, SpecimenStatus
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -73,7 +73,7 @@ class PPSCDataTransferTest(BaseTestCase):
             self.ppsc_data_gen.create_database_ppsc_data_core(
                 participant_id=participant.id,
                 has_core_data=1,
-                has_core_data_date_time=clock.CLOCK.now()
+                event_date_time=clock.CLOCK.now()
             )
 
         with PPSCDataTransferCore() as core_transfer:
@@ -120,8 +120,7 @@ class PPSCDataTransferTest(BaseTestCase):
             participant = self.ppsc_data_gen.create_database_participant()
             self.ppsc_data_gen.create_database_ppsc_data_ehr(
                 participant_id=participant.id,
-                first_time_date_time=clock.CLOCK.now(),
-                last_time_date_time=clock.CLOCK.now(),
+                event_date_time=clock.CLOCK.now()
             )
 
         with PPSCDataTransferEHR() as ehr_transfer:
@@ -169,7 +168,7 @@ class PPSCDataTransferTest(BaseTestCase):
             self.ppsc_data_gen.create_database_ppsc_data_health_data(
                 participant_id=participant.id,
                 health_data_stream_sharing_status=2,
-                health_data_stream_sharing_status_date_time=clock.CLOCK.now()
+                event_date_time=clock.CLOCK.now()
             )
 
         with PPSCDataTransferHealthData() as health_transfer:
@@ -216,8 +215,9 @@ class PPSCDataTransferTest(BaseTestCase):
             participant = self.ppsc_data_gen.create_database_participant()
             self.ppsc_data_gen.create_database_ppsc_data_biobank(
                 participant_id=participant.id,
-                first_time_date_time=clock.CLOCK.now(),
-                last_time_date_time=clock.CLOCK.now(),
+                event_date_time=clock.CLOCK.now(),
+                specimen_type=SpecimenType.BLOOD,
+                specimen_status=SpecimenStatus.RECEIVED
         )
 
         with PPSCDataTransferBiobank() as biobank_transfer:
@@ -247,7 +247,24 @@ class PPSCDataTransferTest(BaseTestCase):
         self.assertTrue(all(obj.request_payload is not None for obj in current_transfer_records))
         self.assertTrue(all(obj.response_code == '200' for obj in current_transfer_records))
 
-        # test second run same data should not find items for transfer
+        # test second run new sample should send
+        for _ in range(0, 1):
+            self.ppsc_data_gen.create_database_ppsc_data_biobank(
+                participant_id=current_participant_ids[0],
+                event_date_time=clock.CLOCK.now(),
+                specimen_type=SpecimenType.URINE,
+                specimen_status=SpecimenStatus.RECEIVED
+        )
+
+        # test second run same data should only find new urine sample
+        with PPSCDataTransferBiobank() as biobank_transfer:
+            biobank_transfer.run_data_transfer()
+
+        self.assertEqual(len(biobank_transfer.transfer_items), 1)
+        self.assertEqual(biobank_transfer.transfer_items[0].participant_id, current_participant_ids[0])
+        self.assertEqual(biobank_transfer.transfer_items[0].specimen_type, SpecimenType.URINE)
+
+        # test third run same data should not find items for transfer
         with PPSCDataTransferBiobank() as biobank_transfer:
             biobank_transfer.run_data_transfer()
 
