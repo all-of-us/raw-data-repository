@@ -1,10 +1,10 @@
-from abc import ABC, abstractmethod
 from typing import List, Dict
 from sqlalchemy import and_
 
 from rdr_service.dao.base_dao import BaseDao, UpsertableDao, UpdatableDao
 from rdr_service.model.ppsc import Participant, Site
-from rdr_service.model.ppsc_data_transfer import (PPSCDataTransferAuth,PPSCDataTransferEndpoint, PPSCDataTransferRecord)
+from rdr_service.model.ppsc_data_transfer import (PPSCDataTransferAuth, PPSCDataTransferEndpoint,
+                                                  PPSCDataTransferRecord)
 from rdr_service.ppsc.ppsc_enums import AuthType
 
 
@@ -121,19 +121,6 @@ class PPSCDataTransferRecordDao(BaseDao):
                 self.model_type,
                 batch
             )
-
-
-class PPSCDataTransferDao(ABC, BaseDao):
-
-    def from_client_json(self):
-        pass
-
-    def get_id(self, obj):
-        pass
-
-    @abstractmethod
-    def get_items_for_transfer_type(self, transfer_type):
-        ...
 
 
 class PPSCDataTransferBaseDao(BaseDao):
