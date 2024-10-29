@@ -5,7 +5,7 @@ from sqlalchemy.dialects.mysql import TINYINT, JSON
 
 from rdr_service.model.base import model_insert_listener, model_update_listener, PPSCBase
 from rdr_service.model.utils import UTCDateTime
-from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType
+from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType, SpecimenType, SpecimenStatus
 
 
 class PPSCDataTransferAuth(PPSCBase):
@@ -52,6 +52,7 @@ class PPSCDataTransferRecord(PPSCBase):
     modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     data_sync_transfer_type = Column(Enum(DataSyncTransferType))
+    data_type_record_id = Column(BigInteger)
     request_payload = Column(JSON, nullable=True)
     response_code = Column(String(128))
     ignore_flag = Column(TINYINT, default=0)
@@ -61,7 +62,7 @@ event.listen(PPSCDataTransferRecord, "before_insert", model_insert_listener)
 event.listen(PPSCDataTransferRecord, "before_update", model_update_listener)
 
 
-class PPSCDataBase:
+class PPSCData:
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -69,12 +70,16 @@ class PPSCDataBase:
     ignore_flag = Column(TINYINT, default=0)
 
 
+class PPSCDataBase(PPSCData):
+
+    event_date_time = Column(UTCDateTime6)
+
+
 class PPSCCore(PPSCDataBase, PPSCBase):
     __tablename__ = "ppsc_core"
 
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     has_core_data = Column(TINYINT, default=0)
-    has_core_data_date_time = Column(UTCDateTime6)
 
 
 event.listen(PPSCCore, "before_insert", model_insert_listener)
@@ -85,8 +90,6 @@ class PPSCEHR(PPSCDataBase, PPSCBase):
     __tablename__ = "ppsc_ehr"
 
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    first_time_date_time = Column(UTCDateTime6)
-    last_time_date_time = Column(UTCDateTime6)
 
 
 event.listen(PPSCEHR, "before_insert", model_insert_listener)
@@ -97,8 +100,8 @@ class PPSCBiobankSample(PPSCDataBase, PPSCBase):
     __tablename__ = "ppsc_biobank_sample"
 
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    first_time_date_time = Column(UTCDateTime6)
-    last_time_date_time = Column(UTCDateTime6)
+    specimen_type = Column(Enum(SpecimenType))
+    specimen_status = Column(Enum(SpecimenStatus))
 
 
 event.listen(PPSCBiobankSample, "before_insert", model_insert_listener)
@@ -110,7 +113,6 @@ class PPSCHealthData(PPSCDataBase, PPSCBase):
 
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     health_data_stream_sharing_status = Column(TINYINT, default=0)
-    health_data_stream_sharing_status_date_time = Column(UTCDateTime6)
 
 
 event.listen(PPSCHealthData, "before_insert", model_insert_listener)

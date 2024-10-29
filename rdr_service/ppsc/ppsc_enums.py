@@ -10,3 +10,14 @@ class DataSyncTransferType(messages.Enum):
     EHR = 2
     BIOBANK_SAMPLE = 3
     HEALTH_DATA = 4
+
+
+class SpecimenType(messages.Enum):
+    BLOOD = 1
+    SALIVA = 2
+    URINE = 3
+
+
+class SpecimenStatus(messages.Enum):
+    RECEIVED = 1
+

@@ -1,22 +1,19 @@
 import logging
 import json
 import requests
-from abc import ABC, abstractmethod
 from typing import Union
 
-from rdr_service import clock
 from rdr_service.dao.ppsc_dao import PPSCDataTransferEndpointDao, PPSCDataTransferBaseDao, PPSCDataTransferRecordDao
 from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType
 from rdr_service.ppsc.ppsc_oauth import PPSCTransferOauth
-from rdr_service.model.ppsc_data_transfer import PPSCCore, PPSCBiobankSample, PPSCHealthData, PPSCEHR, PPSCDataBase
+from rdr_service.model.ppsc_data_transfer import PPSCCore, PPSCBiobankSample, PPSCHealthData, PPSCEHR, PPSCData
 
 
-class BaseDataTransfer(ABC):
+class BaseDataTransfer:
 
     def __init__(self):
         self.endpoint_dao = PPSCDataTransferEndpointDao()
         self.transfer_record_dao = PPSCDataTransferRecordDao()
-        self.record_items = []
 
     def __enter__(self):
         self.ppsc_oauth_data = PPSCTransferOauth(auth_type=AuthType.DATA_TRANSFER)
@@ -27,9 +24,6 @@ class BaseDataTransfer(ABC):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.record_items:
-            self.transfer_record_dao.insert_bulk(self.record_items)
-
         logging.info(f"Finished PPSC Data Transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
 
     def run_data_transfer(self):
@@ -65,34 +59,35 @@ class BaseDataTransfer(ABC):
         return response
 
     def build_default_obj(self, transfer_item):
-        filtered_keys = [obj for obj in PPSCDataBase.__dict__.keys() if obj[:1] != '_']
+        filtered_keys = [obj for obj in PPSCData.__dict__.keys() if obj[:1] != '_']
         updated_obj = {
             self.dao.snake_to_camel(k): v for k, v in
             transfer_item.asdict().items() if k not in filtered_keys
         }
+
         updated_obj['participantId'] = f"P{updated_obj['participantId']}"
+        updated_obj['eventDateTime'] = self.format_timestamp(updated_obj['eventDateTime'])
+
         return updated_obj
 
     def send_items(self):
         for item in self.transfer_items:
             prepared_obj = self.prepare_obj(item)
             response = self.send_item(prepared_obj)
-            self.record_items.append({
-                'created': clock.CLOCK.now(),
-                'modified': clock.CLOCK.now(),
+            self.transfer_record_dao.insert(self.transfer_record_dao.model_type(**{
                 'participant_id': item.participant_id,
                 'data_sync_transfer_type': self.transfer_type,
                 'request_payload': prepared_obj,
-                'response_code': response.status_code
-            })
+                'response_code': response.status_code,
+                'data_type_record_id': item.id
+            }))
 
     @classmethod
     def format_timestamp(cls, timestamp) -> str:
         return f"{timestamp.strftime('%Y-%m-%dT%H:%M:%S')}.{str(timestamp.microsecond)[:3]}Z"
 
-    @abstractmethod
-    def prepare_obj(self, transfer_item: Union[PPSCCore, PPSCEHR, PPSCBiobankSample, PPSCHealthData]):
-        ...
+    def prepare_obj(self, transfer_item: Union[PPSCCore, PPSCEHR, PPSCBiobankSample, PPSCHealthData]) -> dict:
+        return self.build_default_obj(transfer_item)
 
 
 class PPSCDataTransferCore(BaseDataTransfer):
@@ -105,7 +100,6 @@ class PPSCDataTransferCore(BaseDataTransfer):
     def prepare_obj(self, transfer_item):
         updated_obj = self.build_default_obj(transfer_item)
         updated_obj['hasCoreData'] = True
-        updated_obj['hasCoreDataDateTime'] = self.format_timestamp(updated_obj['hasCoreDataDateTime'])
         return updated_obj
 
 
@@ -115,12 +109,6 @@ class PPSCDataTransferEHR(BaseDataTransfer):
         super().__init__()
         self.dao = PPSCDataTransferBaseDao(PPSCEHR)
         self.transfer_type = DataSyncTransferType.EHR
-
-    def prepare_obj(self, transfer_item):
-        updated_obj = self.build_default_obj(transfer_item)
-        updated_obj['firstTimeDateTime'] = self.format_timestamp(updated_obj['firstTimeDateTime'])
-        updated_obj['lastTimeDateTime'] = self.format_timestamp(updated_obj['lastTimeDateTime'])
-        return updated_obj
 
 
 class PPSCDataTransferBiobank(BaseDataTransfer):
@@ -132,8 +120,8 @@ class PPSCDataTransferBiobank(BaseDataTransfer):
 
     def prepare_obj(self, transfer_item):
         updated_obj = self.build_default_obj(transfer_item)
-        updated_obj['firstTimeDateTime'] = self.format_timestamp(updated_obj['firstTimeDateTime'])
-        updated_obj['lastTimeDateTime'] = self.format_timestamp(updated_obj['lastTimeDateTime'])
+        updated_obj['specimenType'] = updated_obj['specimenType'].name.lower()
+        updated_obj['specimenStatus'] = updated_obj['specimenStatus'].name.lower()
         return updated_obj
 
 
@@ -144,9 +132,3 @@ class PPSCDataTransferHealthData(BaseDataTransfer):
         self.dao = PPSCDataTransferBaseDao(PPSCHealthData)
         self.transfer_type = DataSyncTransferType.HEALTH_DATA
 
-    def prepare_obj(self, transfer_item):
-        updated_obj = self.build_default_obj(transfer_item)
-        updated_obj['healthDataStreamSharingStatusDateTime'] = self.format_timestamp(
-            updated_obj['healthDataStreamSharingStatusDateTime']
-        )
-        return updated_obj
