@@ -135,10 +135,6 @@ class EnrollmentDependencies:
         return self.dna_update_time is not None
 
     @property
-    def has_completed_gror_survey(self):
-        return self.gror_authored_time is not None
-
-    @property
     def has_completed_the_basics_survey(self):
         return self.basics_authored_time is not None
 
@@ -294,8 +290,6 @@ class EnrollmentCalculation:
             participant_info.first_full_ehr_consent_authored_time,
             participant_info.basics_authored_time
         ]
-        if not participant_info.is_pediatric_participant:
-            dates_needed_for_pmb_eligible.append(participant_info.gror_authored_time)
         met_pmb_eligible_reqs_time = cls._get_requirements_met_date(dates_needed_for_pmb_eligible)
         if met_pmb_eligible_reqs_time:
             enrollment.upgrade_3_2_status(EnrollmentStatusV32.PMB_ELIGIBLE, met_pmb_eligible_reqs_time)
@@ -354,11 +348,6 @@ class EnrollmentCalculation:
             participant_info.overall_health_authored_time,
             participant_info.earliest_biobank_received_dna_time
         ]
-        if (
-            participant_info.consent_cohort == ParticipantCohort.COHORT_3
-            and not participant_info.is_pediatric_participant
-        ):
-            dates_needed.append(participant_info.gror_authored_time)
 
         if participant_info.is_pediatric_participant:
             dates_needed.append(participant_info.exposures_authored_time)
