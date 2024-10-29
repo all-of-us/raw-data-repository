@@ -106,7 +106,8 @@ class TestEnrollmentInfo(BaseTestCase):
                 v32_data=[
                     (EnrollmentStatusV32.PARTICIPANT, participant_info.primary_consent_authored_time),
                     (EnrollmentStatusV32.PARTICIPANT_PLUS_EHR, participant_info.first_ehr_consent_date),
-                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time)
+                    (EnrollmentStatusV32.ENROLLED_PARTICIPANT, participant_info.basics_authored_time),
+                    (EnrollmentStatusV32.PMB_ELIGIBLE, participant_info.basics_authored_time)
                 ]
             ),
             EnrollmentCalculation.get_enrollment_info(participant_info)
@@ -147,13 +148,6 @@ class TestEnrollmentInfo(BaseTestCase):
             ),
             EnrollmentCalculation.get_enrollment_info(participant_info)
         )
-
-        # Check that GROR is needed for cohort 3 participants
-        participant_info._db_obj.consent_cohort = ParticipantCohort.COHORT_3
-        enrollment_info = EnrollmentCalculation.get_enrollment_info(participant_info)
-        self.assertNotEqual(EnrollmentStatus.CORE_MINUS_PM, enrollment_info.version_legacy_status)
-        self.assertNotEqual(EnrollmentStatusV30.CORE_MINUS_PM, enrollment_info.version_3_0_status)
-        self.assertNotEqual(EnrollmentStatusV32.CORE_MINUS_PM, enrollment_info.version_3_2_status)
 
     def test_core(self):
         """
@@ -391,7 +385,6 @@ class TestEnrollmentInfo(BaseTestCase):
         cls,
         primary_authored_time,
         consent_cohort=ParticipantCohort.COHORT_3,
-        gror_time=None,
         basics_time=None,
         overall_health_time=None,
         lifestyle_time=None,
@@ -414,7 +407,6 @@ class TestEnrollmentInfo(BaseTestCase):
                 primary_consent_authored_time=primary_authored_time,
                 intent_to_share_ehr_time=first_intent_to_share_ehr,
                 full_ehr_consent_authored_time=ehr_first_yes_timestamp,
-                gror_consent_authored_time=gror_time,
                 basics_survey_authored_time=basics_time,
                 overall_health_survey_authored_time=overall_health_time,
                 lifestyle_survey_authored_time=lifestyle_time,
