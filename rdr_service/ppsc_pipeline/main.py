@@ -2,7 +2,7 @@
 import logging
 import traceback
 
-from flask import Flask, got_request_exception
+from flask import Flask, got_request_exception, request
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
@@ -11,6 +11,7 @@ from rdr_service.ppsc.ppsc_data_transfer import PPSCDataTransferCore, PPSCDataTr
 from rdr_service.services.flask import PPSC_PIPELINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
     flask_restful_log_exception_error
+from rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed import InputFeed
 
 
 @app_util.auth_required_scheduler
@@ -23,6 +24,13 @@ def test_job():
 
     return '{"success": "true"}'
 
+
+@app_util.auth_required_scheduler
+def ppsc_data_transfer_input_feed():
+    datafeed = request.get_json().get("datafeed")
+    input_feed = InputFeed()
+    input_feed.run_datafeed(datafeed)
+    return '{ "success": "true" }'
 
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_core():
@@ -61,7 +69,14 @@ def _build_pipeline_app():
         PPSC_PIPELINE_PREFIX + "TestJob",
         endpoint="test_job",
         view_func=test_job,
-        methods=["GET"],
+        methods=["GET", "POST"],
+    )
+
+    ppsc_pipeline.add_url_rule(
+        PPSC_PIPELINE_PREFIX + "TransferInputFeed",
+        endpoint="ppsc_data_transfer_input_feed",
+        view_func=ppsc_data_transfer_input_feed,
+        methods=["GET", "POST"],
     )
 
     # Cloud Scheduler - Scheduler jobs

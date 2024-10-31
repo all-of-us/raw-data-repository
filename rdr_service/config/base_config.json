@@ -237,5 +237,18 @@
   "ppsc_intake_attribution_event_types": ["Org Attribution"],
   "ppsc_intake_nph_opt_in_event_types": ["NPH Opt In"],
   "pm_height_codes": ["height", "8302-2"],
-  "pm_weight_codes": ["weight", "29463-7", "pre-pregnancy-weight"]
+  "pm_weight_codes": ["weight", "29463-7", "pre-pregnancy-weight"],
+  "ppsc_datafeed_biospecimen_types": [
+    "1ed04",
+    "1ed10",
+    "1ed02",
+    "2ed02",
+    "2ed04",
+    "1sal2",
+    "1sal",
+    "2sal0",
+    "3sal1",
+    "1ur10",
+    "1ur90"
+  ]
 }

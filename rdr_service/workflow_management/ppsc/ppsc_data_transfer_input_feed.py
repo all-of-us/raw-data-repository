@@ -1,0 +1,52 @@
+import logging
+
+from rdr_service import config
+from rdr_service.cloud_utils import bigquery
+from rdr_service.workflow_management.ppsc import data_feed_queries
+
+datafeeds = [
+    "core data",
+    "biospecimen",
+    "health sharing",
+    "ehr"
+]
+
+class InputFeed:
+    def __init__(self, project='test'):
+        self.project = project
+
+    def make_datafeed_job(self, job_def):
+        return bigquery.BigQueryJob(job_def)
+
+    def get_datafeed_definition(self, datafeed):
+        if datafeed == "core data":
+            src = config.getSettingJson(config.PPSC_DATAFEED_SRC_DATASET)[0]
+            destination = config.getSettingJson(config.PPSC_DATAFEED_DEST_DATASET)[0]
+            return data_feed_queries.insert_core_data(self.project, src, destination)
+
+        elif datafeed == "biospecimen":
+            # specimen_types = config.getSettingJson(config.PPSC_DATAFEED_BIOSPECIMEN_TYPES)
+            return ""
+
+        elif datafeed == "health sharing":
+            return ""
+
+        elif datafeed == "ehr":
+            return ""
+
+        else:
+            # Raise error
+            return False
+
+    def run_datafeed(self, datafeed):
+        """
+        Loads datafeed results in batches and commits updates to database per batch.
+        """
+        job_def = self.get_datafeed_definition(datafeed)
+
+        job = self.make_datafeed_job(job_def)
+
+        if job is not None:
+            logging.info(f"{datafeed} Data Feed completed")
+        else:
+            logging.warning(f"Could not run {datafeed} Data Feed because of invalid config")

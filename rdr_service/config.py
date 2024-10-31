@@ -181,6 +181,9 @@ CE_MEDIATED_HPO_ID = 'ce_mediated_hpo_id'
 EXPOSOMICS_MO_MANIFEST_SUBFOLDER = 'm0_manifests'
 EXPOSOMICS_M1_MANIFEST_SUBFOLDER = 'm1_manifests'
 HHEAR_BUCKET_NAME = 'hhear_bucket_name'
+PPSC_DATAFEED_BIOSPECIMEN_TYPES = 'ppsc_datafeed_biospecimen_types'
+PPSC_DATAFEED_SRC_DATASET = 'ppsc_datafeed_src_dataset'
+PPSC_DATAFEED_DEST_DATASET = 'ppsc_datafeed_dest_dataset'
 
 CVL_SITES_DATA_BUCKETS = {
     "bcm": "prod-genomics-data-baylor",
