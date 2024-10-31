@@ -238,6 +238,7 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         entity_dict = {
             'siteName': site_data_obj.get('site_name'),
+            'siteType': site_data_obj.get('site_type'),
             'googleGroup': site_data_obj.get('site_identifier'),
             'mayolinkClientNumber': site_data_obj.get('mayo_link_id'),
             'organizationId': organization_id.organizationId,
