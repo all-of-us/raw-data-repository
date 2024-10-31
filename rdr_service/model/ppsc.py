@@ -311,6 +311,7 @@ class Site(PPSCBase):
     organization_name = Column(String(128), index=True, nullable=False)
     site_name = Column(String(512), index=True, nullable=False)
     site_identifier = Column(String(128), index=True, nullable=False)
+    site_type = Column(String(256), index=True, nullable=False)
 
     enrollment_status_active = Column(TINYINT, default=0)
     digital_scheduling_status_active = Column(TINYINT, default=0)

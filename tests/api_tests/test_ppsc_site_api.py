@@ -41,6 +41,7 @@ class PPSCSiteAPITest(BaseTestCase):
             "organization_name": "Pittsburgh Health",
             "site_name": "UPMC Urgent Care Monroeville",
             "site_identifier": "hpo-site-monroeville",
+            "site_type": "Another site type",
             "enrollment_status_active": True,
             "digital_scheduling_status_active": True,
             "scheduling_status_active": True,
