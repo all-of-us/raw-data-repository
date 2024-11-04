@@ -32,7 +32,7 @@ class InputFeed:
             return ""
 
         elif datafeed == "ehr":
-            return ""
+            return data_feed_queries.insert_ehr_receipt(self.project, src, destination)
 
         else:
             # Raise error

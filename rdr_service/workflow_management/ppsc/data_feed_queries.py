@@ -137,3 +137,43 @@ WHERE TRUE
     )
 ;
 """
+
+def insert_ehr_receipt(project: str, src_operational_dataset: str, destination_dataset: str) -> str:
+    # EHR BQ Data
+    org_ehr_dataset = config.getSettingJson(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION)[0]
+    participant_ehr_dataset = config.getSettingJson(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT)[0]
+
+    if GAE_PROJECT == "all-of-us-rdr-prod":
+        ehr_proj = "aou-res-curation-prod"
+    else:
+        ehr_proj = "test-ehr-project"
+
+    return f"""
+INSERT INTO `{project}.{destination_dataset}.datafeed_input_ehr` (
+    participant_id,
+    ignore_flag,
+    event_date_time,
+    created,
+    modified
+)
+SELECT DISTINCT
+    p.id,
+    0 as ignore_flag,
+    IFNULL(participant_ehr.authored_date, organization_ehr.authored_date),
+    CURRENT_TIMESTAMP() AS created,
+    CURRENT_TIMESTAMP() AS modified
+FROM `{project}.{src_operational_dataset}.ppsc_participant` p
+    -- EHR tables - Record might exist in either table
+    LEFT JOIN `{ehr_proj}.{participant_ehr_dataset}.ehr_upload_pids` participant_ehr
+        ON p.participant_id = participant_ehr.person_id
+    LEFT JOIN `{ehr_proj}.{org_ehr_dataset}.ehr_upload_pids` organization_ehr
+        ON p.participant_id = organization_ehr.person_id
+WHERE TRUE
+  AND (participant_ehr.person_id IS NOT NULL OR organization_ehr.person_id IS NOT NULL)
+  AND NOT EXISTS (
+        SELECT 1
+        FROM `{project}.{destination_dataset}.datafeed_input_ehr` t
+        WHERE t.participant_id = p.id
+    )
+;
+"""

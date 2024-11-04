@@ -119,3 +119,33 @@ WHERE TRUE
     )
 ;
 """
+
+ehr_expected_sql = """
+INSERT INTO `test.ppsc_staging_data.datafeed_input_ehr` (
+    participant_id,
+    ignore_flag,
+    event_date_time,
+    created,
+    modified
+)
+SELECT DISTINCT
+    p.id,
+    0 as ignore_flag,
+    IFNULL(participant_ehr.authored_date, organization_ehr.authored_date),
+    CURRENT_TIMESTAMP() AS created,
+    CURRENT_TIMESTAMP() AS modified
+FROM `test.ppsc_staging_data.ppsc_participant` p
+    -- EHR tables - Record might exist in either table
+    LEFT JOIN `test-ehr-project.participant_ehr.ehr_upload_pids` participant_ehr
+        ON p.participant_id = participant_ehr.person_id
+    LEFT JOIN `test-ehr-project.org_ehr.ehr_upload_pids` organization_ehr
+        ON p.participant_id = organization_ehr.person_id
+WHERE TRUE
+  AND (participant_ehr.person_id IS NOT NULL OR organization_ehr.person_id IS NOT NULL)
+  AND NOT EXISTS (
+        SELECT 1
+        FROM `test.ppsc_staging_data.datafeed_input_ehr` t
+        WHERE t.participant_id = p.id
+    )
+;
+"""
