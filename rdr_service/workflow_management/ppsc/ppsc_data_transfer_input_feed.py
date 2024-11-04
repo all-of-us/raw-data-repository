@@ -19,14 +19,14 @@ class InputFeed:
         return bigquery.BigQueryJob(job_def)
 
     def get_datafeed_definition(self, datafeed):
+        src = config.getSettingJson(config.PPSC_DATAFEED_SRC_DATASET)[0]
+        destination = config.getSettingJson(config.PPSC_DATAFEED_DEST_DATASET)[0]
+
         if datafeed == "core data":
-            src = config.getSettingJson(config.PPSC_DATAFEED_SRC_DATASET)[0]
-            destination = config.getSettingJson(config.PPSC_DATAFEED_DEST_DATASET)[0]
             return data_feed_queries.insert_core_data(self.project, src, destination)
 
         elif datafeed == "biospecimen":
-            # specimen_types = config.getSettingJson(config.PPSC_DATAFEED_BIOSPECIMEN_TYPES)
-            return ""
+            return data_feed_queries.insert_biospecimen(self.project, src, destination)
 
         elif datafeed == "health sharing":
             return ""
