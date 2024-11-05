@@ -85,7 +85,12 @@ class PPSCIntakeAPI(BaseApi):
 
     def handle_event_insert(self, *, req_data: dict) -> dict:
         activity_record = list(filter(lambda x: x.name.lower() == req_data['activity'].lower(),
-                                      self.activity_records))[0]
+                                      self.activity_records))
+
+        if not activity_record:
+            raise BadRequest(f"Activity {req_data['activity']} is Invalid.")
+
+        activity_record = activity_record[0]
 
         # Insert participant_event_activity record
         participant_event_activity_dict = {
