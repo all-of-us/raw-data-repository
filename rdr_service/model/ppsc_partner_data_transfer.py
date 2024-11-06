@@ -8,8 +8,7 @@ from rdr_service.model.utils import UTCDateTime
 from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType, SpecimenType, SpecimenStatus
 
 
-class PPSCDataTransferAuth(PPSCBase):
-    __tablename__ = "ppsc_data_transfer_auth"
+class BaseDataTransferAuth:
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -24,12 +23,7 @@ class PPSCDataTransferAuth(PPSCBase):
     ignore_flag = Column(TINYINT, default=0)
 
 
-event.listen(PPSCDataTransferAuth, "before_insert", model_insert_listener)
-event.listen(PPSCDataTransferAuth, "before_update", model_update_listener)
-
-
-class PPSCDataTransferEndpoint(PPSCBase):
-    __tablename__ = "ppsc_data_transfer_endpoint"
+class BaseDataTransferEndpoint:
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -38,6 +32,18 @@ class PPSCDataTransferEndpoint(PPSCBase):
     endpoint = Column(String(512), nullable=False)
     data_sync_transfer_type = Column(Enum(DataSyncTransferType), nullable=False)
     ignore_flag = Column(TINYINT, default=0)
+
+
+class PPSCDataTransferAuth(BaseDataTransferAuth, PPSCBase):
+    __tablename__ = "ppsc_data_transfer_auth"
+
+
+event.listen(PPSCDataTransferAuth, "before_insert", model_insert_listener)
+event.listen(PPSCDataTransferAuth, "before_update", model_update_listener)
+
+
+class PPSCDataTransferEndpoint(BaseDataTransferEndpoint, PPSCBase):
+    __tablename__ = "ppsc_data_transfer_endpoint"
 
 
 event.listen(PPSCDataTransferEndpoint, "before_insert", model_insert_listener)
@@ -117,3 +123,21 @@ class PPSCHealthData(PPSCDataBase, PPSCBase):
 
 event.listen(PPSCHealthData, "before_insert", model_insert_listener)
 event.listen(PPSCHealthData, "before_update", model_update_listener)
+
+
+class RTIDataTransferAuth(BaseDataTransferAuth, PPSCBase):
+    __tablename__ = "rti_data_transfer_auth"
+
+
+event.listen(RTIDataTransferAuth, "before_insert", model_insert_listener)
+event.listen(RTIDataTransferAuth, "before_update", model_update_listener)
+
+
+class RTIDataTransferEndpoint(BaseDataTransferEndpoint, PPSCBase):
+    __tablename__ = "rti_data_transfer_endpoint"
+
+
+event.listen(RTIDataTransferEndpoint, "before_insert", model_insert_listener)
+event.listen(RTIDataTransferEndpoint, "before_update", model_update_listener)
+
+

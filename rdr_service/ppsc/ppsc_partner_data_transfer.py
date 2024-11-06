@@ -3,28 +3,14 @@ import json
 import requests
 from typing import Union
 
-from rdr_service.dao.ppsc_dao import PPSCDataTransferEndpointDao, PPSCDataTransferBaseDao, PPSCDataTransferRecordDao
+from rdr_service.dao.ppsc_partner_transfer_dao import (PPSCDataTransferEndpointDao, PPSCDataTransferBaseDao,
+                                                       PPSCDataTransferRecordDao)
 from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType
 from rdr_service.ppsc.ppsc_oauth import PPSCTransferOauth
-from rdr_service.model.ppsc_data_transfer import PPSCCore, PPSCBiobankSample, PPSCHealthData, PPSCEHR, PPSCData
+from rdr_service.model.ppsc_partner_data_transfer import PPSCCore, PPSCBiobankSample, PPSCHealthData, PPSCEHR, PPSCData
 
 
 class BaseDataTransfer:
-
-    def __init__(self):
-        self.endpoint_dao = PPSCDataTransferEndpointDao()
-        self.transfer_record_dao = PPSCDataTransferRecordDao()
-
-    def __enter__(self):
-        self.ppsc_oauth_data = PPSCTransferOauth(auth_type=AuthType.DATA_TRANSFER)
-        self.transfer_url = self.get_endpoint_for_transfer()
-        self.headers = self.get_headers()
-        self.transfer_items = self.get_transfer_items()
-        logging.info(f"Starting PPSC data transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        logging.info(f"Finished PPSC Data Transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
 
     def run_data_transfer(self):
         if not self.transfer_items:
@@ -90,7 +76,25 @@ class BaseDataTransfer:
         return self.build_default_obj(transfer_item)
 
 
-class PPSCDataTransferCore(BaseDataTransfer):
+class PPSCBaseDataTransfer(BaseDataTransfer):
+
+    def __init__(self):
+        self.endpoint_dao = PPSCDataTransferEndpointDao()
+        self.transfer_record_dao = PPSCDataTransferRecordDao()
+
+    def __enter__(self):
+        self.ppsc_oauth_data = PPSCTransferOauth(auth_type=AuthType.DATA_TRANSFER)
+        self.transfer_url = self.get_endpoint_for_transfer()
+        self.headers = self.get_headers()
+        self.transfer_items = self.get_transfer_items()
+        logging.info(f"Starting PPSC data transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        logging.info(f"Finished PPSC Data Transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
+
+
+class PPSCDataTransferCore(PPSCBaseDataTransfer):
 
     def __init__(self):
         super().__init__()
@@ -103,7 +107,7 @@ class PPSCDataTransferCore(BaseDataTransfer):
         return updated_obj
 
 
-class PPSCDataTransferEHR(BaseDataTransfer):
+class PPSCDataTransferEHR(PPSCBaseDataTransfer):
 
     def __init__(self):
         super().__init__()
@@ -111,7 +115,7 @@ class PPSCDataTransferEHR(BaseDataTransfer):
         self.transfer_type = DataSyncTransferType.EHR
 
 
-class PPSCDataTransferBiobank(BaseDataTransfer):
+class PPSCDataTransferBiobank(PPSCBaseDataTransfer):
 
     def __init__(self):
         super().__init__()
@@ -125,10 +129,11 @@ class PPSCDataTransferBiobank(BaseDataTransfer):
         return updated_obj
 
 
-class PPSCDataTransferHealthData(BaseDataTransfer):
+class PPSCDataTransferHealthData(PPSCBaseDataTransfer):
 
     def __init__(self):
         super().__init__()
         self.dao = PPSCDataTransferBaseDao(PPSCHealthData)
         self.transfer_type = DataSyncTransferType.HEALTH_DATA
+
 

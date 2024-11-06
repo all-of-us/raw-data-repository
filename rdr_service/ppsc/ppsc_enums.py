@@ -3,6 +3,7 @@ from protorpc import messages
 
 class AuthType(messages.Enum):
     DATA_TRANSFER = 1
+    NPH_OPT_IN = 2
 
 
 class DataSyncTransferType(messages.Enum):
@@ -10,6 +11,7 @@ class DataSyncTransferType(messages.Enum):
     EHR = 2
     BIOBANK_SAMPLE = 3
     HEALTH_DATA = 4
+    NPH_OPT_IN = 5
 
 
 class SpecimenType(messages.Enum):

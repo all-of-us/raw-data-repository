@@ -4,7 +4,7 @@ from rdr_service import clock
 from rdr_service.dao import database_factory
 from rdr_service.model.ppsc import Participant, Activity, EnrollmentEventType, ConsentEvent, ProfileUpdatesEvent, \
     SurveyCompletionEvent, PartnerActivity, Site
-from rdr_service.model.ppsc_data_transfer import (
+from rdr_service.model.ppsc_partner_data_transfer import (
     PPSCDataTransferAuth, PPSCDataTransferEndpoint,
     PPSCDataTransferRecord, PPSCHealthData, PPSCBiobankSample, PPSCEHR, PPSCCore
 )

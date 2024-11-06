@@ -4,10 +4,12 @@ from unittest import mock
 from faker import Faker
 
 from rdr_service import clock
-from rdr_service.dao.ppsc_dao import PPSCDataTransferAuthDao, PPSCDataTransferEndpointDao, PPSCDataTransferRecordDao, \
-    ParticipantDao
+from rdr_service.dao.ppsc_dao import ParticipantDao
+from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferAuthDao, PPSCDataTransferEndpointDao, \
+    PPSCDataTransferRecordDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
-from rdr_service.ppsc.ppsc_data_transfer import PPSCDataTransferCore, PPSCDataTransferEHR, PPSCDataTransferHealthData, \
+from rdr_service.ppsc.ppsc_partner_data_transfer import PPSCDataTransferCore, PPSCDataTransferEHR, \
+    PPSCDataTransferHealthData, \
     PPSCDataTransferBiobank
 from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType, SpecimenType, SpecimenStatus
 from tests.helpers.unittest_base import BaseTestCase

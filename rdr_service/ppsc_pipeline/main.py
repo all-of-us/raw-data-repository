@@ -6,7 +6,8 @@ from flask import Flask, got_request_exception
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
-from rdr_service.ppsc.ppsc_data_transfer import PPSCDataTransferCore, PPSCDataTransferHealthData, PPSCDataTransferEHR, \
+from rdr_service.ppsc.ppsc_partner_data_transfer import PPSCDataTransferCore, PPSCDataTransferHealthData, \
+    PPSCDataTransferEHR, \
     PPSCDataTransferBiobank
 from rdr_service.services.flask import PPSC_PIPELINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
