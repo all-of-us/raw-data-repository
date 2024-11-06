@@ -1,4 +1,11 @@
 core_data_expected_sql = """
+WITH earliest_ehr AS (
+    SELECT participant_id,
+           MIN(event_date_time) AS event_date_time
+    FROM `test.ppsc_staging_data.datafeed_input_ehr`
+    GROUP BY participant_id
+)
+
 INSERT INTO `test.ppsc_staging_data.datafeed_input_core_data` (
     participant_id,
     has_core_data,
@@ -17,7 +24,7 @@ SELECT DISTINCT
         overall.event_authored_time,
         lifestyle.event_authored_time,
         pm.finalized,
-        IFNULL(participant_ehr.authored_date, organization_ehr.authored_date)
+        earliest_ehr.event_date_time
     ) AS event_date_time,
     CURRENT_TIMESTAMP() AS created,
     CURRENT_TIMESTAMP() AS modified
@@ -31,13 +38,9 @@ JOIN `test.ppsc_staging_data.ppsc_consent_event` ehrc
     AND c.data_element_value = "submitted_yes"
     AND c.event_type_name = "EHR Authorization"
 
--- EHR Received
--- EHR tables - Record might exist in either table
-LEFT JOIN `test-ehr-project.participant_ehr.ehr_upload_pids` participant_ehr
-    ON c.participant_id = participant_ehr.person_id
-
-LEFT JOIN `test-ehr-project.org_ehr.ehr_upload_pids` organization_ehr
-    ON c.participant_id = organization_ehr.person_id
+-- Earliest EHR Received
+JOIN earliest_ehr
+    ON c.participant_id = earliest_ehr.participant_id
 
 -- Basics Completion
 JOIN `test.ppsc_staging_data.ppsc_survey_completion_event` basics
@@ -74,9 +77,6 @@ JOIN `test.ppsc_staging_data.rdr_measurement` weight
 WHERE
     c.data_element_value = "submitted_yes"
     AND c.event_type_name = "Primary Consent"
-
-    -- Ensure at least one EHR record exists
-    AND (participant_ehr.person_id IS NOT NULL OR organization_ehr.person_id IS NOT NULL)
 
     -- Insert only if participant_id doesn't exist in the target table
     AND NOT EXISTS (
@@ -131,21 +131,19 @@ INSERT INTO `test.ppsc_staging_data.datafeed_input_ehr` (
 SELECT DISTINCT
     p.id,
     0 as ignore_flag,
-    IFNULL(participant_ehr.authored_date, organization_ehr.authored_date),
+    participant_ehr.latest_upload_time,
     CURRENT_TIMESTAMP() AS created,
     CURRENT_TIMESTAMP() AS modified
 FROM `test.ppsc_staging_data.ppsc_participant` p
-    -- EHR tables - Record might exist in either table
-    LEFT JOIN `test-ehr-project.participant_ehr.ehr_upload_pids` participant_ehr
+    -- EHR Ops table
+    JOIN `test-ehr-project.participant_ehr.ehr_upload_pids` participant_ehr
         ON p.participant_id = participant_ehr.person_id
-    LEFT JOIN `test-ehr-project.org_ehr.ehr_upload_pids` organization_ehr
-        ON p.participant_id = organization_ehr.person_id
 WHERE TRUE
-  AND (participant_ehr.person_id IS NOT NULL OR organization_ehr.person_id IS NOT NULL)
   AND NOT EXISTS (
         SELECT 1
         FROM `test.ppsc_staging_data.datafeed_input_ehr` t
         WHERE t.participant_id = p.id
+            AND t.event_date_time = participant_ehr.latest_upload_time
     )
 ;
 """
