@@ -3,7 +3,7 @@ from unittest import mock
 from rdr_service import config
 from tests.service_tests.test_genomic_datagen import GenomicDataGenMixin
 from tests.workflow_tests.test_data.ppsc_data_feed_test_data import core_data_expected_sql, biospecimen_expected_sql, \
-    ehr_expected_sql
+    ehr_expected_sql, health_data_sharing_expected_sql
 from rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed import InputFeed
 
 
@@ -52,3 +52,16 @@ class DataTransferInputTest(GenomicDataGenMixin):
 
         # Assert that BigQueryJob was instantiated with the correct SQL
         mock_bq.assert_called_once_with(ehr_expected_sql)
+
+    @mock.patch("rdr_service.cloud_utils.bigquery.BigQueryJob")
+    def test_health_data_sharing_datafeed(self, mock_bq):
+        feed = InputFeed()
+
+        query = feed.get_datafeed_definition("health data sharing")
+
+        self.assertEqual(health_data_sharing_expected_sql.strip(), query.strip())
+
+        feed.run_datafeed("health data sharing")
+
+        # Assert that BigQueryJob was instantiated with the correct SQL
+        mock_bq.assert_called_once_with(health_data_sharing_expected_sql)

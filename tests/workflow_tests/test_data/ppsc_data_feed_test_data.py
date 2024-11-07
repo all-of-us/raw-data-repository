@@ -147,3 +147,41 @@ WHERE TRUE
     )
 ;
 """
+
+
+health_data_sharing_expected_sql = """
+INSERT INTO `test.ppsc_staging_data.datafeed_input_healthdata_sharing` (
+    participant_id,
+    ignore_flag,
+    health_data_stream_sharing_status,
+    event_date_time,
+    created,
+    modified
+)
+SELECT DISTINCT
+    p.id,
+    0 AS ignore_flag,
+    CASE
+        WHEN participant_ehr.person_id IS NOT NULL THEN 3
+        ELSE 2
+    END AS health_data_stream_sharing_status,
+    iehr.event_date_time,
+    CURRENT_TIMESTAMP() AS created,
+    CURRENT_TIMESTAMP() AS modified
+FROM `test.ppsc_staging_data.ppsc_participant` p
+    -- PPSC Notified of EHR Received
+    JOIN `test.ppsc_staging_data.datafeed_input_ehr` iehr
+        ON iehr.participant_id = p.participant_id
+    -- Participant in EHR Ops table
+    LEFT JOIN `test-ehr-project.participant_ehr.ehr_upload_pids` participant_ehr
+        ON p.participant_id = participant_ehr.person_id
+WHERE TRUE
+    -- Don't send if participant is already in the destination table with the same event time.
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `test.ppsc_staging_data.datafeed_input_healthdata_sharing` t
+        WHERE t.participant_id = p.id
+            AND t.event_date_time = iehr.event_date_time
+    )
+;
+"""

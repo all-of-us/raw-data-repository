@@ -7,7 +7,7 @@ from rdr_service.workflow_management.ppsc import data_feed_queries
 datafeeds = [
     "core data",
     "biospecimen",
-    "health sharing",
+    "healthdata sharing",
     "ehr"
 ]
 
@@ -28,8 +28,8 @@ class InputFeed:
         elif datafeed == "biospecimen":
             return data_feed_queries.insert_biospecimen(self.project, src, destination)
 
-        elif datafeed == "health sharing":
-            return ""
+        elif datafeed == "health data sharing":
+            return data_feed_queries.insert_health_data_sharing(self.project, src, destination)
 
         elif datafeed == "ehr":
             return data_feed_queries.insert_ehr_receipt(self.project, src, destination)

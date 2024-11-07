@@ -165,3 +165,49 @@ WHERE TRUE
     )
 ;
 """
+
+def insert_health_data_sharing(project: str, src_operational_dataset: str, destination_dataset: str) -> str:
+    # EHR BQ Data
+    participant_ehr_dataset = config.getSettingJson(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT)[0]
+
+    if GAE_PROJECT == "all-of-us-rdr-prod":
+        ehr_proj = "aou-res-curation-prod"
+    else:
+        ehr_proj = "test-ehr-project"
+
+    return f"""
+INSERT INTO `{project}.{destination_dataset}.datafeed_input_healthdata_sharing` (
+    participant_id,
+    ignore_flag,
+    health_data_stream_sharing_status,
+    event_date_time,
+    created,
+    modified
+)
+SELECT DISTINCT
+    p.id,
+    0 AS ignore_flag,
+    CASE
+        WHEN participant_ehr.person_id IS NOT NULL THEN 3
+        ELSE 2
+    END AS health_data_stream_sharing_status,
+    iehr.event_date_time,
+    CURRENT_TIMESTAMP() AS created,
+    CURRENT_TIMESTAMP() AS modified
+FROM `{project}.{src_operational_dataset}.ppsc_participant` p
+    -- PPSC Notified of EHR Received
+    JOIN `{project}.{destination_dataset}.datafeed_input_ehr` iehr
+        ON iehr.participant_id = p.participant_id
+    -- Participant in EHR Ops table
+    LEFT JOIN `{ehr_proj}.{participant_ehr_dataset}.ehr_upload_pids` participant_ehr
+        ON p.participant_id = participant_ehr.person_id
+WHERE TRUE
+    -- Don't send if participant is already in the destination table with the same event time.
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `{project}.{destination_dataset}.datafeed_input_healthdata_sharing` t
+        WHERE t.participant_id = p.id
+            AND t.event_date_time = iehr.event_date_time
+    )
+;
+"""
