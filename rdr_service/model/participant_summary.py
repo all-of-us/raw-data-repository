@@ -13,7 +13,6 @@ from sqlalchemy import (
     func,
     Index,
     Integer,
-    or_,
     SmallInteger,
     String,
     UnicodeText,
@@ -26,7 +25,6 @@ from sqlalchemy.sql import expression
 from rdr_service import clock
 from rdr_service.model.account_link import AccountLink
 from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
-from rdr_service.model.duplicate_account import DuplicateAccount
 from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import (
