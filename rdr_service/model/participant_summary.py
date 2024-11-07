@@ -1967,16 +1967,6 @@ class ParticipantSummary(Base):
         lazy='noload'
     )
 
-    duplicationData: List[DuplicateAccount] = relationship(
-        DuplicateAccount,
-        primaryjoin=or_(
-            foreign(participantId) == remote(DuplicateAccount.participant_a_id),
-            foreign(participantId) == remote(DuplicateAccount.participant_b_id)
-        ),
-        uselist=True,
-        lazy='noload'
-    )
-
     @property
     def isPediatric(self) -> bool:
         """
