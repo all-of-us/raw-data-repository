@@ -4,10 +4,12 @@ import requests
 from typing import Union
 
 from rdr_service.dao.ppsc_partner_transfer_dao import (PPSCDataTransferEndpointDao, PPSCDataTransferBaseDao,
-                                                       PPSCDataTransferRecordDao)
+                                                       PPSCDataTransferRecordDao, RTIDataTransferEndpointDao,
+                                                       RTIDataTransferBaseDao, RTIDataTransferRecordDao)
 from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType
 from rdr_service.ppsc.ppsc_oauth import PPSCTransferOauth
-from rdr_service.model.ppsc_partner_data_transfer import PPSCCore, PPSCBiobankSample, PPSCHealthData, PPSCEHR, PPSCData
+from rdr_service.model.ppsc_partner_data_transfer import (PPSCCore, PPSCBiobankSample, PPSCHealthData, PPSCEHR,
+                                                          PPSCData, RTINphOptIn)
 
 
 class BaseDataTransfer:
@@ -137,3 +139,27 @@ class PPSCDataTransferHealthData(PPSCBaseDataTransfer):
         self.transfer_type = DataSyncTransferType.HEALTH_DATA
 
 
+class RTIBaseDataTransfer(BaseDataTransfer):
+
+    def __init__(self):
+        self.endpoint_dao = RTIDataTransferEndpointDao()
+        self.transfer_record_dao = RTIDataTransferRecordDao()
+
+    def __enter__(self):
+        # self.ppsc_oauth_data = PPSCTransferOauth(auth_type=AuthType.DATA_TRANSFER)
+        self.transfer_url = self.get_endpoint_for_transfer()
+        self.headers = self.get_headers()
+        self.transfer_items = self.get_transfer_items()
+        logging.info(f"Starting RTI data transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        logging.info(f"Finished RTI Data Transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
+
+
+class RTIDataTransferNPHOptIn(PPSCBaseDataTransfer):
+
+    def __init__(self):
+        super().__init__()
+        self.dao = RTIDataTransferBaseDao(RTINphOptIn)
+        self.transfer_type = DataSyncTransferType.NPH_OPT_IN

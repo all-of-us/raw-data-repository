@@ -3,7 +3,7 @@ from sqlalchemy import and_
 
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao
 from rdr_service.model.ppsc_partner_data_transfer import PPSCDataTransferAuth, PPSCDataTransferEndpoint, \
-    PPSCDataTransferRecord, RTIDataTransferEndpoint, RTIDataTransferAuth
+    PPSCDataTransferRecord, RTIDataTransferEndpoint, RTIDataTransferAuth, RTIDataTransferRecord
 from rdr_service.ppsc.ppsc_enums import AuthType
 
 
@@ -135,3 +135,38 @@ class RTIDataTransferEndpointDao(BaseDao):
                 self.model_type.data_sync_transfer_type == transfer_type,
                 self.model_type.ignore_flag != 1
             ).one_or_none()
+
+
+class RTIDataTransferBaseDao(BaseDao):
+
+    def __init__(self, model_type):
+        super().__init__(model_type)
+
+    def get_items_for_transfer(self, *, transfer_type) -> List:
+        print(transfer_type)
+        with self.session() as session:
+            return session.query(
+                self.model_type
+            ).filter(
+                RTIDataTransferRecord.id.is_(None),
+                self.model_type.ignore_flag != 1
+            ).distinct().all()
+
+
+class RTIDataTransferRecordDao(BaseDao):
+
+    def __init__(self):
+        super().__init__(RTIDataTransferRecord, order_by_ending=["id"])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    def insert_bulk(self, batch: List[Dict]) -> None:
+        with self.session() as session:
+            session.bulk_insert_mappings(
+                self.model_type,
+                batch
+            )

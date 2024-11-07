@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from unittest import mock
 
-from rdr_service.dao.ppsc_dao import PPSCDataTransferAuthDao
+from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferAuthDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.ppsc.ppsc_enums import AuthType
 from rdr_service.ppsc.ppsc_oauth import PPSCTransferOauth
@@ -29,7 +29,7 @@ class PPSCDataTransferTest(BaseTestCase):
     def build_oauth_data(self):
 
         oauth = {
-            'auth_type': AuthType.DATA_TRANSFER,
+            'auth_type': AuthType.PPSC_DATA_TRANSFER,
             'auth_url': 'test_url',
             'client_id': 'wqwqwqwqqw1',
             'client_secret': 'wqwqwqqwqqwqwqwqqwqwqwq'
@@ -45,7 +45,7 @@ class PPSCDataTransferTest(BaseTestCase):
         )
         requests_api_patcher.start()
 
-        ppsc_transfer_oauth = PPSCTransferOauth(auth_type=AuthType.DATA_TRANSFER)
+        ppsc_transfer_oauth = PPSCTransferOauth(auth_type=AuthType.PPSC_DATA_TRANSFER)
 
         self.assertIsNotNone(ppsc_transfer_oauth.token)
         self.assertEqual(ppsc_transfer_oauth.token, MockedTransferResponse.json().get('access_token'))

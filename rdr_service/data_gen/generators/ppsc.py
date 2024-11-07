@@ -127,6 +127,15 @@ class PPSCDataGenerator(PPSCBaseDataGenerator):
         return ppsc_data_endpoint
 
     @staticmethod
+    def _rti_data_sync_endpoint(**kwargs):
+        return PPSCDataTransferEndpoint(**kwargs)
+
+    def create_database_rti_data_sync_endpoint(self, **kwargs):
+        rti_data_endpoint = self._rti_data_sync_endpoint(**kwargs)
+        self._commit_to_database(rti_data_endpoint)
+        return rti_data_endpoint
+
+    @staticmethod
     def _ppsc_data_sync_record(**kwargs):
         return PPSCDataTransferRecord(**kwargs)
 

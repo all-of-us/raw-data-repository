@@ -2,8 +2,8 @@ from protorpc import messages
 
 
 class AuthType(messages.Enum):
-    DATA_TRANSFER = 1
-    NPH_OPT_IN = 2
+    PPSC_DATA_TRANSFER = 1
+    RTI_DATA_TRANSFER = 2
 
 
 class DataSyncTransferType(messages.Enum):

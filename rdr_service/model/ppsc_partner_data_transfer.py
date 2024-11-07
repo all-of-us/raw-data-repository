@@ -34,6 +34,18 @@ class BaseDataTransferEndpoint:
     ignore_flag = Column(TINYINT, default=0)
 
 
+class BaseDataTransferRecord:
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    data_sync_transfer_type = Column(Enum(DataSyncTransferType))
+    data_type_record_id = Column(BigInteger)
+    request_payload = Column(JSON, nullable=True)
+    response_code = Column(String(128))
+    ignore_flag = Column(TINYINT, default=0)
+
+
 class PPSCDataTransferAuth(BaseDataTransferAuth, PPSCBase):
     __tablename__ = "ppsc_data_transfer_auth"
 
@@ -50,18 +62,10 @@ event.listen(PPSCDataTransferEndpoint, "before_insert", model_insert_listener)
 event.listen(PPSCDataTransferEndpoint, "before_update", model_update_listener)
 
 
-class PPSCDataTransferRecord(PPSCBase):
+class PPSCDataTransferRecord(BaseDataTransferRecord, PPSCBase):
     __tablename__ = "ppsc_data_transfer_record"
 
-    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime)
-    modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    data_sync_transfer_type = Column(Enum(DataSyncTransferType))
-    data_type_record_id = Column(BigInteger)
-    request_payload = Column(JSON, nullable=True)
-    response_code = Column(String(128))
-    ignore_flag = Column(TINYINT, default=0)
 
 
 event.listen(PPSCDataTransferRecord, "before_insert", model_insert_listener)
@@ -125,6 +129,19 @@ event.listen(PPSCHealthData, "before_insert", model_insert_listener)
 event.listen(PPSCHealthData, "before_update", model_update_listener)
 
 
+class PPSCNphEligibleParticipants(PPSCBase):
+    __tablename__ = "ppsc_nph_eligible_participants"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    nph_participant_id = Column(BigInteger, ForeignKey("nph.participant.id"))
+
+
+event.listen(PPSCNphEligibleParticipants, "before_insert", model_insert_listener)
+event.listen(PPSCNphEligibleParticipants, "before_update", model_update_listener)
+
+
 class RTIDataTransferAuth(BaseDataTransferAuth, PPSCBase):
     __tablename__ = "rti_data_transfer_auth"
 
@@ -141,3 +158,21 @@ event.listen(RTIDataTransferEndpoint, "before_insert", model_insert_listener)
 event.listen(RTIDataTransferEndpoint, "before_update", model_update_listener)
 
 
+class RTIDataTransferRecord(BaseDataTransferRecord, PPSCBase):
+    __tablename__ = "rti_data_transfer_record"
+
+    nph_participant_id = Column(BigInteger, ForeignKey("nph.participant.id"))
+
+
+event.listen(RTIDataTransferRecord, "before_insert", model_insert_listener)
+event.listen(RTIDataTransferRecord, "before_update", model_update_listener)
+
+
+class RTINphOptIn(PPSCDataBase, PPSCBase):
+    __tablename__ = "rti_nph_opt_in"
+
+    nph_participant_id = Column(BigInteger, ForeignKey("nph.participant.id"))
+
+
+event.listen(RTINphOptIn, "before_insert", model_insert_listener)
+event.listen(RTINphOptIn, "before_update", model_update_listener)
