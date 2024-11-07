@@ -3,7 +3,7 @@ import logging
 import requests
 
 from rdr_service import clock
-from rdr_service.dao.ppsc_dao import PPSCDataTransferAuthDao
+from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferAuthDao
 from rdr_service.ppsc.ppsc_enums import AuthType
 
 

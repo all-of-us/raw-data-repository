@@ -64,7 +64,7 @@ class PPSCDataTransferTest(BaseTestCase):
             )
 
     @mock.patch('rdr_service.ppsc.ppsc_oauth.PPSCTransferOauth.generate_token')
-    @mock.patch('rdr_service.ppsc.ppsc_data_transfer.PPSCDataTransferCore.send_item')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferCore.send_item')
     def test_send_core_items_for_transfer(self, send_request, oauth_service) -> None:
 
         oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
@@ -112,7 +112,7 @@ class PPSCDataTransferTest(BaseTestCase):
         self.assertEqual(len(core_transfer.transfer_items), 0)
 
     @mock.patch('rdr_service.ppsc.ppsc_oauth.PPSCTransferOauth.generate_token')
-    @mock.patch('rdr_service.ppsc.ppsc_data_transfer.PPSCDataTransferEHR.send_item')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferEHR.send_item')
     def test_send_ehr_items_for_transfer(self, send_request, oauth_service) -> None:
 
         oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
@@ -159,7 +159,7 @@ class PPSCDataTransferTest(BaseTestCase):
         self.assertEqual(len(ehr_transfer.transfer_items), 0)
 
     @mock.patch('rdr_service.ppsc.ppsc_oauth.PPSCTransferOauth.generate_token')
-    @mock.patch('rdr_service.ppsc.ppsc_data_transfer.PPSCDataTransferHealthData.send_item')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferHealthData.send_item')
     def test_send_health_data_items_for_transfer(self, send_request, oauth_service) -> None:
 
         oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
@@ -207,7 +207,7 @@ class PPSCDataTransferTest(BaseTestCase):
         self.assertEqual(len(health_transfer.transfer_items), 0)
 
     @mock.patch('rdr_service.ppsc.ppsc_oauth.PPSCTransferOauth.generate_token')
-    @mock.patch('rdr_service.ppsc.ppsc_data_transfer.PPSCDataTransferBiobank.send_item')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferBiobank.send_item')
     def test_send_biobank_sample_items_for_transfer(self, send_request, oauth_service) -> None:
 
         oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
