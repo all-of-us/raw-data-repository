@@ -1,5 +1,7 @@
 import logging
 
+from werkzeug.exceptions import BadRequest
+
 from rdr_service import config
 from rdr_service.cloud_utils import bigquery
 from rdr_service.workflow_management.ppsc import data_feed_queries
@@ -36,7 +38,7 @@ class InputFeed:
 
         else:
             # Raise error
-            return False
+            raise BadRequest(f"Invalid Datafeed: {datafeed}")
 
     def run_datafeed(self, datafeed):
         """
