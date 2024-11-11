@@ -494,7 +494,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             )
             count_query = (session.query(distinct(WorkbenchWorkspaceApproved.workspaceSourceId))
                            .join(WorkbenchWorkspaceUser, WorkbenchResearcher, WorkbenchInstitutionalAffiliations)
-                           .filter(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                           .filter(or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                                       WorkbenchWorkspaceApproved.excludeFromPublicDirectory is None
+                                       ),
                                    WorkbenchWorkspaceApproved.status == int(WorkbenchWorkspaceStatus.ACTIVE),
                                    WorkbenchInstitutionalAffiliations.isVerified == 1,
                                    or_(WorkbenchWorkspaceUser.isCreator == 1,
@@ -510,7 +512,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             snapshot_subquery = (
                 session.query(func.max(WorkbenchWorkspaceSnapshot.id).label('snapshot_id'),
                               WorkbenchWorkspaceSnapshot.workspaceSourceId)
-                    .filter(WorkbenchWorkspaceSnapshot.excludeFromPublicDirectory == 0)
+                    .filter(or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                                WorkbenchWorkspaceApproved.excludeFromPublicDirectory is None
+                                ))
                     .group_by(WorkbenchWorkspaceSnapshot.workspaceSourceId).subquery()
             )
             query = (
@@ -522,7 +526,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 ).filter(
                     WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
                     WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
-                    WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                    or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                        WorkbenchWorkspaceApproved.excludeFromPublicDirectory is None
+                        ),
                     WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
                     WorkbenchWorkspaceApproved.creationTime > start_date
                 ).order_by(
@@ -536,7 +542,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 ).filter(
                     WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
                     WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
-                    WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                    or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                        WorkbenchWorkspaceApproved.excludeFromPublicDirectory is None
+                        ),
                     WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
                     WorkbenchResearcher.id == WorkbenchInstitutionalAffiliations.researcherId,
                     WorkbenchInstitutionalAffiliations.isVerified == 1,
