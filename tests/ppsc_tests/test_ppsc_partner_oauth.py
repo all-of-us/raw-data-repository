@@ -40,12 +40,12 @@ class PPSCDataTransferTest(BaseTestCase):
     def test_oauth_key_record_stores(self):
         self.build_oauth_data()
         requests_api_patcher = mock.patch(
-            "rdr_service.ppsc.ppsc_oauth.requests",
+            "rdr_service.ppsc.ppsc_partner_oauth.requests",
             **{"post.return_value": MockedTransferResponse()}
         )
         requests_api_patcher.start()
 
-        ppsc_transfer_oauth = PPSCTransferOauth(auth_type=AuthType.PPSC_DATA_TRANSFER)
+        ppsc_transfer_oauth = PPSCTransferOauth()
 
         self.assertIsNotNone(ppsc_transfer_oauth.token)
         self.assertEqual(ppsc_transfer_oauth.token, MockedTransferResponse.json().get('access_token'))

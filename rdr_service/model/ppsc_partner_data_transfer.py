@@ -132,6 +132,8 @@ event.listen(PPSCHealthData, "before_update", model_update_listener)
 class RTIDataTransferAuth(BaseDataTransferAuth, PPSCBase):
     __tablename__ = "rti_data_transfer_auth"
 
+    x_public_key = Column(String(512), nullable=False)
+
 
 event.listen(RTIDataTransferAuth, "before_insert", model_insert_listener)
 event.listen(RTIDataTransferAuth, "before_update", model_update_listener)
