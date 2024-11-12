@@ -41,6 +41,7 @@ class PPSCSiteAPITest(BaseTestCase):
             "organization_name": "Pittsburgh Health",
             "site_name": "UPMC Urgent Care Monroeville",
             "site_identifier": "hpo-site-monroeville",
+            "site_type": "Another site type",
             "enrollment_status_active": True,
             "digital_scheduling_status_active": True,
             "scheduling_status_active": True,
@@ -102,32 +103,29 @@ class PPSCSiteAPITest(BaseTestCase):
 
         self.assertTrue(response is not None)
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json['message'], 'Error when creating/updating site record')
+        self.assertEqual(response.json['message'], 'Error when creating site record')
 
         current_site_data = [obj for obj in self.site_dao.get_all()
                              if obj.site_identifier == self.base_payload.get('site_identifier')]
 
         self.assertEqual(len(current_site_data), 0)
 
-    def test_site_data_upserts_correctly(self):
+    def test_site_data_put_updates_correctly(self):
 
-        # creating site
-        response = self.send_post('Site', request_data=self.base_payload)
+        # creating site throws error on PUT
+        response = self.send_put('Site', request_data=self.base_payload, expected_status=http.client.BAD_REQUEST)
 
         self.assertTrue(response is not None)
-        self.assertEqual(response, 'Site hpo-site-monroeville was created successfully')
 
-        current_site_data = [obj for obj in self.site_dao.get_all()
-                             if obj.site_identifier == self.base_payload.get('site_identifier')]
-
-        self.assertEqual(len(current_site_data), 1)
+        # insert site
+        self.ppsc_data_gen.create_database_ppsc_site(**self.base_payload)
 
         # update site
         time.sleep(5)
 
         self.base_payload['address_line'] = '124 Fake St.'
 
-        response = self.send_post('Site', request_data=self.base_payload)
+        response = self.send_put('Site', request_data=self.base_payload)
 
         self.assertTrue(response is not None)
         self.assertEqual(response, 'Site hpo-site-monroeville was updated successfully')
@@ -188,8 +186,8 @@ class PPSCSiteAPITest(BaseTestCase):
         current_partner_activities = self.partner_event_activity_dao.get_all()
         self.assertEqual(len(current_partner_activities), 1)
 
-        # update site
-        self.send_post('Site', request_data=self.base_payload)
+        # update site when POST throws error
+        self.send_post('Site', request_data=self.base_payload, expected_status=http.client.BAD_REQUEST)
 
         current_site_data = [obj for obj in self.site_dao.get_all()
                              if obj.site_identifier == self.base_payload.get('site_identifier')]
@@ -198,7 +196,7 @@ class PPSCSiteAPITest(BaseTestCase):
 
         # should be 2
         current_partner_activities = self.partner_event_activity_dao.get_all()
-        self.assertEqual(len(current_partner_activities), 2)
+        self.assertEqual(len(current_partner_activities), 1)
 
     def test_awardee_insert_sync_rdr_schema(self):
 

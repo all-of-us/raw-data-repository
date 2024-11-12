@@ -28,18 +28,39 @@ class PPSCSiteAPI(BaseApi):
 
         try:
             site_record = self.dao.get_site_by_identifier(site_identifier=req_data.get('site_identifier'))
-            action_type = 'created'
 
             if site_record:
-                req_data['id'] = site_record.id
-                action_type = 'updated'
+                raise BadRequest(f'Site record for {req_data.get("site_identifier")} exists. '
+                                 f'Use PUT http method for updates.')
 
             site_record = self.handle_site_updates(site_data=req_data)
-            return self.dao.to_client_json(obj=site_record, action_type=action_type)
+            return self.dao.to_client_json(obj=site_record, action_type='created')
 
         except Exception as e:
-            logging.warning(f'Error when creating/updating site record: {e}')
-            raise BadRequest('Error when creating/updating site record')
+            logging.warning(f'Error when creating site record: {e}')
+            raise BadRequest('Error when creating site record')
+
+    @auth_required([PPSC, RDR])
+    def put(self):
+        # Adding request log here so if exception is raised
+        # per validation fail the payload is stored
+        log_api_request(log=request.log_record)
+        req_data, site_record = self.get_request_json(), None
+
+        try:
+            site_record = self.dao.get_site_by_identifier(site_identifier=req_data.get('site_identifier'))
+
+            if not site_record:
+                raise BadRequest(f'Site record for {req_data.get("site_identifier")} does not exist. '
+                                 f'Use POST http method for creating site records.')
+
+            req_data['id'] = site_record.id
+            site_record = self.handle_site_updates(site_data=req_data)
+            return self.dao.to_client_json(obj=site_record, action_type='updated')
+
+        except Exception as e:
+            logging.warning(f'Error when updating the site record: {e}')
+            raise BadRequest('Error when updating the site record')
 
     @auth_required([PPSC, RDR])
     def delete(self):

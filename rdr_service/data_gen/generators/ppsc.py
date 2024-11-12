@@ -3,7 +3,7 @@ from datetime import datetime
 from rdr_service import clock
 from rdr_service.dao import database_factory
 from rdr_service.model.ppsc import Participant, Activity, EnrollmentEventType, ConsentEvent, ProfileUpdatesEvent, \
-    SurveyCompletionEvent, PartnerActivity
+    SurveyCompletionEvent, PartnerActivity, Site
 from rdr_service.model.ppsc_data_transfer import (
     PPSCDataTransferAuth, PPSCDataTransferEndpoint,
     PPSCDataTransferRecord, PPSCHealthData, PPSCBiobankSample, PPSCEHR, PPSCCore
@@ -170,3 +170,12 @@ class PPSCDataGenerator(PPSCBaseDataGenerator):
         health = self._ppsc_data_health_data(**kwargs)
         self._commit_to_database(health)
         return health
+
+    @staticmethod
+    def _ppsc_site(**kwargs):
+        return Site(**kwargs)
+
+    def create_database_ppsc_site(self, **kwargs):
+        site = self._ppsc_site(**kwargs)
+        self._commit_to_database(site)
+        return site
