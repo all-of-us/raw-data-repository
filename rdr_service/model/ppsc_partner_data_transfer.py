@@ -129,19 +129,6 @@ event.listen(PPSCHealthData, "before_insert", model_insert_listener)
 event.listen(PPSCHealthData, "before_update", model_update_listener)
 
 
-class PPSCNphEligibleParticipants(PPSCBase):
-    __tablename__ = "ppsc_nph_eligible_participants"
-
-    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime)
-    modified = Column(UTCDateTime)
-    nph_participant_id = Column(BigInteger, ForeignKey("nph.participant.id"))
-
-
-event.listen(PPSCNphEligibleParticipants, "before_insert", model_insert_listener)
-event.listen(PPSCNphEligibleParticipants, "before_update", model_update_listener)
-
-
 class RTIDataTransferAuth(BaseDataTransferAuth, PPSCBase):
     __tablename__ = "rti_data_transfer_auth"
 
@@ -161,7 +148,7 @@ event.listen(RTIDataTransferEndpoint, "before_update", model_update_listener)
 class RTIDataTransferRecord(BaseDataTransferRecord, PPSCBase):
     __tablename__ = "rti_data_transfer_record"
 
-    nph_participant_id = Column(BigInteger, ForeignKey("nph.participant.id"))
+    nph_participant_id = Column(BigInteger, nullable=False)
 
 
 event.listen(RTIDataTransferRecord, "before_insert", model_insert_listener)
@@ -171,7 +158,7 @@ event.listen(RTIDataTransferRecord, "before_update", model_update_listener)
 class RTINphOptIn(PPSCDataBase, PPSCBase):
     __tablename__ = "rti_nph_opt_in"
 
-    nph_participant_id = Column(BigInteger, ForeignKey("nph.participant.id"))
+    nph_participant_id = Column(BigInteger, nullable=False)
 
 
 event.listen(RTINphOptIn, "before_insert", model_insert_listener)

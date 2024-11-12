@@ -6,11 +6,11 @@ from faker import Faker
 from rdr_service import clock
 from rdr_service.dao.ppsc_dao import ParticipantDao
 from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferAuthDao, PPSCDataTransferEndpointDao, \
-    PPSCDataTransferRecordDao, RTIDataTransferAuthDao, RTIDataTransferEndpointDao
+    PPSCDataTransferRecordDao, RTIDataTransferAuthDao, RTIDataTransferEndpointDao, RTIDataTransferRecordDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.ppsc.ppsc_partner_data_transfer import PPSCDataTransferCore, PPSCDataTransferEHR, \
     PPSCDataTransferHealthData, \
-    PPSCDataTransferBiobank
+    PPSCDataTransferBiobank, RTIDataTransferNPHOptIn
 from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType, SpecimenType, SpecimenStatus
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -292,7 +292,7 @@ class RTIDataTransferTest(BaseTestCase):
 
         self.oauth_dao = RTIDataTransferAuthDao()
         self.endpoint_dao = RTIDataTransferEndpointDao()
-        # self.transfer_record_dao = PPSCDataTransferRecordDao()
+        self.transfer_record_dao = RTIDataTransferRecordDao()
         self.faker = Faker()
         self.base_url = 'https://rti_base_url.com/'
         self.current_endpoint_records = self.endpoint_dao.get_all()
@@ -331,20 +331,17 @@ class RTIDataTransferTest(BaseTestCase):
         oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
         send_request.return_value = MockedTransferResponse()
 
-        for _ in range(0, 3):
-            participant = self.ppsc_data_gen.create_database_participant()
-            self.ppsc_data_gen.create_database_ppsc_data_core(
-                participant_id=participant.id,
-                has_core_data=1,
-                event_date_time=clock.CLOCK.now()
+        for num in range(1, 4):
+            self.ppsc_data_gen.create_database_rti_data_nph_opt_in(
+                nph_participant_id=f'{num}0000000001'
             )
 
-        with PPSCDataTransferCore() as core_transfer:
-            core_transfer.run_data_transfer()
+        with RTIDataTransferNPHOptIn() as rti_nph_opt_in:
+            rti_nph_opt_in.run_data_transfer()
 
         # contructor/__enter__ builds correctly
-        self.assertEqual(core_transfer.ppsc_oauth_data.token, oauth_service.return_value)
-        self.assertEqual(core_transfer.transfer_type, DataSyncTransferType.CORE)
+        self.assertEqual(rti_nph_opt_in.ppsc_oauth_data.token, oauth_service.return_value)
+        self.assertEqual(rti_nph_opt_in.transfer_type, DataSyncTransferType.CORE)
 
         current_endpoint = [obj for obj in self.current_endpoint_records
                             if obj.data_sync_transfer_type == DataSyncTransferType.CORE]

@@ -1,18 +1,19 @@
 import logging
 import json
 import requests
+from abc import ABC, abstractmethod
 from typing import Union
 
 from rdr_service.dao.ppsc_partner_transfer_dao import (PPSCDataTransferEndpointDao, PPSCDataTransferBaseDao,
                                                        PPSCDataTransferRecordDao, RTIDataTransferEndpointDao,
                                                        RTIDataTransferBaseDao, RTIDataTransferRecordDao)
-from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType
-from rdr_service.ppsc.ppsc_oauth import PPSCTransferOauth
+from rdr_service.ppsc.ppsc_enums import DataSyncTransferType
+from rdr_service.ppsc.ppsc_partner_oauth import PPSCTransferOauth, RTITransferOauth
 from rdr_service.model.ppsc_partner_data_transfer import (PPSCCore, PPSCBiobankSample, PPSCHealthData, PPSCEHR,
                                                           PPSCData, RTINphOptIn)
 
 
-class BaseDataTransfer:
+class BaseDataTransfer(ABC):
 
     def run_data_transfer(self):
         if not self.transfer_items:
@@ -32,12 +33,6 @@ class BaseDataTransfer:
     def get_transfer_items(self):
         return self.dao.get_items_for_transfer(transfer_type=self.transfer_type)
 
-    def get_headers(self):
-        return {
-            "Content-Type": "application/json",
-            "Authorization": f'Bearer {self.ppsc_oauth_data.token}'
-        }
-
     def send_item(self, post_obj: dict):
         response = requests.post(
             self.transfer_url,
@@ -45,18 +40,6 @@ class BaseDataTransfer:
             headers=self.headers
         )
         return response
-
-    def build_default_obj(self, transfer_item):
-        filtered_keys = [obj for obj in PPSCData.__dict__.keys() if obj[:1] != '_']
-        updated_obj = {
-            self.dao.snake_to_camel(k): v for k, v in
-            transfer_item.asdict().items() if k not in filtered_keys
-        }
-
-        updated_obj['participantId'] = f"P{updated_obj['participantId']}"
-        updated_obj['eventDateTime'] = self.format_timestamp(updated_obj['eventDateTime'])
-
-        return updated_obj
 
     def send_items(self):
         for item in self.transfer_items:
@@ -70,12 +53,21 @@ class BaseDataTransfer:
                 'data_type_record_id': item.id
             }))
 
+    @abstractmethod
+    def get_headers(self):
+        ...
+
+    @abstractmethod
+    def prepare_obj(self, transfer_item) -> dict:
+        ...
+
+    @abstractmethod
+    def build_default_obj(self, transfer_item):
+        ...
+
     @classmethod
     def format_timestamp(cls, timestamp) -> str:
         return f"{timestamp.strftime('%Y-%m-%dT%H:%M:%S')}.{str(timestamp.microsecond)[:3]}Z"
-
-    def prepare_obj(self, transfer_item: Union[PPSCCore, PPSCEHR, PPSCBiobankSample, PPSCHealthData]) -> dict:
-        return self.build_default_obj(transfer_item)
 
 
 class PPSCBaseDataTransfer(BaseDataTransfer):
@@ -85,7 +77,7 @@ class PPSCBaseDataTransfer(BaseDataTransfer):
         self.transfer_record_dao = PPSCDataTransferRecordDao()
 
     def __enter__(self):
-        self.ppsc_oauth_data = PPSCTransferOauth(auth_type=AuthType.DATA_TRANSFER)
+        self.ppsc_oauth_data = PPSCTransferOauth()
         self.transfer_url = self.get_endpoint_for_transfer()
         self.headers = self.get_headers()
         self.transfer_items = self.get_transfer_items()
@@ -94,6 +86,27 @@ class PPSCBaseDataTransfer(BaseDataTransfer):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         logging.info(f"Finished PPSC Data Transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
+
+    def get_headers(self):
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f'Bearer {self.ppsc_oauth_data.token}'
+        }
+
+    def prepare_obj(self, transfer_item: Union[PPSCCore, PPSCEHR, PPSCBiobankSample, PPSCHealthData]) -> dict:
+        return self.build_default_obj(transfer_item)
+
+    def build_default_obj(self, transfer_item):
+        filtered_keys = [obj for obj in PPSCData.__dict__.keys() if obj[:1] != '_']
+        updated_obj = {
+            self.dao.snake_to_camel(k): v for k, v in
+            transfer_item.asdict().items() if k not in filtered_keys
+        }
+
+        updated_obj['participantId'] = f"P{updated_obj['participantId']}"
+        updated_obj['eventDateTime'] = self.format_timestamp(updated_obj['eventDateTime'])
+
+        return updated_obj
 
 
 class PPSCDataTransferCore(PPSCBaseDataTransfer):
@@ -146,7 +159,7 @@ class RTIBaseDataTransfer(BaseDataTransfer):
         self.transfer_record_dao = RTIDataTransferRecordDao()
 
     def __enter__(self):
-        # self.ppsc_oauth_data = PPSCTransferOauth(auth_type=AuthType.DATA_TRANSFER)
+        self.rti_oauth_data = RTITransferOauth()
         self.transfer_url = self.get_endpoint_for_transfer()
         self.headers = self.get_headers()
         self.transfer_items = self.get_transfer_items()
@@ -156,8 +169,21 @@ class RTIBaseDataTransfer(BaseDataTransfer):
     def __exit__(self, exc_type, exc_val, exc_tb):
         logging.info(f"Finished RTI Data Transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
 
+    def get_headers(self):
+        return {
+            "Content-Type": "application/json",
+            "Authorization": 'Bearer <token>',
+            "x-public-key": "<public_key>"
+        }
 
-class RTIDataTransferNPHOptIn(PPSCBaseDataTransfer):
+    def build_default_obj(self, transfer_item):
+        ...
+
+    def prepare_obj(self, transfer_item: Union[RTINphOptIn]) -> dict:
+        return self.build_default_obj(transfer_item)
+
+
+class RTIDataTransferNPHOptIn(RTIBaseDataTransfer):
 
     def __init__(self):
         super().__init__()

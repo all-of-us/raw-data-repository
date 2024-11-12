@@ -4,7 +4,7 @@ from unittest import mock
 from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferAuthDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.ppsc.ppsc_enums import AuthType
-from rdr_service.ppsc.ppsc_oauth import PPSCTransferOauth
+from rdr_service.ppsc.ppsc_partner_oauth import PPSCTransferOauth
 from tests.helpers.unittest_base import BaseTestCase
 
 
