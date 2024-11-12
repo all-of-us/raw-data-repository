@@ -173,7 +173,7 @@ class RTIBaseDataTransfer(BaseDataTransfer):
         return {
             "Content-Type": "application/json",
             "Authorization": f'Bearer {self.rti_oauth_data.token}',
-            "x-public-key":  {self.rti_oauth_data.x_public_key}
+            "x-public-key":  self.rti_oauth_data.x_public_key
         }
 
     def build_default_obj(self, transfer_item):

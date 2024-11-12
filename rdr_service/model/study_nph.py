@@ -444,6 +444,7 @@ class EligibleParticipants(NphBase):
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     nph_participant_id = Column(BigInteger, ForeignKey("participant.id"))
+    ignore_flag = Column(TINYINT, default=0)
 
 
 event.listen(EligibleParticipants, "before_insert", model_insert_listener)

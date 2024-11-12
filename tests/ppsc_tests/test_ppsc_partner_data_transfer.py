@@ -7,10 +7,11 @@ from rdr_service import clock
 from rdr_service.dao.ppsc_dao import ParticipantDao
 from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferAuthDao, PPSCDataTransferEndpointDao, \
     PPSCDataTransferRecordDao, RTIDataTransferAuthDao, RTIDataTransferEndpointDao, RTIDataTransferRecordDao
+from rdr_service.data_gen.generators.nph import NphDataGenerator
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.ppsc.ppsc_partner_data_transfer import PPSCDataTransferCore, PPSCDataTransferEHR, \
     PPSCDataTransferHealthData, \
-    PPSCDataTransferBiobank
+    PPSCDataTransferBiobank, RTIDataTransferNPHOptIn
 from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType, SpecimenType, SpecimenStatus
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -288,8 +289,9 @@ class RTIDataTransferTest(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.ppsc_data_gen = PPSCDataGenerator()
-        self.participant_dao = ParticipantDao()
+        self.nph_datagen = NphDataGenerator()
 
+        self.participant_dao = ParticipantDao()
         self.oauth_dao = RTIDataTransferAuthDao()
         self.endpoint_dao = RTIDataTransferEndpointDao()
         self.transfer_record_dao = RTIDataTransferRecordDao()
@@ -305,8 +307,9 @@ class RTIDataTransferTest(BaseTestCase):
         oauth = {
             'auth_type': AuthType.RTI_DATA_TRANSFER,
             'auth_url': 'test_url',
-            'client_id': 'wqwqwqwqqw1',
-            'client_secret': 'wqwqwqqwqqwqwqwqqwqwqwq'
+            'x_public_key': 'wqwqwwqwqqwqwqwqqw',
+            # RTI token for now is generated manually, no AUTH API available
+            'access_token': 'wqwqwqwqwqwqwqqwqwqwqwqwqwqwwqqwqwqwqwqwqw'
         }
 
         self.oauth_dao.insert(self.oauth_dao.model_type(**oauth))
@@ -324,50 +327,52 @@ class RTIDataTransferTest(BaseTestCase):
                 base_url=self.base_url
             )
 
-    # @mock.patch('rdr_service.ppsc.ppsc_oauth.PPSCTransferOauth.generate_token')
-    # @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferCore.send_item')
-    # def test_send_nph_opt_in_items_for_transfer(self, send_request, oauth_service) -> None:
-    #
-    #     oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
-    #     send_request.return_value = MockedTransferResponse()
-    #
-    #     for num in range(1, 4):
-    #         self.ppsc_data_gen.create_database_rti_data_nph_opt_in(
-    #             nph_participant_id=f'{num}0000000001'
-    #         )
-    #
-    #     with RTIDataTransferNPHOptIn() as rti_nph_opt_in:
-    #         rti_nph_opt_in.run_data_transfer()
-    #
-    #     # contructor/__enter__ builds correctly
-    #     self.assertEqual(rti_nph_opt_in.ppsc_oauth_data.token, oauth_service.return_value)
-    #     self.assertEqual(rti_nph_opt_in.transfer_type, DataSyncTransferType.CORE)
-    #
-    #     current_endpoint = [obj for obj in self.current_endpoint_records
-    #                         if obj.data_sync_transfer_type == DataSyncTransferType.CORE]
-    #     self.assertEqual(len(current_endpoint), 1)
-    #
-    #     current_endpoint = current_endpoint[0]
-    #     self.assertEqual(core_transfer.transfer_url, f'{self.base_url}{current_endpoint.endpoint}')
-    #
-    #     self.assertEqual(len(core_transfer.transfer_items), 3)
-    #
-    #     current_transfer_records = self.transfer_record_dao.get_all()
-    #
-    #     self.assertEqual(len(current_transfer_records), len(core_transfer.transfer_items))
-    #
-    #     current_participant_ids = [obj.id for obj in self.participant_dao.get_all()]
-    #     self.assertTrue(all(obj.participant_id in current_participant_ids for obj in current_transfer_records))
-    #     self.assertTrue(all(obj.data_sync_transfer_type == DataSyncTransferType.CORE
-    #                         for obj in current_transfer_records))
-    #     self.assertTrue(all(obj.request_payload is not None for obj in current_transfer_records))
-    #     self.assertTrue(all(obj.response_code == '200' for obj in current_transfer_records))
-    #
-    #     # test second run same data should not find items for transfer
-    #     with PPSCDataTransferCore() as core_transfer:
-    #         core_transfer.run_data_transfer()
-    #
-    #     self.assertEqual(len(core_transfer.transfer_items), 0)
+    @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.RTIDataTransferNPHOptIn.send_item')
+    def test_send_nph_opt_in_items_for_transfer(self, send_request) -> None:
+
+        # oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
+        send_request.return_value = MockedTransferResponse()
+
+        for num in range(1, 4):
+            self.nph_datagen.create_database_eligible_participant(
+                nph_participant_id=f'{num}0000000001'
+            )
+            self.ppsc_data_gen.create_database_rti_data_nph_opt_in(
+                nph_participant_id=f'{num}0000000001'
+            )
+
+        with RTIDataTransferNPHOptIn() as rti_nph_opt_in:
+            rti_nph_opt_in.run_data_transfer()
+
+        # contructor/__enter__ builds correctly
+        # self.assertEqual(rti_nph_opt_in.ppsc_oauth_data.token, oauth_service.return_value)
+        # self.assertEqual(rti_nph_opt_in.transfer_type, DataSyncTransferType.CORE)
+        #
+        # current_endpoint = [obj for obj in self.current_endpoint_records
+        #                     if obj.data_sync_transfer_type == DataSyncTransferType.CORE]
+        # self.assertEqual(len(current_endpoint), 1)
+        #
+        # current_endpoint = current_endpoint[0]
+        # self.assertEqual(core_transfer.transfer_url, f'{self.base_url}{current_endpoint.endpoint}')
+        #
+        # self.assertEqual(len(core_transfer.transfer_items), 3)
+        #
+        # current_transfer_records = self.transfer_record_dao.get_all()
+        #
+        # self.assertEqual(len(current_transfer_records), len(core_transfer.transfer_items))
+        #
+        # current_participant_ids = [obj.id for obj in self.participant_dao.get_all()]
+        # self.assertTrue(all(obj.participant_id in current_participant_ids for obj in current_transfer_records))
+        # self.assertTrue(all(obj.data_sync_transfer_type == DataSyncTransferType.CORE
+        #                     for obj in current_transfer_records))
+        # self.assertTrue(all(obj.request_payload is not None for obj in current_transfer_records))
+        # self.assertTrue(all(obj.response_code == '200' for obj in current_transfer_records))
+        #
+        # # test second run same data should not find items for transfer
+        # with PPSCDataTransferCore() as core_transfer:
+        #     core_transfer.run_data_transfer()
+        #
+        # self.assertEqual(len(core_transfer.transfer_items), 0)
     #
     # def tearDown(self):
     #     super().tearDown()

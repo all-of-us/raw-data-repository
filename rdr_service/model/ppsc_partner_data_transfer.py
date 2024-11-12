@@ -15,8 +15,6 @@ class BaseDataTransferAuth:
     modified = Column(UTCDateTime)
     auth_type = Column(Enum(AuthType))
     auth_url = Column(String(512), nullable=False)
-    client_id = Column(String(512), nullable=False)
-    client_secret = Column(String(512), nullable=False)
     access_token = Column(String(1024))
     expires = Column(String(256))
     last_generated = Column(UTCDateTime6)
@@ -49,6 +47,8 @@ class BaseDataTransferRecord:
 class PPSCDataTransferAuth(BaseDataTransferAuth, PPSCBase):
     __tablename__ = "ppsc_data_transfer_auth"
 
+    client_id = Column(String(512), nullable=False)
+    client_secret = Column(String(512), nullable=False)
 
 event.listen(PPSCDataTransferAuth, "before_insert", model_insert_listener)
 event.listen(PPSCDataTransferAuth, "before_update", model_update_listener)

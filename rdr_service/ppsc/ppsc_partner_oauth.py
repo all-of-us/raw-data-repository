@@ -72,6 +72,8 @@ class RTITransferOauth(BaseTransferOauth):
         self.auth_type = AuthType.RTI_DATA_TRANSFER
         self.dao = RTIDataTransferAuthDao()
         self.oauth_record = self.get_oauth_record()
+        self.token = self.oauth_record.access_token
+        self.x_public_key = self.oauth_record.x_public_key
 
     def get_headers(self):
         ...
