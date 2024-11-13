@@ -21,7 +21,7 @@ from rdr_service.model.study_nph import (
     Order,
     StudyCategory,
     DietEvent,
-    DlwDosage, EligibleParticipants,
+    DlwDosage,
 )
 from rdr_service.ancillary_study_resources.nph import enums
 from rdr_service.model.study_nph_sms import SmsJobRun, SmsSample, SmsBlocklist, SmsN0, SmsN1Mc1
@@ -276,15 +276,6 @@ class NphDataGenerator(NphBaseGenerator):
         diet_event = self._diet_event(**kwargs)
         self._commit_to_database(diet_event)
         return diet_event
-
-    @staticmethod
-    def _eligible_participant(**kwargs):
-        return EligibleParticipants(**kwargs)
-
-    def create_database_eligible_participant(self, **kwargs):
-        obj = self._eligible_participant(**kwargs)
-        self._commit_to_database(obj)
-        return obj
 
 
 class NphSmsDataGenerator(NphBaseGenerator):
