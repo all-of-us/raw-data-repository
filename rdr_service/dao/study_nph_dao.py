@@ -20,7 +20,7 @@ from rdr_service.model.study_nph import (
     PairingEventType, PairingEvent, ConsentEventType,
     SampleUpdate, BiobankFileExport, SampleExport,
     StoredSample, EnrollmentEvent, Incident, ConsentEvent, DietEvent, DeactivationEvent, WithdrawalEvent,
-    DlwDosage
+    DlwDosage, EligibleParticipants
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
@@ -1462,3 +1462,24 @@ class DlwDosageDao(UpdatableDao):
     def to_client_json(self, model):
         """Return id in POST, so it can be used when needed to update the resource in PUT"""
         return model.id
+
+
+class EligibleParticipantsDao(UpdatableDao):
+
+    validate_version_match = False
+
+    def __init__(self):
+        super().__init__(EligibleParticipants)
+
+    def get_id(self, obj):
+        return obj.id
+
+    def get_usable_participant_ids(self):
+        with self.session() as session:
+            return session.query(
+                self.model_type.participant_id
+            ).filter(
+                self.model_type.primary_participant_id.is_(None)
+            ).order_by(
+                self.model_type.participant_id
+            ).all()

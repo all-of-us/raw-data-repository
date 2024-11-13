@@ -435,3 +435,19 @@ class DlwDosage(NphBase):
 
 event.listen(DlwDosage, "before_insert", model_insert_listener)
 event.listen(DlwDosage, "before_update", model_update_listener)
+
+
+class EligibleParticipants(NphBase):
+
+    __tablename__ = "eligible_participants"
+
+    id = Column("id", BigInteger, autoincrement=True, primary_key=True)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    ignore_flag = Column(TINYINT, default=0)
+    participant_id = Column(BigInteger, ForeignKey("participant.id"), nullable=False)
+    primary_participant_id = Column(BigInteger)
+
+
+event.listen(EligibleParticipants, "before_insert", model_insert_listener)
+event.listen(EligibleParticipants, "before_update", model_update_listener)
