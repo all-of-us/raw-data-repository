@@ -297,10 +297,11 @@ class RTIDataTransferTest(BaseTestCase):
         self.transfer_record_dao = RTIDataTransferRecordDao()
         self.faker = Faker()
         self.base_url = 'https://rti_base_url.com/'
-        self.current_endpoint_records = self.endpoint_dao.get_all()
 
         self.build_oauth_data()
         self.build_endpoint_data()
+
+        self.current_endpoint_records = self.endpoint_dao.get_all()
 
     def build_oauth_data(self):
 
@@ -331,10 +332,13 @@ class RTIDataTransferTest(BaseTestCase):
     def test_send_nph_opt_in_items_for_transfer(self, send_request) -> None:
 
         send_request.return_value = MockedTransferResponse()
+        nph_participant_ids = []
 
         for num in range(1, 4):
+            nph_participant_id = f'{num}0000000001'
+            nph_participant_ids.append(nph_participant_id)
             self.ppsc_data_gen.create_database_rti_data_nph_opt_in(
-                nph_participant_id=f'{num}0000000001',
+                nph_participant_id=nph_participant_id,
                 first_name=f'{self.faker.first_name()}',
                 last_name=f'{self.faker.last_name()}',
                 email=f'{self.faker.email()}',
@@ -347,42 +351,33 @@ class RTIDataTransferTest(BaseTestCase):
             rti_nph_opt_in.run_data_transfer()
 
         # contructor/__enter__ builds correctly
-        # self.assertEqual(rti_nph_opt_in.ppsc_oauth_data.token, oauth_service.return_value)
-        # self.assertEqual(rti_nph_opt_in.transfer_type, DataSyncTransferType.CORE)
-        #
-        # current_endpoint = [obj for obj in self.current_endpoint_records
-        #                     if obj.data_sync_transfer_type == DataSyncTransferType.CORE]
-        # self.assertEqual(len(current_endpoint), 1)
-        #
-        # current_endpoint = current_endpoint[0]
-        # self.assertEqual(core_transfer.transfer_url, f'{self.base_url}{current_endpoint.endpoint}')
-        #
-        # self.assertEqual(len(core_transfer.transfer_items), 3)
-        #
-        # current_transfer_records = self.transfer_record_dao.get_all()
-        #
-        # self.assertEqual(len(current_transfer_records), len(core_transfer.transfer_items))
-        #
-        # current_participant_ids = [obj.id for obj in self.participant_dao.get_all()]
-        # self.assertTrue(all(obj.participant_id in current_participant_ids for obj in current_transfer_records))
-        # self.assertTrue(all(obj.data_sync_transfer_type == DataSyncTransferType.CORE
-        #                     for obj in current_transfer_records))
-        # self.assertTrue(all(obj.request_payload is not None for obj in current_transfer_records))
-        # self.assertTrue(all(obj.response_code == '200' for obj in current_transfer_records))
-        #
-        # # test second run same data should not find items for transfer
-        # with PPSCDataTransferCore() as core_transfer:
-        #     core_transfer.run_data_transfer()
-        #
-        # self.assertEqual(len(core_transfer.transfer_items), 0)
-    #
-    # def tearDown(self):
-    #     super().tearDown()
-    #     # self.clear_table_after_test("ppsc.participant")
-    #     # self.clear_table_after_test("ppsc.ppsc_data_transfer_auth")
-    #     # self.clear_table_after_test("ppsc.ppsc_data_transfer_endpoint")
-    #     # self.clear_table_after_test("ppsc.ppsc_data_transfer_record")
-    #     # self.clear_table_after_test("ppsc.ppsc_core")
-    #     # self.clear_table_after_test("ppsc.ppsc_ehr")
-    #     # self.clear_table_after_test("ppsc.ppsc_biobank_sample")
-    #     # self.clear_table_after_test("ppsc.ppsc_health_data")
+        self.assertEqual(rti_nph_opt_in.transfer_type, DataSyncTransferType.NPH_OPT_IN)
+
+        current_endpoint = [obj for obj in self.current_endpoint_records
+                            if obj.data_sync_transfer_type == DataSyncTransferType.NPH_OPT_IN]
+        self.assertEqual(len(current_endpoint), 1)
+
+        current_endpoint = current_endpoint[0]
+        self.assertEqual(rti_nph_opt_in.transfer_url, f'{self.base_url}{current_endpoint.endpoint}')
+
+        self.assertEqual(len(rti_nph_opt_in.transfer_items), 3)
+
+        current_transfer_records = self.transfer_record_dao.get_all()
+
+        self.assertEqual(len(current_transfer_records), len(rti_nph_opt_in.transfer_items))
+
+        self.assertTrue(all(str(obj.nph_participant_id) in nph_participant_ids for obj in current_transfer_records))
+        self.assertTrue(all(obj.data_sync_transfer_type == DataSyncTransferType.NPH_OPT_IN
+                            for obj in current_transfer_records))
+        self.assertTrue(all(obj.request_payload is not None for obj in current_transfer_records))
+        self.assertTrue(all(obj.response_code == '200' for obj in current_transfer_records))
+
+        # test second run same data should not find items for transfer
+        with RTIDataTransferNPHOptIn() as rti_nph_opt_in:
+            rti_nph_opt_in.run_data_transfer()
+
+        self.assertEqual(len(rti_nph_opt_in.transfer_items), 0)
+
+    def tearDown(self):
+        super().tearDown()
+
