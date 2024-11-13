@@ -380,4 +380,7 @@ class RTIDataTransferTest(BaseTestCase):
 
     def tearDown(self):
         super().tearDown()
-
+        self.clear_table_after_test("ppsc.rti_data_transfer_auth")
+        self.clear_table_after_test("ppsc.rti_data_transfer_endpoint")
+        self.clear_table_after_test("ppsc.rti_data_transfer_record")
+        self.clear_table_after_test("ppsc.rti_nph_opt_in")
