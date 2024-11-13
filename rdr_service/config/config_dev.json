@@ -246,6 +246,21 @@
     "hasCoreData",
     "hasCoreDataTime"
   ],
+  "ppsc_datafeed_biospecimen_types": [
+    "1ed04",
+    "1ed10",
+    "1ed02",
+    "2ed02",
+    "2ed04",
+    "1sal2",
+    "1sal",
+    "2sal0",
+    "3sal1",
+    "1ur10",
+    "1ur90"
+  ],
+  "ppsc_datafeed_src_dataset": ["ppsc_staging_data"],
+  "ppsc_datafeed_dest_dataset": ["ppsc_staging_data"],
   "enable_health_sharing_status_3": true,
   "enable_participant_mediated_ehr": true
 }
