@@ -495,7 +495,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             count_query = (session.query(distinct(WorkbenchWorkspaceApproved.workspaceSourceId))
                            .join(WorkbenchWorkspaceUser, WorkbenchResearcher, WorkbenchInstitutionalAffiliations)
                            .filter(or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
-                                       WorkbenchWorkspaceApproved.excludeFromPublicDirectory is None
+                                       WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)
                                        ),
                                    WorkbenchWorkspaceApproved.status == int(WorkbenchWorkspaceStatus.ACTIVE),
                                    WorkbenchInstitutionalAffiliations.isVerified == 1,
@@ -513,7 +513,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 session.query(func.max(WorkbenchWorkspaceSnapshot.id).label('snapshot_id'),
                               WorkbenchWorkspaceSnapshot.workspaceSourceId)
                     .filter(or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
-                                WorkbenchWorkspaceApproved.excludeFromPublicDirectory is None
+                                WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)
                                 ))
                     .group_by(WorkbenchWorkspaceSnapshot.workspaceSourceId).subquery()
             )
@@ -527,7 +527,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
                     WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
                     or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
-                        WorkbenchWorkspaceApproved.excludeFromPublicDirectory is None
+                        WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)
                         ),
                     WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
                     WorkbenchWorkspaceApproved.creationTime > start_date
@@ -543,7 +543,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
                     WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
                     or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
-                        WorkbenchWorkspaceApproved.excludeFromPublicDirectory is None
+                        WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)
                         ),
                     WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
                     WorkbenchResearcher.id == WorkbenchInstitutionalAffiliations.researcherId,
