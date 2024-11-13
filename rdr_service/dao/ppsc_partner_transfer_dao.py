@@ -4,7 +4,6 @@ from sqlalchemy import and_
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao
 from rdr_service.model.ppsc_partner_data_transfer import PPSCDataTransferAuth, PPSCDataTransferEndpoint, \
     PPSCDataTransferRecord, RTIDataTransferEndpoint, RTIDataTransferAuth, RTIDataTransferRecord
-from rdr_service.model.study_nph import EligibleParticipants
 from rdr_service.ppsc.ppsc_enums import AuthType
 
 
@@ -147,22 +146,18 @@ class RTIDataTransferBaseDao(BaseDao):
     def get_items_for_transfer(self, *, transfer_type) -> List:
         with self.session() as session:
             return session.query(
-                self.model_type.nph_participant_id.label('npH_PID')
-            ).join(
-                EligibleParticipants,
-                and_(
-                    EligibleParticipants.nph_participant_id == self.model_type.nph_participant_id,
-                    EligibleParticipants.ignore_flag != 1
-                )
+                self.model_type
             ).outerjoin(
                 RTIDataTransferRecord,
                 and_(
                     RTIDataTransferRecord.nph_participant_id == self.model_type.nph_participant_id,
+                    RTIDataTransferRecord.data_sync_transfer_type == transfer_type,
+                    RTIDataTransferRecord.response_code == 200,
+                    RTIDataTransferRecord.data_type_record_id == self.model_type.id,
                     RTIDataTransferRecord.ignore_flag != 1
                 )
             ).filter(
                 RTIDataTransferRecord .id.is_(None),
-                RTIDataTransferRecord.data_sync_transfer_type == transfer_type,
                 self.model_type.ignore_flag != 1
             ).distinct().all()
 

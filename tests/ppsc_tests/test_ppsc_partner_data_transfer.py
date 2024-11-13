@@ -330,15 +330,17 @@ class RTIDataTransferTest(BaseTestCase):
     @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.RTIDataTransferNPHOptIn.send_item')
     def test_send_nph_opt_in_items_for_transfer(self, send_request) -> None:
 
-        # oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
         send_request.return_value = MockedTransferResponse()
 
         for num in range(1, 4):
-            self.nph_datagen.create_database_eligible_participant(
-                nph_participant_id=f'{num}0000000001'
-            )
             self.ppsc_data_gen.create_database_rti_data_nph_opt_in(
-                nph_participant_id=f'{num}0000000001'
+                nph_participant_id=f'{num}0000000001',
+                first_name=f'{self.faker.first_name()}',
+                last_name=f'{self.faker.last_name()}',
+                email=f'{self.faker.email()}',
+                phone=1111111111,
+                zip_code=11111,
+                language_preference=1,
             )
 
         with RTIDataTransferNPHOptIn() as rti_nph_opt_in:

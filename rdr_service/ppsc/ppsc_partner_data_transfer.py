@@ -41,17 +41,17 @@ class BaseDataTransfer(ABC):
         )
         return response
 
+    def build_default_obj(self, transfer_item):
+        filtered_keys = [obj for obj in PPSCData.__dict__.keys() if obj[:1] != '_']
+        updated_obj = {
+            self.dao.snake_to_camel(k): v for k, v in
+            transfer_item.asdict().items() if k not in filtered_keys
+        }
+        return updated_obj
+
+    @abstractmethod
     def send_items(self):
-        for item in self.transfer_items:
-            prepared_obj = self.prepare_obj(item)
-            response = self.send_item(prepared_obj)
-            self.transfer_record_dao.insert(self.transfer_record_dao.model_type(**{
-                'participant_id': item.participant_id,
-                'data_sync_transfer_type': self.transfer_type,
-                'request_payload': prepared_obj,
-                'response_code': response.status_code,
-                'data_type_record_id': item.id
-            }))
+        ...
 
     @abstractmethod
     def get_headers(self):
@@ -59,10 +59,6 @@ class BaseDataTransfer(ABC):
 
     @abstractmethod
     def prepare_obj(self, transfer_item) -> dict:
-        ...
-
-    @abstractmethod
-    def build_default_obj(self, transfer_item):
         ...
 
     @classmethod
@@ -93,20 +89,30 @@ class PPSCBaseDataTransfer(BaseDataTransfer):
             "Authorization": f'Bearer {self.ppsc_oauth_data.token}'
         }
 
-    def prepare_obj(self, transfer_item: Union[PPSCCore, PPSCEHR, PPSCBiobankSample, PPSCHealthData]) -> dict:
-        return self.build_default_obj(transfer_item)
-
     def build_default_obj(self, transfer_item):
         filtered_keys = [obj for obj in PPSCData.__dict__.keys() if obj[:1] != '_']
         updated_obj = {
             self.dao.snake_to_camel(k): v for k, v in
             transfer_item.asdict().items() if k not in filtered_keys
         }
-
         updated_obj['participantId'] = f"P{updated_obj['participantId']}"
         updated_obj['eventDateTime'] = self.format_timestamp(updated_obj['eventDateTime'])
-
         return updated_obj
+
+    def prepare_obj(self, transfer_item: Union[PPSCCore, PPSCEHR, PPSCBiobankSample, PPSCHealthData]) -> dict:
+        return self.build_default_obj(transfer_item)
+
+    def send_items(self):
+        for item in self.transfer_items:
+            prepared_obj = self.prepare_obj(item)
+            response = self.send_item(prepared_obj)
+            self.transfer_record_dao.insert(self.transfer_record_dao.model_type(**{
+                'participant_id': item.participant_id,
+                'data_sync_transfer_type': self.transfer_type,
+                'request_payload': prepared_obj,
+                'response_code': response.status_code,
+                'data_type_record_id': item.id
+            }))
 
 
 class PPSCDataTransferCore(PPSCBaseDataTransfer):
@@ -176,11 +182,20 @@ class RTIBaseDataTransfer(BaseDataTransfer):
             "x-public-key":  self.rti_oauth_data.x_public_key
         }
 
-    def build_default_obj(self, transfer_item):
-        ...
+    def send_items(self):
+        for item in self.transfer_items:
+            prepared_obj = self.prepare_obj(item)
+            response = self.send_item(prepared_obj)
+            self.transfer_record_dao.insert(self.transfer_record_dao.model_type(**{
+                'nph_participant_id': item.nph_participant_id,
+                'data_sync_transfer_type': self.transfer_type,
+                'request_payload': prepared_obj,
+                'response_code': response.status_code,
+                'data_type_record_id': item.id
+            }))
 
-    def prepare_obj(self, transfer_item: Union[RTINphOptIn]) -> dict:
-        return self.build_default_obj(transfer_item)
+    def prepare_obj(self, transfer_item) -> dict:
+        ...
 
 
 class RTIDataTransferNPHOptIn(RTIBaseDataTransfer):
@@ -189,3 +204,11 @@ class RTIDataTransferNPHOptIn(RTIBaseDataTransfer):
         super().__init__()
         self.dao = RTIDataTransferBaseDao(RTINphOptIn)
         self.transfer_type = DataSyncTransferType.NPH_OPT_IN
+
+    def prepare_obj(self, transfer_item: Union[RTINphOptIn]) -> dict:
+        updated_obj = self.build_default_obj(transfer_item)
+        updated_obj['npH_PID'] = updated_obj.pop('nphParticipantId')
+        updated_obj['zipcode'] = updated_obj.pop('zipCode')
+        updated_obj['language_preference'] = updated_obj.pop('languagePreference')
+
+        return updated_obj

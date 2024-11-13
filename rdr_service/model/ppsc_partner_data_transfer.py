@@ -157,10 +157,16 @@ event.listen(RTIDataTransferRecord, "before_insert", model_insert_listener)
 event.listen(RTIDataTransferRecord, "before_update", model_update_listener)
 
 
-class RTINphOptIn(PPSCDataBase, PPSCBase):
+class RTINphOptIn(PPSCData, PPSCBase):
     __tablename__ = "rti_nph_opt_in"
 
     nph_participant_id = Column(BigInteger, nullable=False)
+    first_name = Column(String(512), nullable=False)
+    last_name = Column(String(512), nullable=False)
+    email = Column(String(512), nullable=False)
+    phone = Column(String(512), nullable=False)
+    zip_code = Column(String(512), nullable=False)
+    language_preference = Column(String(512), nullable=False)
 
 
 event.listen(RTINphOptIn, "before_insert", model_insert_listener)
