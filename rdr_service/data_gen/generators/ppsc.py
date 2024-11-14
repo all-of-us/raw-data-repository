@@ -4,9 +4,9 @@ from rdr_service import clock
 from rdr_service.dao import database_factory
 from rdr_service.model.ppsc import Participant, Activity, EnrollmentEventType, ConsentEvent, ProfileUpdatesEvent, \
     SurveyCompletionEvent, PartnerActivity, Site
-from rdr_service.model.ppsc_data_transfer import (
+from rdr_service.model.ppsc_partner_data_transfer import (
     PPSCDataTransferAuth, PPSCDataTransferEndpoint,
-    PPSCDataTransferRecord, PPSCHealthData, PPSCBiobankSample, PPSCEHR, PPSCCore
+    PPSCDataTransferRecord, PPSCHealthData, PPSCBiobankSample, PPSCEHR, PPSCCore, RTINphOptIn, RTIDataTransferEndpoint
 )
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -127,6 +127,15 @@ class PPSCDataGenerator(PPSCBaseDataGenerator):
         return ppsc_data_endpoint
 
     @staticmethod
+    def _rti_data_sync_endpoint(**kwargs):
+        return RTIDataTransferEndpoint(**kwargs)
+
+    def create_database_rti_data_sync_endpoint(self, **kwargs):
+        rti_data_endpoint = self._rti_data_sync_endpoint(**kwargs)
+        self._commit_to_database(rti_data_endpoint)
+        return rti_data_endpoint
+
+    @staticmethod
     def _ppsc_data_sync_record(**kwargs):
         return PPSCDataTransferRecord(**kwargs)
 
@@ -170,6 +179,15 @@ class PPSCDataGenerator(PPSCBaseDataGenerator):
         health = self._ppsc_data_health_data(**kwargs)
         self._commit_to_database(health)
         return health
+
+    @staticmethod
+    def _rti_data_nph_opt_in(**kwargs):
+        return RTINphOptIn(**kwargs)
+
+    def create_database_rti_data_nph_opt_in(self, **kwargs):
+        core = self._rti_data_nph_opt_in(**kwargs)
+        self._commit_to_database(core)
+        return core
 
     @staticmethod
     def _ppsc_site(**kwargs):

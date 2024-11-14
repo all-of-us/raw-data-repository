@@ -6,8 +6,9 @@ from flask import Flask, got_request_exception, request
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
-from rdr_service.ppsc.ppsc_data_transfer import PPSCDataTransferCore, PPSCDataTransferHealthData, PPSCDataTransferEHR, \
-    PPSCDataTransferBiobank
+from rdr_service.ppsc.ppsc_partner_data_transfer import PPSCDataTransferCore, PPSCDataTransferHealthData, \
+    PPSCDataTransferEHR, \
+    PPSCDataTransferBiobank, RTIDataTransferNPHOptIn
 from rdr_service.services.flask import PPSC_PIPELINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
     flask_restful_log_exception_error
@@ -60,6 +61,13 @@ def ppsc_data_transfer_biobank_sample():
     return '{ "success": "true" }'
 
 
+@app_util.auth_required_scheduler
+def ppsc_rti_data_transfer_nph_opt_in():
+    with RTIDataTransferNPHOptIn() as nph_opt_in_transfer:
+        nph_opt_in_transfer.run_data_transfer()
+    return '{ "success": "true" }'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     ppsc_pipeline = Flask(__name__)
@@ -105,6 +113,13 @@ def _build_pipeline_app():
         PPSC_PIPELINE_PREFIX + "TransferBiobankSample",
         endpoint="ppsc_data_transfer_biobank_sample",
         view_func=ppsc_data_transfer_biobank_sample,
+        methods=["GET"],
+    )
+
+    ppsc_pipeline.add_url_rule(
+        PPSC_PIPELINE_PREFIX + "TransferNPHOptIn",
+        endpoint="ppsc_rti_data_transfer_nph_opt_in",
+        view_func=ppsc_rti_data_transfer_nph_opt_in,
         methods=["GET"],
     )
 

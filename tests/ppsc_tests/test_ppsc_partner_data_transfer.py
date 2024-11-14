@@ -4,11 +4,14 @@ from unittest import mock
 from faker import Faker
 
 from rdr_service import clock
-from rdr_service.dao.ppsc_dao import PPSCDataTransferAuthDao, PPSCDataTransferEndpointDao, PPSCDataTransferRecordDao, \
-    ParticipantDao
+from rdr_service.dao.ppsc_dao import ParticipantDao
+from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferAuthDao, PPSCDataTransferEndpointDao, \
+    PPSCDataTransferRecordDao, RTIDataTransferAuthDao, RTIDataTransferEndpointDao, RTIDataTransferRecordDao
+from rdr_service.data_gen.generators.nph import NphDataGenerator
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
-from rdr_service.ppsc.ppsc_data_transfer import PPSCDataTransferCore, PPSCDataTransferEHR, PPSCDataTransferHealthData, \
-    PPSCDataTransferBiobank
+from rdr_service.ppsc.ppsc_partner_data_transfer import PPSCDataTransferCore, PPSCDataTransferEHR, \
+    PPSCDataTransferHealthData, \
+    PPSCDataTransferBiobank, RTIDataTransferNPHOptIn
 from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType, SpecimenType, SpecimenStatus
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -37,7 +40,7 @@ class PPSCDataTransferTest(BaseTestCase):
     def build_oauth_data(self):
 
         oauth = {
-            'auth_type': AuthType.DATA_TRANSFER,
+            'auth_type': AuthType.PPSC_DATA_TRANSFER,
             'auth_url': 'test_url',
             'client_id': 'wqwqwqwqqw1',
             'client_secret': 'wqwqwqqwqqwqwqwqqwqwqwq'
@@ -61,8 +64,8 @@ class PPSCDataTransferTest(BaseTestCase):
                 base_url=self.base_url
             )
 
-    @mock.patch('rdr_service.ppsc.ppsc_oauth.PPSCTransferOauth.generate_token')
-    @mock.patch('rdr_service.ppsc.ppsc_data_transfer.PPSCDataTransferCore.send_item')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_oauth.PPSCTransferOauth.generate_token')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferCore.send_item')
     def test_send_core_items_for_transfer(self, send_request, oauth_service) -> None:
 
         oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
@@ -109,8 +112,8 @@ class PPSCDataTransferTest(BaseTestCase):
 
         self.assertEqual(len(core_transfer.transfer_items), 0)
 
-    @mock.patch('rdr_service.ppsc.ppsc_oauth.PPSCTransferOauth.generate_token')
-    @mock.patch('rdr_service.ppsc.ppsc_data_transfer.PPSCDataTransferEHR.send_item')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_oauth.PPSCTransferOauth.generate_token')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferEHR.send_item')
     def test_send_ehr_items_for_transfer(self, send_request, oauth_service) -> None:
 
         oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
@@ -156,8 +159,8 @@ class PPSCDataTransferTest(BaseTestCase):
 
         self.assertEqual(len(ehr_transfer.transfer_items), 0)
 
-    @mock.patch('rdr_service.ppsc.ppsc_oauth.PPSCTransferOauth.generate_token')
-    @mock.patch('rdr_service.ppsc.ppsc_data_transfer.PPSCDataTransferHealthData.send_item')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_oauth.PPSCTransferOauth.generate_token')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferHealthData.send_item')
     def test_send_health_data_items_for_transfer(self, send_request, oauth_service) -> None:
 
         oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
@@ -204,8 +207,8 @@ class PPSCDataTransferTest(BaseTestCase):
 
         self.assertEqual(len(health_transfer.transfer_items), 0)
 
-    @mock.patch('rdr_service.ppsc.ppsc_oauth.PPSCTransferOauth.generate_token')
-    @mock.patch('rdr_service.ppsc.ppsc_data_transfer.PPSCDataTransferBiobank.send_item')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_oauth.PPSCTransferOauth.generate_token')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferBiobank.send_item')
     def test_send_biobank_sample_items_for_transfer(self, send_request, oauth_service) -> None:
 
         oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
@@ -280,3 +283,104 @@ class PPSCDataTransferTest(BaseTestCase):
         self.clear_table_after_test("ppsc.ppsc_ehr")
         self.clear_table_after_test("ppsc.ppsc_biobank_sample")
         self.clear_table_after_test("ppsc.ppsc_health_data")
+
+
+class RTIDataTransferTest(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.ppsc_data_gen = PPSCDataGenerator()
+        self.nph_datagen = NphDataGenerator()
+
+        self.participant_dao = ParticipantDao()
+        self.oauth_dao = RTIDataTransferAuthDao()
+        self.endpoint_dao = RTIDataTransferEndpointDao()
+        self.transfer_record_dao = RTIDataTransferRecordDao()
+        self.faker = Faker()
+        self.base_url = 'https://rti_base_url.com/'
+
+        self.build_oauth_data()
+        self.build_endpoint_data()
+
+        self.current_endpoint_records = self.endpoint_dao.get_all()
+
+    def build_oauth_data(self):
+
+        oauth = {
+            'auth_type': AuthType.RTI_DATA_TRANSFER,
+            'auth_url': 'test_url',
+            'x_public_key': 'wqwqwwqwqqwqwqwqqw',
+            # RTI token for now is generated manually, no AUTH API available
+            'access_token': 'wqwqwqwqwqwqwqqwqwqwqwqwqwqwwqqwqwqwqwqwqw'
+        }
+
+        self.oauth_dao.insert(self.oauth_dao.model_type(**oauth))
+
+    def build_endpoint_data(self) -> None:
+
+        endpoint_types = [
+            DataSyncTransferType.NPH_OPT_IN,
+        ]
+
+        for endpoint_type in endpoint_types:
+            self.ppsc_data_gen.create_database_rti_data_sync_endpoint(
+                data_sync_transfer_type=endpoint_type,
+                endpoint=''.join(self.faker.random_letters(length=128)),
+                base_url=self.base_url
+            )
+
+    @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.RTIDataTransferNPHOptIn.send_item')
+    def test_send_nph_opt_in_items_for_transfer(self, send_request) -> None:
+
+        send_request.return_value = MockedTransferResponse()
+        nph_participant_ids = []
+
+        for num in range(1, 4):
+            nph_participant_id = f'{num}0000000001'
+            nph_participant_ids.append(nph_participant_id)
+            self.ppsc_data_gen.create_database_rti_data_nph_opt_in(
+                nph_participant_id=nph_participant_id,
+                first_name=f'{self.faker.first_name()}',
+                last_name=f'{self.faker.last_name()}',
+                email=f'{self.faker.email()}',
+                phone=1111111111,
+                zip_code=11111,
+                language_preference=1,
+            )
+
+        with RTIDataTransferNPHOptIn() as rti_nph_opt_in:
+            rti_nph_opt_in.run_data_transfer()
+
+        # contructor/__enter__ builds correctly
+        self.assertEqual(rti_nph_opt_in.transfer_type, DataSyncTransferType.NPH_OPT_IN)
+
+        current_endpoint = [obj for obj in self.current_endpoint_records
+                            if obj.data_sync_transfer_type == DataSyncTransferType.NPH_OPT_IN]
+        self.assertEqual(len(current_endpoint), 1)
+
+        current_endpoint = current_endpoint[0]
+        self.assertEqual(rti_nph_opt_in.transfer_url, f'{self.base_url}{current_endpoint.endpoint}')
+
+        self.assertEqual(len(rti_nph_opt_in.transfer_items), 3)
+
+        current_transfer_records = self.transfer_record_dao.get_all()
+
+        self.assertEqual(len(current_transfer_records), len(rti_nph_opt_in.transfer_items))
+
+        self.assertTrue(all(str(obj.nph_participant_id) in nph_participant_ids for obj in current_transfer_records))
+        self.assertTrue(all(obj.data_sync_transfer_type == DataSyncTransferType.NPH_OPT_IN
+                            for obj in current_transfer_records))
+        self.assertTrue(all(obj.request_payload is not None for obj in current_transfer_records))
+        self.assertTrue(all(obj.response_code == '200' for obj in current_transfer_records))
+
+        # test second run same data should not find items for transfer
+        with RTIDataTransferNPHOptIn() as rti_nph_opt_in:
+            rti_nph_opt_in.run_data_transfer()
+
+        self.assertEqual(len(rti_nph_opt_in.transfer_items), 0)
+
+    def tearDown(self):
+        super().tearDown()
+        self.clear_table_after_test("ppsc.rti_data_transfer_auth")
+        self.clear_table_after_test("ppsc.rti_data_transfer_endpoint")
+        self.clear_table_after_test("ppsc.rti_data_transfer_record")
+        self.clear_table_after_test("ppsc.rti_nph_opt_in")

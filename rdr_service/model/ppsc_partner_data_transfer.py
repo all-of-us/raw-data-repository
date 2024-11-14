@@ -8,28 +8,20 @@ from rdr_service.model.utils import UTCDateTime
 from rdr_service.ppsc.ppsc_enums import DataSyncTransferType, AuthType, SpecimenType, SpecimenStatus
 
 
-class PPSCDataTransferAuth(PPSCBase):
-    __tablename__ = "ppsc_data_transfer_auth"
+class BaseDataTransferAuth:
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     auth_type = Column(Enum(AuthType))
     auth_url = Column(String(512), nullable=False)
-    client_id = Column(String(512), nullable=False)
-    client_secret = Column(String(512), nullable=False)
     access_token = Column(String(1024))
     expires = Column(String(256))
     last_generated = Column(UTCDateTime6)
     ignore_flag = Column(TINYINT, default=0)
 
 
-event.listen(PPSCDataTransferAuth, "before_insert", model_insert_listener)
-event.listen(PPSCDataTransferAuth, "before_update", model_update_listener)
-
-
-class PPSCDataTransferEndpoint(PPSCBase):
-    __tablename__ = "ppsc_data_transfer_endpoint"
+class BaseDataTransferEndpoint:
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -40,22 +32,40 @@ class PPSCDataTransferEndpoint(PPSCBase):
     ignore_flag = Column(TINYINT, default=0)
 
 
-event.listen(PPSCDataTransferEndpoint, "before_insert", model_insert_listener)
-event.listen(PPSCDataTransferEndpoint, "before_update", model_update_listener)
-
-
-class PPSCDataTransferRecord(PPSCBase):
-    __tablename__ = "ppsc_data_transfer_record"
+class BaseDataTransferRecord:
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
-    participant_id = Column(BigInteger, ForeignKey("participant.id"))
     data_sync_transfer_type = Column(Enum(DataSyncTransferType))
     data_type_record_id = Column(BigInteger)
     request_payload = Column(JSON, nullable=True)
     response_code = Column(String(128))
     ignore_flag = Column(TINYINT, default=0)
+
+
+class PPSCDataTransferAuth(BaseDataTransferAuth, PPSCBase):
+    __tablename__ = "ppsc_data_transfer_auth"
+
+    client_id = Column(String(512), nullable=False)
+    client_secret = Column(String(512), nullable=False)
+
+event.listen(PPSCDataTransferAuth, "before_insert", model_insert_listener)
+event.listen(PPSCDataTransferAuth, "before_update", model_update_listener)
+
+
+class PPSCDataTransferEndpoint(BaseDataTransferEndpoint, PPSCBase):
+    __tablename__ = "ppsc_data_transfer_endpoint"
+
+
+event.listen(PPSCDataTransferEndpoint, "before_insert", model_insert_listener)
+event.listen(PPSCDataTransferEndpoint, "before_update", model_update_listener)
+
+
+class PPSCDataTransferRecord(BaseDataTransferRecord, PPSCBase):
+    __tablename__ = "ppsc_data_transfer_record"
+
+    participant_id = Column(BigInteger, ForeignKey("participant.id"))
 
 
 event.listen(PPSCDataTransferRecord, "before_insert", model_insert_listener)
@@ -117,3 +127,47 @@ class PPSCHealthData(PPSCDataBase, PPSCBase):
 
 event.listen(PPSCHealthData, "before_insert", model_insert_listener)
 event.listen(PPSCHealthData, "before_update", model_update_listener)
+
+
+class RTIDataTransferAuth(BaseDataTransferAuth, PPSCBase):
+    __tablename__ = "rti_data_transfer_auth"
+
+    x_public_key = Column(String(512), nullable=False)
+
+
+event.listen(RTIDataTransferAuth, "before_insert", model_insert_listener)
+event.listen(RTIDataTransferAuth, "before_update", model_update_listener)
+
+
+class RTIDataTransferEndpoint(BaseDataTransferEndpoint, PPSCBase):
+    __tablename__ = "rti_data_transfer_endpoint"
+
+
+event.listen(RTIDataTransferEndpoint, "before_insert", model_insert_listener)
+event.listen(RTIDataTransferEndpoint, "before_update", model_update_listener)
+
+
+class RTIDataTransferRecord(BaseDataTransferRecord, PPSCBase):
+    __tablename__ = "rti_data_transfer_record"
+
+    nph_participant_id = Column(BigInteger, nullable=False)
+
+
+event.listen(RTIDataTransferRecord, "before_insert", model_insert_listener)
+event.listen(RTIDataTransferRecord, "before_update", model_update_listener)
+
+
+class RTINphOptIn(PPSCData, PPSCBase):
+    __tablename__ = "rti_nph_opt_in"
+
+    nph_participant_id = Column(BigInteger, nullable=False)
+    first_name = Column(String(512), nullable=False)
+    last_name = Column(String(512), nullable=False)
+    email = Column(String(512), nullable=False)
+    phone = Column(String(512), nullable=False)
+    zip_code = Column(String(512), nullable=False)
+    language_preference = Column(String(512), nullable=False)
+
+
+event.listen(RTINphOptIn, "before_insert", model_insert_listener)
+event.listen(RTINphOptIn, "before_update", model_update_listener)
