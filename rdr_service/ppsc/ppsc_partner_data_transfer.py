@@ -33,14 +33,6 @@ class BaseDataTransfer(ABC):
     def get_transfer_items(self):
         return self.dao.get_items_for_transfer(transfer_type=self.transfer_type)
 
-    def send_item(self, post_obj: dict):
-        response = requests.post(
-            self.transfer_url,
-            data=json.dumps(post_obj),
-            headers=self.headers
-        )
-        return response
-
     def build_default_obj(self, transfer_item):
         filtered_keys = [obj for obj in PPSCData.__dict__.keys() if obj[:1] != '_']
         updated_obj = {
@@ -48,6 +40,10 @@ class BaseDataTransfer(ABC):
             transfer_item.asdict().items() if k not in filtered_keys
         }
         return updated_obj
+
+    @abstractmethod
+    def send_item(self, post_obj: dict):
+        ...
 
     @abstractmethod
     def send_items(self):
@@ -113,6 +109,14 @@ class PPSCBaseDataTransfer(BaseDataTransfer):
                 'response_code': response.status_code,
                 'data_type_record_id': item.id
             }))
+
+    def send_item(self, post_obj: dict):
+        response = requests.post(
+            self.transfer_url,
+            data=json.dumps(post_obj),
+            headers=self.headers
+        )
+        return response
 
 
 class PPSCDataTransferCore(PPSCBaseDataTransfer):
@@ -193,6 +197,15 @@ class RTIBaseDataTransfer(BaseDataTransfer):
                 'response_code': response.status_code,
                 'data_type_record_id': item.id
             }))
+
+    def send_item(self, post_obj: dict):
+        current_list_objs = [post_obj]
+        response = requests.post(
+            self.transfer_url,
+            data=json.dumps(current_list_objs),
+            headers=self.headers
+        )
+        return response
 
     def prepare_obj(self, transfer_item) -> dict:
         ...
