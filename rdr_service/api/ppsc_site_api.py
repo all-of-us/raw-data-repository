@@ -28,17 +28,18 @@ class PPSCSiteAPI(BaseApi):
 
         try:
             site_record = self.dao.get_site_by_identifier(site_identifier=req_data.get('site_identifier'))
+            action_type = 'created'
 
             if site_record:
-                raise BadRequest(f'Site record for {req_data.get("site_identifier")} exists. '
-                                 f'Use PUT http method for updates.')
+                req_data['id'] = site_record.id
+                action_type = 'updated'
 
             site_record = self.handle_site_updates(site_data=req_data)
-            return self.dao.to_client_json(obj=site_record, action_type='created')
+            return self.dao.to_client_json(obj=site_record, action_type=action_type)
 
         except Exception as e:
-            logging.warning(f'Error when creating site record: {e}')
-            raise BadRequest('Error when creating site record')
+            logging.warning(f'Error when creating/updating site record: {e}')
+            raise BadRequest('Error when creating/updating site record')
 
     @auth_required([PPSC, RDR])
     def put(self):
