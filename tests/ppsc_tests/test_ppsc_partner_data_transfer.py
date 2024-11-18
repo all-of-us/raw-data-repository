@@ -353,6 +353,8 @@ class RTIDataTransferTest(BaseTestCase):
         # contructor/__enter__ builds correctly
         self.assertEqual(rti_nph_opt_in.transfer_type, DataSyncTransferType.NPH_OPT_IN)
 
+        self.assertEqual(send_request.call_count, len(rti_nph_opt_in.transfer_items))
+
         current_endpoint = [obj for obj in self.current_endpoint_records
                             if obj.data_sync_transfer_type == DataSyncTransferType.NPH_OPT_IN]
         self.assertEqual(len(current_endpoint), 1)

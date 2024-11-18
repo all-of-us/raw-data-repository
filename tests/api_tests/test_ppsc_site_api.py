@@ -103,7 +103,7 @@ class PPSCSiteAPITest(BaseTestCase):
 
         self.assertTrue(response is not None)
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json['message'], 'Error when creating site record')
+        self.assertEqual(response.json['message'], 'Error when creating/updating site record')
 
         current_site_data = [obj for obj in self.site_dao.get_all()
                              if obj.site_identifier == self.base_payload.get('site_identifier')]
@@ -183,18 +183,6 @@ class PPSCSiteAPITest(BaseTestCase):
         self.assertEqual(len(current_site_data), 1)
 
         # should be 1
-        current_partner_activities = self.partner_event_activity_dao.get_all()
-        self.assertEqual(len(current_partner_activities), 1)
-
-        # update site when POST throws error
-        self.send_post('Site', request_data=self.base_payload, expected_status=http.client.BAD_REQUEST)
-
-        current_site_data = [obj for obj in self.site_dao.get_all()
-                             if obj.site_identifier == self.base_payload.get('site_identifier')]
-        # should be 1
-        self.assertEqual(len(current_site_data), 1)
-
-        # should be 2
         current_partner_activities = self.partner_event_activity_dao.get_all()
         self.assertEqual(len(current_partner_activities), 1)
 
