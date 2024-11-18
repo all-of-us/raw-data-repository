@@ -1,7 +1,7 @@
 from typing import List, Dict
 
 from rdr_service.dao.base_dao import BaseDao, UpsertableDao
-from rdr_service.model.ppsc import Participant, Site
+from rdr_service.model.ppsc import Participant, Site, NPHOptInEvent
 
 
 class ParticipantDao(BaseDao):
@@ -56,3 +56,24 @@ class PPSCDefaultBaseDao(BaseDao):
             )
 
 
+class PPSCNphOptEventInDao(BaseDao):
+
+    def __init__(self):
+        super().__init__(NPHOptInEvent)
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        return obj.id
+
+    # def get_eligible_participant_records(self):
+    #     with self.session() as session:
+    #         ...
+
+    def insert_bulk(self, batch: List[Dict]) -> None:
+        with self.session() as session:
+            session.bulk_insert_mappings(
+                self.model_type,
+                batch
+            )

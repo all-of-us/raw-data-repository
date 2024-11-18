@@ -1479,7 +1479,8 @@ class EligibleParticipantsDao(UpdatableDao):
             return session.query(
                 self.model_type.participant_id
             ).filter(
-                self.model_type.primary_participant_id.is_(None)
+                self.model_type.primary_participant_id.is_(None),
+                self.model_type.active != 1
             ).order_by(
                 self.model_type.participant_id
             ).all()
