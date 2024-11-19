@@ -18,8 +18,9 @@ class DataTransferInputTest(GenomicDataGenMixin):
         self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, ["org_ehr"])
         super().setUp()
 
-    @mock.patch("google.cloud.bigquery.Client.query")
+    @mock.patch("google.cloud.bigquery.Client")
     def test_core_data_datafeed(self, mock_bq):
+        mock_bq_instance = mock_bq.return_value
         feed = InputFeed()
 
         query = feed.get_datafeed_definition("core data")['staging_data'].strip()
@@ -30,21 +31,22 @@ class DataTransferInputTest(GenomicDataGenMixin):
 
         feed.run_datafeed("core data")
 
-        self.assertEqual(mock_bq.call_count, 2)
+        self.assertEqual(mock_bq_instance.query.call_count, 2)
 
         # Check the actual calls made
         expected_calls = [
             staging_data_expected_sql,
             streaming_data_expected_sql,
         ]
-        actual_calls = [call.args[0].strip() for call in mock_bq.mock_calls if call.args]
+        actual_calls = [call.args[0].strip() for call in mock_bq_instance.query.mock_calls if call.args]
 
         for expected, actual in zip(expected_calls, actual_calls):
             self.assertEqual(expected, actual,
                              f"Mismatch in SQL call:\nExpected:\n{expected}\n\nActual:\n{actual}")
 
-    @mock.patch("google.cloud.bigquery.Client.query")
+    @mock.patch("google.cloud.bigquery.Client")
     def test_biospecimen_datafeed(self, mock_bq):
+        mock_bq_instance = mock_bq.return_value
         feed = InputFeed()
 
         query = feed.get_datafeed_definition("biospecimen")['staging_data'].strip()
@@ -55,21 +57,22 @@ class DataTransferInputTest(GenomicDataGenMixin):
 
         feed.run_datafeed("biospecimen")
 
-        self.assertEqual(mock_bq.call_count, 2)
+        self.assertEqual(mock_bq_instance.query.call_count, 2)
 
         # Check the actual calls made
         expected_calls = [
             staging_data_expected_sql,
             streaming_data_expected_sql,
         ]
-        actual_calls = [call.args[0].strip() for call in mock_bq.mock_calls if call.args]
+        actual_calls = [call.args[0].strip() for call in mock_bq_instance.query.mock_calls if call.args]
 
         for expected, actual in zip(expected_calls, actual_calls):
             self.assertEqual(expected, actual,
                              f"Mismatch in SQL call:\nExpected:\n{expected}\n\nActual:\n{actual}")
 
-    @mock.patch("google.cloud.bigquery.Client.query")
+    @mock.patch("google.cloud.bigquery.Client")
     def test_ehr_datafeed(self, mock_bq):
+        mock_bq_instance = mock_bq.return_value
         feed = InputFeed()
 
         query = feed.get_datafeed_definition("ehr")['staging_data'].strip()
@@ -80,21 +83,22 @@ class DataTransferInputTest(GenomicDataGenMixin):
 
         feed.run_datafeed("ehr")
 
-        self.assertEqual(mock_bq.call_count, 2)
+        self.assertEqual(mock_bq_instance.query.call_count, 2)
 
         # Check the actual calls made
         expected_calls = [
             staging_data_expected_sql,
             streaming_data_expected_sql,
         ]
-        actual_calls = [call.args[0].strip() for call in mock_bq.mock_calls if call.args]
+        actual_calls = [call.args[0].strip() for call in mock_bq_instance.query.mock_calls if call.args]
 
         for expected, actual in zip(expected_calls, actual_calls):
             self.assertEqual(expected, actual,
                              f"Mismatch in SQL call:\nExpected:\n{expected}\n\nActual:\n{actual}")
 
-    @mock.patch("google.cloud.bigquery.Client.query")
+    @mock.patch("google.cloud.bigquery.Client")
     def test_health_data_sharing_datafeed(self, mock_bq):
+        mock_bq_instance = mock_bq.return_value
         feed = InputFeed()
 
         query = feed.get_datafeed_definition("health data sharing")['staging_data'].strip()
@@ -105,14 +109,14 @@ class DataTransferInputTest(GenomicDataGenMixin):
 
         feed.run_datafeed("health data sharing")
 
-        self.assertEqual(mock_bq.call_count, 2)
+        self.assertEqual(mock_bq_instance.query.call_count, 2)
 
         # Check the actual calls made
         expected_calls = [
             staging_data_expected_sql,
             streaming_data_expected_sql,
         ]
-        actual_calls = [call.args[0].strip() for call in mock_bq.mock_calls if call.args]
+        actual_calls = [call.args[0].strip() for call in mock_bq_instance.query.mock_calls if call.args]
 
         for expected, actual in zip(expected_calls, actual_calls):
             self.assertEqual(expected, actual,
