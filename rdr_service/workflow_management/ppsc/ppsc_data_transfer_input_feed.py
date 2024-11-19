@@ -16,6 +16,7 @@ datafeeds = [
     "ehr"
 ]
 
+
 class InputFeed:
     def __init__(self, project='test'):
         self.project = project
@@ -78,7 +79,7 @@ class InputFeed:
             logging.info(f"{datafeed} Data Feed Staged")
             # Insert into Cloud SQL Table
             rows = [dict(row) for row in streaming_data_rows]
-            dao = PPSCDataTransferBaseDao()
+            dao = PPSCDataTransferBaseDao(job_def['output_model'])
             with dao.session() as session:
                 session.bulk_insert_mappings(job_def['output_model'], rows)
         else:
