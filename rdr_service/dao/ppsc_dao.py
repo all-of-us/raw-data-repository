@@ -67,9 +67,9 @@ class PPSCNphOptEventInDao(BaseDao):
     def get_id(self, obj):
         return obj.id
 
-    # def get_eligible_participant_records(self):
-    #     with self.session() as session:
-    #         ...
+    def get_eligible_participant_records(self):
+        with self.session() as session:
+            print(session)
 
     def insert_bulk(self, batch: List[Dict]) -> None:
         with self.session() as session:

@@ -1474,7 +1474,7 @@ class EligibleParticipantsDao(UpdatableDao):
     def get_id(self, obj):
         return obj.id
 
-    def get_usable_participant_ids(self):
+    def get_usable_participant_data(self):
         with self.session() as session:
             return session.query(
                 self.model_type.participant_id

@@ -445,7 +445,7 @@ class EligibleParticipants(NphBase):
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT, default=0)
-    participant_id = Column(BigInteger, ForeignKey("participant.id"), nullable=False)
+    participant_id = Column(BigInteger, nullable=False)
     primary_participant_id = Column(BigInteger)
     active = Column(TINYINT, default=0)
 
