@@ -29,10 +29,6 @@ class NphOptInSync:
 
         logging.info(f'Syncing {len(self.items_ready_for_sync)} for NPH Opt In Sync')
 
-    @classmethod
-    def convert_language_preferance(cls, language: str) -> int:
-        return 1 if language.lower() == 'english' else '2'
-
     def get_nph_obj_from_list(self):
         current_nph_obj = self.usable_nph_objects[0]
         self.usable_nph_objects.pop(0)
@@ -47,7 +43,10 @@ class NphOptInSync:
                 'nph_participant_id': usable_nph_obj.participant_id,
                 'first_name': item.first_name,
                 'last_name': item.last_name,
-                'email': item.email
+                'email': item.email,
+                'phone': item.phone,
+                'zip_code': item.zip_code,
+                'language_preference': 1 if item.language_preference.lower() == 'english' else '2'
             }))
             self.eligible_dao.update(self.eligible_dao.model_type(**{
                 'id': usable_nph_obj.id,
@@ -55,8 +54,8 @@ class NphOptInSync:
                 'active': 1
             }))
 
-        logging.info(f'{len(self.items_ready_for_sync)} objects have been synced for NPH Opt In')
-
     def run_sync(self):
         self.get_items_for_sync()
         self.sync_items()
+
+        logging.info(f'{len(self.items_ready_for_sync)} objects have been synced for NPH Opt In')
