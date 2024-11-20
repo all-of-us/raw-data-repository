@@ -1,7 +1,12 @@
 from typing import List, Dict
 
+from sqlalchemy import and_, case
+from sqlalchemy.sql import functions
+from sqlalchemy.orm import aliased
+
 from rdr_service.dao.base_dao import BaseDao, UpsertableDao
-from rdr_service.model.ppsc import Participant, Site, NPHOptInEvent
+from rdr_service.model.ppsc import Participant, Site, NPHOptInEvent, ProfileUpdatesEvent
+from rdr_service.model.study_nph import EligibleParticipants
 
 
 class ParticipantDao(BaseDao):
@@ -69,7 +74,79 @@ class PPSCNphOptEventInDao(BaseDao):
 
     def get_eligible_participant_records(self):
         with self.session() as session:
-            print(session)
+            profile_updates_alias = aliased(ProfileUpdatesEvent)
+            lastest_nph_ppi_data = session.query(
+                ProfileUpdatesEvent.participant_id,
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piiname_first',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ).label('first_name'),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piiname_last',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ).label('last_name'),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_email',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ).label('email'),
+            ).outerjoin(
+                profile_updates_alias,
+                and_(
+                    profile_updates_alias.participant_id == ProfileUpdatesEvent.participant_id,
+                    profile_updates_alias.data_element_name == ProfileUpdatesEvent.data_element_name,
+                    profile_updates_alias.event_authored_time > ProfileUpdatesEvent.event_authored_time
+                )
+            ).outerjoin(
+              EligibleParticipants,
+              EligibleParticipants.primary_participant_id == ProfileUpdatesEvent.participant_id
+            ).filter(
+                ProfileUpdatesEvent.data_element_name.in_(
+                    ['piiname_first', 'piiname_last', 'piicontactinformation_email']
+                ),
+                profile_updates_alias.id.is_(None),
+                EligibleParticipants.id.is_(None)
+            ).group_by(
+                ProfileUpdatesEvent.participant_id,
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piiname_first',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piiname_last',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_email',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                )
+            ).subquery()
+
+            return session.query(
+                lastest_nph_ppi_data.c.participant_id,
+                functions.max(lastest_nph_ppi_data.c.first_name).label('first_name'),
+                functions.max(lastest_nph_ppi_data.c.last_name).label('last_name'),
+                functions.max(lastest_nph_ppi_data.c.email).label('email')
+            ).group_by(
+                lastest_nph_ppi_data.c.participant_id
+            ).distinct().all()
 
     def insert_bulk(self, batch: List[Dict]) -> None:
         with self.session() as session:

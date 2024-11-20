@@ -3,6 +3,7 @@ import random
 from faker import Faker
 
 from rdr_service import clock
+from rdr_service.dao.ppsc_dao import ParticipantDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.ppsc.ppsc_partner_data_sync import NphOptInSync
@@ -14,6 +15,7 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
         super().setUp()
         self.ppsc_data_gen = PPSCDataGenerator()
         self.nph_data_gen = NphDataGenerator()
+        self.participant_dao = ParticipantDao()
         self.faker = Faker()
 
         activities = [
@@ -34,7 +36,20 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
 
     def test_get_eligible_nph_participants(self) -> None:
 
-        for _ in range(3):
+        # eligible participants
+        for num in range(10):
+            participant = self.ppsc_data_gen.create_database_participant()
+            nph_id = f'1{num}000000000'
+            self.nph_data_gen.create_database_eligible_participants(
+                participant_id=nph_id,
+                primary_participant_id=None if num % 2 != 0 else participant.id,
+                active=0 if num % 2 != 0 else 1
+            )
+
+        current_participant_ids = [obj.id for obj in self.participant_dao.get_all()]
+
+        # profile update records
+        for num in range(4):
             elements = {
                 'piiname_first': self.faker.first_name(),
                 'piiname_last': self.faker.last_name(),
@@ -43,14 +58,13 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
                 'streetaddress_piizip': 11111,
                 'language_preferance': random.choice(['English', 'Spanish'])
             }
-            participant = self.ppsc_data_gen.create_database_participant()
             participant_event_activity = self.ppsc_data_gen.create_database_participant_event_activity(
-                participant_id=participant.id,
+                participant_id=current_participant_ids[num],
                 activity_id=9  # NPH Opt In
             )
             for key in elements:
                 self.ppsc_data_gen.create_database_profile_updates_event(
-                    participant_id=participant.id,
+                    participant_id=current_participant_ids[num],
                     event_type_name='Profile Data',
                     event_id=participant_event_activity.id,
                     data_element_name=key,
@@ -58,15 +72,6 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
                     event_authored_time=clock.CLOCK.now()
                 )
 
-        for num in range(10):
-            participant_summary = self.data_generator.create_database_participant_summary()
-            self.nph_data_gen.create_database_eligible_participants(
-                participant_id=f'1{num}000000000',
-                primary_participant_id=None if num % 2 != 0 else participant_summary.participantId,
-                active=0 if num % 2 != 0 else 1
-            )
-
         nph_opt_in_sync = NphOptInSync()
         nph_opt_in_sync.run_sync()
 
-        print('Darryl')
