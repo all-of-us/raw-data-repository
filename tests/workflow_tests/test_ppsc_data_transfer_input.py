@@ -122,8 +122,13 @@ class DataTransferInputTest(GenomicDataGenMixin):
             self.assertEqual(expected, actual,
                              f"Mismatch in SQL call:\nExpected:\n{expected}\n\nActual:\n{actual}")
 
+    @mock.patch("google.cloud.bigquery.Client")
     @mock.patch("rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.InputFeed.make_datafeed_job")
-    def test_run_datafeed(self, mock_make_datafeed_job):
+    def test_run_datafeed(self, mock_make_datafeed_job, mock_bq_client):
+        # Mock the BQ client to prevent API calls
+        mock_bq_instance = mock_bq_client.return_value
+        mock_bq_instance.query.return_value.result.return_value = []
+
         ppsc_data_gen = PPSCDataGenerator()
         test_participant = ppsc_data_gen.create_database_participant()
         # Test data
