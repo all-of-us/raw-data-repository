@@ -48,27 +48,48 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
 
         current_participant_ids = [obj.id for obj in self.participant_dao.get_all()]
 
-        # profile update records
+        # profile update records / Nph Opt In Events
         for num in range(4):
-            elements = {
+
+            nph_opt_in_elements = {
+                'activity_status': 'submitted_yes',
+                'activity_date_time': clock.CLOCK.now(),
+            }
+
+            participant_event_activity_nph = self.ppsc_data_gen.create_database_participant_event_activity(
+                participant_id=current_participant_ids[num],
+                activity_id=9  # NPH Opt In
+            )
+            for key in nph_opt_in_elements:
+                self.ppsc_data_gen.create_database_nph_opt_in_event(
+                    participant_id=current_participant_ids[num],
+                    event_type_name='NPH Opt In',
+                    event_id=participant_event_activity_nph.id,
+                    data_element_name=key,
+                    data_element_value=nph_opt_in_elements[key],
+                    event_authored_time=clock.CLOCK.now()
+                )
+
+            profile_elements = {
                 'piiname_first': self.faker.first_name(),
                 'piiname_last': self.faker.last_name(),
                 'piicontactinformation_email': self.faker.email(),
                 'piicontactinformation_phone': 11111111,
                 'streetaddress_piizip': 11111,
-                'language_preferance': random.choice(['English', 'Spanish'])
+                'language_preference': random.choice(['English', 'Spanish'])
             }
-            participant_event_activity = self.ppsc_data_gen.create_database_participant_event_activity(
+
+            participant_event_activity_profile = self.ppsc_data_gen.create_database_participant_event_activity(
                 participant_id=current_participant_ids[num],
-                activity_id=9  # NPH Opt In
+                activity_id=4  # Profile Updates
             )
-            for key in elements:
+            for key in profile_elements:
                 self.ppsc_data_gen.create_database_profile_updates_event(
                     participant_id=current_participant_ids[num],
                     event_type_name='Profile Data',
-                    event_id=participant_event_activity.id,
+                    event_id=participant_event_activity_profile.id,
                     data_element_name=key,
-                    data_element_value=elements[key],
+                    data_element_value=profile_elements[key],
                     event_authored_time=clock.CLOCK.now()
                 )
 

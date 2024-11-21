@@ -1,6 +1,5 @@
 import logging
 
-from rdr_service import clock
 from rdr_service.dao.ppsc_dao import PPSCNphOptEventInDao
 from rdr_service.dao.ppsc_partner_transfer_dao import RTIDataTransferBaseDao
 from rdr_service.dao.study_nph_dao import EligibleParticipantsDao
@@ -31,15 +30,12 @@ class NphOptInSync:
 
     def get_nph_obj_from_list(self):
         current_nph_obj = self.usable_nph_objects[0]
-        self.usable_nph_objects.pop(0)
         return current_nph_obj
 
     def sync_items(self):
         for item in self.items_ready_for_sync:
             usable_nph_obj = self.get_nph_obj_from_list()
             self.nph_opt_in_dao.insert(self.nph_opt_in_dao.model_type(**{
-                'created': clock.CLOCK.now(),
-                'modified': clock.CLOCK.now(),
                 'nph_participant_id': usable_nph_obj.participant_id,
                 'first_name': item.first_name,
                 'last_name': item.last_name,
@@ -53,9 +49,9 @@ class NphOptInSync:
                 'primary_participant_id': item.participant_id,
                 'active': 1
             }))
+            self.usable_nph_objects.pop(0)
 
     def run_sync(self):
         self.get_items_for_sync()
         self.sync_items()
-
         logging.info(f'{len(self.items_ready_for_sync)} objects have been synced for NPH Opt In')

@@ -114,11 +114,17 @@ class PPSCNphOptEventInDao(BaseDao):
                 ).label('zip_code'),
                 case(
                     [
-                        (ProfileUpdatesEvent.data_element_name == 'language_preferance',
+                        (ProfileUpdatesEvent.data_element_name == 'language_preference',
                          ProfileUpdatesEvent.data_element_value)
                     ],
                     else_=None
-                ).label('language_preferance')
+                ).label('language_preference')
+            ).join(
+                self.model_type,
+                and_(
+                    self.model_type.participant_id == ProfileUpdatesEvent.participant_id,
+                    self.model_type.data_element_value == 'submitted_yes'
+                )
             ).outerjoin(
                 profile_updates_alias,
                 and_(
@@ -131,8 +137,12 @@ class PPSCNphOptEventInDao(BaseDao):
               EligibleParticipants.primary_participant_id == ProfileUpdatesEvent.participant_id
             ).filter(
                 ProfileUpdatesEvent.data_element_name.in_(
-                    ['piiname_first', 'piiname_last', 'piicontactinformation_email', 'piicontactinformation_phone',
-                     'streetaddress_piizip', 'language_preferance']
+                    ['piiname_first',
+                     'piiname_last',
+                     'piicontactinformation_email',
+                     'piicontactinformation_phone',
+                     'streetaddress_piizip',
+                     'language_preference']
                 ),
                 profile_updates_alias.id.is_(None),
                 EligibleParticipants.id.is_(None)
@@ -175,11 +185,11 @@ class PPSCNphOptEventInDao(BaseDao):
                 ).label('zip_code'),
                 case(
                     [
-                        (ProfileUpdatesEvent.data_element_name == 'language_preferance',
+                        (ProfileUpdatesEvent.data_element_name == 'language_preference',
                          ProfileUpdatesEvent.data_element_value)
                     ],
                     else_=None
-                ).label('language_preferance')
+                ).label('language_preference')
             ).subquery()
 
             return session.query(
@@ -189,7 +199,7 @@ class PPSCNphOptEventInDao(BaseDao):
                 functions.max(lastest_nph_ppi_data.c.email).label('email'),
                 functions.max(lastest_nph_ppi_data.c.phone).label('phone'),
                 functions.max(lastest_nph_ppi_data.c.zip_code).label('zip_code'),
-                functions.max(lastest_nph_ppi_data.c.language_preferance).label('language_preferance')
+                functions.max(lastest_nph_ppi_data.c.language_preference).label('language_preference')
             ).group_by(
                 lastest_nph_ppi_data.c.participant_id
             ).distinct().all()
