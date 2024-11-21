@@ -96,3 +96,10 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
         nph_opt_in_sync = NphOptInSync()
         nph_opt_in_sync.run_sync()
 
+    def tearDown(self):
+        super().tearDown()
+        self.clear_table_after_test("ppsc.activity")
+        self.clear_table_after_test("ppsc.participant")
+        self.clear_table_after_test("ppsc.participant_event_activity")
+        self.clear_table_after_test("ppsc.profile_updates_event")
+        self.clear_table_after_test("ppsc.nph_opt_in_event")
