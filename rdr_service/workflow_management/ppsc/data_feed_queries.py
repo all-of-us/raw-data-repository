@@ -211,3 +211,55 @@ WHERE TRUE
     )
 ;
 """
+
+def get_ppsc_core_to_stream(project: str, destination_dataset: str) -> str:
+    return f"""
+    SELECT distinct participant_id, ignore_flag, event_date_time, has_core_data
+    FROM `{project}.{destination_dataset}.datafeed_input_core_data` s
+    where TRUE
+      AND NOT EXISTS (
+            SELECT 1
+            FROM `{project}.{destination_dataset}.ppsc_ppsc_core` t
+            WHERE t.participant_id = s.participant_id
+                AND t.event_date_time = s.event_date_time
+        )
+    ;"""
+
+def get_ppsc_biospecimen_to_stream(project: str, destination_dataset: str) -> str:
+    return f"""
+    SELECT distinct participant_id, ignore_flag, event_date_time, specimen_type, specimen_status
+    FROM `{project}.{destination_dataset}.datafeed_input_biospecimen` s
+    where TRUE
+      AND NOT EXISTS (
+            SELECT 1
+            FROM `{project}.{destination_dataset}.ppsc_ppsc_biobank_sample` t
+            WHERE t.participant_id = s.participant_id
+                AND t.event_date_time = s.event_date_time
+        )
+    ;"""
+
+def get_ppsc_ehr_to_stream(project: str, destination_dataset: str) -> str:
+    return f"""
+SELECT distinct participant_id, ignore_flag, event_date_time
+FROM `{project}.{destination_dataset}.datafeed_input_ehr` s
+where TRUE
+  AND NOT EXISTS (
+        SELECT 1
+        FROM `{project}.{destination_dataset}.ppsc_ppsc_ehr` t
+        WHERE t.participant_id = s.participant_id
+            AND t.event_date_time = s.event_date_time
+    )
+;"""
+
+def get_health_data_to_stream(project: str, destination_dataset: str) -> str:
+    return f"""
+    SELECT distinct participant_id, ignore_flag, event_date_time, health_data_stream_sharing_status
+    FROM `{project}.{destination_dataset}.datafeed_input_heathdata_sharing` s
+    where TRUE
+      AND NOT EXISTS (
+            SELECT 1
+            FROM `{project}.{destination_dataset}.ppsc_ppsc_health_data` t
+            WHERE t.participant_id = s.participant_id
+                AND t.event_date_time = s.event_date_time
+        )
+    ;"""

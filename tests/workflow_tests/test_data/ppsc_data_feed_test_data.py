@@ -85,6 +85,18 @@ WHERE
         WHERE t.participant_id = c.participant_id
     );"""
 
+core_data_expected_streaming_sql = """
+    SELECT distinct participant_id, ignore_flag, event_date_time, has_core_data
+    FROM `test.ppsc_staging_data.datafeed_input_core_data` s
+    where TRUE
+      AND NOT EXISTS (
+            SELECT 1
+            FROM `test.ppsc_staging_data.ppsc_ppsc_core` t
+            WHERE t.participant_id = s.participant_id
+                AND t.event_date_time = s.event_date_time
+        )
+    ;"""
+
 biospecimen_expected_sql = """
 INSERT INTO `test.ppsc_staging_data.datafeed_input_biospecimen` (
     participant_id,
@@ -120,6 +132,18 @@ WHERE TRUE
 ;
 """
 
+biospecimen_expected_streaming_sql = """
+    SELECT distinct participant_id, ignore_flag, event_date_time, specimen_type, specimen_status
+    FROM `test.ppsc_staging_data.datafeed_input_biospecimen` s
+    where TRUE
+      AND NOT EXISTS (
+            SELECT 1
+            FROM `test.ppsc_staging_data.ppsc_ppsc_biobank_sample` t
+            WHERE t.participant_id = s.participant_id
+                AND t.event_date_time = s.event_date_time
+        )
+    ;"""
+
 ehr_expected_sql = """
 INSERT INTO `test.ppsc_staging_data.datafeed_input_ehr` (
     participant_id,
@@ -148,6 +172,17 @@ WHERE TRUE
 ;
 """
 
+ehr_expected_streaming_sql = """
+SELECT distinct participant_id, ignore_flag, event_date_time
+FROM `test.ppsc_staging_data.datafeed_input_ehr` s
+where TRUE
+  AND NOT EXISTS (
+        SELECT 1
+        FROM `test.ppsc_staging_data.ppsc_ppsc_ehr` t
+        WHERE t.participant_id = s.participant_id
+            AND t.event_date_time = s.event_date_time
+    )
+;"""
 
 health_data_sharing_expected_sql = """
 INSERT INTO `test.ppsc_staging_data.datafeed_input_healthdata_sharing` (
@@ -185,3 +220,15 @@ WHERE TRUE
     )
 ;
 """
+
+health_data_expected_streaming_sql = """
+    SELECT distinct participant_id, ignore_flag, event_date_time, health_data_stream_sharing_status
+    FROM `test.ppsc_staging_data.datafeed_input_heathdata_sharing` s
+    where TRUE
+      AND NOT EXISTS (
+            SELECT 1
+            FROM `test.ppsc_staging_data.ppsc_ppsc_health_data` t
+            WHERE t.participant_id = s.participant_id
+                AND t.event_date_time = s.event_date_time
+        )
+    ;"""
