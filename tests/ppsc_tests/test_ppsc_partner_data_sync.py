@@ -4,8 +4,11 @@ from faker import Faker
 
 from rdr_service import clock
 from rdr_service.dao.ppsc_dao import ParticipantDao
+from rdr_service.dao.ppsc_partner_transfer_dao import RTIDataTransferBaseDao
+from rdr_service.dao.study_nph_dao import EligibleParticipantsDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
+from rdr_service.model.ppsc_partner_data_transfer import RTINphOptIn
 from rdr_service.ppsc.ppsc_partner_data_sync import NphOptInSync
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -16,6 +19,8 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
         self.ppsc_data_gen = PPSCDataGenerator()
         self.nph_data_gen = NphDataGenerator()
         self.participant_dao = ParticipantDao()
+        self.eligible_dao = EligibleParticipantsDao()
+        self.nph_opt_in_dao = RTIDataTransferBaseDao(RTINphOptIn)
         self.faker = Faker()
 
         activities = [
@@ -50,7 +55,6 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
 
         # profile update records / Nph Opt In Events
         for num in range(4):
-
             nph_opt_in_elements = {
                 'activity_status': 'submitted_yes',
                 'activity_date_time': clock.CLOCK.now(),
@@ -95,6 +99,29 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
 
         nph_opt_in_sync = NphOptInSync()
         nph_opt_in_sync.run_sync()
+
+        self.assertEqual(len(nph_opt_in_sync.items_ready_for_sync), 2)
+
+        current_sync_ids = [obj.participant_id for obj in nph_opt_in_sync.items_ready_for_sync]
+
+        # eligible records
+        updated_eligible_records = [obj for obj in self.eligible_dao.get_all()
+                                    if obj.primary_participant_id in current_sync_ids]
+
+        self.assertEqual(len(updated_eligible_records), len(current_sync_ids))
+        self.assertTrue(all(obj.active == 1 for obj in updated_eligible_records))
+
+        # nph opt in records
+        current_opt_in_records = [obj for obj in self.nph_opt_in_dao.get_all()]
+
+        self.assertEqual(len(current_opt_in_records), len(nph_opt_in_sync.items_ready_for_sync))
+        self.assertTrue(all(obj.first_name is not None for obj in current_opt_in_records))
+        self.assertTrue(all(obj.last_name is not None for obj in current_opt_in_records))
+        self.assertTrue(all(obj.email is not None for obj in current_opt_in_records))
+        self.assertTrue(all(obj.phone is not None for obj in current_opt_in_records))
+        self.assertTrue(all(obj.zip_code is not None for obj in current_opt_in_records))
+        self.assertTrue(all(obj.language_preference is not None and obj.language_preference in [1, 2] for obj in
+                            current_opt_in_records))
 
     def tearDown(self):
         super().tearDown()
