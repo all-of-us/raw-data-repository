@@ -1,7 +1,12 @@
 from typing import List, Dict
 
+from sqlalchemy import and_, case
+from sqlalchemy.sql import functions
+from sqlalchemy.orm import aliased
+
 from rdr_service.dao.base_dao import BaseDao, UpsertableDao
-from rdr_service.model.ppsc import Participant, Site
+from rdr_service.model.ppsc import Participant, Site, NPHOptInEvent, ProfileUpdatesEvent
+from rdr_service.model.study_nph import EligibleParticipants
 
 
 class ParticipantDao(BaseDao):
@@ -56,3 +61,152 @@ class PPSCDefaultBaseDao(BaseDao):
             )
 
 
+class PPSCNphOptEventInDao(BaseDao):
+
+    def __init__(self):
+        super().__init__(NPHOptInEvent)
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        return obj.id
+
+    def get_eligible_participant_records(self):
+        with self.session() as session:
+            profile_updates_alias = aliased(ProfileUpdatesEvent)
+            lastest_nph_ppi_data = session.query(
+                ProfileUpdatesEvent.participant_id,
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piiname_first',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ).label('first_name'),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piiname_last',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ).label('last_name'),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_email',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ).label('email'),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_phone',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ).label('phone'),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'streetaddress_piizip',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ).label('zip_code'),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'language_preference',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ).label('language_preference')
+            ).join(
+                self.model_type,
+                and_(
+                    self.model_type.participant_id == ProfileUpdatesEvent.participant_id,
+                    self.model_type.data_element_value == 'submitted_yes'
+                )
+            ).outerjoin(
+                profile_updates_alias,
+                and_(
+                    profile_updates_alias.participant_id == ProfileUpdatesEvent.participant_id,
+                    profile_updates_alias.data_element_name == ProfileUpdatesEvent.data_element_name,
+                    profile_updates_alias.event_authored_time > ProfileUpdatesEvent.event_authored_time
+                )
+            ).outerjoin(
+              EligibleParticipants,
+              EligibleParticipants.primary_participant_id == ProfileUpdatesEvent.participant_id
+            ).filter(
+                ProfileUpdatesEvent.data_element_name.in_(
+                    ['piiname_first',
+                     'piiname_last',
+                     'piicontactinformation_email',
+                     'piicontactinformation_phone',
+                     'streetaddress_piizip',
+                     'language_preference']
+                ),
+                profile_updates_alias.id.is_(None),
+                EligibleParticipants.id.is_(None)
+            ).group_by(
+                ProfileUpdatesEvent.participant_id,
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piiname_first',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piiname_last',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_email',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_phone',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ).label('phone'),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'streetaddress_piizip',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ).label('zip_code'),
+                case(
+                    [
+                        (ProfileUpdatesEvent.data_element_name == 'language_preference',
+                         ProfileUpdatesEvent.data_element_value)
+                    ],
+                    else_=None
+                ).label('language_preference')
+            ).subquery()
+
+            return session.query(
+                lastest_nph_ppi_data.c.participant_id,
+                functions.max(lastest_nph_ppi_data.c.first_name).label('first_name'),
+                functions.max(lastest_nph_ppi_data.c.last_name).label('last_name'),
+                functions.max(lastest_nph_ppi_data.c.email).label('email'),
+                functions.max(lastest_nph_ppi_data.c.phone).label('phone'),
+                functions.max(lastest_nph_ppi_data.c.zip_code).label('zip_code'),
+                functions.max(lastest_nph_ppi_data.c.language_preference).label('language_preference')
+            ).group_by(
+                lastest_nph_ppi_data.c.participant_id
+            ).distinct().all()
+
+    def insert_bulk(self, batch: List[Dict]) -> None:
+        with self.session() as session:
+            session.bulk_insert_mappings(
+                self.model_type,
+                batch
+            )

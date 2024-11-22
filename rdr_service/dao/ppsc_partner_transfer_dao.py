@@ -179,3 +179,5 @@ class RTIDataTransferRecordDao(BaseDao):
                 self.model_type,
                 batch
             )
+
+
