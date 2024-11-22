@@ -92,8 +92,7 @@ class PPSCSiteAPI(BaseApi):
         required_keys = ['awardee_id', 'awardee_type', 'awardee_name', 'org_id', 'organization_name', 'site_name',
                          'site_identifier', 'site_type', 'enrollment_status_active', 'mayo_link_id', 'active', 'state']
 
-        if not all(key in req_data for key in required_keys) \
-                or not all(val for val in req_data.values()):
+        if not all(key in req_data for key in required_keys):
 
             response_string: str = ', '.join(required_keys)
             raise BadRequest(f'Payload for Site is invalid: Required keys - {response_string}')

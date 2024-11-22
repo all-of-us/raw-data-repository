@@ -106,37 +106,6 @@ class PPSCSiteAPITest(BaseTestCase):
                           'awardee_name, org_id, organization_name, site_name, '
                           'site_identifier, site_type, enrollment_status_active, mayo_link_id, active, state')
 
-        missing_value_payload = {
-            "awardee_type": "HPO",
-            "awardee_id": "PITT",
-            "awardee_name": "Pittsburgh awardee",
-            "org_id": "",
-            "organization_name": "Pittsburgh Health",
-            "site_name": "UPMC Urgent Care Monroeville",
-            "site_type": "Another site type",
-            "site_identifier": "hpo-site-monroeville",
-            "enrollment_status_active": True,
-            "digital_scheduling_status_active": True,
-            "scheduling_status_active": True,
-            "anticipated_launch_date": "2024-03-26",
-            "location_name": "Thompson Building",
-            "mayo_link_id": "123456",
-            "active": True,
-            "address_line": "1234 Fake St.",
-            "city": "Springfield",
-            "state": "VA",
-            "postal_code": "22150",
-            "phone": "7031234567",
-        }
-
-        response = self.send_post('Site', request_data=missing_value_payload,
-                                  expected_status=http.client.BAD_REQUEST)
-        self.assertTrue(response.status_code == 400)
-        self.assertTrue(response.json.get(
-            'message') == 'Payload for Site is invalid: Required keys - awardee_id, awardee_type, '
-                          'awardee_name, org_id, organization_name, site_name, '
-                          'site_identifier, site_type, enrollment_status_active, mayo_link_id, active, state')
-
     def test_site_data_inserts(self):
 
         response = self.send_post('Site', request_data=self.base_payload)
