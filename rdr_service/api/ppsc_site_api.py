@@ -93,7 +93,7 @@ class PPSCSiteAPI(BaseApi):
                          'site_identifier', 'site_type', 'enrollment_status_active', 'mayo_link_id', 'active', 'state']
 
         if not all(key in req_data for key in required_keys) \
-                and all(val for val in req_data.values() if val is not None):
+                or not all(val for val in req_data.values()):
 
             response_string: str = ', '.join(required_keys)
             raise BadRequest(f'Payload for Site is invalid: Required keys - {response_string}')
