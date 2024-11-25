@@ -104,7 +104,7 @@ class WorkbenchWorkspaceUser(Base):
     """The last modified time for this record."""
 
     workspaceId = Column("workspace_id", Integer, ForeignKey("workbench_workspace_approved.id"), nullable=False)
-    researcherId = Column("researcher_Id", Integer, ForeignKey("workbench_researcher.id"), nullable=False)
+    researcherId = Column("researcher_Id", Integer, ForeignKey("workbench_researcher.id"), nullable=False, quote=False)
     userId = Column("user_id", Integer, nullable=False)
     role = Column("role", Enum(WorkbenchWorkspaceUserRole), default=WorkbenchWorkspaceUserRole.UNSET)
     status = Column("status", Enum(WorkbenchWorkspaceStatus), default=WorkbenchWorkspaceStatus.UNSET)
