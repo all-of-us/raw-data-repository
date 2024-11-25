@@ -32,6 +32,7 @@ FROM ranked_events
 GROUP BY participant_id
     """
 
+
 def get_profile_updates_activity_to_stream(project: str, source_dataset: str) -> str:
     return f"""
 WITH ranked_events AS (
@@ -90,6 +91,45 @@ SELECT
   -- Birthdate
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piibirthinformation_birthdate' AND rank = 1
            THEN data_element_value END) AS birthdate
+FROM ranked_events
+GROUP BY participant_id
+    """
+
+
+def get_withdrawal_activity_to_stream(project: str, source_dataset: str) -> str:
+    return f"""
+WITH ranked_events AS (
+  SELECT
+    se.participant_id,
+    se.event_type_name,
+    se.event_authored_time,
+    se.data_element_name,
+    se.data_element_value,
+    ROW_NUMBER() OVER (
+      PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
+      ORDER BY se.event_authored_time DESC
+    ) AS rank
+  FROM `{project}.{source_dataset}.ppsc_withdrawal_event` se
+  WHERE se.event_authored_time > (
+    SELECT MAX(last_modified)
+    FROM `{project}.{source_dataset}.rdr_participant_summary`
+  )
+  and data_element_name IN ("activity_status", '​activity_status', 'withdrawal_reason')
+)
+SELECT
+  participant_id,
+  MAX(CASE WHEN event_type_name = 'Withdrawal'
+      AND data_element_name IN ("activity_status", '​activity_status')
+      AND rank = 1
+    THEN data_element_value END) AS withdrawal_status,
+  MAX(CASE WHEN event_type_name = 'Withdrawal'
+      AND data_element_name IN ("activity_status", '​activity_status')
+      AND rank = 1
+    THEN event_authored_time END) AS withdrawal_status_authored,
+  MAX(CASE WHEN event_type_name = 'Withdrawal'
+      AND data_element_name IN ("withdrawal_reason")
+      AND rank = 1
+    THEN data_element_value END) AS withdrawal_reason
 FROM ranked_events
 GROUP BY participant_id
     """

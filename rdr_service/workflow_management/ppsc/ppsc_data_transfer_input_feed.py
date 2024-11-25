@@ -11,8 +11,10 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.ppsc_partner_data_transfer import PPSCCore, PPSCBiobankSample, PPSCHealthData, PPSCEHR
 # from rdr_service.cloud_utils import bigquery
 from rdr_service.workflow_management.ppsc import data_feed_queries
-from rdr_service.workflow_management.ppsc.ppsc_intake_to_ps_queries import get_consent_activity_to_stream
-from rdr_service.workflow_management.ppsc.ppsc_to_legacy_de_mappings import map_source_to_summary, consent_data_elements
+from rdr_service.workflow_management.ppsc.ppsc_intake_to_ps_queries import get_consent_activity_to_stream, \
+    get_profile_updates_activity_to_stream, get_withdrawal_activity_to_stream
+from rdr_service.workflow_management.ppsc.ppsc_to_legacy_de_mappings import map_source_to_summary, \
+    consent_data_elements, withdrawal_data_elements, profile_updates_data_elements
 
 datafeeds = [
     "core data",
@@ -119,13 +121,25 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
             source_data_sql = get_consent_activity_to_stream(project=self.project, source_dataset=src)
             destination_model = ParticipantSummary
             de_mapping = consent_data_elements
-            return {
-                "source_data": source_data_sql,
-                "destination_model": destination_model,
-                "de_mapping": de_mapping
-            }
+
+        elif datafeed == "Profile Updates":
+            source_data_sql = get_profile_updates_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = profile_updates_data_elements
+
+        elif datafeed == "Withdrawal":
+            source_data_sql = get_withdrawal_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = withdrawal_data_elements
+
         else:
             return {}
+
+        return {
+            "source_data": source_data_sql,
+            "destination_model": destination_model,
+            "de_mapping": de_mapping
+        }
 
     def run_datafeed(self, datafeed):
         job_def = self.get_datafeed_definition(datafeed)

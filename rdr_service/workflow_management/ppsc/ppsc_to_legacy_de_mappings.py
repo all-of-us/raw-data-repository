@@ -1,5 +1,6 @@
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.participant_enums import QuestionnaireStatus
+from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus, WithdrawalReason
+
 
 def map_source_to_summary(record: dict, data_element_mapping: dict) -> ParticipantSummary:
     """
@@ -30,8 +31,6 @@ def map_source_to_summary(record: dict, data_element_mapping: dict) -> Participa
                 transformed_value = record[source_field]
 
             # Dynamically set the field on the ParticipantSummary object
-            if target_field is None:
-                print("paused")
             setattr(participant_summary, target_field.key, transformed_value)
 
     return participant_summary
@@ -110,5 +109,28 @@ profile_updates_data_elements = {
     "piibirthinformation_birthdate": {
         "field": ParticipantSummary.dateOfBirth,
         "value": "date_string"
+    }
+}
+
+withdrawal_data_elements = {
+    "withdrawal_status": {
+        "field": ParticipantSummary.withdrawalStatus,
+        "value": {
+            "withdrawn": WithdrawalStatus.NO_USE,
+            "now_withdrawn": WithdrawalStatus.NOT_WITHDRAWN
+        }
+    },
+    "withdrawal_status_authored_time": {
+        "field": ParticipantSummary.withdrawalAuthored,
+        "value": "date_string"
+    },
+    "withdrawal_reason": {
+        "field": ParticipantSummary.withdrawalReason,
+        "value": {
+            "duplicate account": WithdrawalReason.DUPLICATE,
+            "fraudulent account": WithdrawalReason.FRAUDULENT,
+            "hpo/tps requested": WithdrawalReason.FRAUDULENT,
+            "other": WithdrawalReason.FRAUDULENT
+        }
     }
 }
