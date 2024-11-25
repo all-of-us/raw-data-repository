@@ -24,10 +24,14 @@ def map_source_to_summary(record: dict, data_element_mapping: dict) -> Participa
                 transformed_value = value_mapping.get(record[source_field].lower())
             elif value_mapping == "date_string":  # Handle date strings
                 transformed_value = record[source_field]
+            elif value_mapping == "string":  # Handle strings strings
+                transformed_value = record[source_field]
             else:
                 transformed_value = record[source_field]
 
             # Dynamically set the field on the ParticipantSummary object
+            if target_field is None:
+                print("paused")
             setattr(participant_summary, target_field.key, transformed_value)
 
     return participant_summary
@@ -53,6 +57,58 @@ consent_data_elements = {
     },
     "ehr_authorization_event_authored": {
         "field": ParticipantSummary.consentForElectronicHealthRecordsAuthored,
+        "value": "date_string"
+    }
+}
+
+profile_updates_data_elements = {
+    "piiname_first": {
+        "field": ParticipantSummary.firstName,
+        "value": "string"  # Direct mapping, no transformation needed
+    },
+    "piiname_middle": {
+        "field": ParticipantSummary.middleName,
+        "value": "string"
+    },
+    "piiname_last": {
+        "field": ParticipantSummary.lastName,
+        "value": "string"
+    },
+    "streetaddress_piizip": {
+        "field": ParticipantSummary.zipCode,
+        "value": "string"
+    },
+    # Skipping state implementation for now
+    # "streetaddress_piistate": {
+    #     "field": ParticipantSummary.stateId,
+    #     "value": "string"
+    # },
+    "streetaddress_piicity": {
+        "field": ParticipantSummary.city,
+        "value": "string"
+    },
+    "piiaddress_streetaddress": {
+        "field": ParticipantSummary.streetAddress,
+        "value": "string"
+    },
+    "piiaddress_streetaddress2": {
+        "field": ParticipantSummary.streetAddress2,
+        "value": "string"
+    },
+    "piicontactinformation_phone": {
+        "field": ParticipantSummary.phoneNumber,
+        "value": "string"
+    },
+    "piicontactinformation_email": {
+        "field": ParticipantSummary.email,
+        "value": "string"
+    },
+    "language_preference": {
+        "field": ParticipantSummary.primaryLanguage,
+        "value": "string"
+    },
+    "piibirthinformation_birthdate": {
+        "field": ParticipantSummary.dateOfBirth,
         "value": "date_string"
     }
 }
