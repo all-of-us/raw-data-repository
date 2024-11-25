@@ -492,43 +492,58 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     .filter(WorkbenchWorkspaceUser.isCreator == 1)
                     .subquery()
             )
-            count_query = (session.query(distinct(WorkbenchWorkspaceApproved.workspaceSourceId))
-                           .join(WorkbenchWorkspaceUser, WorkbenchResearcher, WorkbenchInstitutionalAffiliations)
-                           .filter(or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
-                                       WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)
-                                       ),
-                                   WorkbenchWorkspaceApproved.status == int(WorkbenchWorkspaceStatus.ACTIVE),
-                                   WorkbenchInstitutionalAffiliations.isVerified == 1,
-                                   or_(WorkbenchWorkspaceUser.isCreator == 1,
-                                       and_(
-                                           WorkbenchWorkspaceUser.role == int(WorkbenchWorkspaceUserRole.OWNER),
-                                           WorkbenchWorkspaceApproved.id.notin_(subquery)
-                                       )),
-                                   WorkbenchWorkspaceApproved.creationTime > start_date
-                                   )
-                           )
+
+            count_query = (
+                session.query(
+                    distinct(WorkbenchWorkspaceApproved.workspaceSourceId)
+                ).join(WorkbenchWorkspaceUser,
+                       WorkbenchWorkspaceUser.workspaceId == WorkbenchWorkspaceApproved.id
+                       ).join(WorkbenchResearcher,
+                              WorkbenchResearcher.id == WorkbenchWorkspaceUser.researcherId
+                              ).join(WorkbenchInstitutionalAffiliations,
+                                     WorkbenchInstitutionalAffiliations.researcherId == WorkbenchResearcher.id
+                ).filter(or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                             WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
+                         WorkbenchWorkspaceApproved.status == int(WorkbenchWorkspaceStatus.ACTIVE),
+                         WorkbenchInstitutionalAffiliations.isVerified == 1,
+                         or_(WorkbenchWorkspaceUser.isCreator == 1,
+                             and_(
+                                 WorkbenchWorkspaceUser.role == int(WorkbenchWorkspaceUserRole.OWNER),
+                                 WorkbenchWorkspaceApproved.id.notin_(subquery)
+                             )),
+                         WorkbenchWorkspaceApproved.creationTime > start_date
+                )
+            )
             total = count_query.count()
 
             snapshot_subquery = (
-                session.query(func.max(WorkbenchWorkspaceSnapshot.id).label('snapshot_id'),
-                              WorkbenchWorkspaceSnapshot.workspaceSourceId)
-                    .filter(or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
-                                WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)
-                                ))
-                    .group_by(WorkbenchWorkspaceSnapshot.workspaceSourceId).subquery()
+                session.query(
+                    func.max(WorkbenchWorkspaceSnapshot.id).label('snapshot_id'),
+                    WorkbenchWorkspaceSnapshot.workspaceSourceId
+                ).join(
+                    WorkbenchWorkspaceApproved,
+                    WorkbenchWorkspaceApproved.workspaceSourceId == WorkbenchWorkspaceSnapshot.workspaceSourceId
+                ).filter(
+                    or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                        WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
+                ).group_by(WorkbenchWorkspaceSnapshot.workspaceSourceId).subquery()
             )
+
             query = (
                 session.query(
                     WorkbenchWorkspaceApproved,
                     WorkbenchResearcher,
                     WorkbenchWorkspaceUser,
                     snapshot_subquery.c.snapshot_id
+                ).join(
+                    WorkbenchResearcher,
+                    WorkbenchResearcher.id == WorkbenchWorkspaceUser.researcherId
+                ).join(
+                    WorkbenchWorkspaceApproved,
+                    WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId
                 ).filter(
-                    WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
-                    WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
                     or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
-                        WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)
-                        ),
+                        WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
                     WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
                     WorkbenchWorkspaceApproved.creationTime > start_date
                 ).order_by(
@@ -539,14 +554,16 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             match_count_query = (
                 session.query(
                     distinct(WorkbenchWorkspaceApproved.workspaceSourceId)
-                ).filter(
-                    WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
-                    WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
+                ).join(WorkbenchWorkspaceUser,
+                       WorkbenchWorkspaceUser.workspaceId == WorkbenchWorkspaceApproved.id
+                       ).join(WorkbenchResearcher,
+                              WorkbenchResearcher.id == WorkbenchWorkspaceUser.researcherId
+                              ).join(WorkbenchInstitutionalAffiliations,
+                                     WorkbenchInstitutionalAffiliations.researcherId == WorkbenchResearcher.id
+                                     ).filter(
                     or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
-                        WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)
-                        ),
+                        WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
                     WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
-                    WorkbenchResearcher.id == WorkbenchInstitutionalAffiliations.researcherId,
                     WorkbenchInstitutionalAffiliations.isVerified == 1,
                     WorkbenchWorkspaceApproved.creationTime > start_date
                 )
