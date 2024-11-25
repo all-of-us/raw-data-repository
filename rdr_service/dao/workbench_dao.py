@@ -536,15 +536,17 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     WorkbenchWorkspaceUser,
                     snapshot_subquery.c.snapshot_id
                 ).join(
+                    WorkbenchWorkspaceApproved,
+                    WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id
+                ).join(
+                    WorkbenchWorkspaceUser,
+                    WorkbenchWorkspaceUser.workspaceId == WorkbenchWorkspaceApproved.id
+                ).join(
                     WorkbenchResearcher,
                     WorkbenchResearcher.id == WorkbenchWorkspaceUser.researcherId
-                ).join(
-                    WorkbenchWorkspaceApproved,
-                    WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId
                 ).filter(
                     or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
                         WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
-                    WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
                     WorkbenchWorkspaceApproved.creationTime > start_date
                 ).order_by(
                     desc(WorkbenchWorkspaceApproved.modifiedTime)
