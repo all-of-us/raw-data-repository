@@ -1,7 +1,7 @@
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
-    DeceasedStatus, RetentionStatus, RetentionType
+    DeceasedStatus, RetentionStatus, RetentionType, Race, GenderIdentity
 
 
 def map_source_to_summary(record: dict, data_element_mapping: dict) -> ParticipantSummary:
@@ -20,6 +20,7 @@ def map_source_to_summary(record: dict, data_element_mapping: dict) -> Participa
 
     for source_field, mapping in data_element_mapping.items():
         if source_field in record and record[source_field] is not None:
+            print(source_field)
             target_field = mapping["field"]
             value_mapping = mapping["value"]
 
@@ -219,4 +220,218 @@ participant_status_data_elements = {
         "field": ParticipantSummary.enrollmentStatusCoreV3_2Time,
         "value": "date_string"
     }
+}
+survey_completion_data_elements = {
+    # Basics Data
+    "gender_identity": {
+        "field": ParticipantSummary.genderIdentity,
+        "value": {
+            "genderidentity_man": GenderIdentity.GenderIdentity_Man,
+            "genderidentity_woman": GenderIdentity.GenderIdentity_Woman,
+            "genderidentity_nonbinary": GenderIdentity.GenderIdentity_NonBinary,
+            "genderidentity_transgender": GenderIdentity.GenderIdentity_Transgender,
+            "genderidentity_additionaloptions": GenderIdentity.GenderIdentity_AdditionalOptions,
+            "pmi_prefernottoanswer": GenderIdentity.PMI_PreferNotToAnswer
+        }
+    },
+    "sex": {
+        "field": ParticipantSummary.sexId,
+        "value": {
+            "sexatbirth_male": 302,
+            "sexatbirth_female": 303,
+            "sexatbirth_intersex": 301,
+            "sexatbirth_sexatbirthnoneofthese": 304,
+            "pmi_prefernottoanswer": 924
+        }
+    },
+    "sexual_orientation": {
+        "field": ParticipantSummary.sexualOrientationId,
+        "value": {
+            "pmi_prefernottoanswer": 924,
+            "sexualorientation_bisexual": 307,
+            "sexualorientation_gay": 311,
+            "sexualorientation_lesbian": 310,
+            "sexualorientation_none": 309,
+            "sexualorientation_straight": 308
+        }
+    },
+    "race": {
+        "field": ParticipantSummary.race,
+        "value": {
+            "whatraceethnicity_aian": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE,
+            "whatraceethnicity_asian": Race.ASIAN,
+            "whatraceethnicity_black": Race.BLACK_OR_AFRICAN_AMERICAN,
+            "whatraceethnicity_hispanic": Race.HISPANIC_LATINO_OR_SPANISH,
+            "whatraceethnicity_mena": Race.MIDDLE_EASTERN_OR_NORTH_AFRICAN,
+            "whatraceethnicity_nhpi": Race.NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER,
+            "whatraceethnicity_white": Race.WHITE,
+            "whatraceethnicity_raceethnicitynoneofthese": Race.OTHER_RACE,
+            "pmi_prefernottoanswer": Race.PREFER_NOT_TO_SAY
+        }
+    },
+    "education": {
+        "field": ParticipantSummary.educationId,
+        "value": {
+            "highestgrade_advanceddegree": 39,
+            "highestgrade_collegegraduate": 33,
+            "highestgrade_collegeonetothree": 36,
+            "highestgrade_fivethrougheight": 35,
+            "highestgrade_neverattended": 38,
+            "highestgrade_ninethrougheleven": 32,
+            "highestgrade_onethroughfour": 37,
+            "highestgrade_twelveorged": 34,
+            "pmi_prefernottoanswer": 924
+        }
+    },
+    "income": {
+        "field": ParticipantSummary.incomeId,
+        "value": {
+            "annualincome_100k150k": 292,
+            "annualincome_10k25k": 291,
+            "annualincome_150k200k": 297,
+            "annualincome_25k35k": 293,
+            "annualincome_35k50k": 294,
+            "annualincome_50k75k": 295,
+            "annualincome_75k100k": 290,
+            "annualincome_less10k": 296,
+            "annualincome_more200k": 298,
+            "pmi_prefernottoanswer": 924
+        }
+    },
+    "aian": {  # AIAN specifically
+        "field": ParticipantSummary.aian,
+        "value": {
+            "yes": 1
+        }
+    },
+
+    # Overall Health
+    "questionnaire_on_overall_health": {
+        "field": ParticipantSummary.questionnaireOnOverallHealth,
+        "value": {
+            "submitted_complete": QuestionnaireStatus.SUBMITTED,
+            "submitted_incomplete": QuestionnaireStatus.UNSET
+        }
+    },
+    "questionnaire_on_overall_health_authored": {
+        "field": ParticipantSummary.questionnaireOnOverallHealthAuthored,
+        "value": "date_string"
+    },
+
+    # Lifestyle
+    "questionnaire_on_lifestyle": {
+        "field": ParticipantSummary.questionnaireOnLifestyle,
+        "value": {
+            "submitted_complete": QuestionnaireStatus.SUBMITTED,
+            "submitted_incomplete": QuestionnaireStatus.UNSET
+        }
+    },
+    "questionnaire_on_lifestyle_authored": {
+        "field": ParticipantSummary.questionnaireOnLifestyleAuthored,
+        "value": "date_string"
+    },
+
+    # The Basics
+    "questionnaire_on_the_basics": {
+        "field": ParticipantSummary.questionnaireOnTheBasics,
+        "value": {
+            "submitted_complete": QuestionnaireStatus.SUBMITTED,
+            "submitted_incomplete": QuestionnaireStatus.UNSET
+        }
+    },
+    "questionnaire_on_the_basics_authored": {
+        "field": ParticipantSummary.questionnaireOnTheBasicsAuthored,
+        "value": "date_string"
+    },
+
+    # Health Care Access
+    "questionnaire_on_healthcare_access": {
+        "field": ParticipantSummary.questionnaireOnHealthcareAccess,
+        "value": {
+            "submitted_complete": QuestionnaireStatus.SUBMITTED,
+            "submitted_incomplete": QuestionnaireStatus.UNSET
+        }
+    },
+    "questionnaire_on_healthcare_access_authored": {
+        "field": ParticipantSummary.questionnaireOnHealthcareAccessAuthored,
+        "value": "date_string"
+    },
+
+    # Social Determinants of Health
+    "questionnaire_on_social_determinants_of_health": {
+        "field": ParticipantSummary.questionnaireOnSocialDeterminantsOfHealth,
+        "value": {
+            "submitted_complete": QuestionnaireStatus.SUBMITTED,
+            "submitted_incomplete": QuestionnaireStatus.UNSET
+        }
+    },
+    "questionnaire_on_social_determinants_of_health_authored": {
+        "field": ParticipantSummary.questionnaireOnSocialDeterminantsOfHealthAuthored,
+        "value": "date_string"
+    },
+
+    # Personal and Family Health History
+    "questionnaire_on_personal_and_family_health_history": {
+        "field": ParticipantSummary.questionnaireOnPersonalAndFamilyHealthHistory,
+        "value": {
+            "submitted_complete": QuestionnaireStatus.SUBMITTED,
+            "submitted_incomplete": QuestionnaireStatus.UNSET
+        }
+    },
+    "questionnaire_on_personal_and_family_health_history_authored": {
+        "field": ParticipantSummary.questionnaireOnPersonalAndFamilyHealthHistoryAuthored,
+        "value": "date_string"
+    },
+
+    # Life Functioning Survey
+    "questionnaire_on_life_functioning": {
+        "field": ParticipantSummary.questionnaireOnLifeFunctioning,
+        "value": {
+            "submitted_complete": QuestionnaireStatus.SUBMITTED,
+            "submitted_incomplete": QuestionnaireStatus.UNSET
+        }
+    },
+    "questionnaire_on_life_functioning_authored": {
+        "field": ParticipantSummary.questionnaireOnLifeFunctioningAuthored,
+        "value": "date_string"
+    },
+
+    # Emotional Health History and Well Being
+    "questionnaire_on_emotional_health_history_and_well_being": {
+        "field": ParticipantSummary.questionnaireOnEmotionalHealthHistoryAndWellBeing,
+        "value": {
+            "submitted_complete": QuestionnaireStatus.SUBMITTED,
+            "submitted_incomplete": QuestionnaireStatus.UNSET
+        }
+    },
+    "questionnaire_on_emotional_health_history_and_well_being_authored": {
+        "field": ParticipantSummary.questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored,
+        "value": "date_string"
+    },
+
+    # Behavioral Health and Personality
+    "questionnaire_on_behavioral_health_and_personality": {
+        "field": ParticipantSummary.questionnaireOnBehavioralHealthAndPersonality,
+        "value": {
+            "submitted_complete": QuestionnaireStatus.SUBMITTED,
+            "submitted_incomplete": QuestionnaireStatus.UNSET
+        }
+    },
+    "questionnaire_on_behavioral_health_and_personality_authored": {
+        "field": ParticipantSummary.questionnaireOnBehavioralHealthAndPersonalityAuthored,
+        "value": "date_string"
+    },
+    # Pediatric Environmental Health
+    # TODO Skipping pediatric for now
+    # "questionnaire_on_environmental_exposures": {
+    #     "field": ParticipantSummary.questionnaireOnEnvironmentalExposures,
+    #     "value": {
+    #         "submitted_complete": QuestionnaireStatus.SUBMITTED,
+    #         "submitted_incomplete": QuestionnaireStatus.UNSET
+    #     }
+    # },
+    # "questionnaire_on_environmental_exposures_authored": {
+    #     "field": ParticipantSummary.questionnaireOnEnvironmentalExposuresAuthored,
+    #     "value": "date_string"
+    # }
 }

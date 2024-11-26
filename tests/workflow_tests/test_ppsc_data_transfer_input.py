@@ -8,16 +8,16 @@ from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.ppsc_partner_data_transfer import PPSCEHR
 from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
-    DeceasedStatus, RetentionStatus, RetentionType
+    DeceasedStatus, RetentionStatus, RetentionType, GenderIdentity, Race
 from rdr_service.workflow_management.ppsc.ppsc_to_legacy_de_mappings import map_source_to_summary, \
     consent_data_elements, profile_updates_data_elements, withdrawal_data_elements, deactivation_data_elements, \
-    participant_status_data_elements
+    participant_status_data_elements, survey_completion_data_elements
 from tests.service_tests.test_genomic_datagen import GenomicDataGenMixin
 from tests.workflow_tests.test_data.ppsc_data_feed_test_data import core_data_expected_sql, biospecimen_expected_sql, \
     ehr_expected_sql, health_data_sharing_expected_sql, ehr_expected_streaming_sql, core_data_expected_streaming_sql, \
     biospecimen_expected_streaming_sql, health_data_expected_streaming_sql, consent_activity_expected_sql, \
     profile_updates_activity_expected_sql, withdrawal_activity_expected_sql, deactivation_activity_expected_sql, \
-    participant_status_activity_expected_sql
+    participant_status_activity_expected_sql, survey_completion_activity_expected_sql
 from rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed import InputFeed, Intake2SummaryFeed
 
 
@@ -192,6 +192,14 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.clear_table_after_test("rdr.participant")
         self.clear_table_after_test("ppsc.participant")
 
+    def create_required_codes(self):
+        required_codes = [302, 303, 301, 304, 924307, 311, 310, 309, 308, 39, 33, 36, 35,
+                          38, 32, 37, 34, 292, 291, 297, 293, 294, 295, 290, 296, 298]
+        for code in required_codes:
+            self.data_generator.create_database_code(
+                codeId=code
+            )
+
     def test_map_source_to_summary(self):
         record = {
             "participant_id": "348568008",
@@ -204,7 +212,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         participant_summary = map_source_to_summary(record, consent_data_elements)
 
         self.assertEqual(participant_summary.participantId, "348568008")
-        self.assertEqual(participant_summary.consentForStudyEnrollment,QuestionnaireStatus.SUBMITTED)
+        self.assertEqual(participant_summary.consentForStudyEnrollment, QuestionnaireStatus.SUBMITTED)
         self.assertEqual(participant_summary.consentForStudyEnrollmentAuthored,
                          "2024-11-21T18:12:00")
         self.assertEqual(participant_summary.consentForElectronicHealthRecords,
@@ -212,8 +220,9 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(participant_summary.consentForElectronicHealthRecordsAuthored, "2024-11-20T15:30:00")
 
     @mock.patch("google.cloud.bigquery.Client")
-    @mock.patch("rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
-    def test_consent_activity(self,  mock_make_datafeed_job, mock_bq_client):
+    @mock.patch(
+        "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
+    def test_consent_activity(self, mock_make_datafeed_job, mock_bq_client):
         # Create requisite participant data
         ppsc_participant = self.ppsc_data_gen.create_database_participant(id=110110110)
         rdr_participant = self.data_generator.create_database_participant(participantId=ppsc_participant.id)
@@ -241,10 +250,10 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         # Test Feed
         feed = Intake2SummaryFeed()
         feed.get_datafeed_definition = mock.Mock(return_value={
-                "source_data": consent_activity_expected_sql,
-                "destination_model": ParticipantSummary,
-                "de_mapping": consent_data_elements
-            })
+            "source_data": consent_activity_expected_sql,
+            "destination_model": ParticipantSummary,
+            "de_mapping": consent_data_elements
+        })
 
         feed.run_datafeed("Consent")
 
@@ -258,9 +267,9 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(actual_rows[0].consentForElectronicHealthRecordsAuthored,
                          datetime.datetime(2024, 11, 20, 15, 30))
 
-
     @mock.patch("google.cloud.bigquery.Client")
-    @mock.patch("rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
+    @mock.patch(
+        "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
     def test_profile_updates_activity(self, mock_make_datafeed_job, mock_bq_client):
         # Create requisite participant data
         ppsc_participant = self.ppsc_data_gen.create_database_participant(id=110110111)
@@ -278,7 +287,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
             "piiname_middle": "A.",
             "piiname_last": "Doe",
             "streetaddress_piizip": "12345",
-            # "streetaddress_piistate": "PPIState_CA", -- skipping state implementation for now
+            # TODO "streetaddress_piistate": "PPIState_CA", -- skipping state implementation for now
             "streetaddress_piicity": "San Francisco",
             "piiaddress_streetaddress": "123 Main St",
             "piiaddress_streetaddress2": "Apt 4B",
@@ -286,13 +295,13 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
             "piicontactinformation_email": "johndoe@example.com",
             "language_preference": "English",
             "piibirthinformation_birthdate": "1985-06-15"
-        },{
+        }, {
             "participant_id": ppsc_participant.id,
             "piiname_first": None,
             "piiname_middle": None,
             "piiname_last": None,
             "streetaddress_piizip": None,
-            # "streetaddress_piistate": "PPIState_CA", -- skipping state implementation for now
+            # TODO "streetaddress_piistate": "PPIState_CA", -- skipping state implementation for now
             "streetaddress_piicity": None,
             "piiaddress_streetaddress": None,
             "piiaddress_streetaddress2": None,
@@ -327,7 +336,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(actual_rows[0].middleName, "A.")
         self.assertEqual(actual_rows[0].lastName, "Doe")
         self.assertEqual(actual_rows[0].zipCode, "12345")
-        # self.assertEqual(actual_rows[0].stateId, "PIIState_CA") -- skipping state implementation for now
+        # TODO self.assertEqual(actual_rows[0].stateId, "PIIState_CA") -- skipping state implementation for now
         self.assertEqual(actual_rows[0].city, "San Francisco")
         self.assertEqual(actual_rows[0].streetAddress, "123 Main St")
         self.assertEqual(actual_rows[0].streetAddress2, "Apt 4B")
@@ -427,7 +436,8 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(actual_rows[0].suspensionTime, datetime.datetime(2024, 11, 22, 12, 45))
 
     @mock.patch("google.cloud.bigquery.Client")
-    @mock.patch("rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
+    @mock.patch(
+        "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
     def test_participant_status_activity(self, mock_make_datafeed_job, mock_bq_client):
         # Create requisite participant data
         ppsc_participant = self.ppsc_data_gen.create_database_participant(id=110110114)
@@ -475,6 +485,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         actual_rows = ps_dao.get_all()
 
         # Assertions
+        # TODO Skipping test for "Test Participant" for now
         self.assertEqual(actual_rows[0].participantId, activity_rows[0]['participant_id'])
         self.assertEqual(actual_rows[0].deceasedStatus, DeceasedStatus.APPROVED)
         self.assertEqual(actual_rows[0].deceasedAuthored, datetime.datetime(2024, 11, 22, 14, 30))
@@ -482,8 +493,132 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(actual_rows[0].retentionEligibleTime, datetime.datetime(2024, 11, 21, 12, 0))
         self.assertEqual(actual_rows[0].retentionType, RetentionType.ACTIVE)
         self.assertEqual(actual_rows[0].enrollmentStatusParticipantV3_2Time, datetime.datetime(2024, 11, 20, 8, 0))
-        self.assertEqual(actual_rows[0].enrollmentStatusParticipantPlusEhrV3_2Time, datetime.datetime(2024, 11, 20, 9, 0))
-        self.assertEqual(actual_rows[0].enrollmentStatusEnrolledParticipantV3_2Time, datetime.datetime(2024, 11, 20, 10, 0))
+        self.assertEqual(actual_rows[0].enrollmentStatusParticipantPlusEhrV3_2Time,
+                         datetime.datetime(2024, 11, 20, 9, 0))
+        self.assertEqual(actual_rows[0].enrollmentStatusEnrolledParticipantV3_2Time,
+                         datetime.datetime(2024, 11, 20, 10, 0))
         self.assertEqual(actual_rows[0].enrollmentStatusPmbEligibleV3_2Time, datetime.datetime(2024, 11, 20, 11, 0))
         self.assertEqual(actual_rows[0].enrollmentStatusCoreMinusPmV3_2Time, datetime.datetime(2024, 11, 20, 12, 0))
         self.assertEqual(actual_rows[0].enrollmentStatusCoreV3_2Time, datetime.datetime(2024, 11, 20, 13, 0))
+
+    @mock.patch("google.cloud.bigquery.Client")
+    @mock.patch(
+        "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
+    def test_survey_completion_activity(self, mock_make_datafeed_job, mock_bq_client):
+        self.create_required_codes()
+        # Create requisite participant data
+        ppsc_participant = self.ppsc_data_gen.create_database_participant(id=110110116)
+        rdr_participant = self.data_generator.create_database_participant(participantId=ppsc_participant.id)
+        self.data_generator.create_database_participant_summary(participant=rdr_participant)
+
+        # Mock the BQ client to prevent API calls
+        mock_bq_instance = mock_bq_client.return_value
+        mock_bq_instance.query.return_value.result.return_value = []
+
+        # Mock intake data
+        activity_rows = [{
+            "participant_id": ppsc_participant.id,
+            "gender_identity": "GenderIdentity_Man",
+            "sex": "SexAtBirth_Male",
+            "sexual_orientation": "SexualOrientation_Straight",
+            "race": "WhatRaceEthnicity_Asian",
+            "education": "HighestGrade_CollegeGraduate",
+            "income": "AnnualIncome_50k75k",
+            "aian": "yes",
+            "questionnaire_on_overall_health": "submitted_complete",
+            "questionnaire_on_overall_health_authored": "2024-11-22T14:30:00",
+            "questionnaire_on_lifestyle": "submitted_incomplete",
+            "questionnaire_on_lifestyle_authored": "2024-11-21T10:15:00",
+            "questionnaire_on_the_basics": "submitted_complete",
+            "questionnaire_on_the_basics_authored": "2024-11-20T08:00:00",
+            "questionnaire_on_healthcare_access": "submitted_incomplete",
+            "questionnaire_on_healthcare_access_authored": "2024-11-20T09:00:00",
+            "questionnaire_on_social_determinants_of_health": "submitted_complete",
+            "questionnaire_on_social_determinants_of_health_authored": "2024-11-20T11:00:00",
+            "questionnaire_on_personal_and_family_health_history": "submitted_incomplete",
+            "questionnaire_on_personal_and_family_health_history_authored": "2024-11-20T12:00:00",
+            "questionnaire_on_life_functioning": "submitted_complete",
+            "questionnaire_on_life_functioning_authored": "2024-11-20T13:00:00",
+            "questionnaire_on_emotional_health_history_and_well_being": "submitted_complete",
+            "questionnaire_on_emotional_health_history_and_well_being_authored": "2024-11-20T14:00:00",
+            "questionnaire_on_behavioral_health_and_personality": "submitted_incomplete",
+            "questionnaire_on_behavioral_health_and_personality_authored": "2024-11-20T15:00:00",
+            # TODO Skipping Pediatric for now
+            # "questionnaire_on_environmental_exposures": "submitted_complete",
+            # "questionnaire_on_environmental_exposures_authored": "2024-11-20T16:00:00"
+        }]
+
+        # Mock make_datafeed_job to return the mocked intake data
+        mock_make_datafeed_job.side_effect = lambda query: (
+            iter(activity_rows) if query.strip() == survey_completion_activity_expected_sql.strip() else None
+        )
+
+        # Test Feed
+        feed = Intake2SummaryFeed()
+        feed.get_datafeed_definition = mock.Mock(return_value={
+            "source_data": survey_completion_activity_expected_sql,
+            "destination_model": ParticipantSummary,
+            "de_mapping": survey_completion_data_elements
+        })
+
+        feed.run_datafeed("Survey Completion")
+
+        # Verify the database records
+        ps_dao = ParticipantSummaryDao()
+        actual_rows = ps_dao.get_all()
+
+        # Assertions for Basics Data
+        self.assertEqual(actual_rows[0].participantId, activity_rows[0]['participant_id'])
+        self.assertEqual(actual_rows[0].genderIdentity, GenderIdentity.GenderIdentity_Man)
+        self.assertEqual(actual_rows[0].sexId, 302)
+        self.assertEqual(actual_rows[0].sexualOrientationId, 308)
+        self.assertEqual(actual_rows[0].race, Race.ASIAN)
+        self.assertEqual(actual_rows[0].educationId, 33)
+        self.assertEqual(actual_rows[0].incomeId, 295)
+        self.assertEqual(actual_rows[0].aian, 1)
+
+        # Assertions for Overall Health
+        self.assertEqual(actual_rows[0].questionnaireOnOverallHealth, QuestionnaireStatus.SUBMITTED)
+        self.assertEqual(actual_rows[0].questionnaireOnOverallHealthAuthored, datetime.datetime(2024, 11, 22, 14, 30))
+
+        # Assertions for Lifestyle
+        self.assertIsNone(actual_rows[0].questionnaireOnLifestyle)
+        self.assertEqual(actual_rows[0].questionnaireOnLifestyleAuthored, datetime.datetime(2024, 11, 21, 10, 15))
+
+        # Assertions for The Basics
+        self.assertEqual(actual_rows[0].questionnaireOnTheBasics, QuestionnaireStatus.SUBMITTED)
+        self.assertEqual(actual_rows[0].questionnaireOnTheBasicsAuthored, datetime.datetime(2024, 11, 20, 8, 0))
+
+        # Assertions for Health Care Access
+        self.assertIsNone(actual_rows[0].questionnaireOnHealthcareAccess)
+        self.assertEqual(actual_rows[0].questionnaireOnHealthcareAccessAuthored, datetime.datetime(2024, 11, 20, 9, 0))
+
+        # Assertions for Social Determinants
+        self.assertEqual(actual_rows[0].questionnaireOnSocialDeterminantsOfHealth, QuestionnaireStatus.SUBMITTED)
+        self.assertEqual(actual_rows[0].questionnaireOnSocialDeterminantsOfHealthAuthored,
+                         datetime.datetime(2024, 11, 20, 11, 0))
+
+        # Assertions for Personal and Family Health History
+        self.assertIsNone(actual_rows[0].questionnaireOnPersonalAndFamilyHealthHistory)
+        self.assertEqual(actual_rows[0].questionnaireOnPersonalAndFamilyHealthHistoryAuthored,
+                         datetime.datetime(2024, 11, 20, 12, 0))
+
+        # Assertions for Life Functioning
+        self.assertEqual(actual_rows[0].questionnaireOnLifeFunctioning, QuestionnaireStatus.SUBMITTED)
+        self.assertEqual(actual_rows[0].questionnaireOnLifeFunctioningAuthored, datetime.datetime(2024, 11, 20, 13, 0))
+
+        # Assertions for Emotional Health
+        self.assertEqual(actual_rows[0].questionnaireOnEmotionalHealthHistoryAndWellBeing,
+                         QuestionnaireStatus.SUBMITTED)
+        self.assertEqual(actual_rows[0].questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored,
+                         datetime.datetime(2024, 11, 20, 14, 0))
+
+        # Assertions for Behavioral Health
+        self.assertIsNone(actual_rows[0].questionnaireOnBehavioralHealthAndPersonality)
+        self.assertEqual(actual_rows[0].questionnaireOnBehavioralHealthAndPersonalityAuthored,
+                         datetime.datetime(2024, 11, 20, 15, 0))
+
+        # Assertions for Pediatric Environmental Health
+        # self.assertEqual(actual_rows[0].questionnaireOnEnvironmentalExposures, QuestionnaireStatus.SUBMITTED)
+        # self.assertEqual(actual_rows[0].questionnaireOnEnvironmentalExposuresAuthored,
+        #                  datetime.datetime(2024, 11, 20, 16, 0))
