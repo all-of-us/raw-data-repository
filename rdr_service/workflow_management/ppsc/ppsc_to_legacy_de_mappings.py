@@ -1,5 +1,7 @@
+from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus, WithdrawalReason
+from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
+    DeceasedStatus, RetentionStatus, RetentionType
 
 
 def map_source_to_summary(record: dict, data_element_mapping: dict) -> ParticipantSummary:
@@ -117,7 +119,7 @@ withdrawal_data_elements = {
         "field": ParticipantSummary.withdrawalStatus,
         "value": {
             "withdrawn": WithdrawalStatus.NO_USE,
-            "now_withdrawn": WithdrawalStatus.NOT_WITHDRAWN
+            "not_withdrawn": WithdrawalStatus.NOT_WITHDRAWN
         }
     },
     "withdrawal_status_authored_time": {
@@ -132,5 +134,89 @@ withdrawal_data_elements = {
             "hpo/tps requested": WithdrawalReason.FRAUDULENT,
             "other": WithdrawalReason.FRAUDULENT
         }
+    }
+}
+
+deactivation_data_elements = {
+    "deactivation_status": {
+        "field": ParticipantSummary.suspensionStatus,
+        "value": {
+            "deactivated": SuspensionStatus.NO_CONTACT,
+            "not_deactivated": SuspensionStatus.NOT_SUSPENDED
+        }
+    },
+    "deactivation_status_time": {
+        "field": ParticipantSummary.suspensionTime,
+        "value": "date_string"
+    }
+}
+
+participant_status_data_elements = {
+    # Test Account
+    "test_account": {
+        "field": Participant.isTestParticipant,
+        "value": "string"
+    },
+    # Death
+    "deceased_status": {
+        "field": ParticipantSummary.deceasedStatus,
+        "value": {
+            "deceased": DeceasedStatus.APPROVED,
+            "accepted": DeceasedStatus.APPROVED,
+            "yes": DeceasedStatus.APPROVED,
+            "pending": DeceasedStatus.PENDING,
+        }
+    },
+    "deceased_authored": {
+        "field": ParticipantSummary.deceasedAuthored,
+        "value": "date_string"
+    },
+
+    # Retention Status
+    "retention_eligible_status": {
+        "field": ParticipantSummary.retentionEligibleStatus,
+        "value": {
+            "eligible": RetentionStatus.ELIGIBLE,
+            "not_eligible": RetentionStatus.NOT_ELIGIBLE
+        }
+    },
+    "retention_eligible_status_authored": {
+        "field": ParticipantSummary.retentionEligibleTime,
+        "value": "date_string"
+    },
+    "retention_type": {
+        "field": ParticipantSummary.retentionType,
+        "value": {
+            "unset": RetentionType.UNSET,
+            "active": RetentionType.ACTIVE,
+            "passive": RetentionType.PASSIVE,
+            "active and passive": RetentionType.ACTIVE_AND_PASSIVE
+        }
+    },
+
+    # Enrollment Status
+    "participant_time": {
+        "field": ParticipantSummary.enrollmentStatusParticipantV3_2Time,
+        "value": "date_string"
+    },
+    "participant_ehr_consent_time": {
+        "field": ParticipantSummary.enrollmentStatusParticipantPlusEhrV3_2Time,
+        "value": "date_string"
+    },
+    "enrolled_time": {
+        "field": ParticipantSummary.enrollmentStatusEnrolledParticipantV3_2Time,
+        "value": "date_string"
+    },
+    "pmb_eligible_time": {
+        "field": ParticipantSummary.enrollmentStatusPmbEligibleV3_2Time,
+        "value": "date_string"
+    },
+    "core_minus_pm_time": {
+        "field": ParticipantSummary.enrollmentStatusCoreMinusPmV3_2Time,
+        "value": "date_string"
+    },
+    "core_participant_time": {
+        "field": ParticipantSummary.enrollmentStatusCoreV3_2Time,
+        "value": "date_string"
     }
 }

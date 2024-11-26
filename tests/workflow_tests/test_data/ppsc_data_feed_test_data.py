@@ -331,7 +331,6 @@ GROUP BY participant_id
     """
 
 withdrawal_activity_expected_sql = f"""
-
 WITH ranked_events AS (
   SELECT
     se.participant_id,
@@ -364,6 +363,88 @@ SELECT
       AND data_element_name IN ("withdrawal_reason")
       AND rank = 1
     THEN data_element_value END) AS withdrawal_reason
+FROM ranked_events
+GROUP BY participant_id
+    """
+
+deactivation_activity_expected_sql = f"""
+WITH ranked_events AS (
+  SELECT
+    se.participant_id,
+    se.event_type_name,
+    se.event_authored_time,
+    se.data_element_name,
+    se.data_element_value,
+    ROW_NUMBER() OVER (
+      PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
+      ORDER BY se.event_authored_time DESC
+    ) AS rank
+  FROM `test.ppsc_staging_data.ppsc_deactivation_event` se
+  WHERE se.event_authored_time > (
+    SELECT MAX(last_modified)
+    FROM `test.ppsc_staging_data.rdr_participant_summary`
+  )
+  and data_element_name IN ("activity_status", '​activity_status')
+)
+SELECT
+  participant_id,
+  MAX(CASE WHEN event_type_name = 'Deactivation'
+      AND data_element_name IN ("activity_status", '​activity_status')
+      AND rank = 1
+    THEN data_element_value END) AS deactivation_status,
+  MAX(CASE WHEN event_type_name = 'Deactivation'
+      AND data_element_name IN ("activity_status", '​activity_status')
+      AND rank = 1
+    THEN event_authored_time END) AS deactivation_status_time
+FROM ranked_events
+GROUP BY participant_id
+"""
+
+participant_status_activity_expected_sql = f"""
+WITH ranked_events AS (
+  SELECT
+    se.participant_id,
+    se.event_type_name,
+    se.event_authored_time,
+    se.data_element_name,
+    se.data_element_value,
+    ROW_NUMBER() OVER (
+      PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
+      ORDER BY se.event_authored_time DESC
+    ) AS rank
+  FROM `test.ppsc_staging_data.ppsc_participant_status_event` se
+  WHERE TRUE
+  AND se.event_authored_time > (
+    SELECT MAX(last_modified)
+    FROM `test.ppsc_staging_data.rdr_participant_summary`
+  )
+  and se.event_type_name IN ('Test Account', 'Death', 'Retention Status', 'Enrollment Status')
+  and data_element_name IN ("activity_status", '​activity_status', "retention_type", "participant", "participant", "participant_ehr_consent", "enrolled", "pmb_eligible", "core_minus_pm", "core_participant")
+)
+SELECT
+  participant_id,
+
+  -- Test Account
+  MAX(CASE WHEN event_type_name = 'Test Account' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS test_account,
+  MAX(CASE WHEN event_type_name = 'Test Account' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS test_account_authored,
+
+  -- Death
+  MAX(CASE WHEN event_type_name = 'Death' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS deceased_status,
+  MAX(CASE WHEN event_type_name = 'Death' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS deceased_authored,
+
+  -- Retention Status
+  MAX(CASE WHEN event_type_name = 'Retention Status' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS retention_eligible_status,
+  MAX(CASE WHEN event_type_name = 'Retention Status' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS retention_eligible_status_authored,
+  MAX(CASE WHEN event_type_name = 'Retention Status' AND data_element_name = "retention_type" THEN data_element_value END) AS retention_type,
+
+  -- Enrollment Status
+  MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'participant' AND data_element_value = "yes" THEN event_authored_time END) AS participant_time,
+  MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'participant_ehr_consent' AND data_element_value = "yes" THEN event_authored_time END) AS participant_ehr_consent_time,
+  MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'enrolled' AND data_element_value = "yes" THEN event_authored_time END) AS enrolledenrolled_time,
+  MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'pmb_eligible' AND data_element_value = "yes" THEN event_authored_time END) AS pmb_eligible_time,
+  MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'core_minus_pm' AND data_element_value = "yes" THEN event_authored_time END) AS core_minus_pm_time,
+  MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'core_participant' AND data_element_value = "yes" THEN event_authored_time END) AS core_participant_time
+
 FROM ranked_events
 GROUP BY participant_id
     """

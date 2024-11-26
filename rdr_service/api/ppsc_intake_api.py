@@ -123,7 +123,7 @@ class PPSCIntakeAPI(BaseApi):
                 'participant_id': self.dao.extract_prefix_from_val(req_data['participantId']),
                 'event_type_name': req_data['eventType'],
                 'event_authored_time': self.activity_date_time_value,
-                'data_element_name': data_element['dataElementName']
+                'data_element_name': data_element['dataElementName'].strip('​')
             }
 
             # PPSC sends strings or arrays (multi-select)
