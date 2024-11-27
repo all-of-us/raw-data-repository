@@ -6,6 +6,7 @@ from werkzeug.exceptions import BadRequest
 
 from rdr_service import config
 from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferBaseDao
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -18,7 +19,8 @@ from rdr_service.workflow_management.ppsc.ppsc_intake_to_ps_queries import get_c
     get_attribution_activity_to_stream
 from rdr_service.workflow_management.ppsc.ppsc_to_legacy_de_mappings import map_source_to_summary, \
     consent_data_elements, withdrawal_data_elements, profile_updates_data_elements, deactivation_data_elements, \
-    participant_status_data_elements, survey_completion_data_elements, attribution_data_elements
+    participant_status_data_elements, survey_completion_data_elements, attribution_data_elements, \
+    map_source_to_participant
 
 datafeeds = [
     "core data",
@@ -186,17 +188,31 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
                 mapping_args.update({"org_cache": org_cache})
 
             # Insert into Cloud SQL Table
-            rows = [dict(row) for row in source_data]
+            summary_dao = ParticipantSummaryDao()
+            participant_dao = ParticipantDao()
 
-            dao = ParticipantSummaryDao()
-            with dao.session() as session:
-                for record in rows:
-                    summary_record = map_source_to_summary(record, job_def['de_mapping'], **mapping_args)
+            with summary_dao.session() as summary_session, participant_dao.session() as participant_session:
+                for record in source_data:
+                    # Map ParticipantSummary fields
+                    summary_record = map_source_to_summary(
+                        record=record,
+                        data_element_mapping=job_def['de_mapping'],
+                        **mapping_args
+                    )
+                    summary_session.merge(summary_record)
 
-                    session.merge(summary_record)
+                    # Map Participant fields (only if test_account is present)
+                    if record.get("test_account") is not None:
+                        participant_record = map_source_to_participant(
+                            record=record,
+                            data_element_mapping={"test_account": participant_status_data_elements["test_account"]}
+                        )
+                        participant_session.merge(participant_record)
+
                 # Commit the updates
-                session.commit()
-                logging.info(f"{len(source_data)} {datafeed} ParticipantSummary records updated.")
+                summary_session.commit()
+                participant_session.commit()
+                logging.info(f"{len(source_data)} {datafeed} records updated.")
 
         else:
             logging.warning(f"No Staged Rows for {datafeed} Data Feed")

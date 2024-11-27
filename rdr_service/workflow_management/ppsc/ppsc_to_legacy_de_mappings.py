@@ -195,6 +195,38 @@ def map_source_to_summary(record: dict, data_element_mapping: dict, **kwargs) ->
 
     return participant_summary
 
+def map_source_to_participant(record: dict, data_element_mapping: dict) -> Participant:
+    """
+    Maps source data to a Participant object using the data_element_mapping definition.
+
+    Args:
+        record: The source data row containing participant_id and data elements.
+        data_element_mapping: Mapping of source fields to Participant fields.
+
+    Returns:
+        Participant: The mapped Participant object.
+    """
+    participant_id = record["participant_id"]
+    participant = Participant(participantId=participant_id)
+
+    for source_field, mapping in data_element_mapping.items():
+        if source_field in record and record[source_field] is not None:
+            target_field = mapping["field"]
+            value_mapping = mapping["value"]
+
+            if isinstance(value_mapping, dict):  # Handle value transformation
+                transformed_value = value_mapping.get(record[source_field].lower())
+            elif value_mapping == "string":  # Handle strings
+                transformed_value = record[source_field]
+            else:
+                transformed_value = record[source_field]
+
+            # Dynamically set the field on the Participant object
+            setattr(participant, target_field.key, transformed_value)
+
+    return participant
+
+
 consent_data_elements = {
     "primary_consent": {
         "field": ParticipantSummary.consentForStudyEnrollment,
@@ -312,7 +344,10 @@ participant_status_data_elements = {
     # Test Account
     "test_account": {
         "field": Participant.isTestParticipant,
-        "value": "string"
+        "value": {
+            "test": True,
+            "not_test": False
+        }
     },
     # Death
     "deceased_status": {

@@ -2,6 +2,7 @@ import datetime
 from unittest import mock
 
 from rdr_service import config
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferBaseDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
@@ -458,7 +459,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         # Mock intake data
         activity_rows = [{
             "participant_id": ppsc_participant.id,
-            "test_account": "yes",
+            "test_account": "test",
             "deceased_status": "deceased",
             "deceased_authored": "2024-11-22T14:30:00",
             "retention_eligible_status": "eligible",
@@ -491,9 +492,12 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         ps_dao = ParticipantSummaryDao()
         actual_rows = ps_dao.get_all()
 
+        participant_dao = ParticipantDao()
+        test_participant = participant_dao.get(activity_rows[0]['participant_id'])
+
         # Assertions
-        # TODO Skipping test for "Test Participant" for now
         self.assertEqual(actual_rows[0].participantId, activity_rows[0]['participant_id'])
+        self.assertTrue(test_participant.isTestParticipant)
         self.assertEqual(actual_rows[0].deceasedStatus, DeceasedStatus.APPROVED)
         self.assertEqual(actual_rows[0].deceasedAuthored, datetime.datetime(2024, 11, 22, 14, 30))
         self.assertEqual(actual_rows[0].retentionEligibleStatus, RetentionStatus.ELIGIBLE)
