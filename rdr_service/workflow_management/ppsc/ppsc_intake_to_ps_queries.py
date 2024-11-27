@@ -300,3 +300,34 @@ SELECT
 FROM ranked_events
 GROUP BY participant_id
     """
+
+def get_attribution_activity_to_stream(project: str, source_dataset: str) -> str:
+    return f"""
+WITH ranked_events AS (
+  SELECT
+    se.participant_id,
+    se.event_type_name,
+    se.event_authored_time,
+    se.data_element_name,
+    se.data_element_value,
+    ROW_NUMBER() OVER (
+      PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
+      ORDER BY se.event_authored_time DESC
+    ) AS rank
+  FROM `{project}.{source_dataset}.ppsc_attribution_event` se
+  WHERE TRUE
+  AND se.event_authored_time > (
+    SELECT MAX(last_modified)
+    FROM `{project}.{source_dataset}.rdr_participant_summary`
+  )
+  and se.event_type_name IN ('Org Attribution')
+  and data_element_name IN ("activity_status", '​activity_status')
+)
+SELECT
+  participant_id,
+  MAX(CASE WHEN event_type_name = 'Org Attribution'
+    AND data_element_name IN ("activity_status", '​activity_status') AND rank = 1
+           THEN data_element_value END) AS organization
+FROM ranked_events
+GROUP BY participant_id
+    """

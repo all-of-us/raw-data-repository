@@ -11,13 +11,13 @@ from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus,
     DeceasedStatus, RetentionStatus, RetentionType, GenderIdentity, Race
 from rdr_service.workflow_management.ppsc.ppsc_to_legacy_de_mappings import map_source_to_summary, \
     consent_data_elements, profile_updates_data_elements, withdrawal_data_elements, deactivation_data_elements, \
-    participant_status_data_elements, survey_completion_data_elements
+    participant_status_data_elements, survey_completion_data_elements, attribution_data_elements
 from tests.service_tests.test_genomic_datagen import GenomicDataGenMixin
 from tests.workflow_tests.test_data.ppsc_data_feed_test_data import core_data_expected_sql, biospecimen_expected_sql, \
     ehr_expected_sql, health_data_sharing_expected_sql, ehr_expected_streaming_sql, core_data_expected_streaming_sql, \
     biospecimen_expected_streaming_sql, health_data_expected_streaming_sql, consent_activity_expected_sql, \
     profile_updates_activity_expected_sql, withdrawal_activity_expected_sql, deactivation_activity_expected_sql, \
-    participant_status_activity_expected_sql, survey_completion_activity_expected_sql
+    participant_status_activity_expected_sql, survey_completion_activity_expected_sql, attribution_activity_expected_sql
 from rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed import InputFeed, Intake2SummaryFeed
 
 
@@ -27,6 +27,9 @@ class DataTransferInputTest(GenomicDataGenMixin):
         self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, ["participant_ehr"])
         self.temporarily_override_config_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, ["org_ehr"])
         super().setUp()
+
+    def tearDown(self):
+        self.clear_table_after_test("ppsc.participant")
 
     @mock.patch("google.cloud.bigquery.Client")
     def test_core_data_datafeed(self, mock_bq):
@@ -192,9 +195,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.clear_table_after_test("rdr.participant")
         self.clear_table_after_test("ppsc.participant")
 
-    def create_required_codes(self):
-        required_codes = [302, 303, 301, 304, 924307, 311, 310, 309, 308, 39, 33, 36, 35,
-                          38, 32, 37, 34, 292, 291, 297, 293, 294, 295, 290, 296, 298]
+    def create_required_codes(self, required_codes):
         for code in required_codes:
             self.data_generator.create_database_code(
                 codeId=code
@@ -271,6 +272,12 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
     @mock.patch(
         "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
     def test_profile_updates_activity(self, mock_make_datafeed_job, mock_bq_client):
+        # States
+        required_codes = [631,632,633,634,635,636,637,638,639,640,641,642,643,644,645,646,647,648,649,650,651,652,653,
+                          654,655,656,657,658,659,660,661,662,663,664,665,666,667,668,669,670,671,672,673,674,675,676,
+                          677,678,679,680,681,682,683,684,685,686,687,688,689]
+        self.create_required_codes(required_codes)
+
         # Create requisite participant data
         ppsc_participant = self.ppsc_data_gen.create_database_participant(id=110110111)
         rdr_participant = self.data_generator.create_database_participant(participantId=ppsc_participant.id)
@@ -287,7 +294,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
             "piiname_middle": "A.",
             "piiname_last": "Doe",
             "streetaddress_piizip": "12345",
-            # TODO "streetaddress_piistate": "PPIState_CA", -- skipping state implementation for now
+            "streetaddress_piistate": "PIIState_CA",
             "streetaddress_piicity": "San Francisco",
             "piiaddress_streetaddress": "123 Main St",
             "piiaddress_streetaddress2": "Apt 4B",
@@ -301,7 +308,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
             "piiname_middle": None,
             "piiname_last": None,
             "streetaddress_piizip": None,
-            # TODO "streetaddress_piistate": "PPIState_CA", -- skipping state implementation for now
+            "streetaddress_piistate": "PIIState_CA",
             "streetaddress_piicity": None,
             "piiaddress_streetaddress": None,
             "piiaddress_streetaddress2": None,
@@ -336,7 +343,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(actual_rows[0].middleName, "A.")
         self.assertEqual(actual_rows[0].lastName, "Doe")
         self.assertEqual(actual_rows[0].zipCode, "12345")
-        # TODO self.assertEqual(actual_rows[0].stateId, "PIIState_CA") -- skipping state implementation for now
+        self.assertEqual(actual_rows[0].stateId, 672)
         self.assertEqual(actual_rows[0].city, "San Francisco")
         self.assertEqual(actual_rows[0].streetAddress, "123 Main St")
         self.assertEqual(actual_rows[0].streetAddress2, "Apt 4B")
@@ -505,7 +512,9 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
     @mock.patch(
         "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
     def test_survey_completion_activity(self, mock_make_datafeed_job, mock_bq_client):
-        self.create_required_codes()
+        required_codes = [302, 303, 301, 304, 924307, 311, 310, 309, 308, 39, 33, 36, 35,
+                          38, 32, 37, 34, 292, 291, 297, 293, 294, 295, 290, 296, 298]
+        self.create_required_codes(required_codes)
         # Create requisite participant data
         ppsc_participant = self.ppsc_data_gen.create_database_participant(id=110110116)
         rdr_participant = self.data_generator.create_database_participant(participantId=ppsc_participant.id)
@@ -622,3 +631,45 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         # self.assertEqual(actual_rows[0].questionnaireOnEnvironmentalExposures, QuestionnaireStatus.SUBMITTED)
         # self.assertEqual(actual_rows[0].questionnaireOnEnvironmentalExposuresAuthored,
         #                  datetime.datetime(2024, 11, 20, 16, 0))
+
+    @mock.patch("google.cloud.bigquery.Client")
+    @mock.patch(
+        "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
+    def test_attribution_activity(self, mock_make_datafeed_job, mock_bq_client):
+        # Create requisite participant data
+        ppsc_participant = self.ppsc_data_gen.create_database_participant(id=110110120)
+        rdr_participant = self.data_generator.create_database_participant(participantId=ppsc_participant.id)
+        self.data_generator.create_database_participant_summary(participant=rdr_participant)
+
+        # Mock the BQ client to prevent API calls
+        mock_bq_instance = mock_bq_client.return_value
+        mock_bq_instance.query.return_value.result.return_value = []
+
+        # Mock intake data
+        activity_rows = [{
+            "participant_id": ppsc_participant.id,
+            "organization": "PITT_BANNER_HEALTH"
+        }]
+
+        # Mock make_datafeed_job to return the mocked intake data
+        mock_make_datafeed_job.side_effect = lambda query: (
+            iter(activity_rows) if query.strip() == attribution_activity_expected_sql.strip() else None
+        )
+
+        # Test Feed
+        feed = Intake2SummaryFeed()
+        feed.get_datafeed_definition = mock.Mock(return_value={
+            "source_data": attribution_activity_expected_sql,
+            "destination_model": ParticipantSummary,
+            "de_mapping": attribution_data_elements
+        })
+
+        feed.run_datafeed("Attribution")
+
+        # Verify the database records
+        ps_dao = ParticipantSummaryDao()
+        actual_rows = ps_dao.get_all()
+
+        # Assertions for Attribution Data
+        self.assertEqual(actual_rows[0].participantId, activity_rows[0]['participant_id'])
+        self.assertEqual(actual_rows[0].organizationId, 3)

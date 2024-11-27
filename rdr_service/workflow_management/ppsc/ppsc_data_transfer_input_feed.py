@@ -5,6 +5,7 @@ from google.cloud import bigquery
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import config
+from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferBaseDao
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -12,9 +13,12 @@ from rdr_service.model.ppsc_partner_data_transfer import PPSCCore, PPSCBiobankSa
 # from rdr_service.cloud_utils import bigquery
 from rdr_service.workflow_management.ppsc import data_feed_queries
 from rdr_service.workflow_management.ppsc.ppsc_intake_to_ps_queries import get_consent_activity_to_stream, \
-    get_profile_updates_activity_to_stream, get_withdrawal_activity_to_stream
+    get_profile_updates_activity_to_stream, get_withdrawal_activity_to_stream, get_deactivation_activity_to_stream, \
+    get_participant_status_activity_to_stream, get_survey_completion_activity_to_stream, \
+    get_attribution_activity_to_stream
 from rdr_service.workflow_management.ppsc.ppsc_to_legacy_de_mappings import map_source_to_summary, \
-    consent_data_elements, withdrawal_data_elements, profile_updates_data_elements
+    consent_data_elements, withdrawal_data_elements, profile_updates_data_elements, deactivation_data_elements, \
+    participant_status_data_elements, survey_completion_data_elements, attribution_data_elements
 
 datafeeds = [
     "core data",
@@ -131,6 +135,25 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
             source_data_sql = get_withdrawal_activity_to_stream(project=self.project, source_dataset=src)
             destination_model = ParticipantSummary
             de_mapping = withdrawal_data_elements
+        elif datafeed == "Deactivation":
+            source_data_sql = get_deactivation_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = deactivation_data_elements
+
+        elif datafeed == "Participant Status":
+            source_data_sql = get_participant_status_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = participant_status_data_elements
+
+        elif datafeed == "Survey Completion":
+            source_data_sql = get_survey_completion_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = survey_completion_data_elements
+
+        elif datafeed == "Attribution":
+            source_data_sql = get_attribution_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = attribution_data_elements
 
         else:
             return {}
@@ -153,13 +176,22 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
 
         if source_data:
             logging.info(f"{datafeed} Source Data retrieved.")
+            mapping_args = {}
+
+            if datafeed == "Attribution":
+                # Preload organization cache
+                dao = OrganizationDao()
+                orgs = dao.get_all()
+                org_cache = {org.externalId: org.organizationId for org in orgs}
+                mapping_args.update({"org_cache": org_cache})
+
             # Insert into Cloud SQL Table
             rows = [dict(row) for row in source_data]
 
             dao = ParticipantSummaryDao()
             with dao.session() as session:
                 for record in rows:
-                    summary_record = map_source_to_summary(record, job_def['de_mapping'])
+                    summary_record = map_source_to_summary(record, job_def['de_mapping'], **mapping_args)
 
                     session.merge(summary_record)
                 # Commit the updates
