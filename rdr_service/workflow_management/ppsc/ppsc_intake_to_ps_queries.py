@@ -134,6 +134,7 @@ FROM ranked_events
 GROUP BY participant_id
     """
 
+
 def get_deactivation_activity_to_stream(project: str, source_dataset: str) -> str:
     return f"""
     WITH ranked_events AS (
