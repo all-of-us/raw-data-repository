@@ -5,7 +5,7 @@ from werkzeug.exceptions import BadRequest, Forbidden
 
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RDR, PPSC
-from rdr_service.app_util import auth_required, nonprod
+from rdr_service.app_util import auth_required
 from rdr_service.dao.ppsc_dao import ParticipantDao, PPSCDefaultBaseDao
 from rdr_service.model.ppsc import EnrollmentEvent, EnrollmentEventType, ParticipantEventActivity, Activity
 from rdr_service.ppsc.ppsc_legacy_data_sync import CreateParticipantSync
@@ -92,7 +92,8 @@ class PPSCParticipantAPI(BaseApi):
         return inserted_participant
 
     @classmethod
-    @nonprod
+    # @nonprod
+    # This is for PPSC to Participant Summary prod syncing. To be disabled in April 2025
     def sync_to_rdr_schema(cls, *, participant_data):
         try:
             CreateParticipantSync(participant_data=participant_data).run_sync()

@@ -13,7 +13,7 @@ from rdr_service.ppsc.ppsc_partner_data_transfer import PPSCDataTransferCore, PP
 from rdr_service.services.flask import PPSC_PIPELINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
     flask_restful_log_exception_error
-from rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed import InputFeed
+from rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed import InputFeed, Intake2SummaryFeed
 
 
 @app_util.auth_required_scheduler
@@ -34,6 +34,12 @@ def ppsc_data_transfer_input_feed():
     input_feed.run_datafeed(datafeed)
     return '{ "success": "true" }'
 
+@app_util.auth_required_scheduler
+def ppsc_data_transfer_intake_2_summary_feed():
+    datafeed = request.get_json().get("datafeed")
+    intake_2_summary_feed = Intake2SummaryFeed()
+    intake_2_summary_feed.run_datafeed(datafeed)
+    return '{ "success": "true" }'
 
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_core():
@@ -93,6 +99,13 @@ def _build_pipeline_app():
         PPSC_PIPELINE_PREFIX + "TransferInputFeed",
         endpoint="ppsc_data_transfer_input_feed",
         view_func=ppsc_data_transfer_input_feed,
+        methods=["GET", "POST"],
+    )
+
+    ppsc_pipeline.add_url_rule(
+        PPSC_PIPELINE_PREFIX + "Intake2SummaryFeed",
+        endpoint="ppsc_data_transfer_intake_2_summary_feed",
+        view_func=ppsc_data_transfer_intake_2_summary_feed,
         methods=["GET", "POST"],
     )
 

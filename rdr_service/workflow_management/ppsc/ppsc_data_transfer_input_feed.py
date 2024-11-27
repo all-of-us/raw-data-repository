@@ -1,13 +1,26 @@
 import logging
+from abc import ABC, abstractmethod
 
 from google.cloud import bigquery
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import config
+from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferBaseDao
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.ppsc_partner_data_transfer import PPSCCore, PPSCBiobankSample, PPSCHealthData, PPSCEHR
 # from rdr_service.cloud_utils import bigquery
 from rdr_service.workflow_management.ppsc import data_feed_queries
+from rdr_service.workflow_management.ppsc.ppsc_intake_to_ps_queries import get_consent_activity_to_stream, \
+    get_profile_updates_activity_to_stream, get_withdrawal_activity_to_stream, get_deactivation_activity_to_stream, \
+    get_participant_status_activity_to_stream, get_survey_completion_activity_to_stream, \
+    get_attribution_activity_to_stream
+from rdr_service.workflow_management.ppsc.ppsc_to_legacy_de_mappings import map_source_to_summary, \
+    consent_data_elements, withdrawal_data_elements, profile_updates_data_elements, deactivation_data_elements, \
+    participant_status_data_elements, survey_completion_data_elements, attribution_data_elements, \
+    map_source_to_participant
 
 datafeeds = [
     "core data",
@@ -17,7 +30,21 @@ datafeeds = [
 ]
 
 
-class InputFeed:
+class PPSCBigQueryDatafeedBase(ABC):
+    @abstractmethod
+    def make_datafeed_job(self, job_def: str):
+        ...
+
+    @abstractmethod
+    def get_datafeed_definition(self, datafeed: str):
+        ...
+
+    @abstractmethod
+    def run_datafeed(self, datafeed: str):
+        ...
+
+
+class InputFeed(PPSCBigQueryDatafeedBase):
     def __init__(self, project='test'):
         self.project = project
         self.bq_client = bigquery.Client()
@@ -82,5 +109,110 @@ class InputFeed:
             dao = PPSCDataTransferBaseDao(job_def['output_model'])
             with dao.session() as session:
                 session.bulk_insert_mappings(job_def['output_model'], rows)
+        else:
+            logging.warning(f"No Staged Rows for {datafeed} Data Feed")
+
+
+class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
+    def __init__(self, project='test'):
+        self.project = project
+        self.bq_client = bigquery.Client()
+
+    def make_datafeed_job(self, job_def):
+        return self.bq_client.query(job_def)
+
+    def get_datafeed_definition(self, datafeed) -> dict:
+        src = config.getSettingJson(config.PPSC_DATAFEED_SRC_DATASET)[0]
+        if datafeed == "Consent":
+            source_data_sql = get_consent_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = consent_data_elements
+
+        elif datafeed == "Profile Updates":
+            source_data_sql = get_profile_updates_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = profile_updates_data_elements
+
+        elif datafeed == "Withdrawal":
+            source_data_sql = get_withdrawal_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = withdrawal_data_elements
+        elif datafeed == "Deactivation":
+            source_data_sql = get_deactivation_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = deactivation_data_elements
+
+        elif datafeed == "Participant Status":
+            source_data_sql = get_participant_status_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = participant_status_data_elements
+
+        elif datafeed == "Survey Completion":
+            source_data_sql = get_survey_completion_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = survey_completion_data_elements
+
+        elif datafeed == "Attribution":
+            source_data_sql = get_attribution_activity_to_stream(project=self.project, source_dataset=src)
+            destination_model = ParticipantSummary
+            de_mapping = attribution_data_elements
+
+        else:
+            return {}
+
+        return {
+            "source_data": source_data_sql,
+            "destination_model": destination_model,
+            "de_mapping": de_mapping
+        }
+
+    def run_datafeed(self, datafeed):
+        job_def = self.get_datafeed_definition(datafeed)
+
+        if not job_def:
+            logging.warning(f"Could not run {datafeed} of invalid config")
+            return
+
+        # Get Source Data
+        source_data = list(self.make_datafeed_job(job_def['source_data']))
+
+        if source_data:
+            logging.info(f"{datafeed} Source Data retrieved.")
+            mapping_args = {}
+
+            if datafeed == "Attribution":
+                # Preload organization cache
+                dao = OrganizationDao()
+                orgs = dao.get_all()
+                org_cache = {org.externalId: org.organizationId for org in orgs}
+                mapping_args.update({"org_cache": org_cache})
+
+            # Insert into Cloud SQL Table
+            summary_dao = ParticipantSummaryDao()
+            participant_dao = ParticipantDao()
+
+            with summary_dao.session() as summary_session, participant_dao.session() as participant_session:
+                for record in source_data:
+                    # Map ParticipantSummary fields
+                    summary_record = map_source_to_summary(
+                        record=record,
+                        data_element_mapping=job_def['de_mapping'],
+                        **mapping_args
+                    )
+                    summary_session.merge(summary_record)
+
+                    # Map Participant fields (only if test_account is present)
+                    if record.get("test_account") is not None:
+                        participant_record = map_source_to_participant(
+                            record=record,
+                            data_element_mapping={"test_account": participant_status_data_elements["test_account"]}
+                        )
+                        participant_session.merge(participant_record)
+
+                # Commit the updates
+                summary_session.commit()
+                participant_session.commit()
+                logging.info(f"{len(source_data)} {datafeed} records updated.")
+
         else:
             logging.warning(f"No Staged Rows for {datafeed} Data Feed")
