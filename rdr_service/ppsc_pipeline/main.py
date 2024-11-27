@@ -6,6 +6,7 @@ from flask import Flask, got_request_exception, request
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
+from rdr_service.ppsc.ppsc_partner_data_sync import NphOptInSync
 from rdr_service.ppsc.ppsc_partner_data_transfer import PPSCDataTransferCore, PPSCDataTransferHealthData, \
     PPSCDataTransferEHR, \
     PPSCDataTransferBiobank, RTIDataTransferNPHOptIn
@@ -32,6 +33,7 @@ def ppsc_data_transfer_input_feed():
     input_feed = InputFeed()
     input_feed.run_datafeed(datafeed)
     return '{ "success": "true" }'
+
 
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_core():
@@ -68,6 +70,12 @@ def ppsc_rti_data_transfer_nph_opt_in():
     return '{ "success": "true" }'
 
 
+@app_util.auth_required_scheduler
+def ppsc_nph_opt_in_sync():
+    NphOptInSync().run_sync()
+    return '{ "success": "true" }'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     ppsc_pipeline = Flask(__name__)
@@ -80,6 +88,7 @@ def _build_pipeline_app():
         methods=["GET", "POST"],
     )
 
+    # Cloud Scheduler - Scheduler jobs
     ppsc_pipeline.add_url_rule(
         PPSC_PIPELINE_PREFIX + "TransferInputFeed",
         endpoint="ppsc_data_transfer_input_feed",
@@ -87,7 +96,6 @@ def _build_pipeline_app():
         methods=["GET", "POST"],
     )
 
-    # Cloud Scheduler - Scheduler jobs
     ppsc_pipeline.add_url_rule(
         PPSC_PIPELINE_PREFIX + "TransferCore",
         endpoint="ppsc_data_transfer_core",
@@ -120,6 +128,13 @@ def _build_pipeline_app():
         PPSC_PIPELINE_PREFIX + "TransferNPHOptIn",
         endpoint="ppsc_rti_data_transfer_nph_opt_in",
         view_func=ppsc_rti_data_transfer_nph_opt_in,
+        methods=["GET"],
+    )
+
+    ppsc_pipeline.add_url_rule(
+        PPSC_PIPELINE_PREFIX + "PPSCNphOptInSync",
+        endpoint="ppsc_nph_opt_in_sync",
+        view_func=ppsc_nph_opt_in_sync,
         methods=["GET"],
     )
 

@@ -216,5 +216,3 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
 
         else:
             logging.warning(f"No Staged Rows for {datafeed} Data Feed")
-
-

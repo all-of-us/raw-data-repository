@@ -233,7 +233,6 @@ health_data_expected_streaming_sql = """
         )
     ;"""
 
-
 # Intake-2-PPSC Test queries
 
 consent_activity_expected_sql = f"""

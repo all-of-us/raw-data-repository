@@ -166,7 +166,7 @@ class RTINphOptIn(PPSCData, PPSCBase):
     email = Column(String(512), nullable=False)
     phone = Column(String(512), nullable=False)
     zip_code = Column(String(512), nullable=False)
-    language_preference = Column(String(512), nullable=False)
+    language_preference = Column(TINYINT, nullable=False)
 
 
 event.listen(RTINphOptIn, "before_insert", model_insert_listener)

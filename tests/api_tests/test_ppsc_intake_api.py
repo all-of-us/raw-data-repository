@@ -5,10 +5,10 @@ from datetime import datetime
 
 from rdr_service import clock, config
 from rdr_service.api_util import HEALTHPRO, PPSC, RDR
-from rdr_service.dao.ppsc_dao import PPSCDefaultBaseDao
+from rdr_service.dao.ppsc_dao import PPSCDefaultBaseDao, PPSCNphOptEventInDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.ppsc import ParticipantEventActivity, ConsentEvent, SurveyCompletionEvent, ProfileUpdatesEvent, \
-    WithdrawalEvent, DeactivationEvent, ParticipantStatusEvent, AttributionEvent, NPHOptInEvent
+    WithdrawalEvent, DeactivationEvent, ParticipantStatusEvent, AttributionEvent
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -24,7 +24,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.deactivation_event_dao = PPSCDefaultBaseDao(model_type=DeactivationEvent)
         self.participant_status_event_dao = PPSCDefaultBaseDao(model_type=ParticipantStatusEvent)
         self.attribution_event_dao = PPSCDefaultBaseDao(model_type=AttributionEvent)
-        self.nph_opt_in_event_dao = PPSCDefaultBaseDao(model_type=NPHOptInEvent)
+        self.nph_opt_in_event_dao = PPSCNphOptEventInDao()
 
         activities = [
             "ENROLLMENT",

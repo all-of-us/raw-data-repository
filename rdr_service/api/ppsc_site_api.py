@@ -8,7 +8,7 @@ from rdr_service.api_util import RDR, PPSC
 from rdr_service.app_util import auth_required
 from rdr_service.dao.ppsc_dao import SiteDao, PPSCDefaultBaseDao
 from rdr_service.model.ppsc import PartnerActivity, Site, PartnerEventActivity
-from rdr_service.ppsc.ppsc_data_sync import SiteDataSync
+from rdr_service.ppsc.ppsc_legacy_data_sync import SiteDataSync
 
 
 # pylint: disable=broad-except
@@ -25,6 +25,7 @@ class PPSCSiteAPI(BaseApi):
         # per validation fail the payload is stored
         log_api_request(log=request.log_record)
         req_data, site_record = self.get_request_json(), None
+        self.validate_request(req_data)
 
         try:
             site_record = self.dao.get_site_by_identifier(site_identifier=req_data.get('site_identifier'))
@@ -47,6 +48,7 @@ class PPSCSiteAPI(BaseApi):
         # per validation fail the payload is stored
         log_api_request(log=request.log_record)
         req_data, site_record = self.get_request_json(), None
+        self.validate_request(req_data)
 
         try:
             site_record = self.dao.get_site_by_identifier(site_identifier=req_data.get('site_identifier'))
@@ -84,6 +86,16 @@ class PPSCSiteAPI(BaseApi):
         except Exception as e:
             logging.warning(f'Error when deactivating site record: {e}')
             raise BadRequest('Error when deactivating site record')
+
+    @classmethod
+    def validate_request(cls, req_data):
+        required_keys = ['awardee_id', 'awardee_type', 'awardee_name', 'org_id', 'organization_name', 'site_name',
+                         'site_identifier', 'site_type', 'enrollment_status_active', 'mayo_link_id', 'active', 'state']
+
+        if not all(key in req_data for key in required_keys):
+
+            response_string: str = ', '.join(required_keys)
+            raise BadRequest(f'Payload for Site is invalid: Required keys - {response_string}')
 
     def handle_site_updates(self, *, site_data: dict) -> Site:
         # site data
