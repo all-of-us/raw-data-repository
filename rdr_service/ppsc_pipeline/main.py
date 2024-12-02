@@ -6,6 +6,7 @@ from flask import Flask, got_request_exception, request
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
+from rdr_service.config import GAE_PROJECT
 from rdr_service.ppsc.ppsc_partner_data_sync import NphOptInSync
 from rdr_service.ppsc.ppsc_partner_data_transfer import PPSCDataTransferCore, PPSCDataTransferHealthData, \
     PPSCDataTransferEHR, \
@@ -30,14 +31,15 @@ def test_job():
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_input_feed():
     datafeed = request.get_json().get("datafeed")
-    input_feed = InputFeed()
+    input_feed = InputFeed(project=GAE_PROJECT)
     input_feed.run_datafeed(datafeed)
     return '{ "success": "true" }'
+
 
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_intake_2_summary_feed():
     datafeed = request.get_json().get("datafeed")
-    intake_2_summary_feed = Intake2SummaryFeed()
+    intake_2_summary_feed = Intake2SummaryFeed(project=GAE_PROJECT)
     intake_2_summary_feed.run_datafeed(datafeed)
     return '{ "success": "true" }'
 
