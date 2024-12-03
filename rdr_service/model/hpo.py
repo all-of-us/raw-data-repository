@@ -12,7 +12,7 @@ class HPO(Base):
 
     __tablename__ = "hpo"
     hpoId = Column("hpo_id", Integer, primary_key=True, autoincrement=False)
-    name = Column("name", String(20))
+    name = Column("name", String(128))
     """
     An identifier for the HPO (just the resource id, like PITT — not a reference like Organization/PITT)
     @rdr_dictionary_show_unique_values
