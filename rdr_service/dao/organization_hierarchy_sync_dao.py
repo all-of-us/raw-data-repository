@@ -96,7 +96,7 @@ class OrganizationHierarchySyncDao(BaseDao):
         hpo_id_list = [item.hpoId for item in self.hpo_dao.get_all(refresh_cache=True)]
         entity.hpoId = max(hpo_id_list) + 1 if len(hpo_id_list) > 0 else 0
         self.hpo_dao.insert(entity)
-        # bq_hpo_update_by_id(entity.hpoId)
+        bq_hpo_update_by_id(entity.hpoId)
 
     def _update_awardee(self, hierarchy_org_obj):
 
