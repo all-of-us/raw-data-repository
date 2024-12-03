@@ -160,7 +160,7 @@ class OrganizationHierarchySyncDao(BaseDao):
 
     def update_organization(self, site_data_obj: dict) -> None:
 
-        hpo = self.hpo_dao.get_by_name(site_data_obj.get('awardee_id'))
+        hpo = self.hpo_dao.get_by_name(site_data_obj.get('awardee_id').upper())
         if not hpo:
             raise BadRequest(f'Cannot link HPO to organization: {site_data_obj.get("org_id").upper()}')
 
@@ -182,8 +182,9 @@ class OrganizationHierarchySyncDao(BaseDao):
         else:
             self.organization_dao.insert(entity)
 
-        org_id = self.organization_dao.get_by_external_id(site_data_obj.get('org_id').upper()).organizationId
-        bq_organization_update_by_id(org_id)
+        org_id_record = self.organization_dao.get_by_external_id(site_data_obj.get('org_id').upper())
+        if org_id_record:
+            bq_organization_update_by_id(org_id_record.organizationId)
 
     def _update_organization(self, hierarchy_org_obj):
 
@@ -225,16 +226,17 @@ class OrganizationHierarchySyncDao(BaseDao):
                     self.organization_dao.update_with_session(session, existing_entity)
             else:
                 self.organization_dao.insert_with_session(session, entity)
+
         org_id = self.organization_dao.get_by_external_id(organization_id.upper()).organizationId
         bq_organization_update_by_id(org_id)
 
     def update_site(self, site_data_obj: dict) -> None:
 
-        hpo = self.hpo_dao.get_by_name(site_data_obj.get('awardee_id'))
+        hpo = self.hpo_dao.get_by_name(site_data_obj.get('awardee_id').upper())
         if not hpo:
             raise BadRequest(f'Cannot link HPO to organization: {site_data_obj.get("org_id").upper()}')
 
-        organization_id = self.organization_dao.get_by_external_id(site_data_obj.get('org_id'))
+        organization_id = self.organization_dao.get_by_external_id(site_data_obj.get('org_id').upper())
 
         entity_dict = {
             'siteName': site_data_obj.get('site_name'),
@@ -244,10 +246,14 @@ class OrganizationHierarchySyncDao(BaseDao):
             'organizationId': organization_id.organizationId,
             'hpoId': hpo.hpoId,
             'siteStatus': SiteStatus('ACTIVE' if site_data_obj.get('active') else 'INACTIVE'),
-            'enrollingStatus': site_data_obj.get('enrollemnt_status_active'),
-            'digitalSchedulingStatus': site_data_obj.get('digital_scheduling_status'),
+            'enrollingStatus': EnrollingStatus('ACTIVE' if site_data_obj.get('enrollment_status_active')
+                                               else 'INACTIVE'),
+            'digitalSchedulingStatus': DigitalSchedulingStatus(
+                'ACTIVE' if site_data_obj.get('digital_scheduling_status_active')
+                else 'INACTIVE'),
             'scheduleInstructions': site_data_obj.get('scheduling_instructions'),
-            'launchDate': parse(site_data_obj.get('anticipated_launch_date')).date(),
+            'launchDate': parse(site_data_obj.get('anticipated_launch_date')).date() if site_data_obj.get(
+                'anticipated_launch_date') else None,
             'notes': site_data_obj.get('notes'),
             'directions': site_data_obj.get('directions'),
             'physicalLocationName': site_data_obj.get('location_name'),
@@ -272,8 +278,9 @@ class OrganizationHierarchySyncDao(BaseDao):
         else:
             self.site_dao.insert(entity)
 
-        site_id = self.site_dao.get_by_google_group(site_data_obj.get('site_identifier')).siteId
-        bq_site_update_by_id(site_id)
+        site_id_record = self.site_dao.get_by_google_group(entity.googleGroup.lower())
+        if site_id_record:
+            bq_site_update_by_id(site_id_record.siteId)
 
     def _update_site(self, hierarchy_org_obj):
 

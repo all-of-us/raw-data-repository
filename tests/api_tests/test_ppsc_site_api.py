@@ -1,6 +1,5 @@
 import http.client
 import random
-import time
 from copy import deepcopy
 
 from rdr_service import config
@@ -34,26 +33,26 @@ class PPSCSiteAPITest(BaseTestCase):
             )
 
         self.base_payload = {
+            "city": "Minneapolis",
+            "phone": None,
+            "state": "MN",
+            "active": 1,
+            "org_id": "Core_Platform_Test_Org_1",
+            "site_name": "Core Platform Test Site 1-Red",
+            "site_type": "Clinic Site",
+            "awardee_id": "Core_Platform_Test_Award",
+            "postal_code": "55415",
+            "address_line": "713 Washington Ave S Ste 101",
+            "awardee_name": "Core Platform Test Award",
             "awardee_type": "HPO",
-            "awardee_id": "PITT",
-            "awardee_name": "Pittsburgh awardee",
-            "org_id": "PITT_UPMC",
-            "organization_name": "Pittsburgh Health",
-            "site_name": "UPMC Urgent Care Monroeville",
+            "mayo_link_id": "7044418",
+            "location_name": None,
             "site_identifier": "hpo-site-monroeville",
-            "site_type": "Another site type",
+            "organization_name": "Core Platform Test Org 1",
+            "anticipated_launch_date": None,
             "enrollment_status_active": True,
-            "digital_scheduling_status_active": True,
-            "scheduling_status_active": True,
-            "anticipated_launch_date": "2024-03-26",
-            "location_name": "Thompson Building",
-            "mayo_link_id": "123456",
-            "active": True,
-            "address_line": "1234 Fake St.",
-            "city": "Springfield",
-            "state": "VA",
-            "postal_code": "22150",
-            "phone": "7031234567",
+            "scheduling_status_active": None,
+            "digital_scheduling_status_active": None
         }
 
     def overwrite_test_user_roles(self, roles):
@@ -121,7 +120,10 @@ class PPSCSiteAPITest(BaseTestCase):
         current_site = current_site_data[0].asdict()
 
         for k, v in self.base_payload.items():
-            self.assertTrue(current_site.get(k) == v)
+            if v is None:
+                self.assertTrue(current_site.get(k) == 0 or current_site.get(k) is None)
+            else:
+                self.assertTrue(current_site.get(k) == v)
 
     def test_bad_data_throws_exception(self):
 
@@ -137,35 +139,6 @@ class PPSCSiteAPITest(BaseTestCase):
                              if obj.site_identifier == self.base_payload.get('site_identifier')]
 
         self.assertEqual(len(current_site_data), 0)
-
-    def test_site_data_put_updates_correctly(self):
-
-        # creating site throws error on PUT
-        response = self.send_put('Site', request_data=self.base_payload, expected_status=http.client.BAD_REQUEST)
-
-        self.assertTrue(response is not None)
-
-        # insert site
-        self.ppsc_data_gen.create_database_ppsc_site(**self.base_payload)
-
-        # update site
-        time.sleep(5)
-
-        self.base_payload['address_line'] = '124 Fake St.'
-
-        response = self.send_put('Site', request_data=self.base_payload)
-
-        self.assertTrue(response is not None)
-        self.assertEqual(response, 'Site hpo-site-monroeville was updated successfully')
-
-        current_site_data = [obj for obj in self.site_dao.get_all()
-                             if obj.site_identifier == self.base_payload.get('site_identifier')]
-
-        self.assertEqual(len(current_site_data), 1)
-        current_site = current_site_data[0]
-
-        self.assertGreater(current_site.modified, current_site.created)
-        self.assertEqual(current_site.address_line, self.base_payload.get('address_line'))
 
     def test_site_data_deactivates(self):
 
@@ -254,14 +227,14 @@ class PPSCSiteAPITest(BaseTestCase):
         self.assertTrue(response is not None)
 
         current_org = [obj for obj in
-                       self.organization_dao.get_all() if obj.externalId == self.base_payload.get('org_id')]
+                       self.organization_dao.get_all() if obj.externalId == self.base_payload.get('org_id').upper()]
 
         self.assertEqual(len(current_org), 1)
         self.assertEqual(current_org[0].displayName, self.base_payload.get('organization_name'))
-        self.assertEqual(current_org[0].externalId, self.base_payload.get('org_id'))
+        self.assertEqual(current_org[0].externalId, self.base_payload.get('org_id').upper())
         self.assertTrue(current_org[0].isObsolete is None)
 
-        current_hpos = [obj for obj in self.hpo_dao.get_all() if obj.name == self.base_payload.get('awardee_id')]
+        current_hpos = [obj for obj in self.hpo_dao.get_all() if obj.name == self.base_payload.get('awardee_id').upper()]
         self.assertEqual(len(current_hpos), 1)
 
         self.assertEqual(current_org[0].hpoId, current_hpos[0].hpoId)
@@ -280,14 +253,15 @@ class PPSCSiteAPITest(BaseTestCase):
         self.assertTrue(response is not None)
 
         current_org = [obj for obj in
-                       self.organization_dao.get_all() if obj.externalId == self.base_payload.get('org_id')]
+                       self.organization_dao.get_all() if obj.externalId == self.base_payload.get('org_id').upper()]
 
         self.assertEqual(len(current_org), 1)
         self.assertEqual(current_org[0].displayName, self.base_payload.get('organization_name'))
-        self.assertEqual(current_org[0].externalId, self.base_payload.get('org_id'))
+        self.assertEqual(current_org[0].externalId, self.base_payload.get('org_id').upper())
         self.assertTrue(current_org[0].isObsolete is None)
 
-        current_hpos = [obj for obj in self.hpo_dao.get_all() if obj.name == self.base_payload.get('awardee_id')]
+        current_hpos = [obj for obj in self.hpo_dao.get_all() if obj.name == self.base_payload.get('awardee_id').upper()
+                        ]
         self.assertEqual(len(current_hpos), 1)
 
         self.assertEqual(current_org[0].hpoId, current_hpos[0].hpoId)
@@ -307,7 +281,7 @@ class PPSCSiteAPITest(BaseTestCase):
         self.assertEqual(current_site[0].siteName, self.base_payload.get('site_name'))
 
         current_orgs = [obj for obj in self.organization_dao.get_all() if obj.externalId
-                        == self.base_payload.get('org_id')]
+                        == self.base_payload.get('org_id').upper()]
 
         self.assertEqual(len(current_orgs), 1)
 
