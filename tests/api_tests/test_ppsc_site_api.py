@@ -50,7 +50,7 @@ class PPSCSiteAPITest(BaseTestCase):
             "site_identifier": "hpo-site-monroeville",
             "organization_name": "Core Platform Test Org 1",
             "anticipated_launch_date": None,
-            "enrollment_status_active": None,
+            "enrollment_status_active": True,
             "scheduling_status_active": None,
             "digital_scheduling_status_active": None
         }
