@@ -278,7 +278,7 @@ class OrganizationHierarchySyncDao(BaseDao):
         else:
             self.site_dao.insert(entity)
 
-        site_id_record = self.site_dao.get_by_google_group(entity.googleGroup)
+        site_id_record = self.site_dao.get_by_google_group(entity.googleGroup.lower())
         if site_id_record:
             bq_site_update_by_id(site_id_record.siteId)
 
