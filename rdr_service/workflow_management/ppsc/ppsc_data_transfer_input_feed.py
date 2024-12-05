@@ -125,21 +125,37 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
         src = config.getSettingJson(config.PPSC_DATAFEED_SRC_DATASET)[0]
         sent_table_name = "intake_summary_datafeed_sent"
         if datafeed == "Consent":
-            source_data_sql = get_consent_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_consent"
+            source_data_sql = get_consent_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
             destination_model = ParticipantSummary
             de_mapping = consent_data_elements
 
         elif datafeed == "Profile Updates":
-            source_data_sql = get_profile_updates_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_profile_updates"
+            source_data_sql = get_profile_updates_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
             destination_model = ParticipantSummary
             de_mapping = profile_updates_data_elements
 
         elif datafeed == "Withdrawal":
-            source_data_sql = get_withdrawal_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_withdrawal"
+            source_data_sql = get_withdrawal_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
             destination_model = ParticipantSummary
             de_mapping = withdrawal_data_elements
         elif datafeed == "Deactivation":
-            source_data_sql = get_deactivation_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_deactivation"
+            source_data_sql = get_deactivation_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
             destination_model = ParticipantSummary
             de_mapping = deactivation_data_elements
 
@@ -149,28 +165,38 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
                                                                         source_dataset=src,
                                                                         temp_table_name=temp_table_name,
                                                                         sent_table_name=sent_table_name)
-            insert_sent_sql = insert_intake_summary_records_sent(
-                project=self.project,
-                source_dataset=src,
-                sent_table_name=sent_table_name,
-                temp_table_name=temp_table_name,
-                datafeed=datafeed
-            )
+
             destination_model = ParticipantSummary
             de_mapping = participant_status_data_elements
 
         elif datafeed == "Survey Completion":
-            source_data_sql = get_survey_completion_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_survey_completion"
+            source_data_sql = get_survey_completion_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
             destination_model = ParticipantSummary
             de_mapping = survey_completion_data_elements
 
         elif datafeed == "Attribution":
-            source_data_sql = get_attribution_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_attribution"
+            source_data_sql = get_attribution_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
             destination_model = ParticipantSummary
             de_mapping = attribution_data_elements
 
         else:
             return {}
+
+        insert_sent_sql = insert_intake_summary_records_sent(
+            project=self.project,
+            source_dataset=src,
+            sent_table_name=sent_table_name,
+            temp_table_name=temp_table_name,
+            datafeed=datafeed
+        )
 
         return {
             "source_data": source_data_sql,

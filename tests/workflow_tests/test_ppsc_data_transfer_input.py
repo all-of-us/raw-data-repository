@@ -1,3 +1,4 @@
+# pylint: disable=unused-import
 import datetime
 from unittest import mock
 
@@ -204,6 +205,42 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
                 codeId=code
             )
 
+    def setup_mock_make_datafeed_job(self, mock_make_datafeed_job, activity_rows):
+
+        def mock_job_execution(sql_query):
+            if "CREATE OR REPLACE TABLE" in sql_query:
+                self.source_data_executed_sql = sql_query.strip()
+                return None  # Simulate the temp table creation
+            elif "SELECT * FROM" in sql_query:
+                return iter(activity_rows)  # Simulate the source data retrieval
+            elif "INSERT INTO" in sql_query:
+                self.insert_executed_sql = sql_query.strip()
+                return None  # Simulate the insert records sent operation
+
+        mock_make_datafeed_job.side_effect = mock_job_execution
+
+
+    def setup_expected_insert(self, datafeed):
+        expected_insert_sql = insert_sent_records_expected_sql.replace("{%datafeed%}", datafeed)
+        return expected_insert_sql.replace("{%temp_table_name%}",
+                                                          f"temp_ranked_events_{datafeed.lower().replace(' ', '_')}")
+
+    def setup_datafeed_definition(self, datafeed_name, mock_get_datafeed_definition):
+        converted_df_name = datafeed_name.lower().replace(' ', '_')
+
+        # Generate the expected insert SQL dynamically
+        expected_insert_sql = self.setup_expected_insert(datafeed=datafeed_name)
+
+        # Set the mocked return value for get_datafeed_definition
+        mock_get_datafeed_definition.return_value = {
+            "source_data": eval(f"{converted_df_name}_activity_expected_sql"),
+            "temp_table_name": f"temp_ranked_events_{converted_df_name}",
+            "sent_table_name": "intake_summary_datafeed_sent",
+            "insert_sent_sql": expected_insert_sql,
+            "destination_model": ParticipantSummary,
+            "de_mapping": eval(f"{converted_df_name}_data_elements")
+        }
+
     def test_map_source_to_summary(self):
         record = {
             "participant_id": "348568008",
@@ -226,7 +263,9 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
     @mock.patch("google.cloud.bigquery.Client")
     @mock.patch(
         "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
-    def test_consent_activity(self, mock_make_datafeed_job, mock_bq_client):
+    @mock.patch(
+        "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.get_datafeed_definition")
+    def test_consent_activity(self, mock_get_datafeed_definition, mock_make_datafeed_job, mock_bq_client):
         # Create requisite participant data
         ppsc_participant = self.ppsc_data_gen.create_database_participant(id=110110110)
         rdr_participant = self.data_generator.create_database_participant(participantId=ppsc_participant.id)
@@ -247,19 +286,17 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         }]
 
         # Mock make_datafeed_job to return the mocked intake data
-        mock_make_datafeed_job.side_effect = lambda query: (
-            iter(activity_rows) if query.strip() == consent_activity_expected_sql.strip() else None
-        )
+        self.setup_mock_make_datafeed_job(mock_make_datafeed_job, activity_rows)
 
-        # Test Feed
+        datafeed_name = "Consent"
+
+        # Set up the mock for get_datafeed_definition
+        self.setup_datafeed_definition(datafeed_name, mock_get_datafeed_definition)
+
+        # Run the datafeed
         feed = Intake2SummaryFeed()
-        feed.get_datafeed_definition = mock.Mock(return_value={
-            "source_data": consent_activity_expected_sql,
-            "destination_model": ParticipantSummary,
-            "de_mapping": consent_data_elements
-        })
 
-        feed.run_datafeed("Consent")
+        feed.run_datafeed(datafeed_name)
 
         ps_dao = ParticipantSummaryDao()
         actual_rows = ps_dao.get_all()
@@ -271,10 +308,17 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(actual_rows[0].consentForElectronicHealthRecordsAuthored,
                          datetime.datetime(2024, 11, 20, 15, 30))
 
+        # Verify the "insert records sent" query was called
+        calls = [call[0][0] for call in mock_make_datafeed_job.call_args_list if "INSERT INTO" in call[0][0]]
+        self.assertTrue(any(self.setup_expected_insert(datafeed=datafeed_name) in sql for sql in calls),
+                        "The 'insert records sent' query was not called.")
+
     @mock.patch("google.cloud.bigquery.Client")
     @mock.patch(
         "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
-    def test_profile_updates_activity(self, mock_make_datafeed_job, mock_bq_client):
+    @mock.patch(
+        "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.get_datafeed_definition")
+    def test_profile_updates_activity(self, mock_get_datafeed_definition, mock_make_datafeed_job, mock_bq_client):
         # States
         required_codes = [631,632,633,634,635,636,637,638,639,640,641,642,643,644,645,646,647,648,649,650,651,652,653,
                           654,655,656,657,658,659,660,661,662,663,664,665,666,667,668,669,670,671,672,673,674,675,676,
@@ -322,19 +366,17 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         }]
 
         # Mock make_datafeed_job to return the mocked intake data
-        mock_make_datafeed_job.side_effect = lambda query: (
-            iter(activity_rows) if query.strip() == profile_updates_activity_expected_sql.strip() else None
-        )
+        self.setup_mock_make_datafeed_job(mock_make_datafeed_job, activity_rows)
 
-        # Test Feed
+        datafeed_name = "Profile Updates"
+
+        # Set up the mock for get_datafeed_definition
+        self.setup_datafeed_definition(datafeed_name, mock_get_datafeed_definition)
+
+        # Run the datafeed
         feed = Intake2SummaryFeed()
-        feed.get_datafeed_definition = mock.Mock(return_value={
-            "source_data": profile_updates_activity_expected_sql,
-            "destination_model": ParticipantSummary,
-            "de_mapping": profile_updates_data_elements
-        })
 
-        feed.run_datafeed("Profile Updates")
+        feed.run_datafeed(datafeed_name)
 
         # Verify the database records
         ps_dao = ParticipantSummaryDao()
@@ -355,10 +397,17 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(actual_rows[0].primaryLanguage, "English")
         self.assertEqual(actual_rows[0].dateOfBirth, datetime.date(1985, 6, 26))
 
+        # Verify the "insert records sent" query was called
+        calls = [call[0][0] for call in mock_make_datafeed_job.call_args_list if "INSERT INTO" in call[0][0]]
+        self.assertTrue(any(self.setup_expected_insert(datafeed=datafeed_name) in sql for sql in calls),
+                        "The 'insert records sent' query was not called.")
+
     @mock.patch("google.cloud.bigquery.Client")
     @mock.patch(
         "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
-    def test_withdrawal_activity(self, mock_make_datafeed_job, mock_bq_client):
+    @mock.patch(
+        "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.get_datafeed_definition")
+    def test_withdrawal_activity(self, mock_get_datafeed_definition, mock_make_datafeed_job, mock_bq_client):
         # Create requisite participant data
         ppsc_participant = self.ppsc_data_gen.create_database_participant(id=110110112)
         rdr_participant = self.data_generator.create_database_participant(participantId=ppsc_participant.id)
@@ -377,19 +426,17 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         }]
 
         # Mock make_datafeed_job to return the mocked intake data
-        mock_make_datafeed_job.side_effect = lambda query: (
-            iter(activity_rows) if query.strip() == withdrawal_activity_expected_sql.strip() else None
-        )
+        self.setup_mock_make_datafeed_job(mock_make_datafeed_job, activity_rows)
 
-        # Test Feed
+        datafeed_name = "Withdrawal"
+
+        # Set up the mock for get_datafeed_definition
+        self.setup_datafeed_definition(datafeed_name, mock_get_datafeed_definition)
+
+        # Run the datafeed
         feed = Intake2SummaryFeed()
-        feed.get_datafeed_definition = mock.Mock(return_value={
-            "source_data": withdrawal_activity_expected_sql,
-            "destination_model": ParticipantSummary,
-            "de_mapping": withdrawal_data_elements
-        })
 
-        feed.run_datafeed("Withdrawal")
+        feed.run_datafeed(datafeed_name)
 
         # Verify the database records
         ps_dao = ParticipantSummaryDao()
@@ -401,10 +448,17 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(actual_rows[0].withdrawalAuthored, datetime.datetime(2024, 11, 21, 18, 12))
         self.assertEqual(actual_rows[0].withdrawalReason, WithdrawalReason.DUPLICATE)
 
+        # Verify the "insert records sent" query was called
+        calls = [call[0][0] for call in mock_make_datafeed_job.call_args_list if "INSERT INTO" in call[0][0]]
+        self.assertTrue(any(self.setup_expected_insert(datafeed=datafeed_name) in sql for sql in calls),
+                        "The 'insert records sent' query was not called.")
+
     @mock.patch("google.cloud.bigquery.Client")
     @mock.patch(
         "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
-    def test_deactivation_activity(self, mock_make_datafeed_job, mock_bq_client):
+    @mock.patch(
+        "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.get_datafeed_definition")
+    def test_deactivation_activity(self, mock_get_datafeed_definition, mock_make_datafeed_job, mock_bq_client):
         # Create requisite participant data
         ppsc_participant = self.ppsc_data_gen.create_database_participant(id=110110113)
         rdr_participant = self.data_generator.create_database_participant(participantId=ppsc_participant.id)
@@ -422,19 +476,17 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         }]
 
         # Mock make_datafeed_job to return the mocked intake data
-        mock_make_datafeed_job.side_effect = lambda query: (
-            iter(activity_rows) if query.strip() == deactivation_activity_expected_sql.strip() else None
-        )
+        self.setup_mock_make_datafeed_job(mock_make_datafeed_job, activity_rows)
 
-        # Test Feed
+        datafeed_name = "Deactivation"
+
+        # Set up the mock for get_datafeed_definition
+        self.setup_datafeed_definition(datafeed_name, mock_get_datafeed_definition)
+
+        # Run the datafeed
         feed = Intake2SummaryFeed()
-        feed.get_datafeed_definition = mock.Mock(return_value={
-            "source_data": deactivation_activity_expected_sql,
-            "destination_model": ParticipantSummary,
-            "de_mapping": deactivation_data_elements
-        })
 
-        feed.run_datafeed("Deactivation")
+        feed.run_datafeed(datafeed_name)
 
         # Verify the database records
         ps_dao = ParticipantSummaryDao()
@@ -445,10 +497,17 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(actual_rows[0].suspensionStatus, SuspensionStatus.NO_CONTACT)
         self.assertEqual(actual_rows[0].suspensionTime, datetime.datetime(2024, 11, 22, 12, 45))
 
+        # Verify the "insert records sent" query was called
+        calls = [call[0][0] for call in mock_make_datafeed_job.call_args_list if "INSERT INTO" in call[0][0]]
+        self.assertTrue(any(self.setup_expected_insert(datafeed=datafeed_name) in sql for sql in calls),
+                        "The 'insert records sent' query was not called.")
+
     @mock.patch("google.cloud.bigquery.Client")
     @mock.patch(
         "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
-    def test_participant_status_activity(self, mock_make_datafeed_job, mock_bq_client):
+    @mock.patch(
+        "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.get_datafeed_definition")
+    def test_participant_status_activity(self, mock_get_datafeed_definition, mock_make_datafeed_job, mock_bq_client):
         # Create requisite participant data
         ppsc_participant = self.ppsc_data_gen.create_database_participant(id=110110114)
         rdr_participant = self.data_generator.create_database_participant(participantId=ppsc_participant.id)
@@ -476,31 +535,17 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         }]
 
         # Mock make_datafeed_job to return the mocked intake data
-        def mock_job_execution(sql_query):
-            if "CREATE OR REPLACE TABLE" in sql_query:
-                self.source_data_executed_sql = sql_query.strip()
-                return None  # Simulate the temp table creation
-            elif "SELECT * FROM" in sql_query:
-                return iter(activity_rows)  # Simulate the source data retrieval
-            elif "INSERT INTO" in sql_query:
-                return None  # Simulate the insert records sent operation
+        self.setup_mock_make_datafeed_job(mock_make_datafeed_job, activity_rows)
 
-        mock_make_datafeed_job.side_effect = mock_job_execution
+        datafeed_name = "Participant Status"
 
-        # Test Feed
-        expected_insert_sql = insert_sent_records_expected_sql.replace("{%datafeed%}", "Participant Status")
-        expected_insert_sql = expected_insert_sql.replace("{%temp_table_name%}", "temp_ranked_events_participant_status")
+        # Set up the mock for get_datafeed_definition
+        self.setup_datafeed_definition(datafeed_name, mock_get_datafeed_definition)
+
+        # Run the datafeed
         feed = Intake2SummaryFeed()
-        feed.get_datafeed_definition = mock.Mock(return_value={
-            "source_data": participant_status_activity_expected_sql,
-            "temp_table_name": "temp_ranked_events_participant_status",
-            "sent_table_name": "intake_summary_datafeed_sent",
-            "insert_sent_sql": expected_insert_sql,
-            "destination_model": ParticipantSummary,
-            "de_mapping": participant_status_data_elements
-        })
 
-        feed.run_datafeed("Participant Status")
+        feed.run_datafeed(datafeed_name)
 
         # Verify the database records
         ps_dao = ParticipantSummaryDao()
@@ -529,12 +574,15 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
 
         # Verify the "insert records sent" query was called
         calls = [call[0][0] for call in mock_make_datafeed_job.call_args_list if "INSERT INTO" in call[0][0]]
-        self.assertTrue(any(expected_insert_sql in sql for sql in calls), "The 'insert records sent' query was not called.")
+        self.assertTrue(any(self.setup_expected_insert(datafeed=datafeed_name) in sql for sql in calls),
+                        "The 'insert records sent' query was not called.")
 
     @mock.patch("google.cloud.bigquery.Client")
     @mock.patch(
         "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
-    def test_survey_completion_activity(self, mock_make_datafeed_job, mock_bq_client):
+    @mock.patch(
+        "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.get_datafeed_definition")
+    def test_survey_completion_activity(self, mock_get_datafeed_definition, mock_make_datafeed_job, mock_bq_client):
         required_codes = [302, 303, 301, 304, 924307, 311, 310, 309, 308, 39, 33, 36, 35,
                           38, 32, 37, 34, 292, 291, 297, 293, 294, 295, 290, 296, 298]
         self.create_required_codes(required_codes)
@@ -581,19 +629,17 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         }]
 
         # Mock make_datafeed_job to return the mocked intake data
-        mock_make_datafeed_job.side_effect = lambda query: (
-            iter(activity_rows) if query.strip() == survey_completion_activity_expected_sql.strip() else None
-        )
+        self.setup_mock_make_datafeed_job(mock_make_datafeed_job, activity_rows)
 
-        # Test Feed
+        datafeed_name = "Survey Completion"
+
+        # Set up the mock for get_datafeed_definition
+        self.setup_datafeed_definition(datafeed_name, mock_get_datafeed_definition)
+
+        # Run the datafeed
         feed = Intake2SummaryFeed()
-        feed.get_datafeed_definition = mock.Mock(return_value={
-            "source_data": survey_completion_activity_expected_sql,
-            "destination_model": ParticipantSummary,
-            "de_mapping": survey_completion_data_elements
-        })
 
-        feed.run_datafeed("Survey Completion")
+        feed.run_datafeed(datafeed_name)
 
         # Verify the database records
         ps_dao = ParticipantSummaryDao()
@@ -655,10 +701,17 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         # self.assertEqual(actual_rows[0].questionnaireOnEnvironmentalExposuresAuthored,
         #                  datetime.datetime(2024, 11, 20, 16, 0))
 
+        # Verify the "insert records sent" query was called
+        calls = [call[0][0] for call in mock_make_datafeed_job.call_args_list if "INSERT INTO" in call[0][0]]
+        self.assertTrue(any(self.setup_expected_insert(datafeed=datafeed_name) in sql for sql in calls),
+                        "The 'insert records sent' query was not called.")
+
     @mock.patch("google.cloud.bigquery.Client")
     @mock.patch(
         "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.make_datafeed_job")
-    def test_attribution_activity(self, mock_make_datafeed_job, mock_bq_client):
+    @mock.patch(
+        "rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed.Intake2SummaryFeed.get_datafeed_definition")
+    def test_attribution_activity(self, mock_get_datafeed_definition, mock_make_datafeed_job, mock_bq_client):
         # Create requisite participant data
         ppsc_participant = self.ppsc_data_gen.create_database_participant(id=110110120)
         rdr_participant = self.data_generator.create_database_participant(participantId=ppsc_participant.id)
@@ -675,19 +728,17 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         }]
 
         # Mock make_datafeed_job to return the mocked intake data
-        mock_make_datafeed_job.side_effect = lambda query: (
-            iter(activity_rows) if query.strip() == attribution_activity_expected_sql.strip() else None
-        )
+        self.setup_mock_make_datafeed_job(mock_make_datafeed_job, activity_rows)
 
-        # Test Feed
+        datafeed_name = "Attribution"
+
+        # Set up the mock for get_datafeed_definition
+        self.setup_datafeed_definition(datafeed_name, mock_get_datafeed_definition)
+
+        # Run the datafeed
         feed = Intake2SummaryFeed()
-        feed.get_datafeed_definition = mock.Mock(return_value={
-            "source_data": attribution_activity_expected_sql,
-            "destination_model": ParticipantSummary,
-            "de_mapping": attribution_data_elements
-        })
 
-        feed.run_datafeed("Attribution")
+        feed.run_datafeed(datafeed_name)
 
         # Verify the database records
         ps_dao = ParticipantSummaryDao()
@@ -696,3 +747,8 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         # Assertions for Attribution Data
         self.assertEqual(actual_rows[0].participantId, activity_rows[0]['participant_id'])
         self.assertEqual(actual_rows[0].organizationId, 3)
+
+        # Verify the "insert records sent" query was called
+        calls = [call[0][0] for call in mock_make_datafeed_job.call_args_list if "INSERT INTO" in call[0][0]]
+        self.assertTrue(any(self.setup_expected_insert(datafeed=datafeed_name) in sql for sql in calls),
+                        "The 'insert records sent' query was not called.")

@@ -236,26 +236,34 @@ health_data_expected_streaming_sql = """
 # Intake-2-PPSC Test queries
 
 consent_activity_expected_sql = f"""
+CREATE OR REPLACE TABLE `test.rdr_operational_datastream.temp_ranked_events_participant_status` AS
 WITH ranked_events AS (
   SELECT
-    ce.participant_id,
-    ce.event_type_name,
-    ce.event_authored_time,
-    ce.data_element_name,
-    ce.data_element_value,
+    se.participant_id,
+    se.event_id,
+    se.event_type_name,
+    se.event_authored_time,
+    se.data_element_name,
+    se.data_element_value,
     ROW_NUMBER() OVER (
-      PARTITION BY ce.participant_id, ce.event_type_name
-      ORDER BY ce.event_authored_time DESC
+      PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `test.rdr_operational_datastream.ppsc_consent_event` ce
-  WHERE ce.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `test.rdr_operational_datastream.rdr_participant_summary`
+  WHERE TRUE
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.intake_summary_datafeed_sent` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and data_element_name IN ("activity_status", '​activity_status')
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
   MAX(CASE WHEN event_type_name = 'EHR Authorization' AND data_element_name = 'activity_status' AND rank = 1
            THEN data_element_value END) AS ehr_authorization,
   MAX(CASE WHEN event_type_name = 'EHR Authorization' AND rank = 1
@@ -265,30 +273,39 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Primary Consent' AND rank = 1
            THEN event_authored_time END) AS primary_consent_event_authored_time
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
 
 profile_updates_activity_expected_sql = f"""
+CREATE OR REPLACE TABLE `test.rdr_operational_datastream.temp_ranked_events_participant_status` AS
 WITH ranked_events AS (
   SELECT
     se.participant_id,
+    se.event_id,
     se.event_type_name,
     se.event_authored_time,
     se.data_element_name,
     se.data_element_value,
     ROW_NUMBER() OVER (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
-      ORDER BY se.event_authored_time DESC
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `test.rdr_operational_datastream.ppsc_profile_updates_event` se
-  WHERE se.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `test.rdr_operational_datastream.rdr_participant_summary`
+  WHERE TRUE
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.intake_summary_datafeed_sent` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and data_element_name IN ("piiname_first","piiname_middle","piiname_last","streetaddress_piizip","streetaddress_piistate","streetaddress_piicity","piiaddress_streetaddress","piiaddress_streetaddress2","piicontactinformation_phone","piicontactinformation_email","language_preference","piibirthinformation_birthdate")
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
   -- First Name
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piiname_first' AND rank = 1
            THEN data_element_value END) AS first_name,
@@ -326,30 +343,39 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piibirthinformation_birthdate' AND rank = 1
            THEN data_element_value END) AS birthdate
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
 
 withdrawal_activity_expected_sql = f"""
+CREATE OR REPLACE TABLE `test.rdr_operational_datastream.temp_ranked_events_participant_status` AS
 WITH ranked_events AS (
   SELECT
     se.participant_id,
+    se.event_id,
     se.event_type_name,
     se.event_authored_time,
     se.data_element_name,
     se.data_element_value,
     ROW_NUMBER() OVER (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
-      ORDER BY se.event_authored_time DESC
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `test.rdr_operational_datastream.ppsc_withdrawal_event` se
-  WHERE se.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `test.rdr_operational_datastream.rdr_participant_summary`
+  WHERE TRUE
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.intake_summary_datafeed_sent` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and data_element_name IN ("activity_status", '​activity_status', 'withdrawal_reason')
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
   MAX(CASE WHEN event_type_name = 'Withdrawal'
       AND data_element_name IN ("activity_status", '​activity_status')
       AND rank = 1
@@ -363,30 +389,39 @@ SELECT
       AND rank = 1
     THEN data_element_value END) AS withdrawal_reason
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
 
 deactivation_activity_expected_sql = f"""
+CREATE OR REPLACE TABLE `test.rdr_operational_datastream.temp_ranked_events_participant_status` AS
 WITH ranked_events AS (
   SELECT
     se.participant_id,
+    se.event_id,
     se.event_type_name,
     se.event_authored_time,
     se.data_element_name,
     se.data_element_value,
     ROW_NUMBER() OVER (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
-      ORDER BY se.event_authored_time DESC
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `test.rdr_operational_datastream.ppsc_deactivation_event` se
-  WHERE se.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `test.rdr_operational_datastream.rdr_participant_summary`
+  WHERE TRUE
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.intake_summary_datafeed_sent` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and data_element_name IN ("activity_status", '​activity_status')
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
   MAX(CASE WHEN event_type_name = 'Deactivation'
       AND data_element_name IN ("activity_status", '​activity_status')
       AND rank = 1
@@ -396,7 +431,8 @@ SELECT
       AND rank = 1
     THEN event_authored_time END) AS deactivation_status_time
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
 """
 
 participant_status_activity_expected_sql = f"""
@@ -457,28 +493,35 @@ GROUP BY participant_id, event_id, event_type_name
     """
 
 survey_completion_activity_expected_sql = f"""
+CREATE OR REPLACE TABLE `test.rdr_operational_datastream.temp_ranked_events_participant_status` AS
 WITH ranked_events AS (
   SELECT
     se.participant_id,
+    se.event_id,
     se.event_type_name,
     se.event_authored_time,
     se.data_element_name,
     se.data_element_value,
     ROW_NUMBER() OVER (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
-      ORDER BY se.event_authored_time DESC
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `test.rdr_operational_datastream.ppsc_survey_completion_event` se
   WHERE TRUE
-  AND se.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `test.rdr_operational_datastream.rdr_participant_summary`
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.intake_summary_datafeed_sent` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and se.event_type_name IN ("Basics Data", "Basics Data", "Overall Health", "Lifestyle", "The Basics", "Health Care Access", "Social Determinants of Health", "Personal and Family Health History", "Life Functioning Survey", "Emotional Health History and Well Being", "Behavioral Health and Personality", "Pediatric Environmental Health")
   and data_element_name IN ("activity_status", '​activity_status', "gender_genderidentity","biologicalsexatbirth_sexatbirth","thebasics_sexualorientation","race_whatraceethnicity","educationlevel_highestgrade","income_annualincome")
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
 
   -- Basics Data
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'gender_genderidentity' THEN data_element_value END) AS gender_identity,
@@ -530,37 +573,46 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Pediatric Environmental Health' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_environmental_exposures_authored
 
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
 
 attribution_activity_expected_sql = f"""
+CREATE OR REPLACE TABLE `test.rdr_operational_datastream.temp_ranked_events_participant_status` AS
 WITH ranked_events AS (
   SELECT
     se.participant_id,
+    se.event_id,
     se.event_type_name,
     se.event_authored_time,
     se.data_element_name,
     se.data_element_value,
     ROW_NUMBER() OVER (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
-      ORDER BY se.event_authored_time DESC
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `test.rdr_operational_datastream.ppsc_attribution_event` se
   WHERE TRUE
-  AND se.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `test.rdr_operational_datastream.rdr_participant_summary`
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.intake_summary_datafeed_sent` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and se.event_type_name IN ('Org Attribution')
   and data_element_name IN ("activity_status", '​activity_status')
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
   MAX(CASE WHEN event_type_name = 'Org Attribution'
     AND data_element_name IN ("activity_status", '​activity_status') AND rank = 1
            THEN data_element_value END) AS organization
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
 
 insert_sent_records_expected_sql = """
