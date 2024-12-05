@@ -18,7 +18,8 @@ from tests.workflow_tests.test_data.ppsc_data_feed_test_data import core_data_ex
     ehr_expected_sql, health_data_sharing_expected_sql, ehr_expected_streaming_sql, core_data_expected_streaming_sql, \
     biospecimen_expected_streaming_sql, health_data_expected_streaming_sql, consent_activity_expected_sql, \
     profile_updates_activity_expected_sql, withdrawal_activity_expected_sql, deactivation_activity_expected_sql, \
-    participant_status_activity_expected_sql, survey_completion_activity_expected_sql, attribution_activity_expected_sql
+    participant_status_activity_expected_sql, survey_completion_activity_expected_sql, \
+    attribution_activity_expected_sql, insert_sent_records_expected_sql
 from rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed import InputFeed, Intake2SummaryFeed
 
 
@@ -175,6 +176,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         # pylint: disable=unused-argument
         super().setUp()
         self.ppsc_data_gen = PPSCDataGenerator()
+        self.source_data_executed_sql = ""
         activities = [
             "ENROLLMENT",
             "Consent",
@@ -474,14 +476,26 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         }]
 
         # Mock make_datafeed_job to return the mocked intake data
-        mock_make_datafeed_job.side_effect = lambda query: (
-            iter(activity_rows) if query.strip() == participant_status_activity_expected_sql.strip() else None
-        )
+        def mock_job_execution(sql_query):
+            if "CREATE OR REPLACE TABLE" in sql_query:
+                self.source_data_executed_sql = sql_query.strip()
+                return None  # Simulate the temp table creation
+            elif "SELECT * FROM" in sql_query:
+                return iter(activity_rows)  # Simulate the source data retrieval
+            elif "INSERT INTO" in sql_query:
+                return None  # Simulate the insert records sent operation
+
+        mock_make_datafeed_job.side_effect = mock_job_execution
 
         # Test Feed
+        expected_insert_sql = insert_sent_records_expected_sql.replace("{%datafeed%}", "Participant Status")
+        expected_insert_sql = expected_insert_sql.replace("{%temp_table_name%}", "temp_ranked_events_participant_status")
         feed = Intake2SummaryFeed()
         feed.get_datafeed_definition = mock.Mock(return_value={
             "source_data": participant_status_activity_expected_sql,
+            "temp_table_name": "temp_ranked_events_participant_status",
+            "sent_table_name": "intake_summary_datafeed_sent",
+            "insert_sent_sql": expected_insert_sql,
             "destination_model": ParticipantSummary,
             "de_mapping": participant_status_data_elements
         })
@@ -496,6 +510,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         test_participant = participant_dao.get(activity_rows[0]['participant_id'])
 
         # Assertions
+        self.assertEqual(participant_status_activity_expected_sql.strip(), self.source_data_executed_sql)
         self.assertEqual(actual_rows[0].participantId, activity_rows[0]['participant_id'])
         self.assertTrue(test_participant.isTestParticipant)
         self.assertEqual(actual_rows[0].deceasedStatus, DeceasedStatus.APPROVED)
@@ -511,6 +526,10 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(actual_rows[0].enrollmentStatusPmbEligibleV3_2Time, datetime.datetime(2024, 11, 20, 11, 0))
         self.assertEqual(actual_rows[0].enrollmentStatusCoreMinusPmV3_2Time, datetime.datetime(2024, 11, 20, 12, 0))
         self.assertEqual(actual_rows[0].enrollmentStatusCoreV3_2Time, datetime.datetime(2024, 11, 20, 13, 0))
+
+        # Verify the "insert records sent" query was called
+        calls = [call[0][0] for call in mock_make_datafeed_job.call_args_list if "INSERT INTO" in call[0][0]]
+        self.assertTrue(any(expected_insert_sql in sql for sql in calls), "The 'insert records sent' query was not called.")
 
     @mock.patch("google.cloud.bigquery.Client")
     @mock.patch(

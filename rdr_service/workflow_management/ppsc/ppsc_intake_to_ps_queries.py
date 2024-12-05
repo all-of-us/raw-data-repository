@@ -170,30 +170,40 @@ GROUP BY participant_id
     """
 
 
-def get_participant_status_activity_to_stream(project: str, source_dataset: str) -> str:
+def get_participant_status_activity_to_stream(project: str,
+                                              source_dataset: str,
+                                              temp_table_name: str,
+                                              sent_table_name: str) -> str:
     return f"""
+CREATE OR REPLACE TABLE `{project}.{source_dataset}.{temp_table_name}` AS
 WITH ranked_events AS (
   SELECT
     se.participant_id,
+    se.event_id,
     se.event_type_name,
     se.event_authored_time,
     se.data_element_name,
     se.data_element_value,
     ROW_NUMBER() OVER (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
-      ORDER BY se.event_authored_time DESC
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_participant_status_event` se
   WHERE TRUE
-  AND se.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `{project}.{source_dataset}.rdr_participant_summary`
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `{project}.{source_dataset}.{sent_table_name}` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and se.event_type_name IN ('Test Account', 'Death', 'Retention Status', 'Enrollment Status')
   and data_element_name IN ("activity_status", '​activity_status', "retention_type", "participant", "participant", "participant_ehr_consent", "enrolled", "pmb_eligible", "core_minus_pm", "core_participant")
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
 
   -- Test Account
   MAX(CASE WHEN event_type_name = 'Test Account' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS test_account,
@@ -217,7 +227,8 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'core_participant' AND data_element_value = "yes" THEN event_authored_time END) AS core_participant_time
 
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
 
 
@@ -302,6 +313,7 @@ FROM ranked_events
 GROUP BY participant_id
     """
 
+
 def get_attribution_activity_to_stream(project: str, source_dataset: str) -> str:
     return f"""
 WITH ranked_events AS (
@@ -332,3 +344,30 @@ SELECT
 FROM ranked_events
 GROUP BY participant_id
     """
+
+
+def insert_intake_summary_records_sent(project: str,
+                                       source_dataset: str,
+                                       sent_table_name: str,
+                                       temp_table_name: str,
+                                       datafeed: str) -> str:
+    return f"""
+            INSERT INTO `{project}.{source_dataset}.{sent_table_name}` (
+                participant_id,
+                event_id,
+                event_type_name,
+                datafeed_name,
+                created,
+                modified,
+                ignore_flag
+            )
+            SELECT
+                participant_id,
+                event_id,
+                event_type_name,
+                '{datafeed}' AS datafeed_name,
+                CURRENT_DATETIME() AS created,
+                CURRENT_DATETIME() AS modified,
+                FALSE AS ignore_flag
+            FROM `{project}.{source_dataset}.{temp_table_name}`
+            """
