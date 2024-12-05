@@ -245,12 +245,6 @@ class OrganizationHierarchySyncDao(BaseDao):
             'mayolinkClientNumber': site_data_obj.get('mayo_link_id'),
             'organizationId': organization_id.organizationId,
             'hpoId': hpo.hpoId,
-            'siteStatus': SiteStatus('ACTIVE' if site_data_obj.get('active') else 'INACTIVE'),
-            'enrollingStatus': EnrollingStatus('ACTIVE' if site_data_obj.get('enrollment_status_active')
-                                               else 'INACTIVE'),
-            'digitalSchedulingStatus': DigitalSchedulingStatus(
-                'ACTIVE' if site_data_obj.get('digital_scheduling_status_active')
-                else 'INACTIVE'),
             'scheduleInstructions': site_data_obj.get('scheduling_instructions'),
             'launchDate': parse(site_data_obj.get('anticipated_launch_date')).date() if site_data_obj.get(
                 'anticipated_launch_date') else None,
@@ -264,8 +258,18 @@ class OrganizationHierarchySyncDao(BaseDao):
             'phoneNumber': site_data_obj.get('phone'),
             'adminEmails': site_data_obj.get('email'),
             'link': site_data_obj.get('url'),
-            'isObsolete': ObsoleteStatus('OBSOLETE') if not site_data_obj.get('active') else None
+            'siteStatus': SiteStatus('ACTIVE' if site_data_obj.get('active') else 'INACTIVE'),
+            'isObsolete': ObsoleteStatus('OBSOLETE') if not site_data_obj.get('active') else None,
+            'enrollingStatus': EnrollingStatus('ACTIVE' if site_data_obj.get('enrollment_status_active')
+                                               else 'INACTIVE'),
+            'digitalSchedulingStatus': DigitalSchedulingStatus(
+                'ACTIVE' if site_data_obj.get('digital_scheduling_status_active')
+                else 'INACTIVE'),
         }
+
+        if not site_data_obj.get('active'):
+            entity_dict['enrollingStatus'] = EnrollingStatus('INACTIVE')
+            entity_dict['digitalSchedulingStatus'] = DigitalSchedulingStatus('INACTIVE')
 
         entity = self.site_dao.model_type(**entity_dict)
 

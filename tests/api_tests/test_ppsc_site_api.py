@@ -10,6 +10,7 @@ from rdr_service.dao.ppsc_dao import SiteDao, PPSCDefaultBaseDao
 from rdr_service.dao.site_dao import SiteDao as LegacySiteDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.ppsc import PartnerEventActivity
+from rdr_service.model.site_enums import EnrollingStatus, DigitalSchedulingStatus
 from rdr_service.participant_enums import OrganizationType
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -52,7 +53,7 @@ class PPSCSiteAPITest(BaseTestCase):
             "anticipated_launch_date": None,
             "enrollment_status_active": True,
             "scheduling_status_active": None,
-            "digital_scheduling_status_active": None
+            "digital_scheduling_status_active": True
         }
 
     def overwrite_test_user_roles(self, roles):
@@ -153,6 +154,15 @@ class PPSCSiteAPITest(BaseTestCase):
 
         self.assertEqual(len(current_site_data), 1)
 
+        current_legacy_site = [obj for obj in self.legacy_site_dao.get_all() if obj.googleGroup ==
+                               self.base_payload.get(
+            'site_identifier')]
+
+        self.assertEqual(len(current_legacy_site), 1)
+        self.assertEqual(current_legacy_site[0].googleGroup, self.base_payload.get('site_identifier'))
+        self.assertEqual(current_legacy_site[0].enrollingStatus, EnrollingStatus('ACTIVE'))
+        self.assertEqual(current_legacy_site[0].digitalSchedulingStatus, DigitalSchedulingStatus('ACTIVE'))
+
         deactivate_payload = {
             "awardee_id": "PITT",
             "org_id": "PITT_UPMC",
@@ -169,8 +179,15 @@ class PPSCSiteAPITest(BaseTestCase):
                              if obj.site_identifier == self.base_payload.get('site_identifier')]
 
         self.assertEqual(len(current_site_data), 1)
-
         self.assertEqual(current_site_data[0].active, 0)
+
+        current_legacy_site = [obj for obj in self.legacy_site_dao.get_all() if obj.googleGroup == self.base_payload.get(
+            'site_identifier')]
+
+        self.assertEqual(len(current_legacy_site), 1)
+        self.assertEqual(current_legacy_site[0].googleGroup, self.base_payload.get('site_identifier'))
+        self.assertEqual(current_legacy_site[0].enrollingStatus, EnrollingStatus('INACTIVE'))
+        self.assertEqual(current_legacy_site[0].digitalSchedulingStatus, DigitalSchedulingStatus('INACTIVE'))
 
     def test_site_data_insert_event_deps(self):
 
