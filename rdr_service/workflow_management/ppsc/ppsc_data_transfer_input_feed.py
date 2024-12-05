@@ -211,7 +211,7 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
         job_def = self.get_datafeed_definition(datafeed)
 
         if not job_def:
-            logging.warning(f"Could not run {datafeed} of invalid config")
+            logging.warning(f"Could not run {datafeed} because of invalid config")
             return
 
         # Create the temp table in BigQuery
@@ -220,7 +220,7 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
         logging.info(f"Temp table created for {datafeed}")
 
         # Get Source Data
-        # Step 2: Retrieve source data from the temp table
+        # Retrieve source data from the temp table
         source_query = f"SELECT * FROM `{job_def['temp_table_name']}`"
         source_data = list(self.make_datafeed_job(source_query))
 
@@ -262,7 +262,7 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
                 participant_session.commit()
                 logging.info(f"{len(source_data)} {datafeed} records updated.")
 
-            # Step 3: Insert processed records into the datafeed_sent table
+            # Insert processed records into the datafeed_sent table
             logging.info(f"Inserting processed records into {job_def['sent_table_name']}")
             self.make_datafeed_job(job_def['insert_sent_sql'])
             logging.info(f"Processed records inserted into {job_def['sent_table_name']}")

@@ -16,7 +16,7 @@ WITH ranked_events AS (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
       ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
-  FROM `{project}.{source_dataset}.ppsc_consent_event` ce
+  FROM `{project}.{source_dataset}.ppsc_consent_event` se
   WHERE TRUE
   AND NOT EXISTS (
     SELECT 1
