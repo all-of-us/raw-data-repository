@@ -259,8 +259,8 @@
     "1ur10",
     "1ur90"
   ],
-  "ppsc_datafeed_src_dataset": ["ppsc_staging_data"],
-  "ppsc_datafeed_dest_dataset": ["ppsc_staging_data"],
+  "ppsc_datafeed_src_dataset": ["rdr_operational_datastream"],
+  "ppsc_datafeed_dest_dataset": ["rdr_operational_datastream"],
   "enable_health_sharing_status_3": true,
   "enable_participant_mediated_ehr": true
 }

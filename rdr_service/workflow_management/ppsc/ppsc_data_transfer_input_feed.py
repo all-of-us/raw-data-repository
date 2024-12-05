@@ -16,7 +16,7 @@ from rdr_service.workflow_management.ppsc import data_feed_queries
 from rdr_service.workflow_management.ppsc.ppsc_intake_to_ps_queries import get_consent_activity_to_stream, \
     get_profile_updates_activity_to_stream, get_withdrawal_activity_to_stream, get_deactivation_activity_to_stream, \
     get_participant_status_activity_to_stream, get_survey_completion_activity_to_stream, \
-    get_attribution_activity_to_stream
+    get_attribution_activity_to_stream, insert_intake_summary_records_sent
 from rdr_service.workflow_management.ppsc.ppsc_to_legacy_de_mappings import map_source_to_summary, \
     consent_data_elements, withdrawal_data_elements, profile_updates_data_elements, deactivation_data_elements, \
     participant_status_data_elements, survey_completion_data_elements, attribution_data_elements, \
@@ -119,49 +119,90 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
         self.bq_client = bigquery.Client()
 
     def make_datafeed_job(self, job_def):
-        return self.bq_client.query(job_def)
+        return self.bq_client.query(job_def).result()
 
     def get_datafeed_definition(self, datafeed) -> dict:
         src = config.getSettingJson(config.PPSC_DATAFEED_SRC_DATASET)[0]
+        sent_table_name = "intake_summary_datafeed_sent"
         if datafeed == "Consent":
-            source_data_sql = get_consent_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_consent"
+            source_data_sql = get_consent_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
             destination_model = ParticipantSummary
             de_mapping = consent_data_elements
 
         elif datafeed == "Profile Updates":
-            source_data_sql = get_profile_updates_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_profile_updates"
+            source_data_sql = get_profile_updates_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
             destination_model = ParticipantSummary
             de_mapping = profile_updates_data_elements
 
         elif datafeed == "Withdrawal":
-            source_data_sql = get_withdrawal_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_withdrawal"
+            source_data_sql = get_withdrawal_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
             destination_model = ParticipantSummary
             de_mapping = withdrawal_data_elements
         elif datafeed == "Deactivation":
-            source_data_sql = get_deactivation_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_deactivation"
+            source_data_sql = get_deactivation_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
             destination_model = ParticipantSummary
             de_mapping = deactivation_data_elements
 
         elif datafeed == "Participant Status":
-            source_data_sql = get_participant_status_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_participant_status"
+            source_data_sql = get_participant_status_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
+
             destination_model = ParticipantSummary
             de_mapping = participant_status_data_elements
 
         elif datafeed == "Survey Completion":
-            source_data_sql = get_survey_completion_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_survey_completion"
+            source_data_sql = get_survey_completion_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
             destination_model = ParticipantSummary
             de_mapping = survey_completion_data_elements
 
         elif datafeed == "Attribution":
-            source_data_sql = get_attribution_activity_to_stream(project=self.project, source_dataset=src)
+            temp_table_name = "temp_ranked_events_attribution"
+            source_data_sql = get_attribution_activity_to_stream(project=self.project,
+                                                                        source_dataset=src,
+                                                                        temp_table_name=temp_table_name,
+                                                                        sent_table_name=sent_table_name)
             destination_model = ParticipantSummary
             de_mapping = attribution_data_elements
 
         else:
             return {}
 
+        insert_sent_sql = insert_intake_summary_records_sent(
+            project=self.project,
+            source_dataset=src,
+            sent_table_name=sent_table_name,
+            temp_table_name=temp_table_name,
+            datafeed=datafeed
+        )
+
         return {
             "source_data": source_data_sql,
+            "temp_table_name": temp_table_name,
+            "sent_table_name": sent_table_name,
+            "insert_sent_sql": insert_sent_sql,
             "destination_model": destination_model,
             "de_mapping": de_mapping
         }
@@ -170,11 +211,18 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
         job_def = self.get_datafeed_definition(datafeed)
 
         if not job_def:
-            logging.warning(f"Could not run {datafeed} of invalid config")
+            logging.warning(f"Could not run {datafeed} because of invalid config")
             return
 
+        # Create the temp table in BigQuery
+        logging.info(f"Creating temp table for {datafeed}")
+        self.make_datafeed_job(job_def['source_data'])
+        logging.info(f"Temp table created for {datafeed}")
+
         # Get Source Data
-        source_data = list(self.make_datafeed_job(job_def['source_data']))
+        # Retrieve source data from the temp table
+        source_query = f"SELECT * FROM `{job_def['temp_table_name']}`"
+        source_data = list(self.make_datafeed_job(source_query))
 
         if source_data:
             logging.info(f"{datafeed} Source Data retrieved.")
@@ -213,6 +261,11 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
                 summary_session.commit()
                 participant_session.commit()
                 logging.info(f"{len(source_data)} {datafeed} records updated.")
+
+            # Insert processed records into the datafeed_sent table
+            logging.info(f"Inserting processed records into {job_def['sent_table_name']}")
+            self.make_datafeed_job(job_def['insert_sent_sql'])
+            logging.info(f"Processed records inserted into {job_def['sent_table_name']}")
 
         else:
             logging.warning(f"No Staged Rows for {datafeed} Data Feed")

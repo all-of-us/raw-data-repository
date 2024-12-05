@@ -254,7 +254,7 @@ where TRUE
 def get_health_data_to_stream(project: str, destination_dataset: str) -> str:
     return f"""
     SELECT distinct participant_id, ignore_flag, event_date_time, health_data_stream_sharing_status
-    FROM `{project}.{destination_dataset}.datafeed_input_heathdata_sharing` s
+    FROM `{project}.{destination_dataset}.datafeed_input_healthdata_sharing` s
     where TRUE
       AND NOT EXISTS (
             SELECT 1

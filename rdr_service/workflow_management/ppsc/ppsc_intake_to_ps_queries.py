@@ -1,25 +1,36 @@
-def get_consent_activity_to_stream(project: str, source_dataset: str) -> str:
+def get_consent_activity_to_stream(project: str,
+                                              source_dataset: str,
+                                              temp_table_name: str,
+                                              sent_table_name: str) -> str:
     return f"""
+CREATE OR REPLACE TABLE `{project}.{source_dataset}.{temp_table_name}` AS
 WITH ranked_events AS (
   SELECT
-    ce.participant_id,
-    ce.event_type_name,
-    ce.event_authored_time,
-    ce.data_element_name,
-    ce.data_element_value,
+    se.participant_id,
+    se.event_id,
+    se.event_type_name,
+    se.event_authored_time,
+    se.data_element_name,
+    se.data_element_value,
     ROW_NUMBER() OVER (
-      PARTITION BY ce.participant_id, ce.event_type_name
-      ORDER BY ce.event_authored_time DESC
+      PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
-  FROM `{project}.{source_dataset}.ppsc_consent_event` ce
-  WHERE ce.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `{project}.{source_dataset}.rdr_participant_summary`
+  FROM `{project}.{source_dataset}.ppsc_consent_event` se
+  WHERE TRUE
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `{project}.{source_dataset}.{sent_table_name}` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and data_element_name IN ("activity_status", '​activity_status')
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
   MAX(CASE WHEN event_type_name = 'EHR Authorization' AND data_element_name = 'activity_status' AND rank = 1
            THEN data_element_value END) AS ehr_authorization,
   MAX(CASE WHEN event_type_name = 'EHR Authorization' AND rank = 1
@@ -29,32 +40,44 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Primary Consent' AND rank = 1
            THEN event_authored_time END) AS primary_consent_event_authored_time
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
 
 
-def get_profile_updates_activity_to_stream(project: str, source_dataset: str) -> str:
+def get_profile_updates_activity_to_stream(project: str,
+                                              source_dataset: str,
+                                              temp_table_name: str,
+                                              sent_table_name: str) -> str:
     return f"""
+CREATE OR REPLACE TABLE `{project}.{source_dataset}.{temp_table_name}` AS
 WITH ranked_events AS (
   SELECT
     se.participant_id,
+    se.event_id,
     se.event_type_name,
     se.event_authored_time,
     se.data_element_name,
     se.data_element_value,
     ROW_NUMBER() OVER (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
-      ORDER BY se.event_authored_time DESC
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_profile_updates_event` se
-  WHERE se.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `{project}.{source_dataset}.rdr_participant_summary`
+  WHERE TRUE
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `{project}.{source_dataset}.{sent_table_name}` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and data_element_name IN ("piiname_first","piiname_middle","piiname_last","streetaddress_piizip","streetaddress_piistate","streetaddress_piicity","piiaddress_streetaddress","piiaddress_streetaddress2","piicontactinformation_phone","piicontactinformation_email","language_preference","piibirthinformation_birthdate")
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
   -- First Name
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piiname_first' AND rank = 1
            THEN data_element_value END) AS first_name,
@@ -92,32 +115,44 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piibirthinformation_birthdate' AND rank = 1
            THEN data_element_value END) AS birthdate
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
 
 
-def get_withdrawal_activity_to_stream(project: str, source_dataset: str) -> str:
+def get_withdrawal_activity_to_stream(project: str,
+                                              source_dataset: str,
+                                              temp_table_name: str,
+                                              sent_table_name: str) -> str:
     return f"""
+CREATE OR REPLACE TABLE `{project}.{source_dataset}.{temp_table_name}` AS
 WITH ranked_events AS (
   SELECT
     se.participant_id,
+    se.event_id,
     se.event_type_name,
     se.event_authored_time,
     se.data_element_name,
     se.data_element_value,
     ROW_NUMBER() OVER (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
-      ORDER BY se.event_authored_time DESC
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_withdrawal_event` se
-  WHERE se.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `{project}.{source_dataset}.rdr_participant_summary`
+  WHERE TRUE
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `{project}.{source_dataset}.{sent_table_name}` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and data_element_name IN ("activity_status", '​activity_status', 'withdrawal_reason')
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
   MAX(CASE WHEN event_type_name = 'Withdrawal'
       AND data_element_name IN ("activity_status", '​activity_status')
       AND rank = 1
@@ -131,27 +166,37 @@ SELECT
       AND rank = 1
     THEN data_element_value END) AS withdrawal_reason
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
 
 
-def get_deactivation_activity_to_stream(project: str, source_dataset: str) -> str:
+def get_deactivation_activity_to_stream(project: str,
+                                              source_dataset: str,
+                                              temp_table_name: str,
+                                              sent_table_name: str) -> str:
     return f"""
-    WITH ranked_events AS (
+CREATE OR REPLACE TABLE `{project}.{source_dataset}.{temp_table_name}` AS
+WITH ranked_events AS (
   SELECT
     se.participant_id,
+    se.event_id,
     se.event_type_name,
     se.event_authored_time,
     se.data_element_name,
     se.data_element_value,
     ROW_NUMBER() OVER (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
-      ORDER BY se.event_authored_time DESC
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_deactivation_event` se
-  WHERE se.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `{project}.{source_dataset}.rdr_participant_summary`
+  WHERE TRUE
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `{project}.{source_dataset}.{sent_table_name}` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and data_element_name IN ("activity_status", '​activity_status')
 )
@@ -166,34 +211,45 @@ SELECT
       AND rank = 1
     THEN event_authored_time END) AS deactivation_status_time
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
 
 
-def get_participant_status_activity_to_stream(project: str, source_dataset: str) -> str:
+def get_participant_status_activity_to_stream(project: str,
+                                              source_dataset: str,
+                                              temp_table_name: str,
+                                              sent_table_name: str) -> str:
     return f"""
+CREATE OR REPLACE TABLE `{project}.{source_dataset}.{temp_table_name}` AS
 WITH ranked_events AS (
   SELECT
     se.participant_id,
+    se.event_id,
     se.event_type_name,
     se.event_authored_time,
     se.data_element_name,
     se.data_element_value,
     ROW_NUMBER() OVER (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
-      ORDER BY se.event_authored_time DESC
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_participant_status_event` se
   WHERE TRUE
-  AND se.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `{project}.{source_dataset}.rdr_participant_summary`
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `{project}.{source_dataset}.{sent_table_name}` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and se.event_type_name IN ('Test Account', 'Death', 'Retention Status', 'Enrollment Status')
   and data_element_name IN ("activity_status", '​activity_status', "retention_type", "participant", "participant", "participant_ehr_consent", "enrolled", "pmb_eligible", "core_minus_pm", "core_participant")
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
 
   -- Test Account
   MAX(CASE WHEN event_type_name = 'Test Account' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS test_account,
@@ -217,28 +273,37 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'core_participant' AND data_element_value = "yes" THEN event_authored_time END) AS core_participant_time
 
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
 
 
-def get_survey_completion_activity_to_stream(project: str, source_dataset: str) -> str:
+def get_survey_completion_activity_to_stream(project: str,
+                                              source_dataset: str,
+                                              temp_table_name: str,
+                                              sent_table_name: str) -> str:
     return f"""
+CREATE OR REPLACE TABLE `{project}.{source_dataset}.{temp_table_name}` AS
 WITH ranked_events AS (
   SELECT
     se.participant_id,
+    se.event_id,
     se.event_type_name,
     se.event_authored_time,
     se.data_element_name,
     se.data_element_value,
     ROW_NUMBER() OVER (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
-      ORDER BY se.event_authored_time DESC
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_survey_completion_event` se
   WHERE TRUE
-  AND se.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `{project}.{source_dataset}.rdr_participant_summary`
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `{project}.{source_dataset}.{sent_table_name}` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and se.event_type_name IN ("Basics Data", "Basics Data", "Overall Health", "Lifestyle", "The Basics", "Health Care Access", "Social Determinants of Health", "Personal and Family Health History", "Life Functioning Survey", "Emotional Health History and Well Being", "Behavioral Health and Personality", "Pediatric Environmental Health")
   and data_element_name IN ("activity_status", '​activity_status', "gender_genderidentity","biologicalsexatbirth_sexatbirth","thebasics_sexualorientation","race_whatraceethnicity","educationlevel_highestgrade","income_annualincome")
@@ -299,27 +364,37 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Pediatric Environmental Health' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_environmental_exposures_authored
 
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
 
-def get_attribution_activity_to_stream(project: str, source_dataset: str) -> str:
+
+def get_attribution_activity_to_stream(project: str,
+                                              source_dataset: str,
+                                              temp_table_name: str,
+                                              sent_table_name: str) -> str:
     return f"""
+CREATE OR REPLACE TABLE `{project}.{source_dataset}.{temp_table_name}` AS
 WITH ranked_events AS (
   SELECT
     se.participant_id,
+    se.event_id,
     se.event_type_name,
     se.event_authored_time,
     se.data_element_name,
     se.data_element_value,
     ROW_NUMBER() OVER (
       PARTITION BY se.participant_id, se.event_type_name, se.data_element_name
-      ORDER BY se.event_authored_time DESC
+      ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_attribution_event` se
   WHERE TRUE
-  AND se.event_authored_time > (
-    SELECT MAX(last_modified)
-    FROM `{project}.{source_dataset}.rdr_participant_summary`
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `{project}.{source_dataset}.{sent_table_name}` sent
+      WHERE sent.participant_id = se.participant_id
+        AND sent.event_id >= se.event_id
+        AND sent.event_type_name = se.event_type_name
   )
   and se.event_type_name IN ('Org Attribution')
   and data_element_name IN ("activity_status", '​activity_status')
@@ -330,5 +405,33 @@ SELECT
     AND data_element_name IN ("activity_status", '​activity_status') AND rank = 1
            THEN data_element_value END) AS organization
 FROM ranked_events
-GROUP BY participant_id
+WHERE rank = 1
+GROUP BY participant_id, event_id, event_type_name
     """
+
+
+def insert_intake_summary_records_sent(project: str,
+                                       source_dataset: str,
+                                       sent_table_name: str,
+                                       temp_table_name: str,
+                                       datafeed: str) -> str:
+    return f"""
+            INSERT INTO `{project}.{source_dataset}.{sent_table_name}` (
+                participant_id,
+                event_id,
+                event_type_name,
+                datafeed_name,
+                created,
+                modified,
+                ignore_flag
+            )
+            SELECT
+                participant_id,
+                event_id,
+                event_type_name,
+                '{datafeed}' AS datafeed_name,
+                CURRENT_DATETIME() AS created,
+                CURRENT_DATETIME() AS modified,
+                FALSE AS ignore_flag
+            FROM `{project}.{source_dataset}.{temp_table_name}`
+            """
