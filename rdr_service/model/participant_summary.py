@@ -2031,7 +2031,7 @@ def model_update_lastModified_listener(_, __, summary: ParticipantSummary):
     summary.lastModified = clock.CLOCK.now()
 
 
-event.listen(ParticipantSummary, "before_insert", validate_participant_summary)
+event.listen(ParticipantSummary, "before_insert", model_insert_listener)
 event.listen(ParticipantSummary, "before_update", model_update_lastModified_listener)
 
 
