@@ -422,7 +422,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         activity_rows = [{
             "participant_id": ppsc_participant.id,
             "withdrawal_status": "withdrawn",
-            "withdrawal_status_authored_time": "2024-11-21T18:12:00",
+            "withdrawal_status_authored": "2024-11-21T18:12:00",
             "withdrawal_reason": "Duplicate Account"
         }]
 

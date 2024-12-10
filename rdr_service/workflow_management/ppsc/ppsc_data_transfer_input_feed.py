@@ -246,7 +246,6 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
                 for row in source_data:
                     # Transform source data into the expected dictionary format
                     record = self.transform_bq_row_to_dict(row)
-                    logging.info(f"source record is: {record}")
 
                     # Map ParticipantSummary fields
                     summary_record = map_source_to_summary(
@@ -254,7 +253,6 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
                         data_element_mapping=job_def['de_mapping'],
                         **mapping_args
                     )
-                    logging.info(f"summary record basics is: {summary_record.questionnaireOnTheBasics}")
                     summary_session.merge(summary_record)
 
                     # Map Participant fields (only if test_account is present)
