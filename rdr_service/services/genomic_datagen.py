@@ -80,11 +80,10 @@ class ParticipantGenerator(GeneratorMixin):
         self.template_records = []
         self.default_table_map = {}
         self.session = None
+        self.genomic_set = None
 
     def __enter__(self):
         self.data_generator = self.initialize_data_generator()
-        self.genomic_set = self._set_genomic_set()
-
         # init daos
         self.participant_dao = ParticipantDao()
         self.participant_summary_dao = ParticipantSummaryDao()
@@ -183,7 +182,10 @@ class ParticipantGenerator(GeneratorMixin):
                             self.session,
                             participant_id
                         )
-                if table == 'genomic_set_member' and self.genomic_set:
+                if table == 'genomic_set_member':
+                    if not self.genomic_set:
+                        self.genomic_set = self._set_genomic_set()
+
                     attr_dict['genomicSetId'] = self.genomic_set.id
 
                 try:
