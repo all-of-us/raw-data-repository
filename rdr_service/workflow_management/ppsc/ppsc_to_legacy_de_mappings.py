@@ -212,10 +212,12 @@ def map_source_to_participant(record: dict, data_element_mapping: dict) -> Parti
     for source_field, mapping in data_element_mapping.items():
         if source_field in record and record[source_field] is not None:
             target_field = mapping["field"]
+
             value_mapping = mapping["value"]
 
             if isinstance(value_mapping, dict):  # Handle value transformation
                 transformed_value = value_mapping.get(record[source_field].lower())
+
             elif value_mapping == "string":  # Handle strings
                 transformed_value = record[source_field]
             else:
@@ -311,7 +313,7 @@ withdrawal_data_elements = {
             "not_withdrawn": WithdrawalStatus.NOT_WITHDRAWN
         }
     },
-    "withdrawal_status_authored_time": {
+    "withdrawal_status_authored": {
         "field": ParticipantSummary.withdrawalAuthored,
         "value": "date_string"
     },

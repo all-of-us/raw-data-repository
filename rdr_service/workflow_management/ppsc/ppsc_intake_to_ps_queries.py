@@ -17,6 +17,7 @@ WITH ranked_events AS (
       ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_consent_event` se
+  JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
   AND NOT EXISTS (
     SELECT 1
@@ -26,6 +27,7 @@ WITH ranked_events AS (
         AND sent.event_type_name = se.event_type_name
   )
   and data_element_name IN ("activity_status", '​activity_status')
+  and se.ignore_flag = 0
 )
 SELECT
   participant_id,
@@ -64,6 +66,7 @@ WITH ranked_events AS (
       ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_profile_updates_event` se
+  JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
   AND NOT EXISTS (
     SELECT 1
@@ -73,6 +76,7 @@ WITH ranked_events AS (
         AND sent.event_type_name = se.event_type_name
   )
   and data_element_name IN ("piiname_first","piiname_middle","piiname_last","streetaddress_piizip","streetaddress_piistate","streetaddress_piicity","piiaddress_streetaddress","piiaddress_streetaddress2","piicontactinformation_phone","piicontactinformation_email","language_preference","piibirthinformation_birthdate")
+  and se.ignore_flag = 0
 )
 SELECT
   participant_id,
@@ -80,40 +84,40 @@ SELECT
   event_type_name,
   -- First Name
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piiname_first' AND rank = 1
-           THEN data_element_value END) AS first_name,
+           THEN data_element_value END) AS piiname_first,
   -- Middle Name
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piiname_middle' AND rank = 1
-           THEN data_element_value END) AS middle_name,
+           THEN data_element_value END) AS piiname_middle,
   -- Last Name
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piiname_last' AND rank = 1
-           THEN data_element_value END) AS last_name,
+           THEN data_element_value END) AS piiname_last,
   -- Zip Code
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'streetaddress_piizip' AND rank = 1
-           THEN data_element_value END) AS zip_code,
+           THEN data_element_value END) AS streetaddress_piizip,
   -- State
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'streetaddress_piistate' AND rank = 1
-           THEN data_element_value END) AS state,
+           THEN data_element_value END) AS streetaddress_piistate,
   -- City
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'streetaddress_piicity' AND rank = 1
-           THEN data_element_value END) AS city,
+           THEN data_element_value END) AS streetaddress_piicity,
   -- Street Address
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piiaddress_streetaddress' AND rank = 1
-           THEN data_element_value END) AS street_address,
+           THEN data_element_value END) AS piiaddress_streetaddress,
   -- Street Address Line 2
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piiaddress_streetaddress2' AND rank = 1
-           THEN data_element_value END) AS street_address_line_2,
+           THEN data_element_value END) AS piiaddress_streetaddress2,
   -- Phone Number
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piicontactinformation_phone' AND rank = 1
-           THEN data_element_value END) AS phone_number,
+           THEN data_element_value END) AS piicontactinformation_phone,
   -- Email
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piicontactinformation_email' AND rank = 1
-           THEN data_element_value END) AS email,
+           THEN data_element_value END) AS piicontactinformation_email,
   -- Language Preference
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'language_preference' AND rank = 1
            THEN data_element_value END) AS language_preference,
   -- Birthdate
   MAX(CASE WHEN event_type_name = 'Profile Data' AND data_element_name = 'piibirthinformation_birthdate' AND rank = 1
-           THEN data_element_value END) AS birthdate
+           THEN data_element_value END) AS piibirthinformation_birthdate
 FROM ranked_events
 WHERE rank = 1
 GROUP BY participant_id, event_id, event_type_name
@@ -139,6 +143,7 @@ WITH ranked_events AS (
       ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_withdrawal_event` se
+  JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
   AND NOT EXISTS (
     SELECT 1
@@ -148,6 +153,7 @@ WITH ranked_events AS (
         AND sent.event_type_name = se.event_type_name
   )
   and data_element_name IN ("activity_status", '​activity_status', 'withdrawal_reason')
+  and se.ignore_flag = 0
 )
 SELECT
   participant_id,
@@ -190,6 +196,7 @@ WITH ranked_events AS (
       ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_deactivation_event` se
+  JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
   AND NOT EXISTS (
     SELECT 1
@@ -199,9 +206,12 @@ WITH ranked_events AS (
         AND sent.event_type_name = se.event_type_name
   )
   and data_element_name IN ("activity_status", '​activity_status')
+  and se.ignore_flag = 0
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
   MAX(CASE WHEN event_type_name = 'Deactivation'
       AND data_element_name IN ("activity_status", '​activity_status')
       AND rank = 1
@@ -235,6 +245,7 @@ WITH ranked_events AS (
       ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_participant_status_event` se
+  JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
   AND NOT EXISTS (
     SELECT 1
@@ -245,6 +256,7 @@ WITH ranked_events AS (
   )
   and se.event_type_name IN ('Test Account', 'Death', 'Retention Status', 'Enrollment Status')
   and data_element_name IN ("activity_status", '​activity_status', "retention_type", "participant", "participant", "participant_ehr_consent", "enrolled", "pmb_eligible", "core_minus_pm", "core_participant")
+  and se.ignore_flag = 0
 )
 SELECT
   participant_id,
@@ -297,6 +309,7 @@ WITH ranked_events AS (
       ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_survey_completion_event` se
+  JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
   AND NOT EXISTS (
     SELECT 1
@@ -307,10 +320,12 @@ WITH ranked_events AS (
   )
   and se.event_type_name IN ("Basics Data", "Basics Data", "Overall Health", "Lifestyle", "The Basics", "Health Care Access", "Social Determinants of Health", "Personal and Family Health History", "Life Functioning Survey", "Emotional Health History and Well Being", "Behavioral Health and Personality", "Pediatric Environmental Health")
   and data_element_name IN ("activity_status", '​activity_status', "gender_genderidentity","biologicalsexatbirth_sexatbirth","thebasics_sexualorientation","race_whatraceethnicity","educationlevel_highestgrade","income_annualincome")
+  and se.ignore_flag = 0
 )
 SELECT
   participant_id,
-
+  event_id,
+  event_type_name,
   -- Basics Data
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'gender_genderidentity' THEN data_element_value END) AS gender_identity,
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'biologicalsexatbirth_sexatbirth' THEN data_element_value END) AS sex,
@@ -388,6 +403,7 @@ WITH ranked_events AS (
       ORDER BY se.event_authored_time DESC, se.event_id DESC
     ) AS rank
   FROM `{project}.{source_dataset}.ppsc_attribution_event` se
+  JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
   AND NOT EXISTS (
     SELECT 1
@@ -398,9 +414,12 @@ WITH ranked_events AS (
   )
   and se.event_type_name IN ('Org Attribution')
   and data_element_name IN ("activity_status", '​activity_status')
+  and se.ignore_flag = 0
 )
 SELECT
   participant_id,
+  event_id,
+  event_type_name,
   MAX(CASE WHEN event_type_name = 'Org Attribution'
     AND data_element_name IN ("activity_status", '​activity_status') AND rank = 1
            THEN data_element_value END) AS organization
