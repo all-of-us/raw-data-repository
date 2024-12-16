@@ -805,6 +805,9 @@ class ParticipantSummaryDao(UpdatableDao):
 
     def update_enrollment_status(self, summary: ParticipantSummary, session,
                                  allow_downgrade=False, pdr_pubsub=True):
+        # disabling calculation now that PPSC will be taking it over
+        return
+
         """
         Updates the enrollment status field on the provided participant summary to the correct value.
         If allow_downgrade flag is set (e.g., when called by backfill tool), V3.* statuses will be recalculated
