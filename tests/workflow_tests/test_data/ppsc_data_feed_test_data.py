@@ -20,6 +20,7 @@ SELECT DISTINCT
     GREATEST(
         c.event_authored_time,
         ehrc.event_authored_time,
+        aw4.created,
         basics.event_authored_time,
         overall.event_authored_time,
         lifestyle.event_authored_time,
@@ -35,30 +36,37 @@ JOIN `test.rdr_operational_datastream.ppsc_consent_event` c
 -- EHR Consent
 JOIN `test.rdr_operational_datastream.ppsc_consent_event` ehrc
     ON c.participant_id = ehrc.participant_id
-    AND c.data_element_value = "submitted_yes"
-    AND c.event_type_name = "EHR Authorization"
+    AND ehrc.data_element_value = "Yes"
+    AND ehrc.event_type_name = "EHR Authorization"
 
 -- Earliest EHR Received
 JOIN earliest_ehr
     ON c.participant_id = earliest_ehr.participant_id
 
+-- WGS Sequenced
+JOIN `test.rdr_operational_datastream.rdr_genomic_aw4_raw` aw4
+    ON aw4.biobank_id = CAST(p.biobank_id as STRING)
+        AND aw4.genome_type = "aou_wgs"
+        AND aw4.pipeline_id = "dragen_3.7.8"
+        AND aw4.qc_status = "PASS"
+
 -- Basics Completion
 JOIN `test.rdr_operational_datastream.ppsc_survey_completion_event` basics
     ON basics.participant_id = c.participant_id
     AND basics.event_type_name = "The Basics"
-    AND basics.data_element_value = "submitted_yes"
+    AND basics.data_element_value = "submitted_complete"
 
 -- Overall Health Completion
 JOIN `test.rdr_operational_datastream.ppsc_survey_completion_event` overall
     ON overall.participant_id = c.participant_id
     AND overall.event_type_name = "Overall Health"
-    AND overall.data_element_value = "submitted_yes"
+    AND overall.data_element_value = "submitted_complete"
 
 -- Lifestyle Completion
 JOIN `test.rdr_operational_datastream.ppsc_survey_completion_event` lifestyle
     ON lifestyle.participant_id = c.participant_id
     AND lifestyle.event_type_name = "Lifestyle"
-    AND lifestyle.data_element_value = "submitted_yes"
+    AND lifestyle.data_element_value = "submitted_complete"
 
 -- Physical Measurements
 JOIN `test.rdr_operational_datastream.rdr_physical_measurements` pm
@@ -75,7 +83,7 @@ JOIN `test.rdr_operational_datastream.rdr_measurement` weight
     AND weight.code_value = "weight"
 
 WHERE
-    c.data_element_value = "submitted_yes"
+    c.data_element_value = "Yes"
     AND c.event_type_name = "Primary Consent"
 
     -- Insert only if participant_id doesn't exist in the target table
