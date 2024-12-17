@@ -372,7 +372,7 @@ SELECT
 
   -- Behavioral Health and Personality
   MAX(CASE WHEN event_type_name = 'Behavioral Health and Personality' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_behavioral_health_and_personality,
-  MAX(CASE WHEN event_type_name = 'Behavioral Health and Personality' ND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_behavioral_health_and_personality_authored,
+  MAX(CASE WHEN event_type_name = 'Behavioral Health and Personality' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_behavioral_health_and_personality_authored,
 
   -- Pediatric Environmental Health
   MAX(CASE WHEN event_type_name = 'Pediatric Environmental Health' AND data_element_name = 'activity_date_time' THEN event_authored_time END) AS questionnaire_on_environmental_exposures,
