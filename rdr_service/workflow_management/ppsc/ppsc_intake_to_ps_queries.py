@@ -318,7 +318,7 @@ WITH ranked_events AS (
         AND sent.event_id >= se.event_id
         AND sent.event_type_name = se.event_type_name
   )
-  and se.event_type_name IN ("Basics Data", "Basics Data", "Overall Health", "Lifestyle", "The Basics", "Health Care Access", "Social Determinants of Health", "Personal and Family Health History", "Life Functioning Survey", "Emotional Health History and Well Being", "Behavioral Health and Personality", "Pediatric Environmental Health")
+  and se.event_type_name IN ("Basics Data", "Basics Data", "Overall Health", "Lifestyle", "The Basics", "Health Care Access & Utilization", "Social Determinants of Health", "Personal and Family Health History", "Life Functioning Survey", "Emotional Health History and Well Being", "Behavioral Health and Personality", "Pediatric Environmental Health")
   and data_element_name IN ("activity_status", '​activity_status', "gender_genderidentity","biologicalsexatbirth_sexatbirth","thebasics_sexualorientation","race_whatraceethnicity","educationlevel_highestgrade","income_annualincome")
   and se.ignore_flag = 0
 )
@@ -351,8 +351,8 @@ SELECT
   MAX(CASE WHEN event_type_name = 'The Basics' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_the_basics_authored,
 
   -- Health Care Access
-  MAX(CASE WHEN event_type_name = 'Health Care Access' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_healthcare_access,
-  MAX(CASE WHEN event_type_name = 'Health Care Access' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_healthcare_access_authored,
+  MAX(CASE WHEN event_type_name = 'Health Care Access & Utilization' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_healthcare_access,
+  MAX(CASE WHEN event_type_name = 'Health Care Access & Utilization' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_healthcare_access_authored,
 
   -- Social Determinants of Health
   MAX(CASE WHEN event_type_name = 'Social Determinants of Health' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_social_determinants_of_health,
