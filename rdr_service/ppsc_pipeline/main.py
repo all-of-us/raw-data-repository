@@ -43,6 +43,7 @@ def ppsc_data_transfer_intake_2_summary_feed():
     intake_2_summary_feed.run_datafeed(datafeed)
     return '{ "success": "true" }'
 
+
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_core():
     with PPSCDataTransferCore() as core_transfer:
@@ -115,42 +116,42 @@ def _build_pipeline_app():
         PPSC_PIPELINE_PREFIX + "TransferCore",
         endpoint="ppsc_data_transfer_core",
         view_func=ppsc_data_transfer_core,
-        methods=["GET"],
+        methods=["POST"],
     )
 
     ppsc_pipeline.add_url_rule(
         PPSC_PIPELINE_PREFIX + "TransferEHR",
         endpoint="ppsc_data_transfer_ehr",
         view_func=ppsc_data_transfer_ehr,
-        methods=["GET"],
+        methods=["POST"],
     )
 
     ppsc_pipeline.add_url_rule(
         PPSC_PIPELINE_PREFIX + "TransferHealthData",
         endpoint="ppsc_data_transfer_health_data",
         view_func=ppsc_data_transfer_health_data,
-        methods=["GET"],
+        methods=["POST"],
     )
 
     ppsc_pipeline.add_url_rule(
         PPSC_PIPELINE_PREFIX + "TransferBiobankSample",
         endpoint="ppsc_data_transfer_biobank_sample",
         view_func=ppsc_data_transfer_biobank_sample,
-        methods=["GET"],
+        methods=["POST"],
     )
 
     ppsc_pipeline.add_url_rule(
         PPSC_PIPELINE_PREFIX + "TransferNPHOptIn",
         endpoint="ppsc_rti_data_transfer_nph_opt_in",
         view_func=ppsc_rti_data_transfer_nph_opt_in,
-        methods=["GET"],
+        methods=["POST"],
     )
 
     ppsc_pipeline.add_url_rule(
         PPSC_PIPELINE_PREFIX + "PPSCNphOptInSync",
         endpoint="ppsc_nph_opt_in_sync",
         view_func=ppsc_nph_opt_in_sync,
-        methods=["GET"],
+        methods=["POST"],
     )
 
     ppsc_pipeline.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
