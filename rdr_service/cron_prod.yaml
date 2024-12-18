@@ -1,14 +1,4 @@
 cron:
-- description: Check for any corrections to invalid consent files
-  url: /offline/CorrectConsentFiles
-  schedule: every day 23:30
-  timezone: America/New_York
-  target: offline
-- description: Sync site bucket consent files
-  url: /offline/SyncConsentFiles
-  schedule: 1 of month 00:00
-  timezone: America/New_York
-  target: offline
 - description: Update EHR Status for Organizations from curation data
   url: /offline/UpdateEhrStatusOrganization
   schedule: every day 01:00
@@ -19,35 +9,10 @@ cron:
   schedule: every day 00:00
   timezone: America/New_York
   target: offline
-- description: Check requirements for full-member enrollment status
-  url: /offline/EnrollmentStatusCheck
-  schedule: 2 of month 00:00
-  timezone: America/New_York
-  target: offline
-- description: Mark any new duplicates of questionnaire responses as duplicates if they match previous groups of responses
-  url: /offline/FlagResponseDuplication
-  schedule: every day 03:00
-  timezone: America/New_York
-  target: offline
-- description: Check any new survey responses for validation errors
-  url: /offline/ResponseValidation
-  schedule: every day 03:30
-  timezone: America/New_York
-  target: offline
 - description: BigQuery Sync
   url: /offline/BigQuerySync
   timezone: America/New_York
   schedule: every 3 minutes
-  target: offline
-- description: DeceasedReport Import
-  url: /offline/DeceasedReportImport
-  timezone: America/New_York
-  schedule: every day 03:00
-  target: offline
-- description: HPO LITE PAIRING Import
-  url: /offline/HpoLitePairingImport
-  timezone: America/New_York
-  schedule: every day 03:15
   target: offline
 - description: Genomic AW2F Manifest Workflow
   url: /offline/GenomicAW2FManifestWorkflow
@@ -79,40 +44,10 @@ cron:
   timezone: America/New_York
   schedule: every day 09:45
   target: offline
-- description: Check for Yes-No-Yes GROR W1IL participants
-  url: /offline/CheckForW1ilGrorResubmitParticipants
-  timezone: America/New_York
-  schedule: every monday 10:00
-  target: offline
 - description: Genomic Data PDR Reconcile
   url: /offline/GenomicDataPdrReconcile
   timezone: America/New_York
   schedule: every 30 minutes
-  target: offline
-- description: Export VA Workqueue (Daily)
-  url: /offline/ExportVaWorkQueue
-  timezone: America/New_York
-  schedule: every day 02:00
-  target: offline
-- description: Delete Old VA Workqueue Reports (Daily)
-  url: /offline/DeleteOldVaWorkQueueReports
-  timezone: America/New_York
-  schedule: every day 01:00
-  target: offline
-- description: Genomic GC Appointment GRoR Changed Notification (Daily)
-  url: /offline/GenomicNotifyAppointmentGRoRChanged
-  timezone: America/New_York
-  schedule: every day 04:15
-  target: offline
-- description: Genomic Update Array Storage Class
-  url: /offline/GenomicUpdateArrayStorageClass
-  timezone: America/New_York
-  schedule: every day 22:00
-  target: offline
-- description: Genomic Update WGS Storage Class
-  url: /offline/GenomicUpdateWGSStorageClass
-  timezone: America/New_York
-  schedule: every day 22:15
   target: offline
 - description: NPH Biobank Nightly File Drop (Daily)
   schedule: every day 01:30
@@ -129,26 +64,11 @@ cron:
   schedule: every Monday 09:00
   timezone: America/New_York
   target: offline
-- description: Daily Consent Error Report checks
-  url: /offline/ConsentErrorReport
-  schedule: every day 08:30
-  target: offline
-  timezone: America/New_York
 - description: Test Participant Cleanup Reminder
   url: /offline/PTSCTestParticipantCleanupRequest
   schedule: 1 of december, march, june, september 09:00
   target: offline
   timezone: America/New_York
-- description: Daily Duplicate Account Check
-  url: /offline/DetectDuplicateAccounts
-  schedule: every day 20:00
-  target: offline
-  timezone: America/New_York
-- description: ETM Duplicate Response Detector
-  schedule: every day 02:30
-  target: offline
-  timezone: America/New_York
-  url: /offline/detect_etm_response_duplicates
 - description: Monthly withdrawal report
   url: /offline/BiobankWithdrawalReport
   schedule: 1 of month 07:00
