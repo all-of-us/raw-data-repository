@@ -36,11 +36,11 @@ SELECT
   MAX(CASE WHEN event_type_name = 'EHR Authorization' AND data_element_name = 'activity_status' AND rank = 1
            THEN data_element_value END) AS ehr_authorization,
   MAX(CASE WHEN event_type_name = 'EHR Authorization' AND rank = 1
-           THEN event_authored_time END) AS ehr_authorization_event_authored_time,
+           THEN event_authored_time END) AS ehr_authorization_event_authored,
   MAX(CASE WHEN event_type_name = 'Primary Consent' AND data_element_name = 'activity_status' AND rank = 1
            THEN data_element_value END) AS primary_consent,
   MAX(CASE WHEN event_type_name = 'Primary Consent' AND rank = 1
-           THEN event_authored_time END) AS primary_consent_event_authored_time
+           THEN event_authored_time END) AS primary_consent_event_authored
 FROM ranked_events
 WHERE rank = 1
 GROUP BY participant_id, event_id, event_type_name
@@ -279,7 +279,7 @@ SELECT
   -- Enrollment Status
   MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'participant' AND data_element_value = "yes" THEN event_authored_time END) AS participant_time,
   MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'participant_ehr_consent' AND data_element_value = "yes" THEN event_authored_time END) AS participant_ehr_consent_time,
-  MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'enrolled' AND data_element_value = "yes" THEN event_authored_time END) AS enrolledenrolled_time,
+  MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'enrolled' AND data_element_value = "yes" THEN event_authored_time END) AS enrolled_time,
   MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'pmb_eligible' AND data_element_value = "yes" THEN event_authored_time END) AS pmb_eligible_time,
   MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'core_minus_pm' AND data_element_value = "yes" THEN event_authored_time END) AS core_minus_pm_time,
   MAX(CASE WHEN event_type_name = 'Enrollment Status' AND data_element_name = 'core_participant' AND data_element_value = "yes" THEN event_authored_time END) AS core_participant_time
@@ -318,7 +318,7 @@ WITH ranked_events AS (
         AND sent.event_id >= se.event_id
         AND sent.event_type_name = se.event_type_name
   )
-  and se.event_type_name IN ("Basics Data", "Basics Data", "Overall Health", "Lifestyle", "The Basics", "Health Care Access", "Social Determinants of Health", "Personal and Family Health History", "Life Functioning Survey", "Emotional Health History and Well Being", "Behavioral Health and Personality", "Pediatric Environmental Health")
+  and se.event_type_name IN ("Basics Data", "Basics Data", "Overall Health", "Lifestyle", "The Basics", "Health Care Access & Utilization", "Social Determinants of Health", "Personal and Family Health History", "Life Functioning Survey", "Emotional Health History and Well Being", "Behavioral Health and Personality", "Pediatric Environmental Health")
   and data_element_name IN ("activity_status", '​activity_status', "gender_genderidentity","biologicalsexatbirth_sexatbirth","thebasics_sexualorientation","race_whatraceethnicity","educationlevel_highestgrade","income_annualincome")
   and se.ignore_flag = 0
 )
@@ -351,28 +351,28 @@ SELECT
   MAX(CASE WHEN event_type_name = 'The Basics' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_the_basics_authored,
 
   -- Health Care Access
-  MAX(CASE WHEN event_type_name = 'Health Care Access' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_healthcare_access,
-  MAX(CASE WHEN event_type_name = 'Health Care Access' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_healthcare_access_authored,
+  MAX(CASE WHEN event_type_name = 'Health Care Access & Utilization' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_healthcare_access,
+  MAX(CASE WHEN event_type_name = 'Health Care Access & Utilization' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_healthcare_access_authored,
 
   -- Social Determinants of Health
   MAX(CASE WHEN event_type_name = 'Social Determinants of Health' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_social_determinants_of_health,
-  MAX(CASE WHEN event_type_name = 'Social Determinants of Health' AND data_element_name = 'activity_date_time' THEN event_authored_time END) AS questionnaire_on_social_determinants_of_health_authored,
+  MAX(CASE WHEN event_type_name = 'Social Determinants of Health' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_social_determinants_of_health_authored,
 
   -- Personal and Family Health History
   MAX(CASE WHEN event_type_name = 'Personal and Family Health History' AND data_element_name = 'activity_status' THEN data_element_value END) AS questionnaire_on_personal_and_family_health_history,
-  MAX(CASE WHEN event_type_name = 'Personal and Family Health History' AND data_element_name = 'activity_date_time' THEN event_authored_time END) AS questionnaire_on_personal_and_family_health_history_authored,
+  MAX(CASE WHEN event_type_name = 'Personal and Family Health History' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_personal_and_family_health_history_authored,
 
   -- Life Functioning Survey
   MAX(CASE WHEN event_type_name = 'Life Functioning Survey' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_life_functioning,
-  MAX(CASE WHEN event_type_name = 'Life Functioning Survey' AND data_element_name = 'activity_date_time' THEN event_authored_time END) AS questionnaire_on_life_functioning_authored,
+  MAX(CASE WHEN event_type_name = 'Life Functioning Survey' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_life_functioning_authored,
 
   -- Emotional Health History and Well Being
-  MAX(CASE WHEN event_type_name = 'Emotional Health History and Well Being' AND data_element_name = 'activity_status' THEN data_element_value END) AS questionnaire_on_emotional_health_history_and_well_being,
-  MAX(CASE WHEN event_type_name = 'Emotional Health History and Well Being' AND data_element_name = 'activity_date_time' THEN event_authored_time END) AS questionnaire_on_emotional_health_history_and_well_being_authored,
+  MAX(CASE WHEN event_type_name = 'Emotional Health History and Well Being' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_emotional_health_history_and_well_being,
+  MAX(CASE WHEN event_type_name = 'Emotional Health History and Well Being' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_emotional_health_history_and_well_being_authored,
 
   -- Behavioral Health and Personality
   MAX(CASE WHEN event_type_name = 'Behavioral Health and Personality' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_behavioral_health_and_personality,
-  MAX(CASE WHEN event_type_name = 'Behavioral Health and Personality' AND data_element_name = 'activity_date_time' THEN event_authored_time END) AS questionnaire_on_behavioral_health_and_personality_authored,
+  MAX(CASE WHEN event_type_name = 'Behavioral Health and Personality' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_behavioral_health_and_personality_authored,
 
   -- Pediatric Environmental Health
   MAX(CASE WHEN event_type_name = 'Pediatric Environmental Health' AND data_element_name = 'activity_date_time' THEN event_authored_time END) AS questionnaire_on_environmental_exposures,

@@ -29,11 +29,6 @@ cron:
   schedule: every day 03:30
   timezone: America/New_York
   target: offline
-- description: Flag ghost participants
-  url: /offline/MarkGhostParticipants
-  schedule: every saturday 00:10
-  timezone: America/New_York
-  target: offline
 - description: Rebuild BigQuery Data (Manual)
   url: /offline/BigQueryRebuild
   timezone: America/New_York
@@ -49,21 +44,6 @@ cron:
   timezone: America/New_York
   schedule: every 15 minutes
   target: offline
-- description: Backfill Patient Status (Manual)
-  url: /offline/PatientStatusBackfill
-  timezone: America/New_York
-  schedule: 1 of jan 12:00
-  target: offline
-- description: Covid Antibody Study Data Import
-  url: /offline/CovidAntibodyStudyImport
-  schedule: every day 02:00
-  timezone: America/New_York
-  target: offline
-- description: Covid Antibody Study compliant Report Sync
-  url: /offline/CovidAntibodyStudyCompliantReportSync
-  schedule: every day 02:45
-  timezone: America/New_York
-  target: offline
 - description: Clean up request logs
   url: /offline/CleanUpRequestLogs
   timezone: America/New_York
@@ -73,11 +53,6 @@ cron:
   url: /offline/DataQualityChecks
   timezone: America/New_York
   schedule: every sunday 3:00
-  target: offline
-- description: Transfer Health Pro consents
-  url: /offline/TransferHealthProConsents
-  timezone: America/New_York
-  schedule: every day 10:00
   target: offline
 - description: Genomic Pipeline AW0 (Cohort 3) Workflow
   url: /offline/GenomicC3AW0Workflow
@@ -129,16 +104,6 @@ cron:
   timezone: America/New_York
   schedule: every monday 08:00
   target: offline
-- description: Genomic CVL W2W Workflow (bi-weekly runs)
-  url: /offline/GenomicCVLW2WWorkflow
-  timezone: America/New_York
-  schedule: every monday 05:00
-  target: offline
-- description: Genomic CVL W3SR Workflow
-  url: /offline/GenomicCVLW3SRWorkflow
-  timezone: America/New_York
-  schedule: every monday 05:30
-  target: offline
 - description: Genomic AW3 Array Investigation Workflow
   url: /offline/GenomicAW3ArrayInvestigationWorkflow
   timezone: America/New_York
@@ -174,63 +139,18 @@ cron:
   timezone: America/New_York
   schedule: every day 07:30
   target: offline
-- description: Genomic Reconcile Informing Loop Responses
-  url: /offline/GenomicReconcileInformingLoopResponses
-  timezone: America/New_York
-  schedule: every day 04:00
-  target: offline
-- description: Genomic Reconcile Message Broker Results Ready
-  url: /offline/GenomicReconcileMessageBrokerResultsReady
-  timezone: America/New_York
-  schedule: every day 05:00
-  target: offline
-- description: Genomic Reconcile Message Broker Results Viewed
-  url: /offline/GenomicReconcileMessageBrokerResultsViewed
-  timezone: America/New_York
-  schedule: every day 05:00
-  target: offline
 - description: Genomic Retry Manifest Ingestion Failures
   url: /offline/GenomicRetryManifestIngestions
   timezone: America/New_York
   schedule: every day 02:00
-  target: offline
-- description: Genomic Gem Result to Reports
-  url: /offline/GenomicGemResultReports
-  timezone: America/New_York
-  schedule: every day 06:00
-  target: offline
-- description: Genomic Reconcile Appointment Events
-  url: /offline/GenomicReconcileAppointmentEvents
-  timezone: America/New_York
-  schedule: every day 05:00
   target: offline
 - description: Genomic Report for AW3 Ready Samples Missing Data Files (Weekly)
   url: /offline/GenomicAW3ReadyMissingDataFilesReport
   timezone: America/New_York
   schedule: every monday 08:30
   target: offline
-- description: Genomic GCR Outreach Escalation Notification (Daily - 14 days)
-  url: /offline/GenomicNotifyGCROutreachEscalation
-  timezone: America/New_York
-  schedule: every day 04:30
-  target: offline
-- description: Genomic GCR Outreach Escalation Notification (Daily - 30 days Only CE)
-  url: /offline/GenomicNotifyGCRCEOutreachEscalation
-  timezone: America/New_York
-  schedule: every day 05:30
-  target: offline
-- description: Validate the consent files
-  url: /offline/ValidateConsentFiles
-  schedule: every 1 hours
-  timezone: America/New_York
-  target: offline
 - description: NPH SMS Generate N1
   url: /offline/NphSmsN1Generation
   schedule: every day 01:15
-  timezone: America/New_York
-  target: offline
-- description: Sync Tactis participant data to Big Query
-  url: /offline/TactisBigQuerySync
-  schedule: 1 of jan 12:00
   timezone: America/New_York
   target: offline
