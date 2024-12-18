@@ -299,7 +299,7 @@ def main():
     )
     for (client_id, nph_module_id, participant_id), orders in grouped_orders.items():
         rdr_participant_summary: RdrParticipantSummary = (
-            _get_rdr_participant_summary_for_nph_participant(order.participant_id)
+            _get_rdr_participant_summary_for_nph_participant(participant_id)
         )
         participant_biobank_id = _get_nph_participant(participant_id).biobank_id
 
@@ -331,3 +331,4 @@ def main():
     _logger.info(f"Created Biobank export file: '{orders_filename}'")
     biobank_file_export = _create_biobank_file_export_reference(bucket_name, json_filepath)
     _create_sample_export_references_for_sample_updates(biobank_file_export.id, sample_updates_for_file_export)
+    return orders_file_drop
