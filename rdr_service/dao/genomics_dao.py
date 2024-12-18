@@ -5338,12 +5338,9 @@ class GenomicPRDao(GenomicSubDao):
                 GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,  # sub flows default to array sample
                 GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
-                GenomicSetMember.diversionPouchSiteFlag != 1,
-                GenomicSetMember.blockResults != 1,
                 GenomicSetMember.blockResearch != 1,
                 GenomicSetMember.ignoreFlag != 1,
-                GenomicSetMember.biobankId.in_(biobank_ids),
-                GenomicSetMember.ai_an == 'N'
+                GenomicSetMember.biobankId.in_(biobank_ids)
             ).distinct().all()
 
     def get_pipeline_members_missing_sample_id(
