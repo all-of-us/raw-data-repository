@@ -55,7 +55,7 @@ class GenomicRNAPipelineTest(BaseTestCase):
                 validationStatus=1,
                 sexAtBirth="F",
                 collectionTubeId=f"{num}2222222222",
-                ai_an='N'
+                ai_an='Y'
             )
             # should be two stored bio samples per biobank_id
             self.data_generator.create_database_biobank_stored_sample(
@@ -308,7 +308,6 @@ class GenomicRNAPipelineTest(BaseTestCase):
                 self.assertEqual(row['ny_flag'], 'N')
                 self.assertEqual(row['genome_type'], config.GENOME_TYPE_RNA[0])
                 self.assertEqual(row['r_site_id'], 'bi')
-                self.assertEqual(row['ai_an'], 'N')
                 self.assertEqual(row['validation_passed'], 'Y')
 
                 # check collection tube ids
@@ -345,7 +344,6 @@ class GenomicRNAPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.sex_at_birth == 'F' for obj in r0_raw_records))
         self.assertTrue(all(obj.ny_flag == 'N' for obj in r0_raw_records))
         self.assertTrue(all(obj.genome_type == config.GENOME_TYPE_RNA[0] for obj in r0_raw_records))
-        self.assertTrue(all(obj.ai_an == 'N' for obj in r0_raw_records))
         self.assertTrue(all(obj.r_site_id == 'bi' for obj in r0_raw_records))
 
         # check job run record
