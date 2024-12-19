@@ -73,11 +73,11 @@ class PPSCBaseDataTransfer(BaseDataTransfer):
         self.transfer_url = self.get_endpoint_for_transfer()
         self.headers = self.get_headers()
         self.transfer_items = self.get_transfer_items()
-        logging.info(f"Starting PPSC data transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
+        logging.info(f"Starting PPSC data transfer {str(self.transfer_type)} for {len(self.transfer_items)} items")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        logging.info(f"Finished PPSC Data Transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
+        logging.info(f"Finished PPSC Data Transfer {str(self.transfer_type)} for {len(self.transfer_items)} items")
 
     def get_headers(self):
         return {
@@ -173,11 +173,11 @@ class RTIBaseDataTransfer(BaseDataTransfer):
         self.transfer_url = self.get_endpoint_for_transfer()
         self.headers = self.get_headers()
         self.transfer_items = self.get_transfer_items()
-        logging.info(f"Starting RTI data transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
+        logging.info(f"Starting RTI data transfer {str(self.transfer_type)} for {len(self.transfer_items)} items")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        logging.info(f"Finished RTI Data Transfer {str(self.transfer_type)} for {len(self.transfer_items)}")
+        logging.info(f"Finished RTI Data Transfer {str(self.transfer_type)} for {len(self.transfer_items)} items")
 
     def get_headers(self):
         return {
