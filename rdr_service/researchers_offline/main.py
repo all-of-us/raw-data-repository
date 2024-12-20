@@ -1,0 +1,53 @@
+"""The main API definition file for researchers-offline service endpoints."""
+import logging
+import traceback
+
+from flask import Flask, got_request_exception
+from sqlalchemy.exc import DBAPIError
+
+from rdr_service import app_util
+from rdr_service.services.flask import RESEARCHERS_OFFLINE_PREFIX, flask_start, flask_stop
+from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
+    flask_restful_log_exception_error
+
+
+@app_util.auth_required_scheduler
+def test_job():
+    try:
+        logging.info("Test Job Executed")
+    except Exception as e:  # pylint: disable=broad-except
+        logging.error(f"An error occurred: {e}\nStack trace: {traceback.format_exc()}")
+        return "Error occurred", 500
+
+    return '{"success": "true"}'
+
+
+def _build_pipeline_app():
+    """Configure and return the app with non-resource pipeline-triggering endpoints."""
+    researchers_offline = Flask(__name__)
+    researchers_offline.config['TRAP_HTTP_EXCEPTIONS'] = True
+
+    researchers_offline.add_url_rule(
+        RESEARCHERS_OFFLINE_PREFIX + "ParticipantCountsOverTimeTest",
+        endpoint="test_job",
+        view_func=test_job,
+        methods=["GET"],
+    )
+
+    researchers_offline.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
+    researchers_offline.add_url_rule("/_ah/stop", endpoint="stop", view_func=flask_stop, methods=["GET"])
+
+    researchers_offline.before_request(begin_request_logging)  # Must be first before_request() call.
+    researchers_offline.before_request(app_util.request_logging)
+
+    researchers_offline.after_request(app_util.add_headers)
+    researchers_offline.after_request(end_request_logging)  # Must be last after_request() call.
+
+    researchers_offline.register_error_handler(DBAPIError, app_util.handle_database_disconnect)
+
+    got_request_exception.connect(flask_restful_log_exception_error, researchers_offline)
+
+    return researchers_offline
+
+
+app = _build_pipeline_app()
