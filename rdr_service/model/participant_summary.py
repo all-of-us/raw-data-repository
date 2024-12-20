@@ -2032,7 +2032,7 @@ def model_update_lastModified_listener(_, __, summary: ParticipantSummary):
 
 
 event.listen(ParticipantSummary, "before_insert", model_insert_listener)
-event.listen(ParticipantSummary, "before_update", model_update_lastModified_listener)
+event.listen(ParticipantSummary, "before_update", model_update_listener)
 
 
 class ParticipantGenderAnswers(Base):
