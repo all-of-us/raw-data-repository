@@ -1486,11 +1486,11 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('N', member.ai_an)
 
             if member.biobankId == 100007:
-                # 100007 : Included, Indian/Native Flag Set
+                # 100007 : Included, Invalid Indian/Native
                 self.assertEqual(0, member.nyFlag)
                 self.assertEqual('100007', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
-                self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
+                self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
                 self.assertEqual(GenomicWorkflowState.AW0.name, member.genomicWorkflowStateStr)
                 self.assertEqual('Y', member.ai_an)
 
@@ -2477,6 +2477,12 @@ class GenomicPipelineTest(BaseTestCase):
                 p.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED
             self.summary_dao.update(p)
 
+        # exclude based on block result in GEM A1 query
+        bib_member = list(filter(lambda x: x.biobankId == '3', self.member_dao.get_all()))[0]
+        bib_member.blockResults = 1
+        bib_member.blockResultsReason = 'test_reason'
+        self.member_dao.update(bib_member)
+
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
         create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest_2.csv',
@@ -2601,7 +2607,7 @@ class GenomicPipelineTest(BaseTestCase):
             missing_cols = len(set(expected_gem_columns)) - len(set(csv_reader.fieldnames))
             self.assertEqual(0, missing_cols)
             rows = list(csv_reader)
-            self.assertEqual(3, len(rows))
+            self.assertEqual(2, len(rows))
             self.assertIn(test_member_1.biobankId, [rows[0]['biobank_id'], rows[1]['biobank_id']])
             for row in rows:
                 if test_member_1.biobankId == row['biobank_id']:
