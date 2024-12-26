@@ -51,6 +51,7 @@ from rdr_service.api.onsite_verification_api import OnsiteVerificationApi
 from rdr_service.api.nph_participant_biobank_order_api import NphOrderApi, DlwDosageApi
 from rdr_service.api.nph_participant_api import nph_participant
 from rdr_service.api.site_hierarchy_api import SiteHierarchyApi
+from rdr_service.api.awardee_insite_api import AwardeeInSiteApi
 
 from rdr_service.services.flask import app, API_PREFIX, flask_warmup, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
@@ -473,6 +474,13 @@ api.add_resource(
     API_PREFIX + 'Site',
     endpoint='ppsc.site',
     methods=['POST', 'DELETE']
+)
+
+api.add_resource(
+    AwardeeInSiteApi,
+    API_PREFIX + 'AwardeeInSite',
+    endpoint='awardeeinsite',
+    methods=['GET']
 )
 
 app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=flask_warmup, methods=["GET"])
