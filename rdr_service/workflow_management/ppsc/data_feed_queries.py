@@ -524,13 +524,31 @@ def insert_awardee_insite_data(
             )
             WHERE rn = 1
           ),
-          latest_enrollment_status AS (
-            SELECT  participant_id
-                , "REGISTERED" AS enrollment_status
+          enrollment_status_cte AS (
+            SELECT *
             FROM `{project}.{src_operational_dataset}.ppsc_participant_status_event`
-            WHERE event_type_name = 'Enrollment Status'
-                AND LOWER(data_element_name) IN ('registered', 'participant', 'participant_ehr_consent', 'enrolled', 'pmb_eligible', 'core_minus_pm', 'core_participant')
-                AND ignore_flag = 0
+            WHERE LOWER(event_type_name) = 'enrollment status' AND ignore_flag = 0
+              AND LOWER(data_element_name) IN
+                ('registered', 'participant', 'participant_ehr_consent', 'enrolled', 'pmb_eligible', 'core_minus_pm', 'core_participant')
+          ),
+          -- Get most recently received payload Enrollment Status event with a value of yes, but without a no after for that field name
+          enrollment_status_recent_yes_ranked AS (
+            SELECT es1.participant_id
+              , es1.data_element_name
+              , ROW_NUMBER() OVER (PARTITION BY es1.participant_id ORDER BY es1.event_authored_time DESC) AS rn
+            FROM enrollment_status_cte es1
+            LEFT JOIN enrollment_status_cte es2
+            ON es1.participant_id = es2.participant_id
+              AND es1.data_element_name = es2.data_element_name
+              AND LOWER(es2.data_element_value) = 'no'
+              AND es1.event_authored_time < es2.event_authored_time
+            WHERE es2.participant_id IS NULL AND LOWER(es1.data_element_value) = 'yes'
+          ),
+          enrollment_status_recent_yes AS (
+            SELECT participant_id
+              , data_element_name AS enrollment_status
+            FROM enrollment_status_recent_yes_ranked
+            WHERE rn = 1
           ),
           participant_summary_cte AS (
             SELECT
@@ -581,7 +599,7 @@ def insert_awardee_insite_data(
             USING (participant_id)
             LEFT JOIN primary_consent_latest_submitted
             USING (participant_id)
-            LEFT JOIN latest_enrollment_status
+            LEFT JOIN enrollment_status_recent_yes
             USING (participant_id)
             LEFT JOIN participant_summary_cte
             USING (participant_id)
