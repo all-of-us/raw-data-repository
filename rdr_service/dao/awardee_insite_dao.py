@@ -24,7 +24,7 @@ class AwardeeInSiteDao(UpsertableDao):
         """
         with self.session() as session:
             query = session.query(AwardeeInSite.id).filter_by(
-                participant_id=obj.participant_id
+                participantId=obj.participantId
             )
             return query.first()
 
