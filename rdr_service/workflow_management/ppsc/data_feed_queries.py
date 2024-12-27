@@ -263,3 +263,335 @@ def get_health_data_to_stream(project: str, destination_dataset: str) -> str:
                 AND t.event_date_time = s.event_date_time
         )
     ;"""
+
+
+def get_awardee_insite_data_to_stream(project: str, destination_dataset: str) -> str:
+    """Get data for Awardee InSite to stream to MySQL. The SQL will return new
+    records or if an existing column value changed.
+    """
+    return f"""
+        WITH awardee_insite_with_surrogate_key AS (
+            SELECT FARM_FINGERPRINT(CONCAT(COALESCE(CAST(participant_id AS STRING), ""), "|", COALESCE(first_name, ""), "|", COALESCE(middle_name, ""), "|", COALESCE(last_name, ""), "|", COALESCE(zip_code, ""), "|", COALESCE(state, ""), "|", COALESCE(city, ""), "|", COALESCE(street_address, ""), "|", COALESCE(street_address_2, ""), "|", COALESCE(phone_number, ""), "|", COALESCE(email, ""), "|", COALESCE(date_of_birth, ""), "|", COALESCE(organization, ""), "|", COALESCE(withdrawal_status, ""), "|", COALESCE(CAST(withdrawal_time AS STRING), ""), "|", COALESCE(deactivation_status, ""), "|", COALESCE(CAST(deactivation_time AS STRING), ""), "|", COALESCE(deceased_status, ""), "|", COALESCE(CAST(deceased_authored AS STRING), ""), "|", COALESCE(consent_for_electronic_health_records, ""), "|", COALESCE(CAST(consent_for_electronic_health_records_authored AS STRING), ""), "|", COALESCE(CAST(consent_for_electronic_health_records_first_yes_authored AS STRING), ""), "|", COALESCE(CAST(first_ehr_receipt_time AS STRING), ""), "|", COALESCE(CAST(latest_ehr_receipt_time AS STRING), ""), "|", COALESCE(consent_for_study_enrollment, ""), "|", COALESCE(CAST(consent_for_study_enrollment_authored AS STRING), ""), "|", COALESCE(enrollment_status, ""), "|", COALESCE(CAST(clinic_physical_measurements_status AS STRING), ""), "|", COALESCE(CAST(clinic_physical_measurements_finalized_time AS STRING), ""), "|", COALESCE(clinic_physical_measurements_finalized_site, ""), "|", COALESCE(CAST(self_reported_physical_measurements_status AS STRING), ""), "|", COALESCE(CAST(self_reported_physical_measurements_authored AS STRING), ""), "|", COALESCE(TO_JSON_STRING(patient_status), "[]"), "|",COALESCE(biospecimen_source_site, ""), "|", COALESCE(CAST(biospecimen_order_time AS STRING), ""), "|", COALESCE(CAST(biospecimen_status AS STRING), ""), "|", COALESCE(CAST(sample_1sal2_collection_method AS STRING), ""), "|", COALESCE(CAST(sample_status_1sal2 AS STRING), ""), "|", COALESCE(CAST(sample_order_status_1sal2 AS STRING), ""), "|", COALESCE(CAST(sample_order_status_1sal2_time AS STRING), ""))) AS surrogate_key
+            FROM `{project}.{destination_dataset}.awardee_insite`
+        )
+         SELECT * EXCEPT (surrogate_key, created)
+         FROM '{project}.{destination_dataset}.datafeed_input_awardee_insite' diai
+         WHERE NOT EXISTS (
+            SELECT 1
+            FROM awardee_insite_with_surrogate_key ai
+            WHERE diai.participant_id = ai.participant_id
+                AND diai.surrogate_key = ai.surrogate_key
+         );
+        """
+
+
+def insert_awardee_insite_data(
+    project: str, src_operational_dataset: str, destination_dataset: str
+) -> str:
+    """Insert data into `datafeed_input_awardee_insite` table. This query will only insert new records to the table"""
+
+    return f"""
+        INSERT INTO `{project}.{destination_dataset}.datafeed_input_awardee_insite`
+        (
+          surrogate_key
+          , created
+          , participant_id
+          , first_name
+          , middle_name
+          , last_name
+          , zip_code
+          , state
+          , city
+          , street_address
+          , street_address_2
+          , phone_number
+          , email
+          , date_of_birth
+          , organization
+          , withdrawal_status
+          , withdrawal_time
+          , deactivation_status
+          , deactivation_time
+          , deceased_status
+          , deceased_authored
+          , consent_for_electronic_health_records
+          , consent_for_electronic_health_records_authored
+          , consent_for_electronic_health_records_first_yes_authored
+          , first_ehr_receipt_time
+          , latest_ehr_receipt_time
+          , consent_for_study_enrollment
+          , consent_for_study_enrollment_authored
+          , enrollment_status
+          , clinic_physical_measurements_status
+          , clinic_physical_measurements_finalized_time
+          , clinic_physical_measurements_finalized_site
+          , self_reported_physical_measurements_status
+          , self_reported_physical_measurements_authored
+          , patient_status
+          , biospecimen_source_site
+          , biospecimen_order_time
+          , biospecimen_status
+          , sample_1sal2_collection_method
+          , sample_status_1sal2
+          , sample_order_status_1sal2
+          , sample_order_status_1sal2_time
+        )
+        WITH
+          participant_cte AS (
+            SELECT id AS participant_id
+            FROM `{project}.{src_operational_dataset}.ppsc_participant`
+            WHERE ignore_flag = 0
+          ),
+          profile_pivot AS (
+            SELECT participant_id
+              , piiname_first AS first_name
+              , piiname_middle AS middle_name
+              , piiname_last AS last_name
+              , streetaddress_piizip AS zip_code
+              , streetaddress_piistate AS state
+              , streetaddress_piicity AS city
+              , piiaddress_streetaddress AS street_address
+              , piiaddress_streetaddress2 AS street_address_2
+              , piicontactinformation_phone AS phone_number
+              , piicontactinformation_email AS email
+              , piibirthinformation_birthdate AS date_of_birth
+            FROM
+              (
+                SELECT participant_id
+                  , data_element_name
+                  , data_element_value
+                FROM `{project}.{src_operational_dataset}.ppsc_profile_updates_event`
+                WHERE ignore_flag = 0
+              )
+            PIVOT(ANY_VALUE(data_element_value)
+                FOR data_element_name IN
+                    ('piiname_first'
+                      , 'piiname_middle'
+                      , 'piiname_last'
+                      , 'streetaddress_piizip'
+                      , 'streetaddress_piistate'
+                      , 'streetaddress_piicity'
+                      , 'piiaddress_streetaddress'
+                      , 'piiaddress_streetaddress2'
+                      , 'piicontactinformation_phone'
+                      , 'piicontactinformation_email'
+                      , 'piibirthinformation_birthdate'
+                    )
+                )
+          ),
+          organization_cte AS (
+            SELECT participant_id
+                , event_id
+                , MAX(event_authored_time) AS activity_date_time
+                , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
+            FROM `{project}.{src_operational_dataset}.ppsc_attribution_event`
+            WHERE event_type_name = 'Org Attribution' AND ignore_flag = 0
+            GROUP BY 1, 2
+          ),
+          latest_organization AS (
+            SELECT participant_id
+                , activity_status AS organization
+            FROM (
+              SELECT participant_id
+                , activity_status
+                , activity_date_time
+                , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
+              FROM organization_cte
+            )
+            WHERE rn = 1
+          ),
+          withdrawn_cte AS (
+            SELECT participant_id
+            , event_id
+            , MAX(event_authored_time) AS activity_date_time
+            , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
+            FROM `{project}.{src_operational_dataset}.ppsc_withdrawal_event`
+            WHERE LOWER(event_type_name) = 'withdrawal' AND ignore_flag = 0
+            GROUP BY 1, 2
+          ),
+          latest_withdrawn AS (
+            SELECT participant_id
+            , activity_status AS withdrawal_status
+            , activity_date_time AS withdrawal_time
+            FROM (
+              SELECT participant_id
+                , activity_status
+                , activity_date_time
+                , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
+            FROM withdrawn_cte
+            )
+            WHERE rn = 1
+          ),
+          deactivation_cte AS (
+              SELECT participant_id
+                , event_id
+                , MAX(event_authored_time) AS activity_date_time
+                , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
+              FROM `{project}.{src_operational_dataset}.ppsc_deactivation_event`
+              WHERE LOWER(event_type_name) = 'deactivation' AND ignore_flag = 0
+              GROUP BY 1, 2
+          ),
+          latest_deactivation AS (
+              SELECT participant_id
+                , activity_status AS deactivation_status
+                , activity_date_time AS deactivation_time
+              FROM (
+                SELECT participant_id
+                  , activity_status
+                  , activity_date_time
+                  , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
+                FROM deactivation_cte
+              )
+              WHERE rn = 1
+          ),
+          deceased_cte AS (
+            SELECT participant_id
+                , event_id
+                , MAX(event_authored_time) AS activity_date_time
+                , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
+            FROM `{project}.{src_operational_dataset}.ppsc_participant_status_event`
+            WHERE LOWER(event_type_name) = 'death' AND ignore_flag = 0
+            GROUP BY 1, 2
+          ),
+          latest_deceased AS (
+            SELECT participant_id
+                , activity_status AS deceased_status
+                , activity_date_time AS deceased_authored
+            FROM (
+                  SELECT participant_id
+                    , activity_status
+                    , activity_date_time
+                    , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
+                FROM deceased_cte
+            )
+            WHERE rn = 1
+          ),
+          ehr_cte AS (
+              SELECT participant_id
+                , event_id
+                , MAX(event_authored_time) AS activity_date_time
+                , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
+              FROM `{project}.{src_operational_dataset}.ppsc_consent_event`
+              WHERE event_type_name ='EHR Authorization' AND ignore_flag = 0
+              GROUP BY 1, 2
+          ),
+          ehr_latest_submitted AS (
+              SELECT participant_id
+                  , activity_status AS consent_for_electronic_health_records
+                  , activity_date_time AS consent_for_electronic_health_records_authored
+              FROM (
+                SELECT participant_id
+                  , activity_status
+                  , activity_date_time
+                  , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
+              FROM ehr_cte
+              )
+              WHERE rn = 1
+          ),
+          ehr_first_yes_submitted AS (
+              SELECT participant_id
+                , MIN(activity_date_time) AS consent_for_electronic_health_records_first_yes_authored
+              FROM ehr_cte
+              WHERE activity_status = 'Yes'
+              GROUP BY 1
+          ),
+          ehr_receipt AS (
+               SELECT participant_id
+                    , MIN(event_date_time) AS first_ehr_receipt_time
+                    , MAX(event_date_time) AS latest_ehr_receipt_time
+               FROM `{project}.{src_operational_dataset}.datafeed_input_ehr`
+               GROUP BY participant_id
+          ),
+          primary_consent_cte AS (
+            SELECT participant_id
+                , event_id
+                , MAX(event_authored_time) AS activity_date_time
+                , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
+            FROM `{project}.{src_operational_dataset}.ppsc_consent_event`
+            WHERE event_type_name ='Primary Consent' AND ignore_flag = 0
+            GROUP BY 1, 2
+          ),
+          primary_consent_latest_submitted AS (
+            SELECT participant_id
+                , activity_status AS consent_for_study_enrollment
+                , activity_date_time AS consent_for_study_enrollment_authored
+            FROM (
+              SELECT participant_id
+                , activity_status
+                , activity_date_time
+                , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
+            FROM primary_consent_cte
+            )
+            WHERE rn = 1
+          ),
+          latest_enrollment_status AS (
+            SELECT  participant_id
+                , "REGISTERED" AS enrollment_status
+            FROM `{project}.{src_operational_dataset}.ppsc_participant_status_event`
+            WHERE event_type_name = 'Enrollment Status'
+                AND LOWER(data_element_name) IN ('registered', 'participant', 'participant_ehr_consent', 'enrolled', 'pmb_eligible', 'core_minus_pm', 'core_participant')
+                AND ignore_flag = 0
+          ),
+          participant_summary_cte AS (
+            SELECT
+              participant_id
+              , clinic_physical_measurements_status
+              , clinic_physical_measurements_finalized_time
+              , s1.site_name AS clinic_physical_measurements_finalized_site
+              , self_reported_physical_measurements_status
+              , self_reported_physical_measurements_authored
+
+              , patient_status
+
+              , s2.site_name AS biospecimen_source_site
+              , biospecimen_order_time
+              , biospecimen_status
+
+              , sample_1sal2_collection_method
+              , sample_status_1sal2
+              , sample_order_status_1sal2
+              , sample_order_status_1sal2_time
+            FROM `{project}.{src_operational_dataset}.rdr_participant_summary` ps
+            LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` s1
+            ON ps.clinic_physical_measurements_finalized_site_id = s1.site_id
+            LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` s2
+            ON ps.biospecimen_source_site_id = s2.site_id
+          ),
+          final_result AS (
+            SELECT
+                FARM_FINGERPRINT(CONCAT(COALESCE(CAST(participant_id AS STRING), ""), "|", COALESCE(first_name, ""), "|", COALESCE(middle_name, ""), "|", COALESCE(last_name, ""), "|", COALESCE(zip_code, ""), "|", COALESCE(state, ""), "|", COALESCE(city, ""), "|", COALESCE(street_address, ""), "|", COALESCE(street_address_2, ""), "|", COALESCE(phone_number, ""), "|", COALESCE(email, ""), "|", COALESCE(date_of_birth, ""), "|", COALESCE(organization, ""), "|", COALESCE(withdrawal_status, ""), "|", COALESCE(CAST(withdrawal_time AS STRING), ""), "|", COALESCE(deactivation_status, ""), "|", COALESCE(CAST(deactivation_time AS STRING), ""), "|", COALESCE(deceased_status, ""), "|", COALESCE(CAST(deceased_authored AS STRING), ""), "|", COALESCE(consent_for_electronic_health_records, ""), "|", COALESCE(CAST(consent_for_electronic_health_records_authored AS STRING), ""), "|", COALESCE(CAST(consent_for_electronic_health_records_first_yes_authored AS STRING), ""), "|", COALESCE(CAST(first_ehr_receipt_time AS STRING), ""), "|", COALESCE(CAST(latest_ehr_receipt_time AS STRING), ""), "|", COALESCE(consent_for_study_enrollment, ""), "|", COALESCE(CAST(consent_for_study_enrollment_authored AS STRING), ""), "|", COALESCE(enrollment_status, ""), "|", COALESCE(CAST(clinic_physical_measurements_status AS STRING), ""), "|", COALESCE(CAST(clinic_physical_measurements_finalized_time AS STRING), ""), "|", COALESCE(clinic_physical_measurements_finalized_site, ""), "|", COALESCE(CAST(self_reported_physical_measurements_status AS STRING), ""), "|", COALESCE(CAST(self_reported_physical_measurements_authored AS STRING), ""), "|", COALESCE(TO_JSON_STRING(patient_status), "[]"), "|",COALESCE(biospecimen_source_site, ""), "|", COALESCE(CAST(biospecimen_order_time AS STRING), ""), "|", COALESCE(CAST(biospecimen_status AS STRING), ""), "|", COALESCE(CAST(sample_1sal2_collection_method AS STRING), ""), "|", COALESCE(CAST(sample_status_1sal2 AS STRING), ""), "|", COALESCE(CAST(sample_order_status_1sal2 AS STRING), ""), "|", COALESCE(CAST(sample_order_status_1sal2_time AS STRING), ""))) AS surrogate_key
+                , CURRENT_TIMESTAMP() AS created
+                , *
+            FROM participant_cte
+            LEFT JOIN profile_pivot
+            USING (participant_id)
+            LEFT JOIN latest_organization
+            USING (participant_id)
+            LEFT JOIN latest_withdrawn
+            USING (participant_id)
+            LEFT JOIN latest_deactivation
+            USING (participant_id)
+            LEFT JOIN latest_deceased
+            USING (participant_id)
+            LEFT JOIN ehr_latest_submitted
+            USING (participant_id)
+            LEFT JOIN ehr_first_yes_submitted
+            USING (participant_id)
+            LEFT JOIN ehr_receipt
+            USING (participant_id)
+            LEFT JOIN primary_consent_latest_submitted
+            USING (participant_id)
+            LEFT JOIN latest_enrollment_status
+            USING (participant_id)
+            LEFT JOIN participant_summary_cte
+            USING (participant_id)
+        )
+        SELECT *
+        FROM final_result fr
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM `{project}.{destination_dataset}.datafeed_input_awardee_insite` staging_data
+            WHERE staging_data.participant_id = fr.participant_id  -- to detect new pids
+                AND staging_data.surrogate_key = fr.surrogate_key  -- to detect updated records
+        );
+    """
