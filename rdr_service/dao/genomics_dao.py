@@ -5333,7 +5333,6 @@ class GenomicPRDao(GenomicSubDao):
                 )
             ).filter(
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
                 GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,  # sub flows default to array sample
                 GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
