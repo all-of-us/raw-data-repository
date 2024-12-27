@@ -553,21 +553,56 @@ def insert_awardee_insite_data(
           participant_summary_cte AS (
             SELECT
               participant_id
-              , clinic_physical_measurements_status
+              , CASE clinic_physical_measurements_status -- Enum:Physical Measurements Status
+                  WHEN 0 THEN 'UNSET'
+                  WHEN 1 THEN 'COMPLETED'
+                  WHEN 2 THEN 'CANCELLED'
+                END AS clinic_physical_measurements_status
               , clinic_physical_measurements_finalized_time
               , s1.site_name AS clinic_physical_measurements_finalized_site
-              , self_reported_physical_measurements_status
+              , CASE self_reported_physical_measurements_status -- Enum: Self reported Physical Measurements Status
+                  WHEN 0 THEN 'UNSET'
+                  WHEN 1 THEN 'COMPLETED'
+                END AS self_reported_physical_measurements_status
               , self_reported_physical_measurements_authored
 
               , patient_status
 
               , s2.site_name AS biospecimen_source_site
               , biospecimen_order_time
-              , biospecimen_status
+              , CASE biospecimen_status -- Enum(OrderStatus)
+                  WHEN 0 THEN 'UNSET'
+                  WHEN 1 THEN 'CREATED'
+                  WHEN 2 THEN 'COLLECTED'
+                  WHEN 3 THEN 'PROCESSED'
+                  WHEN 4 THEN 'FINALIZED'
+                END AS biospecimen_status
 
-              , sample_1sal2_collection_method
-              , sample_status_1sal2
-              , sample_order_status_1sal2
+              , CASE sample_1sal2_collection_method -- Enum(SampleCollectionMethod)
+                  WHEN 0 THEN 'UNSET'
+                  WHEN 1 THEN 'MAIL_KIT'
+                  WHEN 2 THEN 'ON_SITE'
+                END AS sample_1sal2_collection_method
+              , CASE sample_status_1sal2 -- Enum(SampleStatus)
+                  WHEN 0 THEN 'UNSET'
+                  WHEN 1 THEN 'RECEIVED'
+                  WHEN 10 THEN 'DISPOSED'
+                  WHEN 11 THEN 'CONSUMED'
+                  WHEN 12 THEN 'UNKNOWN'
+                  WHEN 13 THEN 'SAMPLE_NOT_RECEIVED'
+                  WHEN 14 THEN 'SAMPLE_NOT_PROCESSED'
+                  WHEN 15 THEN 'ACCESSINGING_ERROR'
+                  WHEN 16 THEN 'LAB_ACCIDENT'
+                  WHEN 17 THEN 'QNS_FOR_PROCESSING'
+                  WHEN 18 THEN 'QUALITY_ISSUE'
+                END AS sample_status_1sal2
+              , CASE sample_order_status_1sal2 -- Enum(OrderStatus)
+                  WHEN 0 THEN 'UNSET'
+                  WHEN 1 THEN 'CREATED'
+                  WHEN 2 THEN 'COLLECTED'
+                  WHEN 3 THEN 'PROCESSED'
+                  WHEN 4 THEN 'FINALIZED'
+                END AS sample_order_status_1sal2
               , sample_order_status_1sal2_time
             FROM `{project}.{src_operational_dataset}.rdr_participant_summary` ps
             LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` s1
