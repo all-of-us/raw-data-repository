@@ -265,7 +265,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
     @patch(
         "rdr_service.api.awardee_insite_api.AWARDEE_INSITE_PAGINATION_MAX_RESULTS", 10
     )
-    def test_last_modified_parameter(self):
+    def test_updated_since_parameter(self):
         """
         The API should have the ability to only return a set of
         participant's that have been modified since a specified date
