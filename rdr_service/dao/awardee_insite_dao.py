@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.query import Query as SQLAlchemyQuery
 from werkzeug.exceptions import BadRequest
 
+from rdr_service.code_constants import UNSET
+from rdr_service.model.utils import to_client_participant_id
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.awardee_insite import AwardeeInSite
@@ -137,13 +139,18 @@ class AwardeeInSiteDao(UpsertableDao):
     def to_client_json(self, model: AwardeeInSite) -> dict:
         """
         Returns a response dict containing required values for a given row.
+        If a column is null, it sets it to 'UNSET'.
         """
-        results = model.asdict()
+        result = model.asdict()
 
-        # Remove internal fields from output
-        internal_fields = ["id", "created", "modified", "ignoreFlag"]
-        for field in internal_fields:
-            del results[field]
+        for field in AwardeeInSite.internal_fields:
+            del result[field]
 
-        results["participantId"] = "P" + str(results["participantId"])
-        return results
+        result["participantId"] = to_client_participant_id(result["participantId"])
+
+        final_result = {}
+        for key, value in result.items():
+            if value == UNSET.lower():
+                value = UNSET
+            final_result[key] = value or UNSET
+        return final_result
