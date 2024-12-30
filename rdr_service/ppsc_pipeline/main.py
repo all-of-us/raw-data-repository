@@ -108,7 +108,7 @@ def _build_pipeline_app():
         PPSC_PIPELINE_PREFIX + "AwardeeInSiteInputFeed",
         endpoint="awardee_insite_input_feed",
         view_func=awardee_insite_input_feed,
-        methods=["GET"]
+        methods=["GET", "POST"]
     )
 
     ppsc_pipeline.add_url_rule(
