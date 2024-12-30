@@ -1,20 +1,39 @@
 from sqlalchemy import Column, BigInteger, Integer, String, Date, event
-from sqlalchemy.dialects.mysql import TINYINT, JSON
+from sqlalchemy.dialects.mysql import JSON
+
+from rdr_service.model.utils import UTCDateTime
 from rdr_service.model.base import (
     model_insert_listener,
     model_update_listener,
     PPSCBase,
 )
-from rdr_service.model.utils import UTCDateTime
+
+# Only return values for these fields for withdrawn participants. UNSET other fields.
+WITHDRAWN_PARTICIPANT_FIELDS = [
+    "withdrawalStatus",
+    "withdrawalTime",
+    "participantId",
+    "organization",
+    "firstName",
+    "middleName",
+    "lastName",
+    "dateOfBirth",
+    "consentForStudyEnrollment",
+    "consentForStudyEnrollmentAuthored",
+    "consentForElectronicHealthRecords",
+    "consentForElectronicHealthRecordsAuthored",
+    "enrollmentStatus",
+]
 
 
 class AwardeeInSite(PPSCBase):
     __tablename__ = "awardee_insite"
 
+    internal_fields = ["id", "created", "modified"]
+
     id = Column("id", Integer, autoincrement=True, primary_key=True)
     created = Column("created", UTCDateTime)
     modified = Column("modified", UTCDateTime)
-    ignoreFlag = Column("ignore_flag", TINYINT, default=0)
 
     participantId = Column("participant_id", BigInteger, nullable=False)
 
@@ -33,20 +52,25 @@ class AwardeeInSite(PPSCBase):
     organization = Column("organization", String(255), nullable=True)
 
     withdrawalStatus = Column(
-        "withdrawal_status", String(32), nullable=True, default="NOT_WITHDRAWN"
+        "withdrawal_status", String(32), nullable=False, default="not_withdrawn"
     )
     withdrawalTime = Column("withdrawal_time", UTCDateTime, nullable=True)
 
     deactivationStatus = Column(
-        "deactivation_status", String(32), nullable=True, default="NOT_DEACTIVATED"
+        "deactivation_status", String(32), nullable=False, default="not_deactivated"
     )
     deactivationTime = Column("deactivation_time", UTCDateTime, nullable=True)
 
-    deceasedStatus = Column("deceased_status", String(32), nullable=True)
+    deceasedStatus = Column(
+        "deceased_status", String(32), nullable=False, default="unset"
+    )
     deceasedAuthored = Column("deceased_authored", UTCDateTime, nullable=True)
 
     clinicPhysicalMeasurementsStatus = Column(
-        "clinic_physical_measurements_status", String(32), nullable=True
+        "clinic_physical_measurements_status",
+        String(32),
+        nullable=False,
+        default="unset",
     )
     clinicPhysicalMeasurementsFinalizedTime = Column(
         "clinic_physical_measurements_finalized_time", UTCDateTime, nullable=True
@@ -56,14 +80,20 @@ class AwardeeInSite(PPSCBase):
     )
 
     selfReportedPhysicalMeasurementsStatus = Column(
-        "self_reported_physical_measurements_status", String(32), nullable=True
+        "self_reported_physical_measurements_status",
+        String(32),
+        nullable=False,
+        default="unset",
     )
     selfReportedPhysicalMeasurementsAuthored = Column(
         "self_reported_physical_measurements_authored", UTCDateTime, nullable=True
     )
 
     consentForElectronicHealthRecords = Column(
-        "consent_for_electronic_health_records", String(10), default="NO"
+        "consent_for_electronic_health_records",
+        String(10),
+        nullable=False,
+        default="no",
     )
     consentForElectronicHealthRecordsAuthored = Column(
         "consent_for_electronic_health_records_authored", UTCDateTime, nullable=True
@@ -77,32 +107,64 @@ class AwardeeInSite(PPSCBase):
     latestEhrReceiptTime = Column("latest_ehr_receipt_time", UTCDateTime, nullable=True)
 
     consentForStudyEnrollment = Column(
-        "consent_for_study_enrollment", String(10), default="NO"
+        "consent_for_study_enrollment", String(10), nullable=False, default="no"
     )
     consentForStudyEnrollmentAuthored = Column(
         "consent_for_study_enrollment_authored", UTCDateTime, nullable=True
     )
 
-    patientStatus = Column("patientStatus", JSON, nullable=True, default=list())
+    patientStatus = Column("patient_status", JSON, nullable=True, default=list())
 
-    enrollmentStatus = Column("enrollmentStatus", String(32), nullable=True)
+    enrollmentStatus = Column("enrollment_status", String(32), nullable=True)
 
     biospecimenSourceSite = Column(
         "biospecimen_source_site", String(255), nullable=True
     )
     biospecimenOrderTime = Column("biospecimen_order_time", UTCDateTime, nullable=True)
-    biospecimenStatus = Column("biospecimen_status", String(255), nullable=True)
+    biospecimenStatus = Column(
+        "biospecimen_status", String(255), nullable=False, default="unset"
+    )
 
     sample1SAL2CollectionMethod = Column(
-        "sample_1sal2_collection_method", String(255), nullable=True
+        "sample_1sal2_collection_method", String(255), nullable=False, default="unset"
     )
-    sampleStatus1SAL2 = Column("sample_status_1sal2", String(255), nullable=True)
+    sampleStatus1SAL2 = Column(
+        "sample_status_1sal2", String(255), nullable=False, default="unset"
+    )
     sampleOrderStatus1SAL2 = Column(
-        "sample_order_status_1sal2", String(255), nullable=True
+        "sample_order_status_1sal2", String(255), nullable=False, default="unset"
     )
     sampleOrderStatus1SAL2Time = Column(
         "sample_order_status_1sal2_time", UTCDateTime, nullable=True
     )
+
+    @classmethod
+    def create_surrogate_key_sql(cls) -> str:
+        """
+        Generates a SQL string for computing a hash of concatenated column values.
+
+        :return: A SQL string that computes the hash of the concatenated column values.
+            Eg: >>> generate_surrogate_sql()
+            "FARM_FINGERPRINT(CONCAT(COALESCE(CAST(col1 AS STRING), ''), '|' , COALESCE(CAST(col2 AS STRING), '') ))"
+        """
+        keys = [
+            column.key
+            for column in AwardeeInSite.__table__.columns
+            if column.key not in AwardeeInSite.internal_fields
+        ]
+        sql_string = (
+            "FARM_FINGERPRINT(CONCAT("
+            + ", ".join(
+                (
+                    f"COALESCE(CAST({key} AS STRING), ''), '|' "
+                    if key != "patient_status"
+                    else "COALESCE(TO_JSON_STRING(patient_status), '[]'), '|' "
+                )
+                for key in keys
+            ).rstrip(", '|' ")
+            + "))"
+        )
+        return sql_string
 
 
 event.listen(AwardeeInSite, "before_insert", model_insert_listener)
