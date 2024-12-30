@@ -278,11 +278,11 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
         self.project = project
         self.bq_client = bigquery.Client()
 
-    def make_datafeed_job(self, job_def):
+    def make_datafeed_job(self, job_def: str):
         """Runs the query in BQ and returns the result."""
         return self.bq_client.query(job_def).result()
 
-    def get_datafeed_definition(self):
+    def get_datafeed_definition(self) -> dict:
         src = config.getSettingJson(config.PPSC_DATAFEED_SRC_DATASET)[0]
         destination = config.getSettingJson(config.PPSC_DATAFEED_DEST_DATASET)[0]
 
@@ -304,9 +304,14 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
             row_dict[key] = row[key]
         return row_dict
 
-    def run_datafeed(self, datafeed: str):
+    def run_datafeed(self, datafeed: str) -> None:
+        destination = config.getSettingJson(config.PPSC_DATAFEED_DEST_DATASET)[0]
+
         datafeed_def = self.get_datafeed_definition()
         self.make_datafeed_job(datafeed_def["staging_data_sql"])  # Stage data rows
+        self.make_datafeed_job(
+            data_feed_queries.update_table_for_withdrawn_participant(self.project, destination)
+        )
         streaming_data_rows = self.make_datafeed_job(datafeed_def["streaming_data_sql"])
 
         dao = AwardeeInSiteDao()
