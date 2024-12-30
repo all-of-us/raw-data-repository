@@ -1,5 +1,6 @@
 from rdr_service import config
 from rdr_service.config import GAE_PROJECT
+from rdr_service.model.awardee_insite import AwardeeInSite, WITHDRAWN_PARTICIPANT_FIELDS
 
 
 def insert_core_data(project: str, src_operational_dataset: str, destination_dataset: str) -> str:
@@ -271,9 +272,9 @@ def get_awardee_insite_data_to_stream(project: str, destination_dataset: str) ->
     """
     return f"""
         WITH awardee_insite_with_surrogate_key AS (
-            SELECT FARM_FINGERPRINT(CONCAT(COALESCE(CAST(participant_id AS STRING), ""), "|", COALESCE(first_name, ""), "|", COALESCE(middle_name, ""), "|", COALESCE(last_name, ""), "|", COALESCE(zip_code, ""), "|", COALESCE(state, ""), "|", COALESCE(city, ""), "|", COALESCE(street_address, ""), "|", COALESCE(street_address_2, ""), "|", COALESCE(phone_number, ""), "|", COALESCE(email, ""), "|", COALESCE(date_of_birth, ""), "|", COALESCE(organization, ""), "|", COALESCE(withdrawal_status, ""), "|", COALESCE(CAST(withdrawal_time AS STRING), ""), "|", COALESCE(deactivation_status, ""), "|", COALESCE(CAST(deactivation_time AS STRING), ""), "|", COALESCE(deceased_status, ""), "|", COALESCE(CAST(deceased_authored AS STRING), ""), "|", COALESCE(consent_for_electronic_health_records, ""), "|", COALESCE(CAST(consent_for_electronic_health_records_authored AS STRING), ""), "|", COALESCE(CAST(consent_for_electronic_health_records_first_yes_authored AS STRING), ""), "|", COALESCE(CAST(first_ehr_receipt_time AS STRING), ""), "|", COALESCE(CAST(latest_ehr_receipt_time AS STRING), ""), "|", COALESCE(consent_for_study_enrollment, ""), "|", COALESCE(CAST(consent_for_study_enrollment_authored AS STRING), ""), "|", COALESCE(enrollment_status, ""), "|", COALESCE(CAST(clinic_physical_measurements_status AS STRING), ""), "|", COALESCE(CAST(clinic_physical_measurements_finalized_time AS STRING), ""), "|", COALESCE(clinic_physical_measurements_finalized_site, ""), "|", COALESCE(CAST(self_reported_physical_measurements_status AS STRING), ""), "|", COALESCE(CAST(self_reported_physical_measurements_authored AS STRING), ""), "|", COALESCE(TO_JSON_STRING(patient_status), "[]"), "|",COALESCE(biospecimen_source_site, ""), "|", COALESCE(CAST(biospecimen_order_time AS STRING), ""), "|", COALESCE(CAST(biospecimen_status AS STRING), ""), "|", COALESCE(CAST(sample_1sal2_collection_method AS STRING), ""), "|", COALESCE(CAST(sample_status_1sal2 AS STRING), ""), "|", COALESCE(CAST(sample_order_status_1sal2 AS STRING), ""), "|", COALESCE(CAST(sample_order_status_1sal2_time AS STRING), ""))) AS surrogate_key
+            SELECT {AwardeeInSite.create_surrogate_key_sql()} AS surrogate_key
             FROM `{project}.{destination_dataset}.awardee_insite`
-        )
+         )
          SELECT * EXCEPT (surrogate_key, created)
          FROM '{project}.{destination_dataset}.datafeed_input_awardee_insite' diai
          WHERE NOT EXISTS (
@@ -303,7 +304,7 @@ def insert_awardee_insite_data(
           , state
           , city
           , street_address
-          , street_address_2
+          , street_address2
           , phone_number
           , email
           , date_of_birth
@@ -351,7 +352,7 @@ def insert_awardee_insite_data(
               , streetaddress_piistate AS state
               , streetaddress_piicity AS city
               , piiaddress_streetaddress AS street_address
-              , piiaddress_streetaddress2 AS street_address_2
+              , piiaddress_streetaddress2 AS street_address2
               , piicontactinformation_phone AS phone_number
               , piicontactinformation_email AS email
               , piibirthinformation_birthdate AS date_of_birth
@@ -553,56 +554,18 @@ def insert_awardee_insite_data(
           participant_summary_cte AS (
             SELECT
               participant_id
-              , CASE clinic_physical_measurements_status -- Enum:Physical Measurements Status
-                  WHEN 0 THEN 'UNSET'
-                  WHEN 1 THEN 'COMPLETED'
-                  WHEN 2 THEN 'CANCELLED'
-                END AS clinic_physical_measurements_status
+              , clinic_physical_measurements_status
               , clinic_physical_measurements_finalized_time
               , s1.site_name AS clinic_physical_measurements_finalized_site
-              , CASE self_reported_physical_measurements_status -- Enum: Self reported Physical Measurements Status
-                  WHEN 0 THEN 'UNSET'
-                  WHEN 1 THEN 'COMPLETED'
-                END AS self_reported_physical_measurements_status
+              , self_reported_physical_measurements_status
               , self_reported_physical_measurements_authored
-
               , patient_status
-
               , s2.site_name AS biospecimen_source_site
               , biospecimen_order_time
-              , CASE biospecimen_status -- Enum(OrderStatus)
-                  WHEN 0 THEN 'UNSET'
-                  WHEN 1 THEN 'CREATED'
-                  WHEN 2 THEN 'COLLECTED'
-                  WHEN 3 THEN 'PROCESSED'
-                  WHEN 4 THEN 'FINALIZED'
-                END AS biospecimen_status
-
-              , CASE sample_1sal2_collection_method -- Enum(SampleCollectionMethod)
-                  WHEN 0 THEN 'UNSET'
-                  WHEN 1 THEN 'MAIL_KIT'
-                  WHEN 2 THEN 'ON_SITE'
-                END AS sample_1sal2_collection_method
-              , CASE sample_status_1sal2 -- Enum(SampleStatus)
-                  WHEN 0 THEN 'UNSET'
-                  WHEN 1 THEN 'RECEIVED'
-                  WHEN 10 THEN 'DISPOSED'
-                  WHEN 11 THEN 'CONSUMED'
-                  WHEN 12 THEN 'UNKNOWN'
-                  WHEN 13 THEN 'SAMPLE_NOT_RECEIVED'
-                  WHEN 14 THEN 'SAMPLE_NOT_PROCESSED'
-                  WHEN 15 THEN 'ACCESSINGING_ERROR'
-                  WHEN 16 THEN 'LAB_ACCIDENT'
-                  WHEN 17 THEN 'QNS_FOR_PROCESSING'
-                  WHEN 18 THEN 'QUALITY_ISSUE'
-                END AS sample_status_1sal2
-              , CASE sample_order_status_1sal2 -- Enum(OrderStatus)
-                  WHEN 0 THEN 'UNSET'
-                  WHEN 1 THEN 'CREATED'
-                  WHEN 2 THEN 'COLLECTED'
-                  WHEN 3 THEN 'PROCESSED'
-                  WHEN 4 THEN 'FINALIZED'
-                END AS sample_order_status_1sal2
+              , biospecimen_status
+              , sample_1sal2_collection_method
+              , sample_status_1sal2
+              , sample_order_status_1sal2
               , sample_order_status_1sal2_time
             FROM `{project}.{src_operational_dataset}.rdr_participant_summary` ps
             LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` s1
@@ -610,11 +573,83 @@ def insert_awardee_insite_data(
             LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` s2
             ON ps.biospecimen_source_site_id = s2.site_id
           ),
-          final_result AS (
+          default_filled_columns AS (
             SELECT
-                FARM_FINGERPRINT(CONCAT(COALESCE(CAST(participant_id AS STRING), ""), "|", COALESCE(first_name, ""), "|", COALESCE(middle_name, ""), "|", COALESCE(last_name, ""), "|", COALESCE(zip_code, ""), "|", COALESCE(state, ""), "|", COALESCE(city, ""), "|", COALESCE(street_address, ""), "|", COALESCE(street_address_2, ""), "|", COALESCE(phone_number, ""), "|", COALESCE(email, ""), "|", COALESCE(date_of_birth, ""), "|", COALESCE(organization, ""), "|", COALESCE(withdrawal_status, ""), "|", COALESCE(CAST(withdrawal_time AS STRING), ""), "|", COALESCE(deactivation_status, ""), "|", COALESCE(CAST(deactivation_time AS STRING), ""), "|", COALESCE(deceased_status, ""), "|", COALESCE(CAST(deceased_authored AS STRING), ""), "|", COALESCE(consent_for_electronic_health_records, ""), "|", COALESCE(CAST(consent_for_electronic_health_records_authored AS STRING), ""), "|", COALESCE(CAST(consent_for_electronic_health_records_first_yes_authored AS STRING), ""), "|", COALESCE(CAST(first_ehr_receipt_time AS STRING), ""), "|", COALESCE(CAST(latest_ehr_receipt_time AS STRING), ""), "|", COALESCE(consent_for_study_enrollment, ""), "|", COALESCE(CAST(consent_for_study_enrollment_authored AS STRING), ""), "|", COALESCE(enrollment_status, ""), "|", COALESCE(CAST(clinic_physical_measurements_status AS STRING), ""), "|", COALESCE(CAST(clinic_physical_measurements_finalized_time AS STRING), ""), "|", COALESCE(clinic_physical_measurements_finalized_site, ""), "|", COALESCE(CAST(self_reported_physical_measurements_status AS STRING), ""), "|", COALESCE(CAST(self_reported_physical_measurements_authored AS STRING), ""), "|", COALESCE(TO_JSON_STRING(patient_status), "[]"), "|",COALESCE(biospecimen_source_site, ""), "|", COALESCE(CAST(biospecimen_order_time AS STRING), ""), "|", COALESCE(CAST(biospecimen_status AS STRING), ""), "|", COALESCE(CAST(sample_1sal2_collection_method AS STRING), ""), "|", COALESCE(CAST(sample_status_1sal2 AS STRING), ""), "|", COALESCE(CAST(sample_order_status_1sal2 AS STRING), ""), "|", COALESCE(CAST(sample_order_status_1sal2_time AS STRING), ""))) AS surrogate_key
-                , CURRENT_TIMESTAMP() AS created
-                , *
+              participant_id
+              , first_name
+              , middle_name
+              , last_name
+              , zip_code
+              , state
+              , city
+              , street_address
+              , street_address2
+              , phone_number
+              , email
+              , date_of_birth
+              , organization
+              , COALESCE(withdrawal_status, 'not_withdrawn') AS withdrawal_status
+              , withdrawal_time
+              , COALESCE(deactivation_status, 'not_deactivated') AS deactivation_status
+              , deactivation_time
+              , COALESCE(deceased_status, 'unset') AS deceased_status
+              , deceased_authored
+              , COALESCE(consent_for_electronic_health_records, 'no') AS consent_for_electronic_health_records
+              , consent_for_electronic_health_records_authored
+              , consent_for_electronic_health_records_first_yes_authored
+              , first_ehr_receipt_time
+              , latest_ehr_receipt_time
+              , COALESCE(consent_for_study_enrollment, 'no') AS consent_for_study_enrollment
+              , consent_for_study_enrollment_authored
+              , enrollment_status
+              , CASE clinic_physical_measurements_status
+                  WHEN 0 THEN 'unset'
+                  WHEN 1 THEN 'completed'
+                  WHEN 2 THEN 'cancelled'
+                END AS clinic_physical_measurements_status
+              , clinic_physical_measurements_finalized_time
+              , clinic_physical_measurements_finalized_site
+              , CASE self_reported_physical_measurements_status
+                  WHEN 0 THEN 'unset'
+                  WHEN 1 THEN 'completed'
+                END AS self_reported_physical_measurements_status
+              , self_reported_physical_measurements_authored
+              , patient_status
+              , biospecimen_source_site
+              , biospecimen_order_time
+              , CASE biospecimen_status
+                  WHEN 0 THEN 'unset'
+                  WHEN 1 THEN 'created'
+                  WHEN 2 THEN 'collected'
+                  WHEN 3 THEN 'processed'
+                  WHEN 4 THEN 'finalized'
+                END AS biospecimen_status
+              , CASE sample_1sal2_collection_method
+                  WHEN 0 THEN 'unset'
+                  WHEN 1 THEN 'mail_kit'
+                  WHEN 2 THEN 'on_site'
+                END AS sample_1sal2_collection_method
+              , CASE sample_status_1sal2
+                  WHEN 0 THEN 'unset'
+                  WHEN 1 THEN 'received'
+                  WHEN 10 THEN 'disposed'
+                  WHEN 11 THEN 'consumed'
+                  WHEN 12 THEN 'unknown'
+                  WHEN 13 THEN 'sample_not_received'
+                  WHEN 14 THEN 'sample_not_processed'
+                  WHEN 15 THEN 'accessinging_error'
+                  WHEN 16 THEN 'lab_accident'
+                  WHEN 17 THEN 'qns_for_processing'
+                  WHEN 18 THEN 'quality_issue'
+                END AS sample_status_1sal2
+              , CASE sample_order_status_1sal2
+                  WHEN 0 THEN 'unset'
+                  WHEN 1 THEN 'created'
+                  WHEN 2 THEN 'collected'
+                  WHEN 3 THEN 'processed'
+                  WHEN 4 THEN 'finalized'
+                END AS sample_order_status_1sal2
+              , sample_order_status_1sal2_time
             FROM participant_cte
             LEFT JOIN profile_pivot
             USING (participant_id)
@@ -638,13 +673,34 @@ def insert_awardee_insite_data(
             USING (participant_id)
             LEFT JOIN participant_summary_cte
             USING (participant_id)
-        )
+          ),
+          -- creating surrogate key to detect changes
+          final_result_with_surrogate_key AS (
+            SELECT
+                {AwardeeInSite.create_surrogate_key_sql()} AS surrogate_key
+                , CURRENT_TIMESTAMP() AS created
+                , *
+            FROM default_filled_columns
+          )
+
         SELECT *
-        FROM final_result fr
+        FROM final_result_with_surrogate_key fr
         WHERE NOT EXISTS (
             SELECT 1
             FROM `{project}.{destination_dataset}.datafeed_input_awardee_insite` staging_data
             WHERE staging_data.participant_id = fr.participant_id  -- to detect new pids
                 AND staging_data.surrogate_key = fr.surrogate_key  -- to detect updated records
         );
+    """
+
+
+def update_table_for_withdrawn_participant(project: str, destination_dataset: str) -> str:
+    """
+    Update the awardee insite staging table for withdrawn participants by setting some
+    fields to UNSET.
+    """
+    return f"""
+        UPDATE `{project}.{destination_dataset}.datafeed_input_awardee_insite`
+        SET {", ".join(f'{col.key} = "UNSET"' for col in AwardeeInSite.__table__.columns if col.key not in WITHDRAWN_PARTICIPANT_FIELDS)}
+        WHERE LOWER(withdrawal_status) = 'withdrawn';
     """
