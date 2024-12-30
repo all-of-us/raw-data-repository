@@ -311,6 +311,7 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
 
         return job_def
 
+    @staticmethod
     def row_to_dict(row: bigquery.Row) -> dict:
         row_dict = {}
         for key in row.keys():
