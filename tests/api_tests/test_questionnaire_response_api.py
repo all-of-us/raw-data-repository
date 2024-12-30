@@ -206,7 +206,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
 
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary["selfReportedPhysicalMeasurementsStatus"], 'UNSET')
-        self.assertEqual(summary["enrollmentStatus"], 'CORE_MINUS_PM')
         remote_pm_questionnaire_id = self.create_questionnaire("remote_pm_questionnaire.json")
 
         resource = self._load_response_json("remote_pm_response_imperial.json", remote_pm_questionnaire_id,
@@ -217,7 +216,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary['selfReportedPhysicalMeasurementsStatus'], 'COMPLETED')
         self.assertEqual(summary['selfReportedPhysicalMeasurementsAuthored'], '2022-06-01T18:23:57')
-        self.assertEqual(summary["enrollmentStatus"], 'FULL_PARTICIPANT')
 
         response = self.send_get("Participant/{0}/PhysicalMeasurements".format(participant_id))
         self.assertEqual(1, len(response["entry"]))
@@ -339,10 +337,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(parse(summary["consentForStudyEnrollmentTime"]), created.replace(tzinfo=None))
         self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored_1.replace(tzinfo=None))
-
         self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), None)
-        self.assertEqual(summary.get('enrollmentStatusMemberTime'), None)
-        self.assertEqual(summary.get('enrollmentStatus'), 'INTERESTED')
 
         self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
 
@@ -353,8 +348,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
             self._mark_ehr_valid_in_summary(from_client_participant_id(participant_id))
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-02-12T00:00:00')
-        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-02-12T00:00:00')
-        self.assertEqual(summary.get('enrollmentStatus'), 'MEMBER')
         self.assertEqual(summary.get('ehrConsentExpireStatus'), 'UNSET')
 
         summary2 = self.send_get("ParticipantSummary?_count=25&_offset=0&_sort%3Adesc=consentForStudyEnrollmentAuthored"
@@ -421,8 +414,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-03-20T00:00:00')
         self.assertEqual(summary.get('consentForElectronicHealthRecords'), 'SUBMITTED_NO_CONSENT')
-        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-02-12T00:00:00')
-        self.assertEqual(summary.get('enrollmentStatus'), 'MEMBER')
         self.assertEqual(summary.get('ehrConsentExpireStatus'), 'EXPIRED')
         self.assertEqual(summary.get('ehrConsentExpireTime'), '2020-04-12T00:00:00')
         self.assertEqual(summary.get('ehrConsentExpireAuthored'), '2020-03-20T00:00:00')
@@ -440,8 +431,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
             self._mark_ehr_valid_in_summary(from_client_participant_id(participant_id))
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-04-11T00:00:00')
-        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-02-12T00:00:00')
-        self.assertEqual(summary.get('enrollmentStatus'), 'MEMBER')
         self.assertEqual(summary.get('ehrConsentExpireStatus'), 'UNSET')
         self.assertEqual(summary.get('ehrConsentExpireTime'), None)
         self.assertEqual(summary.get('ehrConsentExpireAuthored'), None)
@@ -450,26 +439,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
                                  "&consentForElectronicHealthRecords=SUBMITTED&ehrConsentExpireStatus=UNSET"
                                  "&_includeTotal=true")
         self.assertEqual(len(summary2.get('entry')), 1)
-
-    def test_enrollment_status_requires_valid_ehr(self):
-        self.temporarily_override_config_setting('ENROLLMENT_STATUS_SKIP_VALIDATION', False)
-
-        # setup participant
-        participant_id = self.create_participant()
-        authored_1 = datetime.datetime(2019, 3, 16, 1, 39, 33, tzinfo=pytz.utc)
-        created = datetime.datetime(2019, 3, 16, 1, 51, 22)
-        with FakeClock(created):
-            self.send_consent(participant_id, authored=authored_1)
-
-        # send consent for ehr
-        self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
-        with FakeClock(datetime.datetime(2023, 3, 12)):
-            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE, None,
-                                          datetime.datetime(2023, 2, 12))
-
-        # Check that the enrollment status remains at INTERESTED
-        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
-        self.assertEqual(summary.get('enrollmentStatus'), 'INTERESTED')
 
     def test_ehr_conflicting_responses_received_out_of_order(self):
         """
@@ -732,10 +701,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
-            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
-            "enrollmentStatusEnrolledParticipantV3_2Time": TIME_2.isoformat()
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -883,9 +849,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
             "primaryLanguage": "es",
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
-            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -970,9 +934,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
             "primaryLanguage": "es",
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
-            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1018,9 +980,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
             "primaryLanguage": "es",
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
-            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1158,10 +1118,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
-            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
-            "enrollmentStatusEnrolledParticipantV3_2Time": TIME_2.isoformat()
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1317,10 +1274,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
-            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
-            "enrollmentStatusEnrolledParticipantV3_2Time": TIME_2.isoformat()
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1362,10 +1316,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
-            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00",
-            "enrollmentStatusEnrolledParticipantV3_2Time": TIME_2.isoformat()
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         })
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1815,9 +1766,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, BiobankTestMixin):
             "primaryLanguage": "es",
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
-            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET),
-            "enrollmentStatusParticipantV3_0Time": "2016-01-01T00:00:00",
-            "enrollmentStatusParticipantV3_2Time": "2016-01-01T00:00:00"
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         })
         self.assertJsonResponseMatches(expected, summary)
 

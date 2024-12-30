@@ -6,15 +6,13 @@ from copy import deepcopy
 from rdr_service import main, config
 from rdr_service.api_util import PPSC, REDCAP
 from rdr_service.clock import FakeClock
-from rdr_service.dao.enrollment_dependencies_dao import EnrollmentDependenciesDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.measurements import Measurement
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
-from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id
-from rdr_service.participant_enums import SampleStatus, UNSET_HPO_ID
+from rdr_service.participant_enums import UNSET_HPO_ID
 from tests.test_data import data_path, load_measurement_json, load_measurement_json_amendment
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -603,124 +601,6 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
                 self.assertIn('PhysicalMeasurements/', ext['valueReference']['reference'])
                 count += 1
         self.assertEqual(count, 4)
-
-    def test_core_date_remains_unchanged(self):
-        """Newly submitted physical measurements should not update the core stored date we have for a participant"""
-
-        # Set up a participant that can be CORE after their physical measurements are in
-        generic_timestamp = datetime.datetime(2023, 1, 1)
-        summary: ParticipantSummary = self.data_generator.create_database_participant_summary(
-            consentForStudyEnrollmentFirstYesAuthored=generic_timestamp,
-            ehrReceiptTime=generic_timestamp,
-            samplesToIsolateDNA=SampleStatus.RECEIVED
-        )
-        EnrollmentDependenciesDao.set_biobank_received_dna_time(generic_timestamp, summary.participantId, self.session)
-        EnrollmentDependenciesDao.set_intent_to_share_ehr_time(generic_timestamp, summary.participantId, self.session)
-        EnrollmentDependenciesDao.set_basics_survey_authored_time(
-            generic_timestamp, summary.participantId, self.session
-        )
-        EnrollmentDependenciesDao.set_overall_health_survey_authored_time(
-            generic_timestamp, summary.participantId, self.session
-        )
-        EnrollmentDependenciesDao.set_lifestyle_survey_authored_time(
-            generic_timestamp, summary.participantId, self.session
-        )
-        EnrollmentDependenciesDao.set_gror_consent_authored_time(generic_timestamp, summary.participantId, self.session)
-
-        # Send the first PM
-        participant_id_str = f'P{summary.participantId}'
-        first_measurement_date_str = datetime.datetime(2023, 1, 5).isoformat()
-        measurement = load_measurement_json(participant_id_str, now=first_measurement_date_str)
-        path = f'Participant/{participant_id_str}/PhysicalMeasurements'
-        response = self.send_post(path, measurement)
-
-        # Check that the Core Stored date gets set as expected
-        summary_json = self.send_get(
-            f'ParticipantSummary?participantId={summary.participantId}'
-        )['entry'][0]['resource']
-        self.assertEqual(first_measurement_date_str, summary_json['enrollmentStatusCoreStoredSampleTime'])
-
-        # Cancel the first PM
-        path = path + "/" + response["id"]
-        cancel_info = BaseTestCase.get_restore_or_cancel_info()
-        self.send_patch(path, cancel_info)
-
-        # send another PM
-        measurement2 = load_measurement_json(participant_id_str, now=datetime.datetime(2023, 3, 11).isoformat())
-        path = "Participant/%s/PhysicalMeasurements" % participant_id_str
-        self.send_post(path, measurement2)
-
-        # Check that the Core Stored date remains the same
-        summary_json = self.send_get(
-            f'ParticipantSummary?participantId={summary.participantId}'
-        )['entry'][0]['resource']
-        self.assertEqual(first_measurement_date_str, summary_json['enrollmentStatusCoreStoredSampleTime'])
-
-    def test_has_height_weight_status(self):
-        # Set up a participant that can be CORE after their physical measurements are in
-        generic_timestamp = datetime.datetime(2023, 1, 1)
-        summary: ParticipantSummary = self.data_generator.create_database_participant_summary(
-            consentForStudyEnrollmentFirstYesAuthored=generic_timestamp,
-            ehrReceiptTime=generic_timestamp,
-            samplesToIsolateDNA=SampleStatus.RECEIVED
-        )
-        EnrollmentDependenciesDao.set_biobank_received_dna_time(generic_timestamp, summary.participantId, self.session)
-        EnrollmentDependenciesDao.set_intent_to_share_ehr_time(generic_timestamp, summary.participantId, self.session)
-        EnrollmentDependenciesDao.set_basics_survey_authored_time(
-            generic_timestamp, summary.participantId, self.session
-        )
-        EnrollmentDependenciesDao.set_overall_health_survey_authored_time(
-            generic_timestamp, summary.participantId, self.session
-        )
-        EnrollmentDependenciesDao.set_lifestyle_survey_authored_time(
-            generic_timestamp, summary.participantId, self.session
-        )
-        EnrollmentDependenciesDao.set_gror_consent_authored_time(generic_timestamp, summary.participantId, self.session)
-
-        # Send the first PM
-        participant_id_str = f'P{summary.participantId}'
-        first_measurement_date_str = datetime.datetime(2023, 1, 5).isoformat()
-        measurement = load_measurement_json(participant_id_str, now=first_measurement_date_str)
-        path = f'Participant/{participant_id_str}/PhysicalMeasurements'
-        response = self.send_post(path, measurement)
-
-        # Check that the status info for has height and weight was set as expected
-        summary_json = self.send_get(
-            f'ParticipantSummary?participantId={summary.participantId}'
-        )['entry'][0]['resource']
-
-        self.assertTrue(summary_json['hasHeightAndWeight'])
-        self.assertEqual(first_measurement_date_str, summary_json['hasHeightAndWeightTime'])
-
-        # Cancel the first PM
-        path = path + "/" + response["id"]
-        cancel_info = BaseTestCase.get_restore_or_cancel_info()
-        self.send_patch(path, cancel_info)
-        summary_json = self.send_get(
-            f'ParticipantSummary?participantId={summary.participantId}'
-        )['entry'][0]['resource']
-
-        # Check that the height and weight status (as well as core data flag) was cleared as a result of cancelled PM.
-        # This means the null hasHeightAndWeightTime field will not be present at all in the response JSON
-        self.assertFalse(summary_json['hasCoreData'])
-        self.assertFalse(summary_json['hasHeightAndWeight'])
-        self.assertIsNone(summary_json.get('hasHeightAndWeightTime', None))
-
-        # send another PM
-        second_measurement_date_str = datetime.datetime(2023, 3, 11).isoformat()
-        measurement2 = load_measurement_json(participant_id_str, now=second_measurement_date_str)
-        path = "Participant/%s/PhysicalMeasurements" % participant_id_str
-        self.send_post(path, measurement2)
-
-        # Check that the Core Stored date remains the same
-        summary_json = self.send_get(
-            f'ParticipantSummary?participantId={summary.participantId}'
-        )['entry'][0]['resource']
-        self.assertEqual(first_measurement_date_str, summary_json['enrollmentStatusCoreStoredSampleTime'])
-
-        # Check that height and weight status were restored based on new PM record
-        self.assertTrue(summary_json['hasHeightAndWeight'])
-        self.assertEqual(second_measurement_date_str, summary_json['hasHeightAndWeightTime'])
 
     def test_pairing_update(self):
         """

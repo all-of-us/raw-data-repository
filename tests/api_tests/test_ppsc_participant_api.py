@@ -176,6 +176,7 @@ class PPSCParticipantAPITest(GenomicDataGenMixin):
                 'withdrawal_status': 1,
                 'suspension_status': 1,
                 'deceased_status': 0,
+                'participant_origin': 'ppsc'
             }
         }
 
@@ -211,6 +212,7 @@ class PPSCParticipantAPITest(GenomicDataGenMixin):
         self.assertEqual(len(current_summaries), 1)
         self.assertEqual(current_summaries[0].biobankId, int(payload.get(
             "biobankId").split('T')[-1]))
+        self.assertTrue(all(obj.participantOrigin == 'ppsc' for obj in current_summaries))
 
     def tearDown(self):
         super().tearDown()

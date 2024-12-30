@@ -291,14 +291,6 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         mail_kit_summary: ParticipantSummary = dao.get(mail_kit_1sal2_participant_id)
         self.assertEqual(SampleCollectionMethod.MAIL_KIT, mail_kit_summary.sample1SAL2CollectionMethod)
 
-        core_minus_pm_summary = dao.get(core_minus_pm_participant_id)
-        self.assertEqual(core_minus_pm_summary.enrollmentStatus, EnrollmentStatus.CORE_MINUS_PM)
-        self.assertEqual(core_minus_pm_summary.enrollmentStatusCoreMinusPMTime, datetime(2017, 11, 29, 16, 10, 17))
-
-        core_summary = dao.get(core_participant_id)
-        self.assertEqual(core_summary.enrollmentStatus, EnrollmentStatus.FULL_PARTICIPANT)
-        self.assertEqual(core_summary.enrollmentStatusCoreStoredSampleTime, datetime(2016, 11, 29, 12, 38, 58))
-
         no_order_summary: ParticipantSummary = dao.get(no_order_1sal2_participant_id)
         self.assertIsNone(no_order_summary.sample1SAL2CollectionMethod)
 

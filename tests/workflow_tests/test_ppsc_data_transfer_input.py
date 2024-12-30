@@ -333,6 +333,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         # Set the mocked return value for get_datafeed_definition
         mock_get_datafeed_definition.return_value = {
             "source_data": eval(f"{converted_df_name}_activity_expected_sql"),
+            "temp_select": f"SELECT * FROM `test.rdr_operational_datastream.temp_ranked_events_{converted_df_name}`",
             "temp_table_name": f"temp_ranked_events_{converted_df_name}",
             "sent_table_name": "intake_summary_datafeed_sent",
             "insert_sent_sql": expected_insert_sql,
@@ -520,7 +521,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         activity_rows = [{
             "participant_id": ppsc_participant.id,
             "withdrawal_status": "withdrawn",
-            "withdrawal_status_authored_time": "2024-11-21T18:12:00",
+            "withdrawal_status_authored": "2024-11-21T18:12:00",
             "withdrawal_reason": "Duplicate Account"
         }]
 
@@ -620,7 +621,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         activity_rows = [{
             "participant_id": ppsc_participant.id,
             "test_account": "test",
-            "deceased_status": "deceased",
+            "deceased_status": "Deceased",
             "deceased_authored": "2024-11-22T14:30:00",
             "retention_eligible_status": "eligible",
             "retention_eligible_status_authored": "2024-11-21T12:00:00",

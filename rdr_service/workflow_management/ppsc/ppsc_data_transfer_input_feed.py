@@ -122,6 +122,9 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
     def make_datafeed_job(self, job_def):
         return self.bq_client.query(job_def).result()
 
+    def transform_bq_row_to_dict(self, row):
+        return {key: row[key] for key in row.keys()}
+
     def get_datafeed_definition(self, datafeed) -> dict:
         src = config.getSettingJson(config.PPSC_DATAFEED_SRC_DATASET)[0]
         sent_table_name = "intake_summary_datafeed_sent"
@@ -201,6 +204,7 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
 
         return {
             "source_data": source_data_sql,
+            "temp_select": f"SELECT * FROM `{self.project}.{src}.{temp_table_name}`",
             "temp_table_name": temp_table_name,
             "sent_table_name": sent_table_name,
             "insert_sent_sql": insert_sent_sql,
@@ -222,8 +226,7 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
 
         # Get Source Data
         # Retrieve source data from the temp table
-        source_query = f"SELECT * FROM `{job_def['temp_table_name']}`"
-        source_data = list(self.make_datafeed_job(source_query))
+        source_data = list(self.make_datafeed_job(job_def['temp_select']))
 
         if source_data:
             logging.info(f"{datafeed} Source Data retrieved.")
@@ -241,7 +244,10 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
             participant_dao = ParticipantDao()
 
             with summary_dao.session() as summary_session, participant_dao.session() as participant_session:
-                for record in source_data:
+                for row in source_data:
+                    # Transform source data into the expected dictionary format
+                    record = self.transform_bq_row_to_dict(row)
+
                     # Map ParticipantSummary fields
                     summary_record = map_source_to_summary(
                         record=record,
@@ -251,16 +257,23 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
                     summary_session.merge(summary_record)
 
                     # Map Participant fields (only if test_account is present)
-                    if record.get("test_account") is not None:
-                        participant_record = map_source_to_participant(
-                            record=record,
-                            data_element_mapping={"test_account": participant_status_data_elements["test_account"]}
-                        )
-                        participant_session.merge(participant_record)
+                    try:
+                        if record.get("test_account") is not None:
+                            participant_record = map_source_to_participant(
+                                record=record,
+                                data_element_mapping={"test_account": participant_status_data_elements["test_account"]}
+                            )
+                            participant_session.merge(participant_record)
+                    except Exception as e:  # pylint: disable=broad-except
+                        logging.error(e)
 
                 # Commit the updates
                 summary_session.commit()
+                logging.info("ParticipantSummary updates committed.")
+
                 participant_session.commit()
+                logging.info("Participant updates committed.")
+
                 logging.info(f"{len(source_data)} {datafeed} records updated.")
 
             # Insert processed records into the datafeed_sent table
