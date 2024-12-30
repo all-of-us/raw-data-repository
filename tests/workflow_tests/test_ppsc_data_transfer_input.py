@@ -198,18 +198,17 @@ class AwardeeInSiteDataFeedTest(GenomicDataGenMixin):
             "email": "john@example.com",
             "dateOfBirth": "1992-06-08",
             "organization": "PA",
-            "withdrawalStatus": "NOT_WITHDRAWN",
+            "withdrawalStatus": "not_withdrawn",
             "withdrawalTime": "2024-11-21T18:12:00",
-            "deactivationStatus": "NOT_DEACTIVATED",
+            "deactivationStatus": "not_deactivated",
             "deactivationTime": "2024-11-21T18:12:00",
-            "consentForElectronicHealthRecords": "YES",
+            "deceasedStatus": "unset",
+            "deceasedAuthored": "2024-11-21T18:12:00",
+            "consentForElectronicHealthRecords": "yes",
             "consentForElectronicHealthRecordsAuthored": "2024-11-21T18:12:00",
             "firstEhrReceiptTime": "2024-11-25T18:12:00",
             "latestEhrReceiptTime": "2024-11-26T18:12:00",
-            "consentForStudyEnrollment": "YES",
-            "consentForStudyEnrollmentAuthored": "2024-11-21T18:12:00",
-            "deceasedStatus": "UNSET",
-            "deceasedAuthored": "2024-11-21T18:12:00",
+            "consentForStudyEnrollment": "no",
         }]
 
         mock_bq_instance = mock_bq_client.return_value
@@ -242,15 +241,14 @@ class AwardeeInSiteDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(actual_rows[0].email, "john@example.com")
         self.assertEqual(actual_rows[0].dateOfBirth, datetime.date(1992, 6, 8))
         self.assertEqual(actual_rows[0].organization, "PA")
-        self.assertEqual(actual_rows[0].withdrawalStatus, "NOT_WITHDRAWN")
+        self.assertEqual(actual_rows[0].withdrawalStatus, "not_withdrawn")
         self.assertEqual(actual_rows[0].withdrawalTime, datetime.datetime(2024, 11, 21, 18, 12))
-        self.assertEqual(actual_rows[0].deactivationStatus, "NOT_DEACTIVATED")
+        self.assertEqual(actual_rows[0].deactivationStatus, "not_deactivated")
         self.assertEqual(actual_rows[0].deactivationTime, datetime.datetime(2024, 11, 21, 18, 12))
-        self.assertEqual(actual_rows[0].consentForElectronicHealthRecords, "YES")
+        self.assertEqual(actual_rows[0].consentForElectronicHealthRecords, "yes")
         self.assertEqual(actual_rows[0].consentForElectronicHealthRecordsAuthored, datetime.datetime(2024, 11, 21, 18, 12))
-        self.assertEqual(actual_rows[0].consentForStudyEnrollment,"YES")
-        self.assertEqual(actual_rows[0].consentForStudyEnrollmentAuthored, datetime.datetime(2024, 11, 21, 18, 12))
-        self.assertEqual(actual_rows[0].deceasedStatus, "UNSET")
+        self.assertEqual(actual_rows[0].consentForStudyEnrollment,"no")
+        self.assertEqual(actual_rows[0].deceasedStatus, "unset")
         self.assertEqual(actual_rows[0].deceasedAuthored, datetime.datetime(2024, 11, 21, 18, 12))
 
         ####################################################
