@@ -1,7 +1,7 @@
+import http.client
 from datetime import datetime
 from mock import patch
 from copy import deepcopy
-import http.client
 
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -10,24 +10,6 @@ from rdr_service.clock import FakeClock
 from rdr_service.dao.awardee_insite_dao import AwardeeInSiteDao
 from rdr_service.api_util import HEALTHPRO, AWARDEE, RDR
 from rdr_service.model.awardee_insite import AwardeeInSite
-
-
-awardee_insite_default_values = {
-    "withdrawalStatus": "NOT_WITHDRAWN",
-    "withdrawalTime": "2024-11-21T18:12:00",
-    "deactivationStatus": "NOT_DEACTIVATED",
-    "deactivationTime": "2024-11-21T18:12:00",
-    "deceasedStatus": "UNSET",
-    "deceasedAuthored": "2024-11-21T18:12:00",
-    "consentForElectronicHealthRecords": "YES",
-    "consentForElectronicHealthRecordsAuthored": "2024-11-21T18:12:00",
-    "firstEhrReceiptTime": "2024-11-25T18:12:00",
-    "latestEhrReceiptTime": "2024-11-26T18:12:00",
-    "consentForStudyEnrollment": "YES",
-    "consentForStudyEnrollmentAuthored": "2024-11-21T18:12:00",
-    "patientStatus": [],
-    "enrollmentStatus": "REGISTERED",
-}
 
 
 class AwardeeInSiteApiTest(BaseTestCase):
@@ -116,7 +98,6 @@ class AwardeeInSiteApiTest(BaseTestCase):
         ]
         # Insert records in awardee_insite table
         for record in self.awardee_insite_rows:
-            record.update(awardee_insite_default_values)
             self.awardee_insite_dao.insert(AwardeeInSite(**record))
 
         # Get pids for org in a list
@@ -171,6 +152,81 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "AwardeeInSite", expected_status=http.client.BAD_REQUEST
         )
         self.assertTrue(response.status_code == 400)
+
+    def test_response_values(self):
+        self.overwrite_test_user_awardee(["awardee_sa"], "AZ_TUCSON")
+
+        pid_for_az_org = 4866  # defined in the setUp method
+        with self.awardee_insite_dao.session() as session:
+            id_ = (
+                session.query(AwardeeInSite.id)
+                .filter(AwardeeInSite.participantId == pid_for_az_org)
+                .first()
+            )
+
+        awardee_insite_values = {
+            "id": id_,
+            "deactivationStatus": "deactivated",
+            "deactivationTime": "2024-11-21T18:12:00",
+            "consentForElectronicHealthRecords": "no",
+            "consentForElectronicHealthRecordsAuthored": "2024-11-21T18:12:00",
+            "firstEhrReceiptTime": "2024-11-25T18:12:00",
+            "latestEhrReceiptTime": "2024-11-26T18:12:00",
+            "consentForStudyEnrollment": "yes",
+            "consentForStudyEnrollmentAuthored": "2024-11-21T18:12:00",
+            "patientStatus": [],
+            "enrollmentStatus": "registered",
+        }
+        self.awardee_insite_dao.upsert(AwardeeInSite(**awardee_insite_values))
+
+        expected_result = {
+            "participantId": "P4866",
+            "firstName": "Jack",
+            "middleName": "UNSET",
+            "lastName": "Matt",
+            "zipCode": "45490",
+            "streetAddress": "184 Knox Ln",
+            "streetAddress2": "Apt 67",
+            "phoneNumber": "9843685667",
+            "dateOfBirth": "1990-12-18",
+            "withdrawalStatus": "not_withdrawn",
+            "withdrawalTime": "UNSET",
+            "deactivationStatus": "deactivated",
+            "deactivationTime": "2024-11-21T18:12:00",
+            "deceasedStatus": "UNSET",
+            "deceasedAuthored": "UNSET",
+            "clinicPhysicalMeasurementsStatus": "UNSET",
+            "clinicPhysicalMeasurementsFinalizedTime": "UNSET",
+            "clinicPhysicalMeasurementsFinalizedSite": "UNSET",
+            "selfReportedPhysicalMeasurementsStatus": "UNSET",
+            "selfReportedPhysicalMeasurementsAuthored": "UNSET",
+            "consentForElectronicHealthRecords": "no",
+            "consentForElectronicHealthRecordsAuthored": "2024-11-21T18:12:00",
+            "consentForElectronicHealthRecordsFirstYesAuthored": "UNSET",
+            "firstEhrReceiptTime": "2024-11-25T18:12:00",
+            "latestEhrReceiptTime": "2024-11-26T18:12:00",
+            "consentForStudyEnrollment": "yes",
+            "consentForStudyEnrollmentAuthored": "2024-11-21T18:12:00",
+            "patientStatus": "UNSET",
+            "enrollmentStatus": "registered",
+            "biospecimenSourceSite": "UNSET",
+            "biospecimenOrderTime": "UNSET",
+            "biospecimenStatus": "UNSET",
+            "sample1SAL2CollectionMethod": "UNSET",
+            "sampleStatus1SAL2": "UNSET",
+            "sampleOrderStatus1SAL2": "UNSET",
+            "sampleOrderStatus1SAL2Time": "UNSET",
+            "state": "LA",
+            "city": "Lafayette",
+            "email": "jack_ma@example.com",
+            "organization": "AZ_TUCSON_BANNER_HEALTH",
+        }
+
+        response = self.send_get("AwardeeInSite")
+        result = response.get("entry")[0]["resource"]
+
+        self.assertEqual(result, expected_result)
+
 
     @patch(
         "rdr_service.api.awardee_insite_api.AWARDEE_INSITE_PAGINATION_MAX_RESULTS", 10
