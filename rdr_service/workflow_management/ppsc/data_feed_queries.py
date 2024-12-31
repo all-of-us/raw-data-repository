@@ -280,7 +280,8 @@ def get_awardee_insite_data_to_stream(project: str, destination_dataset: str) ->
     """
     return f"""
         WITH awardee_insite_with_surrogate_key AS (
-            SELECT {AwardeeInSite.create_surrogate_key_sql()} AS surrogate_key
+            SELECT participant_id
+                , {AwardeeInSite.create_surrogate_key_sql()} AS surrogate_key
             FROM `{project}.{destination_dataset}.ppsc_awardee_insite`
          )
          SELECT * EXCEPT (surrogate_key, created)
@@ -290,7 +291,7 @@ def get_awardee_insite_data_to_stream(project: str, destination_dataset: str) ->
             FROM awardee_insite_with_surrogate_key ai
             WHERE diai.participant_id = ai.participant_id
                 AND diai.surrogate_key = ai.surrogate_key
-         );
+         );participant_id
         """
 
 
