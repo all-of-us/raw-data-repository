@@ -495,6 +495,7 @@ def insert_awardee_insite_data(
                   , activity_date_time
                   , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
               FROM ehr_cte
+              WHERE activity_status != 'submitted_yes'
               )
               WHERE rn = 1
           ),
