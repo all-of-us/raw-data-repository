@@ -284,7 +284,7 @@ def get_awardee_insite_data_to_stream(project: str, destination_dataset: str) ->
             FROM `{project}.{destination_dataset}.awardee_insite`
          )
          SELECT * EXCEPT (surrogate_key, created)
-         FROM '{project}.{destination_dataset}.datafeed_input_awardee_insite' diai
+         FROM `{project}.{destination_dataset}.datafeed_input_awardee_insite` diai
          WHERE NOT EXISTS (
             SELECT 1
             FROM awardee_insite_with_surrogate_key ai
@@ -508,7 +508,7 @@ def insert_awardee_insite_data(
                SELECT participant_id
                     , MIN(event_date_time) AS first_ehr_receipt_time
                     , MAX(event_date_time) AS latest_ehr_receipt_time
-               FROM `{project}.{src_operational_dataset}.datafeed_input_ehr`
+               FROM `{project}.{destination_dataset}.datafeed_input_ehr`
                GROUP BY participant_id
           ),
           primary_consent_cte AS (
