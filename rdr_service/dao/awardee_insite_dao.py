@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -17,6 +18,13 @@ class AwardeeInSiteDao(UpsertableDao):
     def __init__(self):
         super().__init__(AwardeeInSite)
         self.total_result = None
+
+    @staticmethod
+    def snake_to_camel(string_value):
+        # Replace sal with SAL if it's a boundary word
+        mod_string = string_value.split('_')
+        string = mod_string[0] + ''.join(x.title() for x in mod_string[1:])
+        return re.sub(r'(\d)sal(\d)', r'\1SAL\2', string, flags=re.IGNORECASE)
 
     def get_id(self, obj: AwardeeInSite) -> int | None:
         """
