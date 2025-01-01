@@ -491,7 +491,7 @@ def insert_awardee_insite_data(
                   , activity_date_time AS consent_for_electronic_health_records_authored
               FROM (
                 SELECT participant_id
-                  , activity_status
+                  , "no" AS activity_status
                   , activity_date_time
                   , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
               FROM ehr_cte
