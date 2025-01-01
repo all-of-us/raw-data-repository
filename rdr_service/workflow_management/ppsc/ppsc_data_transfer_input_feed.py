@@ -329,9 +329,9 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
         streaming_data_rows = self.make_datafeed_job(datafeed_def["streaming_data_sql"])
 
         dao = AwardeeInSiteDao()
-        print("total_rows", streaming_data_rows.total_rows)
         if streaming_data_rows:
             for row in streaming_data_rows:
+                print("total_rows", streaming_data_rows.total_rows)
                 print(row)
                 awardee_insite_dict = AwardeeInSiteFeed.row_to_dict(row)
                 camel_case_awardee_insite_dict = {
