@@ -33,10 +33,13 @@ class AwardeeInSiteDao(UpsertableDao):
         existing record in MySQL table when streaming from BQ.
         """
         with self.session() as session:
-            query = session.query(AwardeeInSite.id).filter_by(
-                participantId=obj.participantId
+            query = session.query(AwardeeInSite.id).filter(
+                AwardeeInSite.participantId == obj.participantId
             )
-            return query.first()
+            res = query.first()
+
+            if res:
+                return res.id
 
     def make_query_filter(self, field_name: str, value: str) -> FieldFilter:
         """
