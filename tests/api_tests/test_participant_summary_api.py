@@ -11,7 +11,7 @@ from mock import patch
 from urllib.parse import urlencode
 
 from rdr_service import config, main
-from rdr_service.api_util import PTC, CURATION, HEALTHPRO, SUPPORT
+from rdr_service.api_util import PTCD, CURATION, HEALTHPRO, SUPPORT
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE,
                                         DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -685,7 +685,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(resource['hpoId'], 'UNSET')
         self.assertEqual(resource['dateOfBirth'], '1978-10-09')
 
-        self.overwrite_test_user_roles([PTC])
+        self.overwrite_test_user_roles([PTCD])
 
         response_only_dob = self.send_get(
             f"ParticipantSummary?dateOfBirth={_date}",
@@ -771,7 +771,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         self.assertEqual(first_count, len(consents_map.keys()))
 
-        self.overwrite_test_user_roles([PTC])
+        self.overwrite_test_user_roles([PTCD])
 
         first_summary = self.send_get(f"Participant/P{first_pid}/Summary")
 
@@ -793,7 +793,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 self.assertTrue(file_path in entry['resource'].keys())
                 self.assertIsNotNone(entry['resource'].get(file_path))
 
-        self.overwrite_test_user_roles([PTC])
+        self.overwrite_test_user_roles([PTCD])
 
         response = self.send_get(f"ParticipantSummary?_sort=lastModified")
 
@@ -885,7 +885,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                     cancelledDate=cancelled_date
                 )
 
-        self.overwrite_test_user_roles([PTC])
+        self.overwrite_test_user_roles([PTCD])
 
         first_summary = self.send_get(f"Participant/P{first_pid}/Summary")
         self.assertIsNone(first_summary.get('participantIncentives'))
@@ -932,7 +932,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         third_summary = self.send_get(f"Participant/P{third_pid}/Summary")
         self.assertIsNone(third_summary.get('participantIncentives'))
 
-        self.overwrite_test_user_roles([PTC])
+        self.overwrite_test_user_roles([PTCD])
 
         response = self.send_get(f"ParticipantSummary?_sort=lastModified")
 
@@ -2977,7 +2977,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&organization=PITT_BANNER_HEALTH", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&site=hpo-site-monroeville", [[ps_1, ps_3]])
 
-            self.overwrite_test_user_roles([PTC])
+            self.overwrite_test_user_roles([PTCD])
 
             self.assertResponses("ParticipantSummary?_count=2&lastName=Smith", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=1978-10-08", [[ps_2]])
@@ -3631,13 +3631,12 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         self.assertEqual(bad_message, response.json['message'])
 
-        self.overwrite_test_user_roles([PTC])
+        self.overwrite_test_user_roles([PTCD])
 
         response = self.send_post(f'Participant/{prefix_pid}/Summary', {
             'email': self.faker.email()
-        })
+        }, expected_status=http.client.FORBIDDEN)
         self.assertIsNotNone(response)
-        self.assertEqual(response['participantId'], prefix_pid)
 
     def test_summary_created_on_post_if_doesnt_exist(self):
         participant_one = self.send_post("Participant", {})
