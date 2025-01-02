@@ -626,7 +626,7 @@ def insert_awardee_insite_data(
                   ELSE 'unset'
                 END AS self_reported_physical_measurements_status
               , self_reported_physical_measurements_authored
-              , patient_status
+              , COALESCE(patient_status, JSON_ARRAY()) AS patient_status
               , biospecimen_source_site
               , biospecimen_order_time
               , CASE biospecimen_status
