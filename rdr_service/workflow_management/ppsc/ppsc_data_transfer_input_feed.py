@@ -338,7 +338,7 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
                 camel_case_awardee_insite_dict = {
                     dao.snake_to_camel(key): val for key, val in awardee_insite_dict.items()
                 }
-                logging.warning(AwardeeInSite["patient_status"])
+                logging.warning(camel_case_awardee_insite_dict["patient_status"])
                 id_ = dao.get_id(AwardeeInSite(**camel_case_awardee_insite_dict))
                 if id_:
                     # This allows to update an existing record in MySQL
