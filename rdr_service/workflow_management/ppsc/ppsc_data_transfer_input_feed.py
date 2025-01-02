@@ -331,8 +331,7 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
         dao = AwardeeInSiteDao()
         if streaming_data_rows:
             for row in streaming_data_rows:
-                # print(row)
-                print(row["patient_status"])
+                logging.info(row["patient_status"])
                 awardee_insite_dict = AwardeeInSiteFeed.row_to_dict(row)
                 camel_case_awardee_insite_dict = {
                     dao.snake_to_camel(key): val for key, val in awardee_insite_dict.items()
@@ -341,7 +340,6 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
                 if id_:
                     # This allows to update an existing record in MySQL
                     camel_case_awardee_insite_dict["id"] = id_
-                camel_case_awardee_insite_dict["patientStatus"] = []
                 dao.upsert(AwardeeInSite(**camel_case_awardee_insite_dict))
         else:
             logging.warning(f"No rows to add to {datafeed} Data Feed")

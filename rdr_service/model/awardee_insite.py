@@ -29,7 +29,7 @@ WITHDRAWN_PARTICIPANT_FIELDS = [
 class AwardeeInSite(PPSCBase):
     __tablename__ = "awardee_insite"
 
-    internal_fields = ["id", "created", "modified", "patientStatus"]
+    internal_fields = ["id", "created", "modified"]
 
     id = Column("id", Integer, autoincrement=True, primary_key=True)
     created = Column("created", UTCDateTime)
