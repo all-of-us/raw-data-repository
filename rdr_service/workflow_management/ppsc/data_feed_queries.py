@@ -616,12 +616,14 @@ def insert_awardee_insite_data(
                   WHEN 0 THEN 'unset'
                   WHEN 1 THEN 'completed'
                   WHEN 2 THEN 'cancelled'
+                  ELSE 'unset'
                 END AS clinic_physical_measurements_status
               , clinic_physical_measurements_finalized_time
               , clinic_physical_measurements_finalized_site
               , CASE self_reported_physical_measurements_status
                   WHEN 0 THEN 'unset'
                   WHEN 1 THEN 'completed'
+                  ELSE 'unset'
                 END AS self_reported_physical_measurements_status
               , self_reported_physical_measurements_authored
               , patient_status
@@ -633,11 +635,13 @@ def insert_awardee_insite_data(
                   WHEN 2 THEN 'collected'
                   WHEN 3 THEN 'processed'
                   WHEN 4 THEN 'finalized'
+                  ELSE 'unset'
                 END AS biospecimen_status
               , CASE sample_1sal2_collection_method
                   WHEN 0 THEN 'unset'
                   WHEN 1 THEN 'mail_kit'
                   WHEN 2 THEN 'on_site'
+                  ELSE 'unset'
                 END AS sample_1sal2_collection_method
               , CASE sample_status_1sal2
                   WHEN 0 THEN 'unset'
@@ -651,6 +655,7 @@ def insert_awardee_insite_data(
                   WHEN 16 THEN 'lab_accident'
                   WHEN 17 THEN 'qns_for_processing'
                   WHEN 18 THEN 'quality_issue'
+                  ELSE 'unset'
                 END AS sample_status_1sal2
               , CASE sample_order_status_1sal2
                   WHEN 0 THEN 'unset'
@@ -658,6 +663,7 @@ def insert_awardee_insite_data(
                   WHEN 2 THEN 'collected'
                   WHEN 3 THEN 'processed'
                   WHEN 4 THEN 'finalized'
+                  ELSE 'unset'
                 END AS sample_order_status_1sal2
               , sample_order_status_1sal2_time
             FROM participant_cte
