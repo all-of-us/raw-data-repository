@@ -298,8 +298,8 @@ def get_awardee_insite_data_to_stream(project: str, destination_dataset: str) ->
          WHERE NOT EXISTS (
             SELECT 1
             FROM awardee_insite_with_surrogate_key ai
-            WHERE diai.participant_id = ai.participant_id
-                AND diai.surrogate_key = ai.surrogate_key
+            WHERE mrdr.participant_id = ai.participant_id
+                AND mrdr.surrogate_key = ai.surrogate_key
          )
         """
 
