@@ -73,6 +73,7 @@
   "user_info": {
     "example@example.com": {
       "roles": [
+        "ptc",
         "ptcd",
         "healthpro",
         "exporter",
