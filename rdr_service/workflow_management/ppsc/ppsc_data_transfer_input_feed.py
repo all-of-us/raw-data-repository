@@ -340,6 +340,7 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
                 if id_:
                     # This allows to update an existing record in MySQL
                     camel_case_awardee_insite_dict["id"] = id_
+                camel_case_awardee_insite_dict["patientStatus"] = eval(camel_case_awardee_insite_dict["patientStatus"])
                 dao.upsert(AwardeeInSite(**camel_case_awardee_insite_dict))
         else:
             logging.warning(f"No rows to add to {datafeed} Data Feed")
