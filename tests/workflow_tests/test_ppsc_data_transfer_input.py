@@ -209,6 +209,7 @@ class AwardeeInSiteDataFeedTest(GenomicDataGenMixin):
             "firstEhrReceiptTime": "2024-11-25T18:12:00",
             "latestEhrReceiptTime": "2024-11-26T18:12:00",
             "consentForStudyEnrollment": "no",
+            "patientStatus": []
         }]
 
         mock_bq_instance = mock_bq_client.return_value
@@ -250,6 +251,7 @@ class AwardeeInSiteDataFeedTest(GenomicDataGenMixin):
         self.assertEqual(actual_rows[0].consentForStudyEnrollment,"no")
         self.assertEqual(actual_rows[0].deceasedStatus, "unset")
         self.assertEqual(actual_rows[0].deceasedAuthored, datetime.datetime(2024, 11, 21, 18, 12))
+        self.assertEqual(actual_rows[0].patientStatus, [])
 
         ####################################################
         # Test updating the middle name of an existing record
@@ -258,6 +260,7 @@ class AwardeeInSiteDataFeedTest(GenomicDataGenMixin):
             "firstName": "John",
             "middleName": "Samuel",
             "state": "NY",
+            "patientStatus": []
         }]
 
         mock_bq_instance.query.return_value.result.return_value = updated_record
