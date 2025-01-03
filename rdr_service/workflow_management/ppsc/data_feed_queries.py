@@ -283,9 +283,18 @@ def get_awardee_insite_data_to_stream(project: str, destination_dataset: str) ->
             SELECT participant_id
                 , {AwardeeInSite.create_surrogate_key_sql()} AS surrogate_key
             FROM `{project}.{destination_dataset}.ppsc_awardee_insite`
-         )
-         SELECT * EXCEPT (surrogate_key, created)
-         FROM `{project}.{destination_dataset}.datafeed_input_awardee_insite` diai
+         ),
+         most_recent_datafeed_records AS (
+              SELECT *
+              FROM (
+                SELECT *
+                  , ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY created DESC) AS rn
+                FROM `rdr_operational_datastream.datafeed_input_awardee_insite`
+              )
+              WHERE rn = 1
+        )
+         SELECT * EXCEPT (surrogate_key, created, rn)
+         FROM most_recent_datafeed_records mrdr
          WHERE NOT EXISTS (
             SELECT 1
             FROM awardee_insite_with_surrogate_key ai
