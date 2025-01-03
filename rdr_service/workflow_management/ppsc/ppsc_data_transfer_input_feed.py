@@ -1,3 +1,4 @@
+import ast
 import logging
 from abc import ABC, abstractmethod
 
@@ -336,11 +337,14 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
                     dao.snake_to_camel(key): val for key, val in awardee_insite_dict.items()
                 }
                 id_ = dao.get_id(AwardeeInSite(**camel_case_awardee_insite_dict))
-                logging.info(type(camel_case_awardee_insite_dict["patientStatus"]))
+                logging.info(f"""Streaming {camel_case_awardee_insite_dict["participantId"]}""")
                 if id_:
                     # This allows to update an existing record in MySQL
                     camel_case_awardee_insite_dict["id"] = id_
-                camel_case_awardee_insite_dict["patientStatus"] = eval(camel_case_awardee_insite_dict["patientStatus"])
+                # For some reason, patientStatus was turning into a string, so convert it back to list.
+                camel_case_awardee_insite_dict["patientStatus"] = ast.literal_eval(
+                    camel_case_awardee_insite_dict["patientStatus"]
+                )
                 dao.upsert(AwardeeInSite(**camel_case_awardee_insite_dict))
         else:
             logging.warning(f"No rows to add to {datafeed} Data Feed")
