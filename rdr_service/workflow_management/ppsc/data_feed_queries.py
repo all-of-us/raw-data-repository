@@ -738,7 +738,7 @@ def update_table_for_withdrawn_participant(project: str, destination_dataset: st
                     set_str += f"{column.name} = NULL, "
                 else:
                     set_str += f"{column.name} = 'unset', "
-    set_str = set_str.replace("patient_status = 'UNSET'", "patient_status = TO_JSON([])").rstrip(', ')
+    set_str = set_str.replace("patient_status = 'unset'", "patient_status = TO_JSON([])").rstrip(', ')
 
     return f"""
         UPDATE `{project}.{destination_dataset}.datafeed_input_awardee_insite`
