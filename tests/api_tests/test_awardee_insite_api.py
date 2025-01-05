@@ -207,7 +207,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "latestEhrReceiptTime": "2024-11-26T18:12:00",
             "consentForStudyEnrollment": "yes",
             "consentForStudyEnrollmentAuthored": "2024-11-21T18:12:00",
-            "patientStatus": "UNSET",
+            "patientStatus": [],
             "enrollmentStatus": "registered",
             "biospecimenSourceSite": "UNSET",
             "biospecimenOrderTime": "UNSET",
