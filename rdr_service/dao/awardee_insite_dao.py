@@ -20,10 +20,10 @@ class AwardeeInSiteDao(UpsertableDao):
         self.total_result = None
 
     @staticmethod
-    def snake_to_camel(string_value):
-        # Replace sal with SAL if it's a boundary word
+    def snake_to_camel(string_value: str) -> str:
         mod_string = string_value.split('_')
         string = mod_string[0] + ''.join(x.title() for x in mod_string[1:])
+        # Replace sal with SAL
         return re.sub(r'(\d)sal(\d)', r'\1SAL\2', string, flags=re.IGNORECASE)
 
     def get_id(self, obj: AwardeeInSite) -> int | None:
@@ -158,10 +158,8 @@ class AwardeeInSiteDao(UpsertableDao):
             del result[field]
 
         result["participantId"] = to_client_participant_id(result["participantId"])
-
-        final_result = {}
-        for key, value in result.items():
-            if value == UNSET.lower():
-                value = UNSET
-            final_result[key] = value or UNSET
+        final_result = {
+            key: value if isinstance(value, list) else value or UNSET if value != UNSET.lower() else UNSET
+            for key, value in result.items()
+        }
         return final_result
