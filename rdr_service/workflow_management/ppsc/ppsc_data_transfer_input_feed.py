@@ -320,13 +320,9 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
         return row_dict
 
     def run_datafeed(self, datafeed: str) -> None:
-        destination = config.getSettingJson(config.PPSC_DATAFEED_DEST_DATASET)[0]
 
         datafeed_def = self.get_datafeed_definition()
         self.make_datafeed_job(datafeed_def["staging_data_sql"])  # Stage data rows
-        self.make_datafeed_job(
-            data_feed_queries.update_table_for_withdrawn_participant(self.project, destination)
-        )
         streaming_data_rows = self.make_datafeed_job(datafeed_def["streaming_data_sql"])
 
         dao = AwardeeInSiteDao()

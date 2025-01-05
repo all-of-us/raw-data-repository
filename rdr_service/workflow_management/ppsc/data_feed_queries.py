@@ -630,7 +630,7 @@ def insert_awardee_insite_data(
                   ELSE 'unset'
                 END AS clinic_physical_measurements_status
               , clinic_physical_measurements_finalized_time
-              , clinic_physical_measurements_finalized_site
+              , COALESCE(clinic_physical_measurements_finalized_site, 'unset') AS clinic_physical_measurements_finalized_site
               , CASE self_reported_physical_measurements_status
                   WHEN 0 THEN 'unset'
                   WHEN 1 THEN 'completed'
@@ -638,7 +638,7 @@ def insert_awardee_insite_data(
                 END AS self_reported_physical_measurements_status
               , self_reported_physical_measurements_authored
               , COALESCE(patient_status, JSON_ARRAY()) AS patient_status
-              , biospecimen_source_site
+              , COALESCE(biospecimen_source_site, 'unset') AS biospecimen_source_site
               , biospecimen_order_time
               , CASE biospecimen_status
                   WHEN 0 THEN 'unset'
@@ -701,13 +701,57 @@ def insert_awardee_insite_data(
             LEFT JOIN participant_summary_cte
             USING (participant_id)
           ),
+          withdrawn_update AS (
+              SELECT
+                participant_id,
+                first_name,
+                middle_name,
+                last_name,
+                IF(withdrawal_status = 'withdrawn', NULL, zip_code) AS zip_code,
+                IF(withdrawal_status = 'withdrawn', NULL, state) AS state,
+                IF(withdrawal_status = 'withdrawn', NULL, city) AS city,
+                IF(withdrawal_status = 'withdrawn', NULL, street_address) AS street_address,
+                IF(withdrawal_status = 'withdrawn', NULL, street_address2) AS street_address2,
+                IF(withdrawal_status = 'withdrawn', NULL, phone_number) AS phone_number,
+                IF(withdrawal_status = 'withdrawn', NULL, email) AS email,
+                date_of_birth,
+                organization,
+                withdrawal_status,
+                withdrawal_time,
+                IF(withdrawal_status = 'withdrawn', 'unset', deactivation_status) AS deactivation_status,
+                IF(withdrawal_status = 'withdrawn', NULL, deactivation_time) AS deactivation_time,
+                IF(withdrawal_status = 'withdrawn', 'unset', deceased_status) AS deceased_status,
+                IF(withdrawal_status = 'withdrawn', NULL, deceased_authored) AS deceased_authored,
+                consent_for_electronic_health_records,
+                consent_for_electronic_health_records_authored,
+                IF(withdrawal_status = 'withdrawn', NULL, consent_for_electronic_health_records_first_yes_authored) AS consent_for_electronic_health_records_first_yes_authored,
+                IF(withdrawal_status = 'withdrawn', NULL, first_ehr_receipt_time) AS first_ehr_receipt_time,
+                IF(withdrawal_status = 'withdrawn', NULL, latest_ehr_receipt_time) AS latest_ehr_receipt_time,
+                consent_for_study_enrollment,
+                consent_for_study_enrollment_authored,
+                enrollment_status,
+                IF(withdrawal_status = 'withdrawn', 'unset', clinic_physical_measurements_status) AS clinic_physical_measurements_status,
+                IF(withdrawal_status = 'withdrawn', NULL, clinic_physical_measurements_finalized_time) AS clinic_physical_measurements_finalized_time,
+                IF(withdrawal_status = 'withdrawn', 'unset', clinic_physical_measurements_finalized_site) AS clinic_physical_measurements_finalized_site,
+                IF(withdrawal_status = 'withdrawn', 'unset', self_reported_physical_measurements_status) AS self_reported_physical_measurements_status,
+                IF(withdrawal_status = 'withdrawn', NULL, self_reported_physical_measurements_authored) AS self_reported_physical_measurements_authored,
+                IF(withdrawal_status = 'withdrawn', TO_JSON([]), patient_status) AS patient_status,
+                IF(withdrawal_status = 'withdrawn', 'unset', biospecimen_source_site) AS biospecimen_source_site,
+                IF(withdrawal_status = 'withdrawn', NULL, biospecimen_order_time) AS biospecimen_order_time,
+                IF(withdrawal_status = 'withdrawn', 'unset', biospecimen_status) AS biospecimen_status,
+                IF(withdrawal_status = 'withdrawn', 'unset', sample_1sal2_collection_method) AS sample_1sal2_collection_method,
+                IF(withdrawal_status = 'withdrawn', 'unset', sample_status_1sal2) AS sample_status_1sal2,
+                IF(withdrawal_status = 'withdrawn', 'unset', sample_order_status_1sal2) AS sample_order_status_1sal2,
+                IF(withdrawal_status = 'withdrawn', NULL, sample_order_status_1sal2_time) AS sample_order_status_1sal2_time
+            FROM default_filled_columns
+          ),
           -- creating surrogate key to detect changes
           final_result_with_surrogate_key AS (
             SELECT
                 {AwardeeInSite.create_surrogate_key_sql()} AS surrogate_key
                 , CURRENT_TIMESTAMP() AS created
                 , *
-            FROM default_filled_columns
+            FROM withdrawn_update
           )
 
         SELECT *
