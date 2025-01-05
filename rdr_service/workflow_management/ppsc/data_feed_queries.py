@@ -1,8 +1,6 @@
 from rdr_service import config
 from rdr_service.config import GAE_PROJECT
-from rdr_service.model.utils import UTCDateTime
-from rdr_service.model.awardee_insite import AwardeeInSite, WITHDRAWN_PARTICIPANT_FIELDS
-from rdr_service.dao.awardee_insite_dao import AwardeeInSiteDao
+from rdr_service.model.awardee_insite import AwardeeInSite
 
 
 def insert_core_data(project: str, src_operational_dataset: str, destination_dataset: str) -> str:
@@ -502,11 +500,10 @@ def insert_awardee_insite_data(
                   , activity_date_time AS consent_for_electronic_health_records_authored
               FROM (
                 SELECT participant_id
-                  , "no" AS activity_status
+                  , activity_status
                   , activity_date_time
                   , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
-              FROM ehr_cte
-              WHERE activity_status != 'submitted_yes'
+                FROM ehr_cte
               )
               WHERE rn = 1
           ),
@@ -539,10 +536,10 @@ def insert_awardee_insite_data(
                 , activity_date_time AS consent_for_study_enrollment_authored
             FROM (
               SELECT participant_id
-                , "no" AS activity_status
+                , activity_status
                 , activity_date_time
                 , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
-            FROM primary_consent_cte
+              FROM primary_consent_cte
             )
             WHERE rn = 1
           ),
@@ -762,34 +759,4 @@ def insert_awardee_insite_data(
             WHERE staging_data.participant_id = fr.participant_id  -- to detect new pids
                 AND staging_data.surrogate_key = fr.surrogate_key  -- to detect updated records
         );
-    """
-
-
-def update_table_for_withdrawn_participant(project: str, destination_dataset: str) -> str:
-    """
-    Return string to update the awardee insite staging table for withdrawn participants by setting some
-    fields to UNSET and datetime fields to NULL. It then updates their surrogate_key.
-    """
-    addl_cols_to_null = ["zip_code", "state", "city", "street_address", "street_address2", "phone_number", "email"]
-
-    # Create SET string
-    set_str = "SET "
-    for column in AwardeeInSite.__table__.columns:
-        camel_case_col = AwardeeInSiteDao.snake_to_camel(column.name)
-        if camel_case_col not in AwardeeInSite.internal_fields:
-            if camel_case_col not in WITHDRAWN_PARTICIPANT_FIELDS:
-                if isinstance(column.type, UTCDateTime) or column.name in addl_cols_to_null:
-                    set_str += f"{column.name} = NULL, "
-                else:
-                    set_str += f"{column.name} = 'unset', "
-    set_str = set_str.replace("patient_status = 'unset'", "patient_status = TO_JSON([])").rstrip(', ')
-
-    return f"""
-        UPDATE `{project}.{destination_dataset}.datafeed_input_awardee_insite`
-        {set_str}
-        WHERE LOWER(withdrawal_status) = 'withdrawn';
-
-        UPDATE `{project}.{destination_dataset}.datafeed_input_awardee_insite`
-        SET surrogate_key = {AwardeeInSite.create_surrogate_key_sql()}
-        WHERE LOWER(withdrawal_status) = 'withdrawn';
     """
