@@ -8,23 +8,6 @@ from rdr_service.model.base import (
     PPSCBase,
 )
 
-# Only return values for these fields for withdrawn participants. UNSET other fields.
-WITHDRAWN_PARTICIPANT_FIELDS = [
-    "withdrawalStatus",
-    "withdrawalTime",
-    "participantId",
-    "organization",
-    "firstName",
-    "middleName",
-    "lastName",
-    "dateOfBirth",
-    "consentForStudyEnrollment",
-    "consentForStudyEnrollmentAuthored",
-    "consentForElectronicHealthRecords",
-    "consentForElectronicHealthRecordsAuthored",
-    "enrollmentStatus",
-]
-
 
 class AwardeeInSite(PPSCBase):
     __tablename__ = "awardee_insite"
