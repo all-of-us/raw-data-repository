@@ -627,7 +627,7 @@ def insert_awardee_insite_data(
                   ELSE 'unset'
                 END AS clinic_physical_measurements_status
               , clinic_physical_measurements_finalized_time
-              , COALESCE(clinic_physical_measurements_finalized_site, 'unset') AS clinic_physical_measurements_finalized_site
+              , clinic_physical_measurements_finalized_site
               , CASE self_reported_physical_measurements_status
                   WHEN 0 THEN 'unset'
                   WHEN 1 THEN 'completed'
@@ -635,7 +635,7 @@ def insert_awardee_insite_data(
                 END AS self_reported_physical_measurements_status
               , self_reported_physical_measurements_authored
               , COALESCE(patient_status, JSON_ARRAY()) AS patient_status
-              , COALESCE(biospecimen_source_site, 'unset') AS biospecimen_source_site
+              , biospecimen_source_site
               , biospecimen_order_time
               , CASE biospecimen_status
                   WHEN 0 THEN 'unset'
@@ -729,11 +729,11 @@ def insert_awardee_insite_data(
                 enrollment_status,
                 IF(withdrawal_status = 'withdrawn', 'unset', clinic_physical_measurements_status) AS clinic_physical_measurements_status,
                 IF(withdrawal_status = 'withdrawn', NULL, clinic_physical_measurements_finalized_time) AS clinic_physical_measurements_finalized_time,
-                IF(withdrawal_status = 'withdrawn', 'unset', clinic_physical_measurements_finalized_site) AS clinic_physical_measurements_finalized_site,
+                IF(withdrawal_status = 'withdrawn', NULL, clinic_physical_measurements_finalized_site) AS clinic_physical_measurements_finalized_site,
                 IF(withdrawal_status = 'withdrawn', 'unset', self_reported_physical_measurements_status) AS self_reported_physical_measurements_status,
                 IF(withdrawal_status = 'withdrawn', NULL, self_reported_physical_measurements_authored) AS self_reported_physical_measurements_authored,
                 IF(withdrawal_status = 'withdrawn', TO_JSON([]), patient_status) AS patient_status,
-                IF(withdrawal_status = 'withdrawn', 'unset', biospecimen_source_site) AS biospecimen_source_site,
+                IF(withdrawal_status = 'withdrawn', NULL, biospecimen_source_site) AS biospecimen_source_site,
                 IF(withdrawal_status = 'withdrawn', NULL, biospecimen_order_time) AS biospecimen_order_time,
                 IF(withdrawal_status = 'withdrawn', 'unset', biospecimen_status) AS biospecimen_status,
                 IF(withdrawal_status = 'withdrawn', 'unset', sample_1sal2_collection_method) AS sample_1sal2_collection_method,
