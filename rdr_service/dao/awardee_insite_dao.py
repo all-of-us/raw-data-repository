@@ -21,8 +21,7 @@ class AwardeeInSiteDao(UpsertableDao):
 
     @staticmethod
     def snake_to_camel(string_value: str) -> str:
-        mod_string = string_value.split('_')
-        string = mod_string[0] + ''.join(x.title() for x in mod_string[1:])
+        string = UpsertableDao.snake_to_camel(string_value)
         # Replace sal with SAL
         return re.sub(r'(\d)sal(\d)', r'\1SAL\2', string, flags=re.IGNORECASE)
 
@@ -124,7 +123,7 @@ class AwardeeInSiteDao(UpsertableDao):
                 return Results([])
 
         if len(items) > query_definition.max_results:
-            page = items[0 : query_definition.max_results]
+            page = items[0: query_definition.max_results]
             pagination_token = self._make_pagination_token(
                 items[query_definition.max_results - 1][0].asdict(),
                 order_by_field_names,
