@@ -330,7 +330,7 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
             for row in streaming_data_rows:
                 awardee_insite_dict = AwardeeInSiteFeed.row_to_dict(row)
                 camel_case_awardee_insite_dict = {
-                    dao.snake_to_camel(key): val for key, val in awardee_insite_dict.items()
+                    dao.snake_to_camel_case(key): val for key, val in awardee_insite_dict.items()
                 }
                 id_ = dao.get_id(AwardeeInSite(**camel_case_awardee_insite_dict))
                 logging.info(f"""Streaming P{camel_case_awardee_insite_dict["participantId"]}""")
