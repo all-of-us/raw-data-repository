@@ -127,7 +127,7 @@ class AwardeeInSite(PPSCBase):
         Generates a SQL string for computing a hash of concatenated column values.
 
         :return: A SQL string that computes the hash of the concatenated column values.
-            Eg: >>> generate_surrogate_sql()
+            Eg: >>> create_surrogate_key_sql()
             "FARM_FINGERPRINT(CONCAT(COALESCE(CAST(col1 AS STRING), ''), '|' , COALESCE(CAST(col2 AS STRING), '') ))"
         """
         keys = [
