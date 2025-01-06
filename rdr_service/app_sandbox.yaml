@@ -2,8 +2,6 @@
 # https://cloud.google.com/appengine/docs/standard/
 instance_class: F4
 
-entrypoint: gunicorn -w 5 -b :$PORT --keep-alive 700 main:app
-
 # Have 0 idle instances to reduce unneeded costs
 automatic_scaling:
   min_idle_instances: 0

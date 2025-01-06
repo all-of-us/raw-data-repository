@@ -8,7 +8,7 @@ env_variables:
 
 runtime: python311
 
-entrypoint: python3 main.py --service
+entrypoint: gunicorn -w 5 -b :$PORT --keep-alive 700 main:app
 
 # Send warmup requests to instances on startup, which will initialize the app and load configs.
 inbound_services:
