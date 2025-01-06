@@ -5487,6 +5487,7 @@ class GenomicRNADao(GenomicSubDao):
                 GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,  # sub flows default to array sample
                 GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
                 GenomicSetMember.blockResearch != 1,
+                GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.biobankId.in_(biobank_ids)
             ).distinct().all()
 
