@@ -19,9 +19,8 @@ class AwardeeInSiteDao(UpsertableDao):
         super().__init__(AwardeeInSite)
         self.total_result = None
 
-    @staticmethod
-    def snake_to_camel(string_value: str) -> str:
-        string = UpsertableDao.snake_to_camel(string_value)
+    def snake_to_camel_case(self, string_value: str) -> str:
+        string = self.snake_to_camel(string_value)
         # Replace sal with SAL
         return re.sub(r'(\d)sal(\d)', r'\1SAL\2', string, flags=re.IGNORECASE)
 
