@@ -307,7 +307,7 @@ def get_awardee_insite_data_to_stream(project: str, destination_dataset: str) ->
 def insert_awardee_insite_data(
     project: str, src_operational_dataset: str, destination_dataset: str
 ) -> str:
-    """Insert data into `datafeed_input_awardee_insite` table. This query will only insert new records to the table"""
+    """Insert data into `datafeed_input_awardee_insite` table. Also takes care of withdrawn participants"""
 
     return f"""
         INSERT INTO `{project}.{destination_dataset}.datafeed_input_awardee_insite`
