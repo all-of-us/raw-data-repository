@@ -2,6 +2,8 @@
 # https://cloud.google.com/appengine/docs/standard/
 instance_class: F4
 
+entrypoint: gunicorn -w 5 -b :$PORT --keep-alive 700 main:app
+
 # Have 2 idle instances to prepare for sudden traffic spikes.
 automatic_scaling:
   min_idle_instances: 2
