@@ -2477,10 +2477,10 @@ class GenomicPipelineTest(BaseTestCase):
                 p.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED
             self.summary_dao.update(p)
 
-        # exclude based on block result in GEM A1 query
+        # exclude based on block research in GEM A1 query
         bib_member = list(filter(lambda x: x.biobankId == '3', self.member_dao.get_all()))[0]
-        bib_member.blockResults = 1
-        bib_member.blockResultsReason = 'test_reason'
+        bib_member.blockResearch = 1
+        bib_member.blockResearchReason = 'test_reason'
         self.member_dao.update(bib_member)
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
