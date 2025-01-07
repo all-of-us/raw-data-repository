@@ -18,7 +18,7 @@ if os.getenv('GAE_ENV', '').startswith('standard'):
 bind = "0.0.0.0:{0}".format(_port)
 
 timeout = 700
-
+keepalive = 700
 log_level = "debug"
 # Do not use "gevent" for worker class, doesn't work on App Engine.
 # worker_class = "gevent"
