@@ -54,6 +54,8 @@ def post_request(worker, request, environment, response):  # pylint: disable=unu
         # then we may need to pass something in.
         worker.handle_abort(None, None)
 
-def post_fork(server, worker):  # pylint: disable=unused-argument
-    server.log.info(f"Gunicorn Keep-Alive: {server.cfg.keepalive}")
-    server.log.info(f"Gunicorn Timeout: {server.cfg.timeout}")
+# The below function is useful for debugging settings.
+# Leaving in but disabled in case future modifications need to be tested.
+# def post_fork(server, worker):  # pylint: disable=unused-argument
+#     server.log.info(f"Gunicorn Keep-Alive: {server.cfg.keepalive}")
+#     server.log.info(f"Gunicorn Timeout: {server.cfg.timeout}")
