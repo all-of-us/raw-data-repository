@@ -53,3 +53,7 @@ def post_request(worker, request, environment, response):  # pylint: disable=unu
         # we change to another worker type, or if Gunicorn updates the handle_quit code to do something with them,
         # then we may need to pass something in.
         worker.handle_abort(None, None)
+
+def post_fork(server, worker):  # pylint: disable=unused-argument
+    server.log.info(f"Gunicorn Keep-Alive: {server.cfg.keepalive}")
+    server.log.info(f"Gunicorn Timeout: {server.cfg.timeout}")
