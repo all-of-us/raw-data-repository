@@ -18,6 +18,7 @@ if os.getenv('GAE_ENV', '').startswith('standard'):
 bind = "0.0.0.0:{0}".format(_port)
 
 timeout = 700
+keepalive = 700
 log_level = "debug"
 # Do not use "gevent" for worker class, doesn't work on App Engine.
 # worker_class = "gevent"
@@ -52,3 +53,9 @@ def post_request(worker, request, environment, response):  # pylint: disable=unu
         # we change to another worker type, or if Gunicorn updates the handle_quit code to do something with them,
         # then we may need to pass something in.
         worker.handle_abort(None, None)
+
+# The below function is useful for debugging settings.
+# Leaving in but disabled in case future modifications need to be tested.
+# def post_fork(server, worker):  # pylint: disable=unused-argument
+#     server.log.info(f"Gunicorn Keep-Alive: {server.cfg.keepalive}")
+#     server.log.info(f"Gunicorn Timeout: {server.cfg.timeout}")
