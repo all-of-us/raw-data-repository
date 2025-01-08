@@ -4,9 +4,10 @@ from datetime import datetime
 from enum import auto, Enum
 from typing import List
 
-from rdr_service import participant_enums
+from sqlalchemy.orm import joinedload
+
+from rdr_service import code_constants, participant_enums
 from rdr_service.api.ppsc_intake_api import PPSCIntakeAPI
-from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.domain_model.response import Response
 from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
@@ -69,6 +70,8 @@ class MigrateLegacyData(ToolBase):
         return 0
 
     def migrate_consents(self):
+        print("\n\n\nmigrating consent data")
+
         batch_size = 200
         last_participant_id = 0
         summary_list = self.get_next_summary_set(last_participant_id, batch_size)
@@ -77,31 +80,40 @@ class MigrateLegacyData(ToolBase):
         code_map = self._build_state_code_map()
 
         while summary_list:
+            print(f'starting batch {summary_list[0].participantId} to {summary_list[-1].participantId}...')
+
+            pid_list = [summary.participantId for summary in summary_list]
+            receive_care_map = self._build_receive_care_map(pid_list)
+
             for summary in summary_list:
-                self.migrate_primary_consent(summary, code_map, skip_code_id)
+                self.migrate_primary_consent(summary, code_map, skip_code_id, receive_care_map)
                 if (
                     summary.consentForElectronicHealthRecords
                     and summary.consentForElectronicHealthRecords != participant_enums.QuestionnaireStatus.UNSET
                 ):
                     self.migrate_ehr_consent(summary)
 
+            print('... done')
             last_participant_id = summary_list[-1].participantId
             summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
     def migrate_misc_summary_data(self):
-        batch_size = 200
+        print("migrating summary data")
+
+        batch_size = 1000
         last_participant_id = 0
         summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
         code_map = self._build_state_code_map()
-
-        pid_list = [summary.participantId for summary in summary_list]
-        participant_history_map = self._build_history_map(pid_list)
-        deceased_report_map = self._build_deceased_report_map(pid_list)
-
         org_map = self._build_org_map()
 
         while summary_list:
+            print(f'starting batch {summary_list[0].participantId} to {summary_list[-1].participantId}...')
+
+            pid_list = [summary.participantId for summary in summary_list]
+            participant_history_map = self._build_history_map(pid_list)
+            deceased_report_map = self._build_deceased_report_map(pid_list)
+
             for summary in summary_list:
                 self.process_profile_data(summary, code_map)
                 self.process_nph_optin(summary)
@@ -112,6 +124,7 @@ class MigrateLegacyData(ToolBase):
                 self.process_deceased_status(summary, deceased_report_map)
                 self.process_attribution(summary, participant_history_map[summary.participantId], org_map)
 
+            print('... done')
             last_participant_id = summary_list[-1].participantId
             summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
@@ -127,6 +140,8 @@ class MigrateLegacyData(ToolBase):
                 first_test_history = history
                 break
 
+        # not all test participants seem to have a history record that they've been marked as test
+        modified_test_time = first_test_history.lastModified if first_test_history else summary.lastModified
         self.intake_api.handle_event_insert(req_data={
             'activity': 'Participant Status',
             'eventType': 'Test Account',
@@ -137,7 +152,7 @@ class MigrateLegacyData(ToolBase):
                 },
                 {
                     'dataElementName': 'activity_date_time',
-                    'dataElementValue': first_test_history.lastModified.isoformat()
+                    'dataElementValue': modified_test_time.isoformat()
                 }
             ],
             'participantId': f'P{summary.participantId}'
@@ -175,36 +190,37 @@ class MigrateLegacyData(ToolBase):
         if summary.deceasedStatus == participant_enums.DeceasedStatus.UNSET:
             return
 
-        deceased_report: DeceasedReport = deceased_report_map[summary.participantId][summary.deceasedStatus]
+        deceased_report: DeceasedReport = deceased_report_map[summary.participantId].get(summary.deceasedStatus.number)
         match summary.deceasedStatus:
             case participant_enums.DeceasedStatus.PENDING:
                 status_str = 'pending'
             case participant_enums.DeceasedStatus.APPROVED:
                 status_str = 'deceased'
-        match deceased_report.notification:
-            case participant_enums.DeceasedNotification.EHR:
-                notification_str = "Electronic Medical Record (EHR)"
-            case participant_enums.DeceasedNotification.ATTEMPTED_CONTACT:
-                notification_str = "Attempted to contact participant"
-            case participant_enums.DeceasedNotification.NEXT_KIN_HPO:
-                notification_str = "Next of kin contacted HPO"
-            case participant_enums.DeceasedNotification.NEXT_KIN_SUPPORT:
-                notification_str = "Next of kin contacted Support Center"
-            case participant_enums.DeceasedNotification.OTHER:
-                notification_str = "Other"
+        if deceased_report:
+            match deceased_report.notification:
+                case participant_enums.DeceasedNotification.EHR:
+                    notification_str = "Electronic Medical Record (EHR)"
+                case participant_enums.DeceasedNotification.ATTEMPTED_CONTACT:
+                    notification_str = "Attempted to contact participant"
+                case participant_enums.DeceasedNotification.NEXT_KIN_HPO:
+                    notification_str = "Next of kin contacted HPO"
+                case participant_enums.DeceasedNotification.NEXT_KIN_SUPPORT:
+                    notification_str = "Next of kin contacted Support Center"
+                case participant_enums.DeceasedNotification.OTHER:
+                    notification_str = "Other"
 
-        self.intake_api.handle_event_insert(req_data={
-            'activity': 'Participant Status',
-            'eventType': 'Death',
-            'dataElements': [
-                {
-                    'dataElementName': 'activity_status',
-                    'dataElementValue': status_str
-                },
-                {
-                    'dataElementName': 'activity_date_time',
-                    'dataElementValue': summary.deceasedAuthored
-                },
+        data_elements = [
+            {
+                'dataElementName': 'activity_status',
+                'dataElementValue': status_str
+            },
+            {
+                'dataElementName': 'activity_date_time',
+                'dataElementValue': summary.deceasedAuthored.isoformat()
+            }
+        ]
+        if deceased_report:
+            data_elements.extend([
                 {
                     'dataElementName': 'notification_mechanism',
                     'dataElementValue': notification_str
@@ -212,14 +228,20 @@ class MigrateLegacyData(ToolBase):
                 {
                     'dataElementName': 'cause_of_death',
                     'dataElementValue': deceased_report.causeOfDeath
-                },
-                {
+                }
+            ])
+            if deceased_report.dateOfDeath:
+                data_elements.append({
                     'dataElementName': 'deceased_datetime',
                     'dataElementValue': deceased_report.dateOfDeath.isoformat()
-                }
-            ],
+                })
+        self.intake_api.handle_event_insert(req_data={
+            'activity': 'Participant Status',
+            'eventType': 'Death',
+            'dataElements': data_elements,
             'participantId': f'P{summary.participantId}'
         })
+
 
     def process_pediatric_flag(self, summary: ParticipantSummary):
         self.intake_api.handle_event_insert(req_data={
@@ -262,6 +284,7 @@ class MigrateLegacyData(ToolBase):
         if summary.withdrawalStatus == participant_enums.WithdrawalStatus.NOT_WITHDRAWN:
             return
 
+        withdrawal_time = summary.withdrawalAuthored or summary.withdrawalTime
         data = {
             'activity': 'Withdrawal',
             'eventType': 'Withdrawal',
@@ -272,12 +295,12 @@ class MigrateLegacyData(ToolBase):
                 },
                 {
                     'dataElementName': 'activity_date_time',
-                    'dataElementValue': summary.withdrawalAuthored.isoformat()
+                    'dataElementValue': withdrawal_time.isoformat()
                 }
             ],
             'participantId': f'P{summary.participantId}'
         }
-        if summary.withdrawalReason != participant_enums.WithdrawalReason.UNSET:
+        if summary.withdrawalReason:
             match summary.withdrawalReason:
                 case participant_enums.WithdrawalReason.FRAUDULENT:
                     reason = 'Fraudulent Account'
@@ -405,7 +428,7 @@ class MigrateLegacyData(ToolBase):
             'piiaddress_streetaddress': summary.streetAddress,
             'piiaddress_streetaddress2': summary.streetAddress2,
             'streetaddress_piicity': summary.city,
-            'streetaddress_piistate': state_code_map[summary.stateId],
+            'streetaddress_piistate': state_code_map[summary.stateId] if summary.stateId else None,
             'streetaddress_piizip': summary.zipCode,
             'piicontactinformation_phone': summary.phoneNumber,
             'piicontactinformation_email': summary.email,
@@ -432,14 +455,38 @@ class MigrateLegacyData(ToolBase):
 
         return result
 
+    def _build_receive_care_map(self, id_list):
+        result = {}
+        all_responses = QuestionnaireResponseRepository.get_responses_to_surveys(
+            session=self.session,
+            survey_codes=[
+                code_constants.CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
+                code_constants.PEDIATRIC_PRIMARY_CONSENT_MODULE
+            ],
+            participant_ids=id_list
+        )
+
+        for pid in id_list:
+            responses = all_responses[pid]
+            for consent_response in reversed(responses.in_authored_order):
+                answer = (
+                    consent_response.get_answers_for(code_constants.RECEIVE_CARE_STATE)
+                    or consent_response.get_answers_for(code_constants.PEDIATRIC_RECEIVE_CARE_STATE)
+                )
+                if answer:
+                    result[pid] = answer[0].value
+                    break
+
+        return result
+
     def _build_deceased_report_map(self, id_list):
         report_list: List[DeceasedReport] = self.session.query(DeceasedReport).filter(
-            ParticipantHistory.participantId.in_(id_list)
+            DeceasedReport.participantId.in_(id_list)
         ).all()
 
         result = defaultdict(dict)
         for report in report_list:
-            result[report.participantId][report.status] = report
+            result[report.participantId][report.status.number] = report
 
         return result
 
@@ -454,13 +501,12 @@ class MigrateLegacyData(ToolBase):
         }
 
     def migrate_ubr_data(self):
+        print("\n\n\nmigratign ubr data")
         with open('ubr_data_file.csv') as file:
             reader = csv.DictReader(file)
 
             for record in reader:
                 participant_id = record['participant_id']
-                if not participant_id:
-                    print('no pid')
                 data = {
                     'activity': 'Participant Status',
                     'eventType': 'UBR Status',
@@ -485,11 +531,14 @@ class MigrateLegacyData(ToolBase):
                 self.intake_api.handle_event_insert(req_data=data)
 
     def migrate_basics_data(self):
+        print("\n\n\nmigrating basics data")
+
         batch_size = 200
         last_participant_id = 0
         summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
         while summary_list:
+            print(f'starting batch {summary_list[0].participantId} to {summary_list[-1].participantId}...')
 
             id_list = [summary.participantId for summary in summary_list]
             basics_responses = QuestionnaireResponseRepository.get_responses_to_surveys(
@@ -508,15 +557,19 @@ class MigrateLegacyData(ToolBase):
                     response=responses.in_authored_order[-1]
                 )
 
+            print('... done')
             last_participant_id = summary_list[-1].participantId
             summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
     def migrate_withdrawal_answer(self):
+        print("\n\n\nmigrating withdrawal data")
+
         batch_size = 200
         last_participant_id = 0
         summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
         while summary_list:
+            print(f'starting batch {summary_list[0].participantId} to {summary_list[-1].participantId}...')
             id_list = [summary.participantId for summary in summary_list]
             withdrawal_responses = QuestionnaireResponseRepository.get_responses_to_surveys(
                 session=self.session,
@@ -534,6 +587,7 @@ class MigrateLegacyData(ToolBase):
                     response=responses.in_authored_order[-1]
                 )
 
+            print('... done')
             last_participant_id = summary_list[-1].participantId
             summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
@@ -544,6 +598,11 @@ class MigrateLegacyData(ToolBase):
             ParticipantSummary.participantId > last_id
         ).order_by(
             ParticipantSummary.participantId
+        ).filter(
+            ParticipantSummary.signUpTime < '2024-12-3',
+        ).options(
+            joinedload(ParticipantSummary.participant),
+            joinedload(ParticipantSummary.pediatricData)
         ).limit(batch_size).all()
         # todo: get legacy participants from rdr schema (by signup date?)
         #   todo: make sure to load pediatric data and make sure isPediatric is populated.
@@ -621,7 +680,7 @@ class MigrateLegacyData(ToolBase):
 
         self.intake_api.handle_event_insert(req_data=data)
 
-    def migrate_primary_consent(self, summary: ParticipantSummary, code_map, skip_code_id):
+    def migrate_primary_consent(self, summary: ParticipantSummary, code_map, skip_code_id, receive_care_map):
         consent_data = {
             'activity': "Consent",
             'eventType': "Primary Consent",
@@ -643,11 +702,7 @@ class MigrateLegacyData(ToolBase):
                 'dataElementValue': code_map[summary.stateId]
             })
 
-        care_state_str = QuestionnaireResponseDao.get_latest_answer_for_state_receiving_care(
-            session=self.session,
-            participant_id=summary.participantId,
-            for_pediatric=summary.isPediatric
-        )
+        care_state_str = receive_care_map.get(summary.participantId)
         if care_state_str:
             consent_data['dataElements'].append({
                 'dataElementName': 'receivecare_piistate',
@@ -693,7 +748,11 @@ class MigrateLegacyData(ToolBase):
         }
 
     def migrate_survey_completions(self):
-        summary_list = []  # todo: update method of retrieving summary list for this method
+        print("\n\n\nmigrating survey data")
+
+        batch_size = 200
+        last_participant_id = 0
+        summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
         survey_map = {
             'BehavioralHealthAndPersonality': SurveyEventType.Behavioral,
@@ -707,11 +766,17 @@ class MigrateLegacyData(ToolBase):
             'TheBasics': SurveyEventType.Basics
         }
 
-        for summary in summary_list:
-            for summary_field_name, survey_type in survey_map.items():
-                survey_json = self._build_survey_event_json(summary, survey_type, summary_field_name)
-                if survey_json:
-                    self.intake_api.handle_event_insert(req_data=survey_json)
+        while summary_list:
+            print(f'starting batch {summary_list[0].participantId} to {summary_list[-1].participantId}...')
+            for summary in summary_list:
+                for summary_field_name, survey_type in survey_map.items():
+                    survey_json = self._build_survey_event_json(summary, survey_type, summary_field_name)
+                    if survey_json:
+                        self.intake_api.handle_event_insert(req_data=survey_json)
+
+            print('... done')
+            last_participant_id = summary_list[-1].participantId
+            summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
     @classmethod
     def _build_survey_event_json(
