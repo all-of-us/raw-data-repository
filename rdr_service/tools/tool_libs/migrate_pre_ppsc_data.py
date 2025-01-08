@@ -1,7 +1,7 @@
 from collections import defaultdict
 import csv
 from datetime import datetime
-from enum import auto, Enum
+from enum import Enum
 from typing import List
 
 from sqlalchemy.orm import joinedload
@@ -20,18 +20,6 @@ from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 tool_cmd = 'migrate-legacy'
 tool_desc = 'Migrate pre-PPSC data into PPSC schema'
-
-
-class ActivityType(Enum):
-    Enrollment = auto()
-    Consent = auto()
-    SurveyCompletion = auto()
-    ProfileUpdates = auto()
-    Withdrawal = auto()
-    Deactivation = auto
-    ParticipantStatus = auto()
-    Attribution = auto()
-    NphOptIn = auto()
 
 
 class SurveyEventType(Enum):
@@ -604,9 +592,6 @@ class MigrateLegacyData(ToolBase):
             joinedload(ParticipantSummary.participant),
             joinedload(ParticipantSummary.pediatricData)
         ).limit(batch_size).all()
-        # todo: get legacy participants from rdr schema (by signup date?)
-        #   todo: make sure to load pediatric data and make sure isPediatric is populated.
-        # todo: join load the participant
 
     def process_withdrawal_response(self, participant_id, response: Response):
         answer = response.get_single_answer_for('withdrawalaianceremony')
