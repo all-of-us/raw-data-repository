@@ -103,7 +103,7 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
                     'activity_status': 'test',
                     'activity_date_time': clock.CLOCK.now()
                 }
-                for key, value in status_elements.items():
+                for key in status_elements:
                     self.ppsc_data_gen.create_database_participant_status_event(
                         participant_id=current_participant_ids[num],
                         event_type_name='Test Account',
