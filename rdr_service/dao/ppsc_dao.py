@@ -5,7 +5,7 @@ from sqlalchemy.sql import functions
 from sqlalchemy.orm import aliased
 
 from rdr_service.dao.base_dao import BaseDao, UpsertableDao
-from rdr_service.model.ppsc import Participant, Site, NPHOptInEvent, ProfileUpdatesEvent
+from rdr_service.model.ppsc import Participant, Site, NPHOptInEvent, ProfileUpdatesEvent, ParticipantStatusEvent
 from rdr_service.model.study_nph import EligibleParticipants
 
 
@@ -135,6 +135,12 @@ class PPSCNphOptEventInDao(BaseDao):
             ).outerjoin(
               EligibleParticipants,
               EligibleParticipants.primary_participant_id == ProfileUpdatesEvent.participant_id
+            ).outerjoin(
+                ParticipantStatusEvent,
+                and_(
+                    ParticipantStatusEvent.participant_id == ProfileUpdatesEvent.participant_id,
+                    ParticipantStatusEvent.event_type_name.ilike('%Test Account%')
+                )
             ).filter(
                 ProfileUpdatesEvent.data_element_name.in_(
                     ['piiname_first',
@@ -145,7 +151,8 @@ class PPSCNphOptEventInDao(BaseDao):
                      'language_preference']
                 ),
                 profile_updates_alias.id.is_(None),
-                EligibleParticipants.id.is_(None)
+                EligibleParticipants.id.is_(None),
+                ParticipantStatusEvent.id.is_(None)
             ).group_by(
                 ProfileUpdatesEvent.participant_id,
                 case(
@@ -210,3 +217,4 @@ class PPSCNphOptEventInDao(BaseDao):
                 self.model_type,
                 batch
             )
+
