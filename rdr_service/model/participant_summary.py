@@ -24,7 +24,7 @@ from sqlalchemy.sql import expression
 
 from rdr_service import clock
 from rdr_service.model.account_link import AccountLink
-from rdr_service.model.base import Base, InvalidDataState, model_insert_listener, model_update_listener
+from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
 from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import (
@@ -2020,14 +2020,8 @@ Index("participant_summary_email", ParticipantSummary.email)
 Index("participant_summary_login_phone_number", ParticipantSummary.loginPhoneNumber)
 
 
-def validate_participant_summary(_, __, summary: ParticipantSummary):
-    if not summary.email and not summary.loginPhoneNumber:
-        raise InvalidDataState('Participant summary missing an email or phone number')
-
-
 def model_update_lastModified_listener(_, __, summary: ParticipantSummary):
     """Auto set `lastModified` column value on updates."""
-    validate_participant_summary(_, __, summary)
     summary.lastModified = clock.CLOCK.now()
 
 

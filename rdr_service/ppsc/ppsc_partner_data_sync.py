@@ -19,12 +19,12 @@ class NphOptInSync:
         self.usable_nph_objects = self.eligible_dao.get_usable_participant_data()
         if not self.usable_nph_objects:
             logging.warning('No eligible NPH participant data records found')
-            raise RuntimeError('No eligible NPH participant data records found')
+            return
 
         self.items_ready_for_sync = self.nph_opt_in_event_dao.get_eligible_participant_records()
         if not self.items_ready_for_sync:
-            logging.info('No eligible NPH participant data records found')
-            raise RuntimeError('No items for NPH Opt In Sync found')
+            logging.info('No NPH Opt In records for sync found')
+            return
 
         logging.info(f'Syncing {len(self.items_ready_for_sync)} for NPH Opt In Sync')
 
@@ -33,6 +33,7 @@ class NphOptInSync:
         return current_nph_obj
 
     def sync_items(self):
+        self.get_items_for_sync()
         for item in self.items_ready_for_sync:
             usable_nph_obj = self.get_nph_obj_from_list()
             self.nph_opt_in_dao.insert(self.nph_opt_in_dao.model_type(**{
@@ -52,6 +53,5 @@ class NphOptInSync:
             self.usable_nph_objects.pop(0)
 
     def run_sync(self):
-        self.get_items_for_sync()
         self.sync_items()
         logging.info(f'{len(self.items_ready_for_sync)} objects have been synced for NPH Opt In')

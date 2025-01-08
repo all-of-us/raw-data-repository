@@ -6,7 +6,8 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 from rdr_service import config
 from rdr_service.api.base_api import BaseApi
-from rdr_service.api_util import AWARDEE, DEV_MAIL, RDR_AND_PTC, PTC_HEALTHPRO_AWARDEE_CURATION, SUPPORT
+from rdr_service.api_util import (AWARDEE, DEV_MAIL, RDR_AND_PTC, PTC_HEALTHPRO_AWARDEE_CURATION, SUPPORT,
+                                  PTCD_HEALTHPRO_AWARDEE_CURATION)
 from rdr_service.app_util import auth_required, get_validated_user_info, restrict_to_gae_project
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
@@ -39,7 +40,7 @@ class ParticipantSummaryApi(BaseApi):
         self.hpro_consent_dao = HealthProConsentDao()
         self.incentives_dao = ParticipantIncentivesDao()
 
-    @auth_required(PTC_HEALTHPRO_AWARDEE_CURATION + [SUPPORT])
+    @auth_required(PTCD_HEALTHPRO_AWARDEE_CURATION + [SUPPORT])
     def get(self, p_id=None):
         # Make sure participant id is in the correct range of possible values.
         if isinstance(p_id, int) and not _MIN_ID <= p_id <= _MAX_ID:

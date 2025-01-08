@@ -74,6 +74,7 @@
     "example@example.com": {
       "roles": [
         "ptc",
+        "ptcd",
         "healthpro",
         "exporter",
         "storefront",
