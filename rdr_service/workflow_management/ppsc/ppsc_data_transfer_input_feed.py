@@ -1,3 +1,4 @@
+import ast
 import logging
 from abc import ABC, abstractmethod
 
@@ -9,9 +10,10 @@ from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferBaseDao
+from rdr_service.dao.awardee_insite_dao import AwardeeInSiteDao
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.awardee_insite import AwardeeInSite
 from rdr_service.model.ppsc_partner_data_transfer import PPSCCore, PPSCBiobankSample, PPSCHealthData, PPSCEHR
-# from rdr_service.cloud_utils import bigquery
 from rdr_service.workflow_management.ppsc import data_feed_queries
 from rdr_service.workflow_management.ppsc.ppsc_intake_to_ps_queries import get_consent_activity_to_stream, \
     get_profile_updates_activity_to_stream, get_withdrawal_activity_to_stream, get_deactivation_activity_to_stream, \
@@ -282,3 +284,66 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
 
         else:
             logging.warning(f"No Staged Rows for {datafeed} Data Feed")
+
+
+class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
+
+    def __init__(self, project='test'):
+        self.project = project
+        self.bq_client = bigquery.Client()
+
+    def make_datafeed_job(self, job_def: str):
+        """Runs the query in BQ and returns the result."""
+        return self.bq_client.query(job_def).result()
+
+    def get_datafeed_definition(self) -> dict:
+        src = config.getSettingJson(config.PPSC_DATAFEED_SRC_DATASET)[0]
+        destination = config.getSettingJson(config.PPSC_DATAFEED_DEST_DATASET)[0]
+
+        job_def = {
+            "staging_data_sql": data_feed_queries.insert_awardee_insite_data(
+                self.project, src, destination
+            ),
+            "streaming_data_sql": data_feed_queries.get_awardee_insite_data_to_stream(
+                self.project, destination
+            ),
+            "destination_model": AwardeeInSite,
+        }
+
+        return job_def
+
+    @staticmethod
+    def row_to_dict(row: bigquery.Row) -> dict:
+        row_dict = {}
+        for key in row.keys():
+            row_dict[key] = row[key]
+        return row_dict
+
+    def run_datafeed(self, datafeed: str) -> None:
+
+        datafeed_def = self.get_datafeed_definition()
+        self.make_datafeed_job(datafeed_def["staging_data_sql"])  # Stage data rows
+        streaming_data_rows = self.make_datafeed_job(datafeed_def["streaming_data_sql"])
+
+        dao = AwardeeInSiteDao()
+        if streaming_data_rows:
+            for row in streaming_data_rows:
+                awardee_insite_dict = AwardeeInSiteFeed.row_to_dict(row)
+                camel_case_awardee_insite_dict = {
+                    dao.snake_to_camel_case(key): val for key, val in awardee_insite_dict.items()
+                }
+                id_ = dao.get_id(AwardeeInSite(**camel_case_awardee_insite_dict))
+                logging.info(f"""Streaming P{camel_case_awardee_insite_dict["participantId"]}""")
+                if id_:
+                    # This allows to update an existing record in MySQL
+                    camel_case_awardee_insite_dict["id"] = id_
+
+                # For some reason, patientStatus was turning into a string, so convert it back to list.
+                if isinstance(camel_case_awardee_insite_dict["patientStatus"], str):
+                    camel_case_awardee_insite_dict["patientStatus"] = ast.literal_eval(
+                        camel_case_awardee_insite_dict["patientStatus"]
+                    )
+
+                dao.upsert(AwardeeInSite(**camel_case_awardee_insite_dict))
+        else:
+            logging.warning(f"No rows to add to {datafeed} Data Feed")
