@@ -97,12 +97,31 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
                     event_authored_time=clock.CLOCK.now()
                 )
 
+            # add test participant
+            if current_participant_ids[num] == 100000001:
+                status_elements = {
+                    'activity_status': 'test',
+                    'activity_date_time': clock.CLOCK.now()
+                }
+                for key in status_elements:
+                    self.ppsc_data_gen.create_database_participant_status_event(
+                        participant_id=current_participant_ids[num],
+                        event_type_name='Test Account',
+                        event_id=participant_event_activity_profile.id,
+                        data_element_name=key,
+                        data_element_value=status_elements[key],
+                        event_authored_time=clock.CLOCK.now()
+                    )
+
         nph_opt_in_sync = NphOptInSync()
         nph_opt_in_sync.run_sync()
 
-        self.assertEqual(len(nph_opt_in_sync.items_ready_for_sync), 2)
+        self.assertEqual(len(nph_opt_in_sync.items_ready_for_sync), 1)
 
         current_sync_ids = [obj.participant_id for obj in nph_opt_in_sync.items_ready_for_sync]
+
+        # check test participant not included
+        self.assertTrue(100000001 not in current_sync_ids)
 
         # eligible records
         updated_eligible_records = [obj for obj in self.eligible_dao.get_all()
