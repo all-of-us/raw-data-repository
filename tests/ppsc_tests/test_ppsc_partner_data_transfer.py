@@ -328,7 +328,7 @@ class PPSCDataTransferTest(BaseTestCase):
 
         # check updated headers updated with new token
         self.assertNotEqual(current_headers, biobank_transfer.headers)
-        # check token data updated with with updated mock value
+        # check token data updated with updated mock value
         self.assertEqual(biobank_transfer.ppsc_oauth_data.token_data, oauth_service.return_value)
 
     def tearDown(self):
