@@ -55,7 +55,8 @@ GCP_SERVICES = [
     'default',
     'offline',
     'resource',
-    'ppsc_pipeline'
+    'ppsc_pipeline',
+    'researchers_offline'
 ]
 
 
@@ -86,6 +87,12 @@ GCP_SERVICE_CONFIG_MAP = OrderedDict({
             'type': 'service',
             'default': [
                 'rdr_service/ppsc_pipeline.yaml'
+            ]
+        },
+        'researchers_offline': {
+            'type': 'service',
+            'default': [
+                'rdr_service/researchers_offline.yaml'
             ]
         },
         'cron': {
@@ -141,6 +148,12 @@ GCP_SERVICE_CONFIG_MAP = OrderedDict({
             'type': 'service',
             'default': [
                 'rdr_service/ppsc_pipeline.yaml'
+            ]
+        },
+        'researchers_offline': {
+            'type': 'service',
+            'default': [
+                'rdr_service/researchers_offline.yaml'
             ]
         },
         'cron': {
