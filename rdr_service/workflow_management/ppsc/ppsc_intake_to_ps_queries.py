@@ -415,17 +415,24 @@ WITH ranked_events AS (
   and se.event_type_name IN ('Org Attribution')
   and data_element_name IN ("activity_status", '​activity_status')
   and se.ignore_flag = 0
-)
-SELECT
-  participant_id,
-  event_id,
-  event_type_name,
-  MAX(CASE WHEN event_type_name = 'Org Attribution'
-    AND data_element_name IN ("activity_status", '​activity_status') AND rank = 1
-           THEN data_element_value END) AS organization
-FROM ranked_events
-WHERE rank = 1
-GROUP BY participant_id, event_id, event_type_name
+),
+    org_event_details AS (
+      SELECT
+      participant_id,
+      event_id,
+      event_type_name,
+      MAX(CASE WHEN event_type_name = 'Org Attribution'
+        AND data_element_name IN ("activity_status", '​activity_status') AND rank = 1
+               THEN data_element_value END) AS organization
+      FROM ranked_events
+      WHERE rank = 1
+      GROUP BY participant_id, event_id, event_type_name
+    )
+SELECT oed.*
+  , o.hpo_id
+FROM org_event_details oed
+LEFT JOIN `{project}.{source_dataset}.rdr_organization` o
+ON oed.organization = o.external_id
     """
 
 
