@@ -94,9 +94,10 @@ WHERE
     );"""
 
 core_data_expected_streaming_sql = """
-    SELECT distinct participant_id, ignore_flag, event_date_time, has_core_data
+    SELECT distinct participant_id, ignore_flag, event_date_time, created, modified, has_core_data
     FROM `test.rdr_operational_datastream.datafeed_input_core_data` s
     where TRUE
+      AND ignore_flag = 0
       AND NOT EXISTS (
             SELECT 1
             FROM `test.rdr_operational_datastream.ppsc_ppsc_core` t
@@ -132,6 +133,7 @@ FROM `test.rdr_operational_datastream.ppsc_participant` p
   JOIN `test.rdr_operational_datastream.rdr_biobank_stored_sample` ss ON ss.biobank_id = p.biobank_id
 WHERE TRUE
   AND ss.test IN ('1ed04', '1ed10', '1ed02', '2ed02', '2ed04', '1sal2', '1sal', '2sal0', '3sal1', '1ur10', '1ur90')
+  AND ss.created > "2024-12-02"
   AND NOT EXISTS (
         SELECT 1
         FROM `test.rdr_operational_datastream.datafeed_input_biospecimen` t
@@ -141,9 +143,10 @@ WHERE TRUE
 """
 
 biospecimen_expected_streaming_sql = """
-    SELECT distinct participant_id, ignore_flag, event_date_time, specimen_type, specimen_status
+    SELECT distinct participant_id, ignore_flag, event_date_time, created, modified, specimen_type, specimen_status
     FROM `test.rdr_operational_datastream.datafeed_input_biospecimen` s
     where TRUE
+      AND ignore_flag = 0
       AND NOT EXISTS (
             SELECT 1
             FROM `test.rdr_operational_datastream.ppsc_ppsc_biobank_sample` t
@@ -163,27 +166,29 @@ INSERT INTO `test.rdr_operational_datastream.datafeed_input_ehr` (
 SELECT DISTINCT
     p.id,
     0 as ignore_flag,
-    participant_ehr.latest_upload_time,
+    participant_ehr.last_seen,
     CURRENT_TIMESTAMP() AS created,
     CURRENT_TIMESTAMP() AS modified
 FROM `test.rdr_operational_datastream.ppsc_participant` p
     -- EHR Ops table
-    JOIN `test-ehr-project.participant_ehr.ehr_upload_pids` participant_ehr
-        ON p.participant_id = participant_ehr.person_id
+    JOIN `test.rdr_operational_datastream.rdr_participant_ehr_receipt` participant_ehr
+        ON p.id = participant_ehr.participant_id
 WHERE TRUE
+  AND participant_ehr.file_timestamp > "2024-12-02"
   AND NOT EXISTS (
         SELECT 1
         FROM `test.rdr_operational_datastream.datafeed_input_ehr` t
         WHERE t.participant_id = p.id
-            AND t.event_date_time = participant_ehr.latest_upload_time
+            AND t.event_date_time = participant_ehr.last_seen
     )
 ;
 """
 
 ehr_expected_streaming_sql = """
-SELECT distinct participant_id, ignore_flag, event_date_time
+SELECT distinct participant_id, ignore_flag, created, modified, event_date_time
 FROM `test.rdr_operational_datastream.datafeed_input_ehr` s
 where TRUE
+  AND ignore_flag = 0
   AND NOT EXISTS (
         SELECT 1
         FROM `test.rdr_operational_datastream.ppsc_ppsc_ehr` t
@@ -205,7 +210,7 @@ SELECT DISTINCT
     p.id,
     0 AS ignore_flag,
     CASE
-        WHEN participant_ehr.person_id IS NOT NULL THEN 3
+        WHEN participant_ehr.participant_id IS NOT NULL THEN 3
         ELSE 2
     END AS health_data_stream_sharing_status,
     iehr.event_date_time,
@@ -214,10 +219,10 @@ SELECT DISTINCT
 FROM `test.rdr_operational_datastream.ppsc_participant` p
     -- PPSC Notified of EHR Received
     JOIN `test.rdr_operational_datastream.datafeed_input_ehr` iehr
-        ON iehr.participant_id = p.participant_id
+        ON iehr.participant_id = p.id
     -- Participant in EHR Ops table
-    LEFT JOIN `test-ehr-project.participant_ehr.ehr_upload_pids` participant_ehr
-        ON p.participant_id = participant_ehr.person_id
+    LEFT JOIN `test.rdr_operational_datastream.rdr_participant_ehr_receipt` participant_ehr
+        ON p.id = participant_ehr.participant_id
 WHERE TRUE
     -- Don't send if participant is already in the destination table with the same event time.
     AND NOT EXISTS (
@@ -230,9 +235,10 @@ WHERE TRUE
 """
 
 health_data_expected_streaming_sql = """
-    SELECT distinct participant_id, ignore_flag, event_date_time, health_data_stream_sharing_status
+    SELECT distinct participant_id, ignore_flag, event_date_time, created, modified, health_data_stream_sharing_status
     FROM `test.rdr_operational_datastream.datafeed_input_healthdata_sharing` s
     where TRUE
+      AND ignore_flag = 0
       AND NOT EXISTS (
             SELECT 1
             FROM `test.rdr_operational_datastream.ppsc_ppsc_health_data` t
