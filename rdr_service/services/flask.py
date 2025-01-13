@@ -21,6 +21,7 @@ OFFLINE_PREFIX = "/offline/"
 RESOURCE_PREFIX = '/resource/'
 TASK_PREFIX = "/resource/task/"
 PPSC_PIPELINE_PREFIX = "/ppsc_pipeline/"
+RESEARCHERS_OFFLINE_PREFIX = "/researchers_offline/"
 
 # If we are being run under gunicorn, hookup gunicorn's logging handler.
 if __name__ != '__main__':
