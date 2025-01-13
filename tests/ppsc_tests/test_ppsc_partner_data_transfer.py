@@ -68,7 +68,11 @@ class PPSCDataTransferTest(BaseTestCase):
     @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferCore.send_item')
     def test_send_core_items_for_transfer(self, send_request, oauth_service) -> None:
 
-        oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
+        oauth_service.return_value = {
+            'last_generated': clock.CLOCK.now(),
+            'expires': '3600',
+            'access_token': 'wqwqwqqwqwqwqw'
+        }
         send_request.return_value = MockedTransferResponse()
 
         for _ in range(0, 3):
@@ -83,7 +87,7 @@ class PPSCDataTransferTest(BaseTestCase):
             core_transfer.run_data_transfer()
 
         # contructor/__enter__ builds correctly
-        self.assertEqual(core_transfer.ppsc_oauth_data.token, oauth_service.return_value)
+        self.assertEqual(core_transfer.ppsc_oauth_data.token_data , oauth_service.return_value)
         self.assertEqual(core_transfer.transfer_type, DataSyncTransferType.CORE)
 
         current_endpoint = [obj for obj in self.current_endpoint_records
@@ -116,7 +120,11 @@ class PPSCDataTransferTest(BaseTestCase):
     @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferEHR.send_item')
     def test_send_ehr_items_for_transfer(self, send_request, oauth_service) -> None:
 
-        oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
+        oauth_service.return_value = {
+            'last_generated': clock.CLOCK.now(),
+            'expires': '3600',
+            'access_token': 'wqwqwqqwqwqwqw'
+        }
         send_request.return_value = MockedTransferResponse()
 
         for _ in range(0, 3):
@@ -130,7 +138,7 @@ class PPSCDataTransferTest(BaseTestCase):
             ehr_transfer.run_data_transfer()
 
         # contructor/__enter__ builds correctly
-        self.assertEqual(ehr_transfer.ppsc_oauth_data.token, oauth_service.return_value)
+        self.assertEqual(ehr_transfer.ppsc_oauth_data.token_data, oauth_service.return_value)
         self.assertEqual(ehr_transfer.transfer_type, DataSyncTransferType.EHR)
 
         current_endpoint = [obj for obj in self.current_endpoint_records
@@ -163,7 +171,11 @@ class PPSCDataTransferTest(BaseTestCase):
     @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferHealthData.send_item')
     def test_send_health_data_items_for_transfer(self, send_request, oauth_service) -> None:
 
-        oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
+        oauth_service.return_value = {
+            'last_generated': clock.CLOCK.now(),
+            'expires': '3600',
+            'access_token': 'wqwqwqqwqwqwqw'
+        }
         send_request.return_value = MockedTransferResponse()
 
         for _ in range(0, 3):
@@ -178,7 +190,7 @@ class PPSCDataTransferTest(BaseTestCase):
             health_transfer.run_data_transfer()
 
         # contructor/__enter__ builds correctly
-        self.assertEqual(health_transfer.ppsc_oauth_data.token, oauth_service.return_value)
+        self.assertEqual(health_transfer.ppsc_oauth_data.token_data, oauth_service.return_value)
         self.assertEqual(health_transfer.transfer_type, DataSyncTransferType.HEALTH_DATA)
 
         current_endpoint = [obj for obj in self.current_endpoint_records
@@ -211,7 +223,11 @@ class PPSCDataTransferTest(BaseTestCase):
     @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferBiobank.send_item')
     def test_send_biobank_sample_items_for_transfer(self, send_request, oauth_service) -> None:
 
-        oauth_service.return_value = 'wqwqwqwqqwqqwqwqwqwqw'
+        oauth_service.return_value = {
+            'last_generated': clock.CLOCK.now(),
+            'expires': '3600',
+            'access_token': 'wqwqwqqwqwqwqw'
+        }
         send_request.return_value = MockedTransferResponse()
 
         for _ in range(0, 3):
@@ -227,7 +243,7 @@ class PPSCDataTransferTest(BaseTestCase):
             biobank_transfer.run_data_transfer()
 
         # contructor/__enter__ builds correctly
-        self.assertEqual(biobank_transfer.ppsc_oauth_data.token, oauth_service.return_value)
+        self.assertEqual(biobank_transfer.ppsc_oauth_data.token_data, oauth_service.return_value)
         self.assertEqual(biobank_transfer.transfer_type, DataSyncTransferType.BIOBANK_SAMPLE)
 
         current_endpoint = [obj for obj in self.current_endpoint_records
@@ -272,6 +288,48 @@ class PPSCDataTransferTest(BaseTestCase):
             biobank_transfer.run_data_transfer()
 
         self.assertEqual(len(biobank_transfer.transfer_items), 0)
+
+    @mock.patch('rdr_service.ppsc.ppsc_partner_oauth.PPSCTransferOauth.generate_token')
+    @mock.patch('rdr_service.ppsc.ppsc_partner_data_transfer.PPSCDataTransferBiobank.send_item')
+    def test_send_sample_items_and_token_updates(self, send_request, oauth_service) -> None:
+
+        oauth_service.return_value = {
+            'last_generated': clock.CLOCK.now(),
+            'expires': '0',  # set expire value so token will refresh accordingly
+            'access_token': 'wqwqwqqwqwqwqw'
+        }
+        send_request.return_value = MockedTransferResponse()
+
+        for _ in range(0, 3):
+            participant = self.ppsc_data_gen.create_database_participant()
+            self.ppsc_data_gen.create_database_ppsc_data_biobank(
+                participant_id=participant.id,
+                event_date_time=clock.CLOCK.now(),
+                specimen_type=SpecimenType.BLOOD,
+                specimen_status=SpecimenStatus.RECEIVED
+        )
+
+        with PPSCDataTransferBiobank() as biobank_transfer:
+            # check current mocked token and headers
+            self.assertEqual(biobank_transfer.ppsc_oauth_data.token_data, oauth_service.return_value)
+            current_headers = {
+                "Content-Type": "application/json",
+                "Authorization": f'Bearer {oauth_service.return_value.get("access_token")}'
+            }
+            self.assertEqual(biobank_transfer.headers, current_headers)
+
+            # set new token via updated return value
+            oauth_service.return_value = {
+                'last_generated': clock.CLOCK.now(),
+                'expires': '3600',
+                'access_token': 'ddddddddddddd'
+            }
+            biobank_transfer.run_data_transfer()
+
+        # check updated headers updated with new token
+        self.assertNotEqual(current_headers, biobank_transfer.headers)
+        # check token data updated with updated mock value
+        self.assertEqual(biobank_transfer.ppsc_oauth_data.token_data, oauth_service.return_value)
 
     def tearDown(self):
         super().tearDown()

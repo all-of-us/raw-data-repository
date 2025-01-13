@@ -5,6 +5,7 @@ from abc import abstractmethod, ABC
 
 from rdr_service import clock
 from rdr_service.dao.ppsc_partner_transfer_dao import PPSCDataTransferAuthDao, RTIDataTransferAuthDao
+from rdr_service.model.ppsc_partner_data_transfer import PPSCDataTransferAuth
 from rdr_service.ppsc.ppsc_enums import AuthType
 
 
@@ -20,23 +21,6 @@ class BaseTransferOauth(ABC):
         self.oauth_record.expires = token_dict.get('expires_in')
         self.oauth_record.access_token = token_dict.get("access_token")
         self.dao.update(self.oauth_record)
-
-    def generate_token(self):
-        response = requests.post(
-            url=self.oauth_record.auth_url,
-            headers=self.get_headers()
-        )
-        try:
-            if response and response.status_code in (200, 201):
-                token_dict = response.json()
-                self.store_token(token_dict)
-                return token_dict.get("access_token")
-            else:
-                logging.warning(f'Error generating token for Oauth: {self.auth_type}: Response {response.status_code}')
-                raise RuntimeError(f'Error generating token for Oauth: '
-                                   f'{self.auth_type}: Response {response.status_code}')
-        except Exception as e:  # pylint: disable=broad-except
-            logging.warning(f'Error generating token for Oauth: {self.auth_type}: {e}')
 
     def get_oauth_record(self):
         oauth_record = self.dao.get_auth_record_from_type(self.auth_type)
@@ -55,9 +39,30 @@ class PPSCTransferOauth(BaseTransferOauth):
     def __init__(self):
         self.auth_type = AuthType.PPSC_DATA_TRANSFER
         self.dao = PPSCDataTransferAuthDao()
-        self.oauth_record = self.get_oauth_record()
-        self.encoded_client_str = self.encode_client_data()
-        self.token = self.generate_token()
+        self.oauth_record: PPSCDataTransferAuth = self.get_oauth_record()
+        self.encoded_client_str: str = self.encode_client_data()
+        self.token_data: dict = self.generate_token()
+
+    def generate_token(self):
+        response = requests.post(
+            url=self.oauth_record.auth_url,
+            headers=self.get_headers()
+        )
+        try:
+            if response and response.status_code in (200, 201):
+                token_dict = response.json()
+                self.store_token(token_dict)
+                return {
+                    'last_generated': self.oauth_record.last_generated,
+                    'expires': self.oauth_record.expires,
+                    'access_token': self.oauth_record.access_token
+                }
+            else:
+                logging.warning(f'Error generating token for Oauth: {self.auth_type}: Response {response.status_code}')
+                raise RuntimeError(f'Error generating token for Oauth: '
+                                   f'{self.auth_type}: Response {response.status_code}')
+        except Exception as e:  # pylint: disable=broad-except
+            logging.warning(f'Error generating token for Oauth: {self.auth_type}: {e}')
 
     def get_headers(self):
         return {

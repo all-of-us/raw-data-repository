@@ -3,7 +3,9 @@ import json
 import requests
 from abc import ABC, abstractmethod
 from typing import Union
+from datetime import timedelta
 
+from rdr_service import clock
 from rdr_service.dao.ppsc_partner_transfer_dao import (PPSCDataTransferEndpointDao, PPSCDataTransferBaseDao,
                                                        PPSCDataTransferRecordDao, RTIDataTransferEndpointDao,
                                                        RTIDataTransferBaseDao, RTIDataTransferRecordDao)
@@ -82,7 +84,7 @@ class PPSCBaseDataTransfer(BaseDataTransfer):
     def get_headers(self):
         return {
             "Content-Type": "application/json",
-            "Authorization": f'Bearer {self.ppsc_oauth_data.token}'
+            "Authorization": f'Bearer {self.ppsc_oauth_data.token_data.get("access_token")}'
         }
 
     def build_default_obj(self, transfer_item):
@@ -98,8 +100,17 @@ class PPSCBaseDataTransfer(BaseDataTransfer):
     def prepare_obj(self, transfer_item: Union[PPSCCore, PPSCEHR, PPSCBiobankSample, PPSCHealthData]) -> dict:
         return self.build_default_obj(transfer_item)
 
+    def check_token_expiry(self):
+        last_generated = self.ppsc_oauth_data.token_data.get("last_generated")
+        updated_expiry = last_generated + timedelta(seconds=int(self.ppsc_oauth_data.token_data.get("expires")))
+
+        if clock.CLOCK.now() > updated_expiry:
+            self.ppsc_oauth_data.token_data = self.ppsc_oauth_data.generate_token()
+            self.headers = self.get_headers()
+
     def send_items(self):
         for item in self.transfer_items:
+            self.check_token_expiry()
             prepared_obj = self.prepare_obj(item)
             response = self.send_item(prepared_obj)
             self.transfer_record_dao.insert(self.transfer_record_dao.model_type(**{

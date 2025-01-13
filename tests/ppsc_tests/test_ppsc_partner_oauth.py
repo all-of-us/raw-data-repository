@@ -47,8 +47,11 @@ class PPSCDataTransferTest(BaseTestCase):
 
         ppsc_transfer_oauth = PPSCTransferOauth()
 
-        self.assertIsNotNone(ppsc_transfer_oauth.token)
-        self.assertEqual(ppsc_transfer_oauth.token, MockedTransferResponse.json().get('access_token'))
+        self.assertIsNotNone(ppsc_transfer_oauth.token_data)
+        self.assertEqual(ppsc_transfer_oauth.token_data.get('access_token'), MockedTransferResponse.json().get(
+            'access_token'))
+        self.assertEqual(ppsc_transfer_oauth.token_data.get('expires'), MockedTransferResponse.json().get(
+            'expires_in'))
 
         current_oauth_record = self.oauth_dao.get_all()
         self.assertEqual(len(current_oauth_record), 1)

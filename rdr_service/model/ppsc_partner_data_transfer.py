@@ -50,6 +50,7 @@ class PPSCDataTransferAuth(BaseDataTransferAuth, PPSCBase):
     client_id = Column(String(512), nullable=False)
     client_secret = Column(String(512), nullable=False)
 
+
 event.listen(PPSCDataTransferAuth, "before_insert", model_insert_listener)
 event.listen(PPSCDataTransferAuth, "before_update", model_update_listener)
 
