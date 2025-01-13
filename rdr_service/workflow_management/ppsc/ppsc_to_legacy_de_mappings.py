@@ -150,6 +150,7 @@ def lookup_state(value):
     }
     return states.get(value)
 
+
 def map_source_to_summary(record: dict, data_element_mapping: dict, **kwargs) -> ParticipantSummary:
     """
         Maps source data to a ParticipantSummary object using the data_element_mapping definition.
@@ -634,5 +635,9 @@ attribution_data_elements = {
     "organization": {
         "field": ParticipantSummary.organizationId,
         "value": "org_lookup"
+    },
+    "hpo_id": {
+        "field": ParticipantSummary.hpoId,
+        "value": "integer"
     }
 }

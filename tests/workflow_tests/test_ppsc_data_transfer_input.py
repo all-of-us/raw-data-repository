@@ -827,7 +827,8 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         # Mock intake data
         activity_rows = [{
             "participant_id": ppsc_participant.id,
-            "organization": "PITT_BANNER_HEALTH"
+            "organization": "PITT_BANNER_HEALTH",
+            "hpo_id": 2
         }]
 
         # Mock make_datafeed_job to return the mocked intake data
@@ -850,6 +851,7 @@ class Intake2SummaryDataFeedTest(GenomicDataGenMixin):
         # Assertions for Attribution Data
         self.assertEqual(actual_rows[0].participantId, activity_rows[0]['participant_id'])
         self.assertEqual(actual_rows[0].organizationId, 3)
+        self.assertEqual(actual_rows[0].hpoId, 2)
 
         # Verify the "insert records sent" query was called
         calls = [call[0][0] for call in mock_make_datafeed_job.call_args_list if "INSERT INTO" in call[0][0]]
