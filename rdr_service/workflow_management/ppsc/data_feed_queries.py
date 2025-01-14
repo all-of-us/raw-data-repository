@@ -493,6 +493,7 @@ def insert_awardee_insite_data(
                   , activity_date_time
                   , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
                 FROM ehr_cte
+                WHERE LOWER(activity_status) IN ('yes', 'no')
               )
               WHERE rn = 1
           ),
@@ -500,7 +501,7 @@ def insert_awardee_insite_data(
               SELECT participant_id
                 , MIN(activity_date_time) AS consent_for_electronic_health_records_first_yes_authored
               FROM ehr_cte
-              WHERE activity_status = 'Yes'
+              WHERE LOWER(activity_status) = 'yes'
               GROUP BY 1
           ),
           ehr_receipt AS (
@@ -529,6 +530,7 @@ def insert_awardee_insite_data(
                 , activity_date_time
                 , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
               FROM primary_consent_cte
+              WHERE LOWER(activity_status) IN ('yes', 'no')
             )
             WHERE rn = 1
           ),
