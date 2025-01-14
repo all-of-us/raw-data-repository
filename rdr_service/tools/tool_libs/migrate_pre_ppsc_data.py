@@ -4,16 +4,19 @@ from datetime import datetime
 from enum import Enum
 from typing import List
 
+import argparse
 from sqlalchemy.orm import joinedload
 
 from rdr_service import code_constants, participant_enums
 from rdr_service.api.ppsc_intake_api import PPSCIntakeAPI
+from rdr_service.api.ppsc_participant_api import PPSCParticipantAPI
 from rdr_service.domain_model.response import Response
 from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.ppsc import Participant as PpscParticipant
 from rdr_service.repository.questionnaire_response_repository import QuestionnaireResponseRepository
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
@@ -39,7 +42,10 @@ class MigrateLegacyData(ToolBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.intake_api = None
+        self.participant_api: PPSCParticipantAPI = None
         self.session = None
+        self.should_create_participants = self.args.create_participants
+        self.exclusion_list = set()
 
     def run(self):
         super(MigrateLegacyData, self).run()
@@ -47,20 +53,21 @@ class MigrateLegacyData(ToolBase):
         with self.get_session() as session:  # need to start a session before anything else creates one
             self.session = session
             self.intake_api = PPSCIntakeAPI()
+            self.participant_api = PPSCParticipantAPI()
 
             self.migrate_misc_summary_data()
             self.migrate_survey_completions()
             self.migrate_consents()
             self.migrate_basics_data()
             self.migrate_withdrawal_answer()
-            self.migrate_ubr_data()
+            # self.migrate_ubr_data()
 
         return 0
 
     def migrate_consents(self):
         print("\n\n\nmigrating consent data")
 
-        batch_size = 200
+        batch_size = 100
         last_participant_id = 0
         summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
@@ -74,6 +81,8 @@ class MigrateLegacyData(ToolBase):
             receive_care_map = self._build_receive_care_map(pid_list)
 
             for summary in summary_list:
+                if summary.participantId in self.exclusion_list:
+                    continue
                 self.migrate_primary_consent(summary, code_map, skip_code_id, receive_care_map)
                 if (
                     summary.consentForElectronicHealthRecords
@@ -81,6 +90,7 @@ class MigrateLegacyData(ToolBase):
                 ):
                     self.migrate_ehr_consent(summary)
 
+            self.session.commit()
             print('... done')
             last_participant_id = summary_list[-1].participantId
             summary_list = self.get_next_summary_set(last_participant_id, batch_size)
@@ -88,7 +98,7 @@ class MigrateLegacyData(ToolBase):
     def migrate_misc_summary_data(self):
         print("migrating summary data")
 
-        batch_size = 1000
+        batch_size = 200
         last_participant_id = 0
         summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
@@ -102,7 +112,17 @@ class MigrateLegacyData(ToolBase):
             participant_history_map = self._build_history_map(pid_list)
             deceased_report_map = self._build_deceased_report_map(pid_list)
 
+            if self.should_create_participants:
+                existing_id_list = self._build_existing_id_list(pid_list)
+
             for summary in summary_list:
+                if self.should_create_participants:
+                    if summary.participantId in existing_id_list:
+                        self.exclusion_list.add(summary.participantId)
+                        continue
+                    else:
+                        self.process_create_participant(summary)
+
                 self.process_profile_data(summary, code_map)
                 self.process_nph_optin(summary)
                 self.process_withdrawal(summary)
@@ -112,6 +132,7 @@ class MigrateLegacyData(ToolBase):
                 self.process_deceased_status(summary, deceased_report_map)
                 self.process_attribution(summary, participant_history_map[summary.participantId], org_map)
 
+            self.session.commit()
             print('... done')
             last_participant_id = summary_list[-1].participantId
             summary_list = self.get_next_summary_set(last_participant_id, batch_size)
@@ -144,7 +165,7 @@ class MigrateLegacyData(ToolBase):
                 }
             ],
             'participantId': f'P{summary.participantId}'
-        })
+        }, session=self.session)
 
     def process_attribution(
         self, summary: ParticipantSummary, history_list: List[ParticipantHistory], org_map
@@ -172,7 +193,7 @@ class MigrateLegacyData(ToolBase):
                 }
             ],
             'participantId': f'P{summary.participantId}'
-        })
+        }, session=self.session)
 
     def process_deceased_status(self, summary: ParticipantSummary, deceased_report_map):
         if summary.deceasedStatus == participant_enums.DeceasedStatus.UNSET:
@@ -228,7 +249,7 @@ class MigrateLegacyData(ToolBase):
             'eventType': 'Death',
             'dataElements': data_elements,
             'participantId': f'P{summary.participantId}'
-        })
+        }, session=self.session)
 
 
     def process_pediatric_flag(self, summary: ParticipantSummary):
@@ -246,7 +267,7 @@ class MigrateLegacyData(ToolBase):
                 }
             ],
             'participantId': f'P{summary.participantId}'
-        })
+        }, session=self.session)
 
     def process_nph_optin(self, summary: ParticipantSummary):
         if not summary.consentForNphModule1:
@@ -266,7 +287,7 @@ class MigrateLegacyData(ToolBase):
                 }
             ],
             'participantId': f'P{summary.participantId}'
-        })
+        }, session=self.session)
 
     def process_withdrawal(self, summary: ParticipantSummary):
         if summary.withdrawalStatus == participant_enums.WithdrawalStatus.NOT_WITHDRAWN:
@@ -283,7 +304,7 @@ class MigrateLegacyData(ToolBase):
                 },
                 {
                     'dataElementName': 'activity_date_time',
-                    'dataElementValue': withdrawal_time.isoformat()
+                    'dataElementValue': withdrawal_time.isoformat() if withdrawal_time else None
                 }
             ],
             'participantId': f'P{summary.participantId}'
@@ -301,7 +322,7 @@ class MigrateLegacyData(ToolBase):
                 'dataElementValue': reason
             })
 
-        self.intake_api.handle_event_insert(req_data=data)
+        self.intake_api.handle_event_insert(req_data=data, session=self.session)
 
     def process_deactivation(self, summary: ParticipantSummary):
         if summary.suspensionStatus == participant_enums.SuspensionStatus.NOT_SUSPENDED:
@@ -321,7 +342,7 @@ class MigrateLegacyData(ToolBase):
                 }
             ],
             'participantId': f'P{summary.participantId}'
-        })
+        }, session=self.session)
 
     def process_enrollment_status(self, summary: ParticipantSummary):
         data = {
@@ -350,7 +371,7 @@ class MigrateLegacyData(ToolBase):
                     'dataElementValue': value.isoformat()
                 })
 
-        self.intake_api.handle_event_insert(req_data=data)
+        self.intake_api.handle_event_insert(req_data=data, session=self.session)
 
     def process_retention(self, summary: ParticipantSummary):
         if (
@@ -395,7 +416,25 @@ class MigrateLegacyData(ToolBase):
                 'dataElementValue': summary.retentionEligibleTime.isoformat()
             })
 
-        self.intake_api.handle_event_insert(req_data=data)
+        self.intake_api.handle_event_insert(req_data=data, session=self.session)
+
+    def process_create_participant(self, summary: ParticipantSummary):
+        data = {
+            'biobankId': f'T{summary.biobankId}',  # TODO: set prefix based on environment target
+            'participantId': f'P{summary.participantId}',
+            'registeredDate': summary.signUpTime.isoformat()
+        }
+        converted_data = {
+            'biobank_id': data['biobankId'][1:],
+            'participant_id': data['participantId'][1:],
+            'registered_date': data['registeredDate']
+        }
+        self.participant_api.handle_participant_insert(
+            participant_data=converted_data,
+            req_data=data,
+            session=self.session,
+            sync_to_rdr=False
+        )
 
     def process_profile_data(self, summary: ParticipantSummary, state_code_map):
         data = {
@@ -430,7 +469,7 @@ class MigrateLegacyData(ToolBase):
                     'dataElementValue': value
                 })
 
-        self.intake_api.handle_event_insert(req_data=data)
+        self.intake_api.handle_event_insert(req_data=data, session=self.session)
 
     def _build_history_map(self, id_list):
         history_list: List[ParticipantHistory] = self.session.query(ParticipantHistory).filter(
@@ -442,6 +481,12 @@ class MigrateLegacyData(ToolBase):
             result[history.participantId].append(history)
 
         return result
+
+    def _build_existing_id_list(self, id_list):
+        query_results = self.session.query(PpscParticipant.id).filter(
+            PpscParticipant.id.in_(id_list)
+        ).all()
+        return {participant.id for participant in query_results}
 
     def _build_receive_care_map(self, id_list):
         result = {}
@@ -516,12 +561,12 @@ class MigrateLegacyData(ToolBase):
                             'dataElementValue': ubr_value
                         })
 
-                self.intake_api.handle_event_insert(req_data=data)
+                self.intake_api.handle_event_insert(req_data=data, session=self.session)
 
     def migrate_basics_data(self):
         print("\n\n\nmigrating basics data")
 
-        batch_size = 200
+        batch_size = 100
         last_participant_id = 0
         summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
@@ -536,6 +581,8 @@ class MigrateLegacyData(ToolBase):
             )
 
             for summary in summary_list:
+                if summary.participantId in self.exclusion_list:
+                    continue
                 responses = basics_responses.get(summary.participantId)
                 if not responses:
                     continue
@@ -545,6 +592,7 @@ class MigrateLegacyData(ToolBase):
                     response=responses.in_authored_order[-1]
                 )
 
+            self.session.commit()
             print('... done')
             last_participant_id = summary_list[-1].participantId
             summary_list = self.get_next_summary_set(last_participant_id, batch_size)
@@ -566,6 +614,8 @@ class MigrateLegacyData(ToolBase):
             )
 
             for summary in summary_list:
+                if summary.participantId in self.exclusion_list:
+                    continue
                 responses = withdrawal_responses.get(summary.participantId)
                 if not responses:
                     continue
@@ -575,11 +625,36 @@ class MigrateLegacyData(ToolBase):
                     response=responses.in_authored_order[-1]
                 )
 
+            self.session.commit()
             print('... done')
             last_participant_id = summary_list[-1].participantId
             summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
     def get_next_summary_set(self, last_id, batch_size) -> List[ParticipantSummary]:
+        """
+        staging: ran up to 115
+        prod:
+            ran up to 106
+            problem running summary(withdrawal) at 111545327: skipping to 120
+                re-run summaries to get the batch that failed and up to 120 (111485634 <= x < 120, i think)
+                re-run migration of other data points for (106 <= x < 120)
+            stopped while migrating summaries for 144766029 to 144856891
+                everything's broken up to this point anyway, batch_insert doesn't fill in the relationship data
+
+
+        -- new process of inserting to migration tables
+        staging:
+            running from 120 to 130 (2799 participants), just creating participants, batching 100
+                    took about 5 minutes
+            running from 130 to 140 (2878 participants), just creating participants, batching 400
+                    took about 6 minutes
+            running from 120 to 121, migrating data for previously created participants (307 participants)
+                    took about 5 minutes
+            running from 121 to 140, migrating data for previously created participants (5370 participants)
+                    ---
+        """
+        min_id = 121000000
+        max_id = 140000000
         return self.session.query(
             ParticipantSummary
         ).filter(
@@ -588,6 +663,8 @@ class MigrateLegacyData(ToolBase):
             ParticipantSummary.participantId
         ).filter(
             ParticipantSummary.signUpTime < '2024-12-3',
+            ParticipantSummary.participantId >= min_id,
+            ParticipantSummary.participantId < max_id
         ).options(
             joinedload(ParticipantSummary.participant),
             joinedload(ParticipantSummary.pediatricData)
@@ -621,7 +698,7 @@ class MigrateLegacyData(ToolBase):
                 }
             ],
             'participantId': f'P{participant_id}'
-        })
+        }, session=self.session)
 
     def process_latest_basics_response(self, participant_id, response: Response):
         data = {
@@ -663,7 +740,7 @@ class MigrateLegacyData(ToolBase):
                 'dataElementValue': new_data_value
             })
 
-        self.intake_api.handle_event_insert(req_data=data)
+        self.intake_api.handle_event_insert(req_data=data, session=self.session)
 
     def migrate_primary_consent(self, summary: ParticipantSummary, code_map, skip_code_id, receive_care_map):
         consent_data = {
@@ -694,7 +771,7 @@ class MigrateLegacyData(ToolBase):
                 'dataElementValue': f'PC_STATE_LIVEHEALTH_{care_state_str[-2:]}'
             })
 
-        self.intake_api.handle_event_insert(req_data=consent_data)
+        self.intake_api.handle_event_insert(req_data=consent_data, session=self.session)
 
     def migrate_ehr_consent(self, summary: ParticipantSummary):
         if summary.consentForElectronicHealthRecords in [
@@ -718,7 +795,7 @@ class MigrateLegacyData(ToolBase):
                 }
             ],
             'participantId': f'P{summary.participantId}'
-        })
+        }, session=self.session)
 
     def _build_state_code_map(self):
         state_code_list = self.session.query(
@@ -735,7 +812,7 @@ class MigrateLegacyData(ToolBase):
     def migrate_survey_completions(self):
         print("\n\n\nmigrating survey data")
 
-        batch_size = 200
+        batch_size = 100
         last_participant_id = 0
         summary_list = self.get_next_summary_set(last_participant_id, batch_size)
 
@@ -754,11 +831,14 @@ class MigrateLegacyData(ToolBase):
         while summary_list:
             print(f'starting batch {summary_list[0].participantId} to {summary_list[-1].participantId}...')
             for summary in summary_list:
+                if summary.participantId in self.exclusion_list:
+                    continue
                 for summary_field_name, survey_type in survey_map.items():
                     survey_json = self._build_survey_event_json(summary, survey_type, summary_field_name)
                     if survey_json:
-                        self.intake_api.handle_event_insert(req_data=survey_json)
+                        self.intake_api.handle_event_insert(req_data=survey_json, session=self.session)
 
+            self.session.commit()
             print('... done')
             last_participant_id = summary_list[-1].participantId
             summary_list = self.get_next_summary_set(last_participant_id, batch_size)
@@ -794,5 +874,14 @@ class MigrateLegacyData(ToolBase):
         }
 
 
+def add_additional_arguments(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        '--create-participants',
+        help='Sets the tool to insert the participants in the PPSC schema',
+        action='store_true',
+        default=False
+    )
+
+
 def run():
-    cli_run(tool_cmd, tool_desc, MigrateLegacyData)
+    cli_run(tool_cmd, tool_desc, MigrateLegacyData, add_additional_arguments)

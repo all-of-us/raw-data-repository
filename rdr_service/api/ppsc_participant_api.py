@@ -16,10 +16,16 @@ class PPSCParticipantAPI(BaseApi):
     def __init__(self):
         super().__init__(ParticipantDao())
         self.ppsc_participant_dao = ParticipantDao()
-        self.current_activities = PPSCDefaultBaseDao(model_type=Activity).get_all()
+
         self.ppsc_participant_activity_dao = PPSCDefaultBaseDao(model_type=ParticipantEventActivity)
-        self.ppsc_enrollment_type_dao = PPSCDefaultBaseDao(model_type=EnrollmentEventType)
         self.ppsc_enrollment_event_dao = PPSCDefaultBaseDao(model_type=EnrollmentEvent)
+
+        self.ppsc_enrollment_type_dao = PPSCDefaultBaseDao(model_type=EnrollmentEventType)
+        self.current_activities = list(PPSCDefaultBaseDao(model_type=Activity).get_all())
+        self.enrollment_type = list(filter(lambda x: x.source_name.lower() == 'participant_created',
+                                      self.ppsc_enrollment_type_dao.get_all()))[0]
+
+
 
     @auth_required([PPSC, RDR])
     def post(self):
@@ -58,37 +64,36 @@ class PPSCParticipantAPI(BaseApi):
         response_string: str = ', '.join(required_keys)
         raise BadRequest(f'Payload for createParticipant is invalid: Required keys - {response_string}')
 
-    def handle_participant_insert(self, *, participant_data: dict, req_data: dict) -> dict:
+    def handle_participant_insert(self, *, participant_data: dict, req_data: dict, session, sync_to_rdr=True) -> dict:
         enrollment_activity = list(filter(lambda x: x.name.lower() == 'enrollment', self.current_activities))[0]
-        enrollment_type = list(filter(lambda x: x.source_name.lower() == 'participant_created',
-                                      self.ppsc_enrollment_type_dao.get_all()))[0]
 
         participant_data['id'] = participant_data.get('participant_id')
         del participant_data['participant_id']
 
-        inserted_participant = self.ppsc_participant_dao.insert(
-            self.ppsc_participant_dao.model_type(**participant_data)
+        inserted_participant = self.ppsc_participant_dao.insert_with_session(
+            session, self.ppsc_participant_dao.model_type(**participant_data)
         )
 
         participant_event_activity_dict = {
             'activity_id': enrollment_activity.id,
-            'participant_id': inserted_participant.id,
+            'participant_id': participant_data['id'],
             'resource': req_data
         }
-        participant_event_activity = self.ppsc_participant_activity_dao.insert(
-            self.ppsc_participant_activity_dao.model_type(**participant_event_activity_dict)
+        participant_event_activity = self.ppsc_participant_activity_dao.insert_with_session(
+            session, self.ppsc_participant_activity_dao.model_type(**participant_event_activity_dict)
         )
 
         enrollment_event_dict = {
-            'event_id': participant_event_activity.id,
+            # 'event_id': participant_event_activity.id,
             'participant_id': inserted_participant.id,
-            'event_type_id': enrollment_type.id
+            'event_type_id': self.enrollment_type.id
         }
-        self.ppsc_enrollment_event_dao.insert(
-            self.ppsc_enrollment_event_dao.model_type(**enrollment_event_dict)
+        self.ppsc_enrollment_event_dao.insert_with_session(
+            session, self.ppsc_enrollment_event_dao.model_type(**enrollment_event_dict)
         )
 
-        self.sync_to_rdr_schema(participant_data=inserted_participant.asdict())
+        if sync_to_rdr:
+            self.sync_to_rdr_schema(participant_data=inserted_participant.asdict())
         return inserted_participant
 
     @classmethod

@@ -108,7 +108,8 @@ class Answer:
             answer_str = db_answer.valueUri
             answer_type = DataType.URI
         else:
-            raise Exception(f'Unable to parse answer with id "{db_answer.questionnaireResponseAnswerId}')
+            # raise Exception(f'Unable to parse answer with id "{db_answer.questionnaireResponseAnswerId}')
+            return None
 
         return Answer(
             id=db_answer.questionnaireResponseAnswerId,

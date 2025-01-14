@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, event
 from sqlalchemy.dialects.mysql import TINYINT, JSON
+from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import model_insert_listener, model_update_listener, PPSCBase
 from rdr_service.model.utils import UTCDateTime
@@ -39,7 +40,7 @@ event.listen(Activity, "before_update", model_update_listener)
 
 
 class ParticipantEventActivity(PPSCBase):
-    __tablename__ = "participant_event_activity"
+    __tablename__ = "participant_event_activity_migration"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -73,7 +74,7 @@ event.listen(EnrollmentEventType, "before_update", model_update_listener)
 
 
 class EnrollmentEvent(PPSCBase):
-    __tablename__ = "enrollment_event"
+    __tablename__ = "enrollment_event_migration"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
     created = Column(UTCDateTime)
@@ -82,7 +83,7 @@ class EnrollmentEvent(PPSCBase):
     ignore_reason = Column(String(512))
     event_authored_time = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
+    event_id = Column(BigInteger)
     event_type_id = Column(BigInteger, ForeignKey("enrollment_event_type.id"))
 
 
@@ -91,17 +92,17 @@ event.listen(EnrollmentEvent, "before_update", model_update_listener)
 
 
 class ConsentEvent(PPSCBase):
-    __tablename__ = "consent_event"
+    __tablename__ = "consent_event_migration"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
+    created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
+    event_id = Column(BigInteger)
+    event_type_name = Column(String(128))
+    event_authored_time = Column(UTCDateTime)
+    data_element_name = Column(String(512))
+    data_element_value = Column(String(512))
     ignore_flag = Column(TINYINT, default=0)
     ignore_reason = Column(String(512))
     is_correction_flag = Column(TINYINT, default=0)
@@ -113,17 +114,17 @@ event.listen(ConsentEvent, "before_update", model_update_listener)
 
 
 class ProfileUpdatesEvent(PPSCBase):
-    __tablename__ = "profile_updates_event"
+    __tablename__ = "profile_updates_event_migration"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
+    created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
+    event_id = Column(BigInteger)
+    event_type_name = Column(String(128))
+    event_authored_time = Column(UTCDateTime)
+    data_element_name = Column(String(512))
+    data_element_value = Column(String(512))
     ignore_flag = Column(TINYINT, default=0)
     ignore_reason = Column(String(512))
     is_correction_flag = Column(TINYINT, default=0)
@@ -135,17 +136,17 @@ event.listen(ProfileUpdatesEvent, "before_update", model_update_listener)
 
 
 class SurveyCompletionEvent(PPSCBase):
-    __tablename__ = "survey_completion_event"
+    __tablename__ = "survey_completion_event_migration"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
+    created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
+    event_id = Column(BigInteger)
+    event_type_name = Column(String(128))
+    event_authored_time = Column(UTCDateTime)
+    data_element_name = Column(String(512))
+    data_element_value = Column(String(512))
     ignore_flag = Column(TINYINT, default=0)
     ignore_reason = Column(String(512))
     is_correction_flag = Column(TINYINT, default=0)
@@ -157,17 +158,17 @@ event.listen(SurveyCompletionEvent, "before_update", model_update_listener)
 
 
 class WithdrawalEvent(PPSCBase):
-    __tablename__ = "withdrawal_event"
+    __tablename__ = "withdrawal_event_migration"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
+    created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
+    event_id = Column(BigInteger)
+    event_type_name = Column(String(128))
+    event_authored_time = Column(UTCDateTime)
+    data_element_name = Column(String(512))
+    data_element_value = Column(String(512))
     ignore_flag = Column(TINYINT, default=0)
     ignore_reason = Column(String(512))
     is_correction_flag = Column(TINYINT, default=0)
@@ -179,17 +180,17 @@ event.listen(WithdrawalEvent, "before_update", model_update_listener)
 
 
 class DeactivationEvent(PPSCBase):
-    __tablename__ = "deactivation_event"
+    __tablename__ = "deactivation_event_migration"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
+    created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
+    event_id = Column(BigInteger)
+    event_type_name = Column(String(128))
+    event_authored_time = Column(UTCDateTime)
+    data_element_name = Column(String(512))
+    data_element_value = Column(String(512))
     ignore_flag = Column(TINYINT, default=0)
     ignore_reason = Column(String(512))
     is_correction_flag = Column(TINYINT, default=0)
@@ -201,17 +202,17 @@ event.listen(DeactivationEvent, "before_update", model_update_listener)
 
 
 class ParticipantStatusEvent(PPSCBase):
-    __tablename__ = "participant_status_event"
+    __tablename__ = "participant_status_event_migration"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
+    created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
+    event_id = Column(BigInteger)
+    event_type_name = Column(String(128))
+    event_authored_time = Column(UTCDateTime)
+    data_element_name = Column(String(512))
+    data_element_value = Column(String(512))
     ignore_flag = Column(TINYINT, default=0)
     ignore_reason = Column(String(512))
     is_correction_flag = Column(TINYINT, default=0)
@@ -223,17 +224,17 @@ event.listen(ParticipantStatusEvent, "before_update", model_update_listener)
 
 
 class AttributionEvent(PPSCBase):
-    __tablename__ = "attribution_event"
+    __tablename__ = "attribution_event_migration"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
+    created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
+    event_id = Column(BigInteger)
+    event_type_name = Column(String(128))
+    event_authored_time = Column(UTCDateTime)
+    data_element_name = Column(String(512))
+    data_element_value = Column(String(512))
     ignore_flag = Column(TINYINT, default=0)
     ignore_reason = Column(String(512))
     is_correction_flag = Column(TINYINT, default=0)
@@ -245,17 +246,17 @@ event.listen(AttributionEvent, "before_update", model_update_listener)
 
 
 class NPHOptInEvent(PPSCBase):
-    __tablename__ = "nph_opt_in_event"
+    __tablename__ = "nph_opt_in_event_migration"
 
     id = Column("id", BigInteger, autoincrement=True, primary_key=True)
-    created = Column(UTCDateTime, index=True)
+    created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
-    event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
-    event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
-    data_element_name = Column(String(512), index=True)
-    data_element_value = Column(String(512), index=True)
+    event_id = Column(BigInteger)
+    event_type_name = Column(String(128))
+    event_authored_time = Column(UTCDateTime)
+    data_element_name = Column(String(512))
+    data_element_value = Column(String(512))
     ignore_flag = Column(TINYINT, default=0)
     ignore_reason = Column(String(512))
     is_correction_flag = Column(TINYINT, default=0)

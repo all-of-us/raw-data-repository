@@ -15,9 +15,10 @@ from rdr_service.model.ppsc import ParticipantEventActivity, Activity, \
 
 class PPSCIntakeAPI(BaseApi):
     def __init__(self):
-        self.participant_event_activity_dao = PPSCDefaultBaseDao(model_type=ParticipantEventActivity)
         self.intake_activities = config.getSettingJson("ppsc_intake_activities")
-        self.activity_records = PPSCDefaultBaseDao(model_type=Activity).get_all()
+        self.activity_records = list(PPSCDefaultBaseDao(model_type=Activity).get_all())
+
+        self.participant_event_activity_dao = PPSCDefaultBaseDao(model_type=ParticipantEventActivity)
         self.consent_event_dao = PPSCDefaultBaseDao(model_type=ConsentEvent)
         self.profile_updates_event_dao = PPSCDefaultBaseDao(model_type=ProfileUpdatesEvent)
         self.survey_completion_event_dao = PPSCDefaultBaseDao(model_type=SurveyCompletionEvent)
@@ -26,6 +27,7 @@ class PPSCIntakeAPI(BaseApi):
         self.participant_status_event_dao = PPSCDefaultBaseDao(model_type=ParticipantStatusEvent)
         self.attribution_event_dao = PPSCDefaultBaseDao(model_type=AttributionEvent)
         self.nph_opt_in_event_dao = PPSCNphOptEventInDao()
+
         self.activity_date_time_value = None
         super().__init__(self.participant_event_activity_dao)
 
@@ -83,9 +85,12 @@ class PPSCIntakeAPI(BaseApi):
         else:
             raise BadRequest("No activity_date_time_value provided.")
 
-    def handle_event_insert(self, *, req_data: dict) -> dict:
+    def handle_event_insert(self, *, req_data: dict, session) -> dict:
         activity_record = list(filter(lambda x: x.name.lower() == req_data['activity'].lower(),
                                       self.activity_records))
+
+        self.activity_date_time_value = next((item['dataElementValue'] for item in req_data['dataElements'] if
+                                              item['dataElementName'] == 'activity_date_time'), None)
 
         if not activity_record:
             raise BadRequest(f"Activity {req_data['activity']} is Invalid.")
@@ -101,8 +106,8 @@ class PPSCIntakeAPI(BaseApi):
 
         # Validate participant ID and insert
         try:
-            participant_event_activity = self.participant_event_activity_dao.insert(
-                self.participant_event_activity_dao.model_type(**participant_event_activity_dict)
+            participant_event_activity = self.participant_event_activity_dao.insert_with_session(
+                session, self.participant_event_activity_dao.model_type(**participant_event_activity_dict)
             )
         except IntegrityError:
             raise NotFound(f"Participant with ID {req_data['participantId']} not found")
@@ -117,7 +122,6 @@ class PPSCIntakeAPI(BaseApi):
         for data_element in req_data['dataElements']:
             now = clock.CLOCK.now()  # event_listener doesn't work with bulk inserts
             event_dict = {
-                'event_id': participant_event_activity.id,
                 'created': now,
                 'modified': now,
                 'participant_id': self.dao.extract_prefix_from_val(req_data['participantId']),
@@ -137,6 +141,6 @@ class PPSCIntakeAPI(BaseApi):
                 event_dict["data_element_value"] = data_element['dataElementValue']
                 records_to_insert.append(event_dict)
 
-        activity_event_dao.insert_bulk(records_to_insert)
+        activity_event_dao.insert_bulk(records_to_insert, session)
 
         return participant_event_activity.resource

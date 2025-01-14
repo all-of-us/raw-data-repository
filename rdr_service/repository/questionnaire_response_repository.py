@@ -28,7 +28,9 @@ class QuestionnaireResponseRepository:
         sent_statuses: Optional[List[enums.QuestionnaireResponseStatus]] = None,
         classification_types: Optional[List[enums.QuestionnaireResponseClassificationType]] = None,
         created_start_datetime: datetime = None,
-        created_end_datetime: datetime = None
+        created_end_datetime: datetime = None,
+        response_ids = None,
+        last_id=None
     ) -> Dict[int, response_domain_model.ParticipantResponses]:
         """
         Retrieve questionnaire response data (returned as a domain model) for the specified participant ids
@@ -86,8 +88,7 @@ class QuestionnaireResponseRepository:
             .options(joinedload(QuestionnaireResponseAnswer.code))
             .filter(
                 QuestionnaireResponse.status.in_(sent_statuses),
-                QuestionnaireResponse.classificationType.in_(classification_types),
-                Participant.isTestParticipant != 1
+                QuestionnaireResponse.classificationType.in_(classification_types)
             )
         )
 
@@ -121,6 +122,16 @@ class QuestionnaireResponseRepository:
                 'USE INDEX (idx_created_q_id)'
             )
 
+        if not last_id is None:
+            query = query.filter(
+                QuestionnaireResponse.questionnaireResponseId > last_id
+            ).order_by(QuestionnaireResponse.questionnaireResponseId).limit(1000)
+
+        if response_ids:
+            query = query.filter(
+                QuestionnaireResponse.questionnaireResponseId.in_(response_ids)
+            )
+
         # build dict with participant ids as keys and ParticipantResponse objects as values
         participant_response_map = defaultdict(response_domain_model.ParticipantResponses)
         for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, survey_code_id, \
@@ -141,9 +152,9 @@ class QuestionnaireResponseRepository:
                 )
                 response_collection_for_participant.responses[response_id] = response
 
-            response.answered_codes[question_code_str].append(
-                response_domain_model.Answer.from_db_model(answer)
-            )
+            answer = response_domain_model.Answer.from_db_model(answer)
+            if answer:
+                response.answered_codes[question_code_str].append(answer)
 
         return dict(participant_response_map)
 

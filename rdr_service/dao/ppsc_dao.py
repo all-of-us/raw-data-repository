@@ -53,12 +53,14 @@ class PPSCDefaultBaseDao(BaseDao):
     def get_id(self, obj):
         return obj.id
 
-    def insert_bulk(self, batch: List[Dict]) -> None:
-        with self.session() as session:
-            session.bulk_insert_mappings(
-                self.model_type,
-                batch
-            )
+    def insert_bulk(self, batch: List[Dict], session) -> None:
+        # for data in batch:
+        #     model = self.model_type(**data)
+        #     session.add(model)
+        session.bulk_insert_mappings(
+            self.model_type,
+            batch
+        )
 
 
 class PPSCNphOptEventInDao(BaseDao):
@@ -204,9 +206,8 @@ class PPSCNphOptEventInDao(BaseDao):
                 lastest_nph_ppi_data.c.participant_id
             ).distinct().all()
 
-    def insert_bulk(self, batch: List[Dict]) -> None:
-        with self.session() as session:
-            session.bulk_insert_mappings(
-                self.model_type,
-                batch
-            )
+
+    def insert_bulk(self, batch: List[Dict], session) -> None:
+        for data in batch:
+            model = self.model_type(**data)
+            session.add(model)
