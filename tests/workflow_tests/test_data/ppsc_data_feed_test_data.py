@@ -540,7 +540,7 @@ WITH ranked_events AS (
         AND sent.event_id >= se.event_id
         AND sent.event_type_name = se.event_type_name
   )
-  and se.event_type_name IN ("Basics Data", "Basics Data", "Overall Health", "Lifestyle", "The Basics", "Health Care Access & Utilization", "Social Determinants of Health", "Personal and Family Health History", "Life Functioning Survey", "Emotional Health History and Well Being", "Behavioral Health and Personality", "Pediatric Environmental Health")
+  and se.event_type_name IN ("Basics Data", "Basics Data", "Overall Health", "Lifestyle", "The Basics", "Health Care Access & Utilization", "Social Determinants of Health", "Personal and Family Health History", "Life Functioning Survey", "Emotional Health History and Well-Being", "Behavioral Health & Personality", "Pediatric Environmental Health")
   and data_element_name IN ("activity_status", '​activity_status', "gender_genderidentity","biologicalsexatbirth_sexatbirth","thebasics_sexualorientation","race_whatraceethnicity","educationlevel_highestgrade","income_annualincome")
   and se.ignore_flag = 0
 )
@@ -586,13 +586,13 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Life Functioning Survey' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_life_functioning,
   MAX(CASE WHEN event_type_name = 'Life Functioning Survey' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_life_functioning_authored,
 
-  -- Emotional Health History and Well Being
-  MAX(CASE WHEN event_type_name = 'Emotional Health History and Well Being' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_emotional_health_history_and_well_being,
-  MAX(CASE WHEN event_type_name = 'Emotional Health History and Well Being' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_emotional_health_history_and_well_being_authored,
+  -- Emotional Health History and Well-Being
+  MAX(CASE WHEN event_type_name = 'Emotional Health History and Well-Being' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_emotional_health_history_and_well_being,
+  MAX(CASE WHEN event_type_name = 'Emotional Health History and Well-Being' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_emotional_health_history_and_well_being_authored,
 
-  -- Behavioral Health and Personality
-  MAX(CASE WHEN event_type_name = 'Behavioral Health and Personality' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_behavioral_health_and_personality,
-  MAX(CASE WHEN event_type_name = 'Behavioral Health and Personality' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_behavioral_health_and_personality_authored,
+  -- Behavioral Health & Personality
+  MAX(CASE WHEN event_type_name = 'Behavioral Health & Personality' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_behavioral_health_and_personality,
+  MAX(CASE WHEN event_type_name = 'Behavioral Health & Personality' AND data_element_name IN ("activity_status", '​activity_status') THEN event_authored_time END) AS questionnaire_on_behavioral_health_and_personality_authored,
 
   -- Pediatric Environmental Health
   MAX(CASE WHEN event_type_name = 'Pediatric Environmental Health' AND data_element_name = 'activity_date_time' THEN event_authored_time END) AS questionnaire_on_environmental_exposures,
