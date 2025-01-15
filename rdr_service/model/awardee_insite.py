@@ -324,7 +324,7 @@ class AwardeeInSite(PPSCBase):
                 (
                     f"COALESCE(CAST({key} AS STRING), ''), '|' "
                     if key != "patient_status"
-                    else "COALESCE(TO_JSON_STRING(patient_status), '[]'), '|' "
+                    else "TO_BASE64(CAST(TO_JSON_STRING(patient_status) AS BYTES)), '|' "
                 )
                 for key in keys
             ).rstrip(", '|' ")
