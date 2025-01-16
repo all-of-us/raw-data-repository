@@ -473,7 +473,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         }
 
         # Collect participant pairing history
-        pairing_history = None
+        pairing_history = list()
         query = ro_session.query(ParticipantHistory.lastModified, ParticipantHistory.hpoId, HPO.name.label('hpo'),
                                    ParticipantHistory.organizationId, Organization.externalId.label('organization'),
                                    ParticipantHistory.siteId, Site.googleGroup.label('site'),
@@ -485,7 +485,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # sql = self.ro_dao.query_to_text(query)
         pairing = query.all()
         if pairing:
-            pairing_history = list()
             for item in pairing:
                 pairing_history.append({
                     'last_modified': item.lastModified,

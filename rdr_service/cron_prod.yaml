@@ -12,7 +12,7 @@ cron:
 - description: BigQuery Sync
   url: /offline/BigQuerySync
   timezone: America/New_York
-  schedule: every 3 minutes
+  schedule: every 3 hours
   target: offline
 - description: Genomic AW2F Manifest Workflow
   url: /offline/GenomicAW2FManifestWorkflow
