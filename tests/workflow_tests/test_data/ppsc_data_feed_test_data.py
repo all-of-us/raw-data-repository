@@ -32,6 +32,12 @@ SELECT DISTINCT
 FROM `test.rdr_operational_datastream.ppsc_participant` p
 JOIN `test.rdr_operational_datastream.ppsc_consent_event` c
     ON c.participant_id = p.id
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `test.rdr_operational_datastream.datafeed_exclusion_list` excluded
+        WHERE excluded.identifier = c.event_id
+          AND excluded.identifier_type = "event_id"
+    )
 
 -- EHR Consent
 JOIN `test.rdr_operational_datastream.ppsc_consent_event` ehrc
@@ -39,6 +45,12 @@ JOIN `test.rdr_operational_datastream.ppsc_consent_event` ehrc
     AND ehrc.data_element_value = "Yes"
     AND ehrc.event_type_name = "EHR Authorization"
     AND ehrc.ignore_flag = 0
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `test.rdr_operational_datastream.datafeed_exclusion_list` excluded
+        WHERE excluded.identifier = ehrc.event_id
+          AND excluded.identifier_type = "event_id"
+    )
 
 -- Earliest EHR Received
 JOIN earliest_ehr
@@ -58,6 +70,12 @@ JOIN `test.rdr_operational_datastream.ppsc_survey_completion_event` basics
     AND basics.event_type_name = "The Basics"
     AND basics.data_element_value = "submitted_complete"
     AND basics.ignore_flag = 0
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `test.rdr_operational_datastream.datafeed_exclusion_list` excluded
+        WHERE excluded.identifier = basics.event_id
+          AND excluded.identifier_type = "event_id"
+    )
 
 -- Overall Health Completion
 JOIN `test.rdr_operational_datastream.ppsc_survey_completion_event` overall
@@ -65,6 +83,12 @@ JOIN `test.rdr_operational_datastream.ppsc_survey_completion_event` overall
     AND overall.event_type_name = "Overall Health"
     AND overall.data_element_value = "submitted_complete"
     AND overall.ignore_flag = 0
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `test.rdr_operational_datastream.datafeed_exclusion_list` excluded
+        WHERE excluded.identifier = overall.event_id
+          AND excluded.identifier_type = "event_id"
+    )
 
 -- Lifestyle Completion
 JOIN `test.rdr_operational_datastream.ppsc_survey_completion_event` lifestyle
@@ -72,6 +96,12 @@ JOIN `test.rdr_operational_datastream.ppsc_survey_completion_event` lifestyle
     AND lifestyle.event_type_name = "Lifestyle"
     AND lifestyle.data_element_value = "submitted_complete"
     AND lifestyle.ignore_flag = 0
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `test.rdr_operational_datastream.datafeed_exclusion_list` excluded
+        WHERE excluded.identifier = lifestyle.event_id
+          AND excluded.identifier_type = "event_id"
+    )
 
 -- Physical Measurements
 JOIN `test.rdr_operational_datastream.rdr_physical_measurements` pm
@@ -288,6 +318,12 @@ WITH ranked_events AS (
         AND sent.event_id >= se.event_id
         AND sent.event_type_name = se.event_type_name
   )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.datafeed_exclusion_list` excluded
+      WHERE excluded.identifier = se.event_id
+        AND excluded.identifier_type = "event_id"
+  )
   and data_element_name IN ("activity_status", '​activity_status')
   and se.ignore_flag = 0
 )
@@ -332,6 +368,12 @@ WITH ranked_events AS (
       WHERE sent.participant_id = se.participant_id
         AND sent.event_id >= se.event_id
         AND sent.event_type_name = se.event_type_name
+  )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.datafeed_exclusion_list` excluded
+      WHERE excluded.identifier = se.event_id
+        AND excluded.identifier_type = "event_id"
   )
   and data_element_name IN ("piiname_first","piiname_middle","piiname_last","streetaddress_piizip","streetaddress_piistate","streetaddress_piicity","piiaddress_streetaddress","piiaddress_streetaddress2","piicontactinformation_phone","piicontactinformation_email","language_preference","piibirthinformation_birthdate")
   and se.ignore_flag = 0
@@ -406,6 +448,12 @@ WITH ranked_events AS (
         AND sent.event_id >= se.event_id
         AND sent.event_type_name = se.event_type_name
   )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.datafeed_exclusion_list` excluded
+      WHERE excluded.identifier = se.event_id
+        AND excluded.identifier_type = "event_id"
+  )
   and data_element_name IN ("activity_status", '​activity_status', 'withdrawal_reason')
   and se.ignore_flag = 0
 )
@@ -455,6 +503,12 @@ WITH ranked_events AS (
         AND sent.event_id >= se.event_id
         AND sent.event_type_name = se.event_type_name
   )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.datafeed_exclusion_list` excluded
+      WHERE excluded.identifier = se.event_id
+        AND excluded.identifier_type = "event_id"
+  )
   and data_element_name IN ("activity_status", '​activity_status')
   and se.ignore_flag = 0
 )
@@ -499,6 +553,12 @@ WITH ranked_events AS (
       WHERE sent.participant_id = se.participant_id
         AND sent.event_id >= se.event_id
         AND sent.event_type_name = se.event_type_name
+  )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.datafeed_exclusion_list` excluded
+      WHERE excluded.identifier = se.event_id
+        AND excluded.identifier_type = "event_id"
   )
   and se.event_type_name IN ('Test Account', 'Death', 'Retention Status', 'Enrollment Status')
   and data_element_name IN ("activity_status", '​activity_status', "retention_type", "participant", "participant", "participant_ehr_consent", "enrolled", "pmb_eligible", "core_minus_pm", "core_participant")
@@ -559,6 +619,12 @@ WITH ranked_events AS (
       WHERE sent.participant_id = se.participant_id
         AND sent.event_id >= se.event_id
         AND sent.event_type_name = se.event_type_name
+  )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.datafeed_exclusion_list` excluded
+      WHERE excluded.identifier = se.event_id
+        AND excluded.identifier_type = "event_id"
   )
   and se.event_type_name IN ("Basics Data", "Basics Data", "Overall Health", "Lifestyle", "The Basics", "Health Care Access & Utilization", "Social Determinants of Health", "Personal and Family Health History", "Life Functioning Survey", "Emotional Health History and Well-Being", "Behavioral Health & Personality", "Pediatric Environmental Health")
   and data_element_name IN ("activity_status", '​activity_status', "gender_genderidentity","biologicalsexatbirth_sexatbirth","thebasics_sexualorientation","race_whatraceethnicity","educationlevel_highestgrade","income_annualincome")
@@ -647,6 +713,12 @@ WITH ranked_events AS (
       WHERE sent.participant_id = se.participant_id
         AND sent.event_id >= se.event_id
         AND sent.event_type_name = se.event_type_name
+  )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM `test.rdr_operational_datastream.datafeed_exclusion_list` excluded
+      WHERE excluded.identifier = se.event_id
+        AND excluded.identifier_type = "event_id"
   )
   and se.event_type_name IN ('Org Attribution')
   and data_element_name IN ("activity_status", '​activity_status')

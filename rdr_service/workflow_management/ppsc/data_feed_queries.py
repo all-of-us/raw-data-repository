@@ -37,6 +37,12 @@ SELECT DISTINCT
 FROM `{project}.{destination_dataset}.ppsc_participant` p
 JOIN `{project}.{destination_dataset}.ppsc_consent_event` c
     ON c.participant_id = p.id
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `{project}.{destination_dataset}.datafeed_exclusion_list` excluded
+        WHERE excluded.identifier = c.event_id
+          AND excluded.identifier_type = "event_id"
+    )
 
 -- EHR Consent
 JOIN `{project}.{destination_dataset}.ppsc_consent_event` ehrc
@@ -44,6 +50,12 @@ JOIN `{project}.{destination_dataset}.ppsc_consent_event` ehrc
     AND ehrc.data_element_value = "Yes"
     AND ehrc.event_type_name = "EHR Authorization"
     AND ehrc.ignore_flag = 0
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `{project}.{destination_dataset}.datafeed_exclusion_list` excluded
+        WHERE excluded.identifier = ehrc.event_id
+          AND excluded.identifier_type = "event_id"
+    )
 
 -- Earliest EHR Received
 JOIN earliest_ehr
@@ -63,6 +75,12 @@ JOIN `{project}.{destination_dataset}.ppsc_survey_completion_event` basics
     AND basics.event_type_name = "The Basics"
     AND basics.data_element_value = "submitted_complete"
     AND basics.ignore_flag = 0
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `{project}.{destination_dataset}.datafeed_exclusion_list` excluded
+        WHERE excluded.identifier = basics.event_id
+          AND excluded.identifier_type = "event_id"
+    )
 
 -- Overall Health Completion
 JOIN `{project}.{destination_dataset}.ppsc_survey_completion_event` overall
@@ -70,6 +88,12 @@ JOIN `{project}.{destination_dataset}.ppsc_survey_completion_event` overall
     AND overall.event_type_name = "Overall Health"
     AND overall.data_element_value = "submitted_complete"
     AND overall.ignore_flag = 0
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `{project}.{destination_dataset}.datafeed_exclusion_list` excluded
+        WHERE excluded.identifier = overall.event_id
+          AND excluded.identifier_type = "event_id"
+    )
 
 -- Lifestyle Completion
 JOIN `{project}.{destination_dataset}.ppsc_survey_completion_event` lifestyle
@@ -77,6 +101,12 @@ JOIN `{project}.{destination_dataset}.ppsc_survey_completion_event` lifestyle
     AND lifestyle.event_type_name = "Lifestyle"
     AND lifestyle.data_element_value = "submitted_complete"
     AND lifestyle.ignore_flag = 0
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `{project}.{destination_dataset}.datafeed_exclusion_list` excluded
+        WHERE excluded.identifier = lifestyle.event_id
+          AND excluded.identifier_type = "event_id"
+    )
 
 -- Physical Measurements
 JOIN `{project}.{src_operational_dataset}.rdr_physical_measurements` pm
