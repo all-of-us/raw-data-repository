@@ -780,6 +780,13 @@ class WorkbenchWorkspaceUserRole(messages.Enum):
     WRITER = 2
     OWNER = 3
 
+class WorkbenchWorkspaceAianResearchType(messages.Enum):
+    """How researchers are studying AI/AN populations"""
+    UNSET = 0
+    EXCLUSIVE_AI_AN_POPULATION = 1
+    CASE_CONTROL_AI_AN = 2
+    FINDINGS_BY_AI_AN = 3
+    NO_AI_AN_ANALYSIS = 4
 
 class WorkbenchInstitutionNonAcademic(messages.Enum):
     """Workbench Institution enum"""

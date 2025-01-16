@@ -7,7 +7,8 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceSexualOrientation, \
     WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceAccessToCare, \
     WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchAuditReviewType, \
-    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditWorkspaceAccessDecision, WorkbenchWorkspaceAccessTier
+    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditWorkspaceAccessDecision, WorkbenchWorkspaceAccessTier, \
+    WorkbenchWorkspaceAianResearchType
 
 
 class WorkbenchWorkspaceBase(object):
@@ -73,6 +74,11 @@ class WorkbenchWorkspaceBase(object):
     others = Column("others", String(2000))
     isReviewed = Column("is_reviewed", Boolean, default=False)
     cdrVersion = Column("cdr_version", String(200))
+    aianResearchType = Column("aian_research_type", Enum(WorkbenchWorkspaceAianResearchType),
+                              default=WorkbenchWorkspaceAianResearchType.UNSET)
+    """Type of research being done using AI/AN population data"""
+    aianResearchDetails = Column("aian_research_details", String(2000))
+    """Details of the research being done using AI/AN population data"""
 
     resource = Column("resource", BlobUTF8, nullable=False)
     """The resource payload"""
