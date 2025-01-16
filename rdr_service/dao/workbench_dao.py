@@ -473,7 +473,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         if workspace.incomeLevel else None,
                         "others": workspace.others
                     },
-                    "cdrVersion": workspace.cdrVersion
+                    "cdrVersion": workspace.cdrVersion,
+                    "aianResearchType": str(WorkbenchWorkspaceAianResearchType(workspace.aianResearchType)),
+                    "aianResearchDetails": workspace.aianResearchDetails
                 }
                 results.append(record)
 
@@ -674,7 +676,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                             if workspace.incomeLevel else None,
                             "others": workspace.others
                         },
-                        "cdrVersion": workspace.cdrVersion
+                        "cdrVersion": workspace.cdrVersion,
+                        "aianResearchType": str(WorkbenchWorkspaceAianResearchType(workspace.aianResearchType)),
+                        "aianResearchDetails": workspace.aianResearchDetails
                     }
 
                 affiliations = []
