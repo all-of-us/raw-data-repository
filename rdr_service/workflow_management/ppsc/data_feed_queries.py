@@ -43,6 +43,7 @@ JOIN `{project}.{destination_dataset}.ppsc_consent_event` ehrc
     ON c.participant_id = ehrc.participant_id
     AND ehrc.data_element_value = "Yes"
     AND ehrc.event_type_name = "EHR Authorization"
+    AND ehrc.ignore_flag = 0
 
 -- Earliest EHR Received
 JOIN earliest_ehr
@@ -54,24 +55,28 @@ JOIN `{project}.{destination_dataset}.rdr_genomic_aw4_raw` aw4
         AND aw4.genome_type = "aou_wgs"
         AND aw4.pipeline_id = "dragen_3.7.8"
         AND aw4.qc_status = "PASS"
+        AND aw4.ignore_flag = 0
 
 -- Basics Completion
 JOIN `{project}.{destination_dataset}.ppsc_survey_completion_event` basics
     ON basics.participant_id = c.participant_id
     AND basics.event_type_name = "The Basics"
     AND basics.data_element_value = "submitted_complete"
+    AND basics.ignore_flag = 0
 
 -- Overall Health Completion
 JOIN `{project}.{destination_dataset}.ppsc_survey_completion_event` overall
     ON overall.participant_id = c.participant_id
     AND overall.event_type_name = "Overall Health"
     AND overall.data_element_value = "submitted_complete"
+    AND overall.ignore_flag = 0
 
 -- Lifestyle Completion
 JOIN `{project}.{destination_dataset}.ppsc_survey_completion_event` lifestyle
     ON lifestyle.participant_id = c.participant_id
     AND lifestyle.event_type_name = "Lifestyle"
     AND lifestyle.data_element_value = "submitted_complete"
+    AND lifestyle.ignore_flag = 0
 
 -- Physical Measurements
 JOIN `{project}.{src_operational_dataset}.rdr_physical_measurements` pm
@@ -89,6 +94,7 @@ JOIN `{project}.{src_operational_dataset}.rdr_measurement` weight
 
 WHERE
     c.data_element_value = "Yes"
+    AND c.ignore_flag = 0
     AND c.event_type_name = "Primary Consent"
 
     -- Insert only if participant_id doesn't exist in the target table
@@ -96,6 +102,7 @@ WHERE
         SELECT 1
         FROM `{project}.{destination_dataset}.datafeed_input_core_data` t
         WHERE t.participant_id = c.participant_id
+        AND t.ignore_flag = 0
     );"""
 
 
@@ -134,6 +141,7 @@ WHERE TRUE
         SELECT 1
         FROM `{project}.{destination_dataset}.datafeed_input_biospecimen` t
         WHERE t.participant_id = p.id
+        AND t.ignore_flag = 0
     )
 ;
 """
@@ -164,6 +172,7 @@ WHERE TRUE
         FROM `{project}.{destination_dataset}.datafeed_input_ehr` t
         WHERE t.participant_id = p.id
             AND t.event_date_time = participant_ehr.last_seen
+            AND t.ignore_flag = 0
     )
 ;
 """
@@ -202,6 +211,7 @@ WHERE TRUE
         FROM `{project}.{destination_dataset}.datafeed_input_healthdata_sharing` t
         WHERE t.participant_id = p.id
             AND t.event_date_time = iehr.event_date_time
+            AND t.ignore_flag = 0
     )
 ;
 """
@@ -217,6 +227,7 @@ def get_ppsc_core_to_stream(project: str, destination_dataset: str) -> str:
             FROM `{project}.{destination_dataset}.ppsc_ppsc_core` t
             WHERE t.participant_id = s.participant_id
                 AND t.event_date_time = s.event_date_time
+                AND t.ignore_flag = 0
         )
     ;"""
 
@@ -231,6 +242,7 @@ def get_ppsc_biospecimen_to_stream(project: str, destination_dataset: str) -> st
             FROM `{project}.{destination_dataset}.ppsc_ppsc_biobank_sample` t
             WHERE t.participant_id = s.participant_id
                 AND t.event_date_time = s.event_date_time
+                AND t.ignore_flag = 0
         )
     ;"""
 
@@ -245,6 +257,7 @@ where TRUE
         FROM `{project}.{destination_dataset}.ppsc_ppsc_ehr` t
         WHERE t.participant_id = s.participant_id
             AND t.event_date_time = s.event_date_time
+            AND t.ignore_flag = 0
     )
 ;"""
 
@@ -259,6 +272,7 @@ def get_health_data_to_stream(project: str, destination_dataset: str) -> str:
             FROM `{project}.{destination_dataset}.ppsc_ppsc_health_data` t
             WHERE t.participant_id = s.participant_id
                 AND t.event_date_time = s.event_date_time
+                AND t.ignore_flag = 0
         )
     ;"""
 
