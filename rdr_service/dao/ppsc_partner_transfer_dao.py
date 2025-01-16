@@ -91,7 +91,7 @@ class PPSCDataTransferBaseDao(BaseDao):
             ).filter(
                 PPSCDataTransferRecord.id.is_(None),
                 self.model_type.ignore_flag != 1
-            ).distinct().all()
+            ).limit(500).distinct().all()
 
 
 class RTIDataTransferAuthDao(UpdatableDao):
