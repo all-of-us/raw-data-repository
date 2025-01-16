@@ -19,6 +19,7 @@ WITH ranked_events AS (
   FROM `{project}.{source_dataset}.ppsc_consent_event` se
   JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
+  AND se.event_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1
       FROM `{project}.{source_dataset}.{sent_table_name}` sent
@@ -68,6 +69,7 @@ WITH ranked_events AS (
   FROM `{project}.{source_dataset}.ppsc_profile_updates_event` se
   JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
+  AND se.event_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1
       FROM `{project}.{source_dataset}.{sent_table_name}` sent
@@ -145,6 +147,7 @@ WITH ranked_events AS (
   FROM `{project}.{source_dataset}.ppsc_withdrawal_event` se
   JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
+  AND se.event_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1
       FROM `{project}.{source_dataset}.{sent_table_name}` sent
@@ -198,6 +201,7 @@ WITH ranked_events AS (
   FROM `{project}.{source_dataset}.ppsc_deactivation_event` se
   JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
+  AND se.event_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1
       FROM `{project}.{source_dataset}.{sent_table_name}` sent
@@ -247,6 +251,7 @@ WITH ranked_events AS (
   FROM `{project}.{source_dataset}.ppsc_participant_status_event` se
   JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
+  AND se.event_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1
       FROM `{project}.{source_dataset}.{sent_table_name}` sent
@@ -311,6 +316,7 @@ WITH ranked_events AS (
   FROM `{project}.{source_dataset}.ppsc_survey_completion_event` se
   JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
+  AND se.event_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1
       FROM `{project}.{source_dataset}.{sent_table_name}` sent
@@ -405,6 +411,7 @@ WITH ranked_events AS (
   FROM `{project}.{source_dataset}.ppsc_attribution_event` se
   JOIN `{project}.{source_dataset}.rdr_participant_summary` ps ON se.participant_id = ps.participant_id
   WHERE TRUE
+  AND se.event_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1
       FROM `{project}.{source_dataset}.{sent_table_name}` sent
