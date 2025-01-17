@@ -563,7 +563,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             data['email'], data['email_available'] = None, 0
             data['phone_number'], data['login_phone_number'], data['phone_number_available'] = None, None, 0
         else:
-            enrollment_v2 = EnrollmentStatusV2(int(ps.enrollmentStatus))
+            enrollment_v2 = EnrollmentStatusV2(int(ps.enrollmentStatus)) if ps.enrollmentStatus is not None else None
             # SqlAlchemy may return None for our zero-based NOT_PRESENT EhrStatus Enum, so map None to NOT_PRESENT
             # See rdr_service.model.utils Enum decorator class
             ehr_status = EhrStatus.NOT_PRESENT if ps.ehrStatus is None else ps.ehrStatus
@@ -585,10 +585,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 # 'enrollment_status_id': int(enrollment_v2)
                 # 'enrollment_member': ps.enrollmentStatusMemberTime,
                 #'enrollment_core_minus_pm': ps.enrollmentStatusCoreMinusPMTime,
-                'enrollment_status_legacy_v2': str(enrollment_v2),     # temporary, for Goal 1 QC
-                'enrollment_status_legacy_v2_id': int(enrollment_v2),  # temporary, for Goal 1 QC
-                'enrollment_status_v3_0': str(ps.enrollmentStatusV3_0),
-                'enrollment_status_v3_0_id': int(ps.enrollmentStatusV3_0),
+                'enrollment_status_legacy_v2': str(enrollment_v2) if enrollment_v2 else None,
+                'enrollment_status_legacy_v2_id': int(enrollment_v2) if enrollment_v2 else None,
+                'enrollment_status_v3_0': str(ps.enrollmentStatusV3_0) \
+                    if ps.enrollmentStatusV3_0 is not None else None,
+                'enrollment_status_v3_0_id': int(ps.enrollmentStatusV3_0)\
+                    if ps.enrollmentStatusV3_0 is not None else None,
                 'enrollment_status_v3_0_participant_time': ps.enrollmentStatusParticipantV3_0Time,
                 'enrollment_status_v3_0_participant_plus_ehr_time': ps.enrollmentStatusParticipantPlusEhrV3_0Time,
                 'enrollment_status_v3_0_pmb_eligible_time': ps.enrollmentStatusPmbEligibleV3_0Time,
