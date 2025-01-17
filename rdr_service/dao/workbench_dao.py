@@ -31,8 +31,9 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAge, WorkbenchAuditWorkspaceAccessDecision, \
     WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType, WorkbenchWorkspaceAccessTier, \
     WorkbenchResearcherAccessTierShortName, WorkbenchResearcherEthnicCategory, WorkbenchResearcherSexualOrientationV2, \
-    WorkbenchResearcherGenderIdentity, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2,\
-    WorkbenchResearcherEducationV2
+    WorkbenchResearcherGenderIdentity, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2, \
+    WorkbenchResearcherEducationV2, WorkbenchWorkspaceAianResearchType
+
 
 class WorkbenchWorkspaceDao(UpdatableDao):
     def __init__(self):
@@ -195,6 +196,16 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     raise BadRequest(f'WorkspaceID:{item.get("workspaceId")} Invalid '
                                      f'accessTier: {item.get("accessTier")}')
 
+                try:
+                    if item.get("accessTier") is None:
+                        item['accessTier'] = 'UNSET'
+                    else:
+                        item["accessTier"] = item.get("accessTier")
+                    WorkbenchWorkspaceAccessTier(item['accessTier'])
+                except TypeError:
+                    raise BadRequest(f'WorkspaceID:{item.get("workspaceId")} Invalid '
+                                     f'accessTier: {item.get("accessTier")}')
+
     def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
         self._validate(resource_json)
         now = clock.CLOCK.now()
@@ -240,6 +251,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 others=item.get('others'),
                 workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers'), item.get('creator')),
                 cdrVersion=item.get('cdrVersionName'),
+                aianResearchType=WorkbenchWorkspaceAianResearchType(item.get('aianResearchType', 'UNSET')),
+                aianResearchDetails=item.get('aianResearchDetails'),
                 accessTier=WorkbenchWorkspaceAccessTier(item.get('accessTier', 'UNSET')),
                 resource=json.dumps(item)
             )
@@ -460,7 +473,10 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         if workspace.incomeLevel else None,
                         "others": workspace.others
                     },
-                    "cdrVersion": workspace.cdrVersion
+                    "cdrVersion": workspace.cdrVersion,
+                    "aianResearchType": str(WorkbenchWorkspaceAianResearchType(workspace.aianResearchType))
+                    if workspace.aianResearchType else None,
+                    "aianResearchDetails": workspace.aianResearchDetails
                 }
                 results.append(record)
 
@@ -661,7 +677,10 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                             if workspace.incomeLevel else None,
                             "others": workspace.others
                         },
-                        "cdrVersion": workspace.cdrVersion
+                        "cdrVersion": workspace.cdrVersion,
+                        "aianResearchType": str(WorkbenchWorkspaceAianResearchType(workspace.aianResearchType))
+                        if workspace.aianResearchType else None,
+                        "aianResearchDetails": workspace.aianResearchDetails
                     }
 
                 affiliations = []

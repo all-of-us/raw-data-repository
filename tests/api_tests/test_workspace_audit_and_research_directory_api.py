@@ -121,6 +121,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "intendToStudy": 'intendToStudy string',
                 "findingsFromStudy": 'findingsFromStudy string',
                 "focusOnUnderrepresentedPopulations": True,
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string',
                 "workspaceDemographic": {
                     "raceEthnicity": ['AIAN', 'MENA'],
                     "age": ['AGE_0_11', 'AGE_65_74'],
@@ -174,7 +176,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "otherPurpose": False,
                 "scientificApproaches": 'reasonForInvestigation string2',
                 "intendToStudy": 'intendToStudy string2',
-                "findingsFromStudy": 'findingsFromStudy string2'
+                "findingsFromStudy": 'findingsFromStudy string2',
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string',
             }
         ]
 
@@ -243,7 +247,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                            "others": "string"
                        },
-                       'cdrVersion': None
+                       'cdrVersion': None,
+                       'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+                       'aianResearchDetails': 'string'
                        },
                       result['data'])
         self.assertIn({'workspaceId': 1, 'snapshotId': 2, 'name': 'workspace name str 2',
@@ -301,7 +307,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "incomeLevel": None,
                            "others": None
                        },
-                       'cdrVersion': None
+                       'cdrVersion': None,
+                       'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+                       'aianResearchDetails': 'string'
                        },
                       result['data'])
         # test audit review
@@ -396,7 +404,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                            "others": "string"
                        },
-                       'cdrVersion': None
+                       'cdrVersion': None,
+                       'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+                       'aianResearchDetails': 'string'
                        },
                       result['data'])
 
@@ -465,7 +475,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                            "others": "string"
                        },
-                       'cdrVersion': None
+                       'cdrVersion': None,
+                       'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+                       'aianResearchDetails': 'string'
                        },
                       result['data'])
 
@@ -546,7 +558,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "incomeLevel": None,
                            "others": None
                        },
-                       'cdrVersion': None
+                       'cdrVersion': None,
+                       'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+                       'aianResearchDetails': 'string'
                        },
                       result['data'])
 
@@ -660,6 +674,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "intendToStudy": 'intendToStudy string',
                 "findingsFromStudy": 'findingsFromStudy string',
                 "focusOnUnderrepresentedPopulations": True,
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string',
                 "workspaceDemographic": {
                     "raceEthnicity": ['AIAN', 'MENA'],
                     "age": ['AGE_0_11', 'AGE_65_74'],
@@ -713,7 +729,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "otherPurpose": False,
                 "scientificApproaches": 'reasonForInvestigation string2',
                 "intendToStudy": 'intendToStudy string2',
-                "findingsFromStudy": 'findingsFromStudy string2'
+                "findingsFromStudy": 'findingsFromStudy string2',
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string',
             }
         ]
 
@@ -896,7 +914,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                     "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                     "others": "string"
                 },
-                "cdrVersionName": cdr_version
+                "cdrVersionName": cdr_version,
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string'
             },
             {
                 "workspaceId": 1,
@@ -933,7 +953,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "scientificApproaches": 'reasonForInvestigation string2',
                 "intendToStudy": 'intendToStudy string2',
                 "findingsFromStudy": 'findingsFromStudy string2',
-                "cdrVersionName": cdr_version
+                "cdrVersionName": cdr_version,
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string'
             }
         ]
         self.send_post('workbench/directory/workspaces', request_data=request_json)
@@ -983,7 +1005,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                  'educationLevel': 'LESS_THAN_HIGH_SCHOOL',
                  'incomeLevel': 'BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT',
                  'others': 'string'},
-             'cdrVersion': cdr_version
+             'cdrVersion': cdr_version,
+             'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+             'aianResearchDetails': 'string'
         }
         expected_snapshot_2 = {
              'snapshotId': 2, 'workspaceId': 1, 'name': 'workspace name str 2',
@@ -1026,7 +1050,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                  'raceEthnicity': None, 'age': None, 'sexAtBirth': None, 'genderIdentity': None,
                  'sexualOrientation': None, 'geography': None, 'disabilityStatus': None,
                  'accessToCare': None, 'educationLevel': None, 'incomeLevel': None, 'others': None},
-             'cdrVersion': cdr_version
+             'cdrVersion': cdr_version,
+             'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+             'aianResearchDetails': 'string'
         }
         for rec in result:
             snapshot_id = rec.get('snapshotId', None)
@@ -1091,7 +1117,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            'raceEthnicity': None, 'age': None, 'sexAtBirth': None, 'genderIdentity': None,
                            'sexualOrientation': None, 'geography': None, 'disabilityStatus': None,
                            'accessToCare': None, 'educationLevel': None, 'incomeLevel': None, 'others': None},
-                       'cdrVersion': cdr_version
+                       'cdrVersion': cdr_version,
+                       'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+                       'aianResearchDetails': 'string'
                        }, result)
 
         result = self.send_get('workbench/audit/workspace/snapshots?last_snapshot_id=2')
@@ -1137,7 +1165,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "scientificApproaches": 'reasonForInvestigation string2',
                 "intendToStudy": 'intendToStudy string2',
                 "findingsFromStudy": 'findingsFromStudy string2',
-                "cdrVersionName": cdr_version
+                "cdrVersionName": cdr_version,
+                "aianResearchType": 'EXCLUSIVE_AI_AN_POPULATION',
+                "aianResearchDetails": 'string'
             }
         ]
         self.send_post('workbench/directory/workspaces', request_data=updated_request_json)
@@ -1260,7 +1290,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                     "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                     "others": "string"
                 },
-                "cdrVersionName": 'irving'
+                "cdrVersionName": 'irving',
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string'
             }
         ]
         self.send_post('workbench/directory/workspaces', request_data=request_json)
@@ -1313,7 +1345,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                     "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                     "others": "string"
                 },
-                "cdrVersionName": 'irving'
+                "cdrVersionName": 'irving',
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string'
             }
         ]
         self.send_post('workbench/directory/workspaces', request_data=request_json)
@@ -1360,7 +1394,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            'educationLevel': 'LESS_THAN_HIGH_SCHOOL',
                            'incomeLevel': 'BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT',
                            'others': 'string'},
-                       'cdrVersion': 'irving'
+                       'cdrVersion': 'irving',
+                       'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+                       'aianResearchDetails': 'string'
                        }, result)
         self.assertIn({'snapshotId': 2, 'workspaceId': 0, 'name': 'workspace name str',
                        'creationTime': '2019-11-25T17:43:41.085000', 'modifiedTime': '2019-11-25T17:43:41.085000',
@@ -1403,7 +1439,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            'educationLevel': 'LESS_THAN_HIGH_SCHOOL',
                            'incomeLevel': 'BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT',
                            'others': 'string'},
-                       'cdrVersion': 'irving'
+                       'cdrVersion': 'irving',
+                       'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+                       'aianResearchDetails': 'string'
                        }, result)
 
         result = self.send_get('workbench/audit/workspace/snapshots?last_snapshot_id=1')
@@ -1512,6 +1550,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "intendToStudy": 'intendToStudy string',
                 "findingsFromStudy": 'findingsFromStudy string',
                 "focusOnUnderrepresentedPopulations": True,
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string',
                 "workspaceDemographic": {
                     "raceEthnicity": ['AIAN', 'MENA'],
                     "age": ['AGE_0_11', 'AGE_65_74'],
@@ -1565,7 +1605,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "otherPurpose": False,
                 "scientificApproaches": 'reasonForInvestigation string2',
                 "intendToStudy": 'intendToStudy string2',
-                "findingsFromStudy": 'findingsFromStudy string2'
+                "findingsFromStudy": 'findingsFromStudy string2',
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string'
             }
         ]
 
@@ -1624,7 +1666,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "incomeLevel": None,
                            "others": None
                        },
-                       'cdrVersion': None
+                       'cdrVersion': None,
+                       'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+                       'aianResearchDetails': 'string'
                        },
                       result['data'])
         # update researcher to add verified institution
@@ -1738,6 +1782,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "intendToStudy": 'intendToStudy string',
                 "findingsFromStudy": 'findingsFromStudy string',
                 "focusOnUnderrepresentedPopulations": True,
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string',
                 "workspaceDemographic": {
                     "raceEthnicity": ['AIAN', 'MENA'],
                     "age": ['AGE_0_11', 'AGE_65_74'],
@@ -1786,7 +1832,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "otherPurpose": False,
                 "scientificApproaches": 'reasonForInvestigation string2',
                 "intendToStudy": 'intendToStudy string2',
-                "findingsFromStudy": 'findingsFromStudy string2'
+                "findingsFromStudy": 'findingsFromStudy string2',
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string'
             }
         ]
 
@@ -1978,6 +2026,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "intendToStudy": 'intendToStudy string',
                 "findingsFromStudy": 'findingsFromStudy string',
                 "focusOnUnderrepresentedPopulations": True,
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string',
                 "workspaceDemographic": {
                     "raceEthnicity": ['AIAN', 'MENA'],
                     "age": ['AGE_0_11', 'AGE_65_74'],
@@ -2026,7 +2076,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "otherPurpose": False,
                 "scientificApproaches": 'reasonForInvestigation string2',
                 "intendToStudy": 'intendToStudy string2',
-                "findingsFromStudy": 'findingsFromStudy string2'
+                "findingsFromStudy": 'findingsFromStudy string2',
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string'
             },
             {
                 "name": "Test",
@@ -2081,7 +2133,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "diseaseFocusedResearch": False,
                 "diseaseFocusedResearchName": "",
                 "ethicalLegalSocialImplications": False,
-                "focusOnUnderrepresentedPopulations": False
+                "focusOnUnderrepresentedPopulations": False,
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string'
             }
         ]
 

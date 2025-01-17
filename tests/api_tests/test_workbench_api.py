@@ -6,7 +6,7 @@ from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResea
 from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchInstitutionNonAcademic, \
     WorkbenchResearcherEducation, WorkbenchResearcherDisability, WorkbenchResearcherEthnicity, \
     WorkbenchWorkspaceAccessTier, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2, \
-    WorkbenchResearcherEducationV2
+    WorkbenchResearcherEducationV2, WorkbenchWorkspaceAianResearchType
 
 
 class WorkbenchApiTest(BaseTestCase):
@@ -594,7 +594,9 @@ class WorkbenchApiTest(BaseTestCase):
                     "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                     "others": "string"
                 },
-                "cdrVersionName": "irving"
+                "cdrVersionName": "irving",
+                "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
+                "aianResearchDetails": 'string',
             }
         ]
 
@@ -613,6 +615,8 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].accessTier, WorkbenchWorkspaceAccessTier.REGISTERED)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
+        self.assertEqual(results[0].aianResearchType, WorkbenchWorkspaceAianResearchType.EXCLUSIVE_AI_AN_POPULATION)
+        self.assertEqual(results[0].aianResearchDetails, 'string')
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
         results = workspace_history_dao.get_all_with_children()
@@ -625,6 +629,8 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
         self.assertEqual('irving', results[0].cdrVersion)
+        self.assertEqual(results[0].aianResearchType, WorkbenchWorkspaceAianResearchType.EXCLUSIVE_AI_AN_POPULATION)
+        self.assertEqual(results[0].aianResearchDetails, 'string')
 
         # test update workspace
         update_json = [
@@ -670,7 +676,9 @@ class WorkbenchApiTest(BaseTestCase):
                 "focusOnUnderrepresentedPopulations": True,
                 "workspaceDemographic": {
 
-                }
+                },
+                "aianResearchType": "FINDINGS_BY_AI_AN",
+                "aianResearchDetails": 'string2',
             },
             {
                 "workspaceId": 2,
@@ -705,7 +713,9 @@ class WorkbenchApiTest(BaseTestCase):
                 "otherPurpose": True,
                 "scientificApproaches": 'string2',
                 "intendToStudy": 'string2',
-                "findingsFromStudy": 'string2'
+                "findingsFromStudy": 'string2',
+                "aianResearchType": "NO_AI_AN_ANALYSIS",
+                "aianResearchDetails": 'string3',
             }
         ]
 
@@ -717,6 +727,8 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].name, 'string_modify')
         self.assertEqual(results[0].scientificApproaches, 'string2')
         self.assertEqual(len(results[0].workbenchWorkspaceUser), 2)
+        self.assertEqual(results[0].aianResearchType, WorkbenchWorkspaceAianResearchType.FINDINGS_BY_AI_AN)
+        self.assertEqual(results[0].aianResearchDetails, 'string2')
         if results[0].workbenchWorkspaceUser[0].userId == 1:
             self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
             self.assertEqual(results[0].workbenchWorkspaceUser[1].userId, 2)
@@ -729,6 +741,8 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[1].workspaceSourceId, 2)
         self.assertEqual(results[1].name, 'string2')
         self.assertEqual(results[1].scientificApproaches, 'string2')
+        self.assertEqual(results[1].aianResearchType, WorkbenchWorkspaceAianResearchType.NO_AI_AN_ANALYSIS)
+        self.assertEqual(results[1].aianResearchDetails, 'string3')
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
         results = workspace_history_dao.get_all_with_children()
@@ -737,9 +751,13 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].name, 'string')
         self.assertEqual(results[0].scientificApproaches, 'string')
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
+        self.assertEqual(results[0].aianResearchType, WorkbenchWorkspaceAianResearchType.EXCLUSIVE_AI_AN_POPULATION)
+        self.assertEqual(results[0].aianResearchDetails, 'string')
         self.assertEqual(results[1].workspaceSourceId, 1)
         self.assertEqual(results[1].name, 'string_modify')
         self.assertEqual(results[1].scientificApproaches, 'string2')
+        self.assertEqual(results[1].aianResearchType, WorkbenchWorkspaceAianResearchType.FINDINGS_BY_AI_AN)
+        self.assertEqual(results[1].aianResearchDetails, 'string2')
         if results[1].workbenchWorkspaceUser[0].userId == 1:
             self.assertEqual(results[1].workbenchWorkspaceUser[0].userId, 1)
             self.assertEqual(results[1].workbenchWorkspaceUser[1].userId, 2)
@@ -751,6 +769,8 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[2].workspaceSourceId, 2)
         self.assertEqual(results[2].name, 'string2')
         self.assertEqual(results[2].scientificApproaches, 'string2')
+        self.assertEqual(results[2].aianResearchType, WorkbenchWorkspaceAianResearchType.NO_AI_AN_ANALYSIS)
+        self.assertEqual(results[2].aianResearchDetails, 'string3')
         if results[2].workbenchWorkspaceUser[0].userId == 1:
             self.assertEqual(results[2].workbenchWorkspaceUser[0].role, WorkbenchWorkspaceUserRole.READER)
             self.assertEqual(results[2].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.WRITER)
@@ -839,7 +859,9 @@ class WorkbenchApiTest(BaseTestCase):
                     "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                     "others": "string"
                 },
-                "cdrVersionName": "irving"
+                "cdrVersionName": "irving",
+                "aianResearchType": "CASE_CONTROL_AI_AN",
+                "aianResearchDetails": 'string',
             }
         ]
 
@@ -856,6 +878,8 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].cdrVersion, 'irving')
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
+        self.assertEqual(results[0].aianResearchType, WorkbenchWorkspaceAianResearchType.CASE_CONTROL_AI_AN)
+        self.assertEqual(results[0].aianResearchDetails, 'string')
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
         results = workspace_history_dao.get_all_with_children()
@@ -868,6 +892,8 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
         self.assertEqual('irving', results[0].cdrVersion)
+        self.assertEqual(results[0].aianResearchType, WorkbenchWorkspaceAianResearchType.CASE_CONTROL_AI_AN)
+        self.assertEqual(results[0].aianResearchDetails, 'string')
 
         # test backfill workspace
         update_json = [
@@ -910,7 +936,8 @@ class WorkbenchApiTest(BaseTestCase):
                 "workspaceDemographic": {
 
                 },
-                "cdrVersionName": "irving2"
+                "cdrVersionName": "irving2",
+                "aianResearchDetails": 'string2',
             }
         ]
 
@@ -926,6 +953,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].accessTier, WorkbenchWorkspaceAccessTier.CONTROLLED)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
+        self.assertEqual(results[0].aianResearchDetails, 'string2')
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
         results = workspace_history_dao.get_all_with_children()
@@ -937,6 +965,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].accessTier, WorkbenchWorkspaceAccessTier.CONTROLLED)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
+        self.assertEqual(results[0].aianResearchDetails, 'string2')
 
     def test_invalid_input_for_workspace(self):
         request_json = [
