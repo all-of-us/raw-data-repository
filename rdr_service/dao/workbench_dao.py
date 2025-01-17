@@ -474,7 +474,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         "others": workspace.others
                     },
                     "cdrVersion": workspace.cdrVersion,
-                    "aianResearchType": str(WorkbenchWorkspaceAianResearchType(workspace.aianResearchType)),
+                    "aianResearchType": str(WorkbenchWorkspaceAianResearchType(workspace.aianResearchType))
+                    if workspace.aianResearchType else None,
                     "aianResearchDetails": workspace.aianResearchDetails
                 }
                 results.append(record)
@@ -677,7 +678,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                             "others": workspace.others
                         },
                         "cdrVersion": workspace.cdrVersion,
-                        "aianResearchType": str(WorkbenchWorkspaceAianResearchType(workspace.aianResearchType)),
+                        "aianResearchType": str(WorkbenchWorkspaceAianResearchType(workspace.aianResearchType))
+                        if workspace.aianResearchType else None,
                         "aianResearchDetails": workspace.aianResearchDetails
                     }
 
