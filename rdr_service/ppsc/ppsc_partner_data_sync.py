@@ -16,14 +16,17 @@ class NphOptInSync:
         self.items_ready_for_sync = []
 
     def get_items_for_sync(self):
-        self.usable_nph_objects = self.eligible_dao.get_usable_participant_data()
-        if not self.usable_nph_objects:
-            logging.warning('No eligible NPH participant data records found')
-            return
-
         self.items_ready_for_sync = self.nph_opt_in_event_dao.get_eligible_participant_records()
         if not self.items_ready_for_sync:
             logging.info('No NPH Opt In records for sync found')
+            return
+
+        self.usable_nph_objects = self.eligible_dao.get_usable_participant_data(limit=len(self.items_ready_for_sync))
+        if not self.usable_nph_objects:
+            logging.warning('No eligible NPH participant data records found')
+            return
+        if len(self.items_ready_for_sync) > len(self.usable_nph_objects):
+            logging.warning('Not enough eligible NPH participant data records found')
             return
 
         logging.info(f'Syncing {len(self.items_ready_for_sync)} for NPH Opt In Sync')
