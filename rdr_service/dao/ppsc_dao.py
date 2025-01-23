@@ -1,6 +1,6 @@
 from typing import List, Dict
 
-from sqlalchemy import and_, case
+from sqlalchemy import and_, case, or_
 from sqlalchemy.sql import functions
 from sqlalchemy.orm import aliased
 
@@ -120,6 +120,7 @@ class PPSCNphOptEventInDao(BaseDao):
                     else_=None
                 ).label('language_preference')
             ).join(
+                # nph_opt_in_event
                 self.model_type,
                 and_(
                     self.model_type.participant_id == ProfileUpdatesEvent.participant_id,
@@ -209,6 +210,11 @@ class PPSCNphOptEventInDao(BaseDao):
                 functions.max(lastest_nph_ppi_data.c.language_preference).label('language_preference')
             ).group_by(
                 lastest_nph_ppi_data.c.participant_id
+            ).having(
+                or_(
+                    functions.max(lastest_nph_ppi_data.c.phone).isnot(None),
+                    functions.max(lastest_nph_ppi_data.c.email).isnot(None),
+                )
             ).distinct().all()
 
     def insert_bulk(self, batch: List[Dict]) -> None:
