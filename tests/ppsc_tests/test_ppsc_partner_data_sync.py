@@ -117,7 +117,7 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
         nph_opt_in_sync.run_sync()
 
         self.assertEqual(len(nph_opt_in_sync.items_ready_for_sync), 1)
-
+        self.assertEqual(nph_opt_in_sync.usable_nph_objects, [])  # should have been used in sync
         current_sync_ids = [obj.participant_id for obj in nph_opt_in_sync.items_ready_for_sync]
 
         # check test participant not included

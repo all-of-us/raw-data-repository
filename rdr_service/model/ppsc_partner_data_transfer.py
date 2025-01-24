@@ -164,9 +164,9 @@ class RTINphOptIn(PPSCData, PPSCBase):
     nph_participant_id = Column(BigInteger, nullable=False)
     first_name = Column(String(512), nullable=False)
     last_name = Column(String(512), nullable=False)
-    email = Column(String(512), nullable=False)
-    phone = Column(String(512), nullable=False)
-    zip_code = Column(String(512), nullable=False)
+    email = Column(String(512))
+    phone = Column(String(512))
+    zip_code = Column(String(512))
     language_preference = Column(TINYINT, nullable=False)
 
 

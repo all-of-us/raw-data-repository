@@ -1474,9 +1474,9 @@ class EligibleParticipantsDao(UpdatableDao):
     def get_id(self, obj):
         return obj.id
 
-    def get_usable_participant_data(self):
+    def get_usable_participant_data(self, limit: int = None):
         with self.session() as session:
-            return session.query(
+            usable_objects = session.query(
                 self.model_type.id,
                 self.model_type.participant_id
             ).filter(
@@ -1484,4 +1484,7 @@ class EligibleParticipantsDao(UpdatableDao):
                 self.model_type.active != 1
             ).order_by(
                 self.model_type.participant_id
-            ).all()
+            )
+            if limit:
+                return usable_objects.limit(limit).all()
+            return usable_objects.all()
