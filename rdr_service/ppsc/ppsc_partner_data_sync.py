@@ -1,7 +1,9 @@
 import logging
 
+from rdr_service.config import NPH_STUDY_ID, AOU_STUDY_ID
 from rdr_service.dao.ppsc_dao import PPSCNphOptEventInDao
 from rdr_service.dao.ppsc_partner_transfer_dao import RTIDataTransferBaseDao
+from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.study_nph_dao import EligibleParticipantsDao
 from rdr_service.model.ppsc_partner_data_transfer import RTINphOptIn
 
@@ -12,6 +14,7 @@ class NphOptInSync:
         self.nph_opt_in_dao = RTIDataTransferBaseDao(RTINphOptIn)
         self.eligible_dao = EligibleParticipantsDao()
         self.nph_opt_in_event_dao = PPSCNphOptEventInDao()
+        self.rex_mapping_dao = RexParticipantMappingDao()
         self.usable_nph_objects = None
         self.items_ready_for_sync = []
 
@@ -52,6 +55,13 @@ class NphOptInSync:
                 'id': usable_nph_obj.id,
                 'primary_participant_id': item.participant_id,
                 'active': 1
+            }))
+            self.rex_mapping_dao.insert(self.rex_mapping_dao.model_type(**{
+                'primary_participant_id': item.participant_id,
+                'ancillary_participant_id': usable_nph_obj.participant_id,
+                'ancillary_study_id': NPH_STUDY_ID,
+                'primary_study_id': AOU_STUDY_ID
+
             }))
             self.usable_nph_objects.pop(0)
 
