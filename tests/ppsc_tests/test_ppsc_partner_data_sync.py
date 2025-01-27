@@ -74,6 +74,16 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
                     event_authored_time=clock.CLOCK.now()
                 )
 
+            # add primary consent event
+            self.ppsc_data_gen.create_database_consent_event(
+                participant_id=current_participant_ids[num],
+                event_type_name='Primary Consent',
+                event_id=participant_event_activity_nph.id,
+                event_authored_time=clock.CLOCK.now(),
+                data_element_name='activity_status',
+                data_element_value='Yes',
+            )
+
             profile_elements = {
                 'piiname_first': self.faker.first_name(),
                 'piiname_last': self.faker.last_name(),
