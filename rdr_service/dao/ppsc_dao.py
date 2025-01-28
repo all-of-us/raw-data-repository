@@ -5,7 +5,8 @@ from sqlalchemy.sql import functions
 from sqlalchemy.orm import aliased
 
 from rdr_service.dao.base_dao import BaseDao, UpsertableDao
-from rdr_service.model.ppsc import Participant, Site, NPHOptInEvent, ProfileUpdatesEvent, ParticipantStatusEvent
+from rdr_service.model.ppsc import Participant, Site, NPHOptInEvent, ProfileUpdatesEvent, ParticipantStatusEvent, \
+    ConsentEvent
 from rdr_service.model.study_nph import EligibleParticipants
 
 
@@ -125,6 +126,14 @@ class PPSCNphOptEventInDao(BaseDao):
                 and_(
                     self.model_type.participant_id == ProfileUpdatesEvent.participant_id,
                     self.model_type.data_element_value == 'submitted_yes'
+                )
+            ).join(
+                ConsentEvent,
+                and_(
+                    ConsentEvent.participant_id == ProfileUpdatesEvent.participant_id,
+                    ConsentEvent.event_type_name.ilike('%Primary Consent%'),
+                    ConsentEvent.data_element_name == 'activity_status',
+                    ConsentEvent.data_element_value.ilike('%Yes%')
                 )
             ).outerjoin(
                 profile_updates_alias,

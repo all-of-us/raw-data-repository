@@ -5,6 +5,7 @@ from faker import Faker
 from rdr_service import clock
 from rdr_service.dao.ppsc_dao import ParticipantDao
 from rdr_service.dao.ppsc_partner_transfer_dao import RTIDataTransferBaseDao
+from rdr_service.dao.rex_dao import RexStudyDao, RexParticipantMappingDao
 from rdr_service.dao.study_nph_dao import EligibleParticipantsDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
@@ -21,6 +22,8 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
         self.participant_dao = ParticipantDao()
         self.eligible_dao = EligibleParticipantsDao()
         self.nph_opt_in_dao = RTIDataTransferBaseDao(RTINphOptIn)
+        self.rex_study_dao = RexStudyDao()
+        self.rex_mapping_dao = RexParticipantMappingDao()
         self.faker = Faker()
 
         activities = [
@@ -40,6 +43,13 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
             )
 
     def test_get_eligible_nph_participants(self) -> None:
+
+        # REX study records
+        for study in ['rdr', 'nph']:
+            self.rex_study_dao.insert(
+                self.rex_study_dao.model_type(**{
+                    'schema_name': study
+                }))
 
         # eligible participants
         for num in range(10):
@@ -73,6 +83,16 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
                     data_element_value=nph_opt_in_elements[key],
                     event_authored_time=clock.CLOCK.now()
                 )
+
+            # add primary consent event
+            self.ppsc_data_gen.create_database_consent_event(
+                participant_id=current_participant_ids[num],
+                event_type_name='Primary Consent',
+                event_id=participant_event_activity_nph.id,
+                event_authored_time=clock.CLOCK.now(),
+                data_element_name='activity_status',
+                data_element_value='Yes',
+            )
 
             profile_elements = {
                 'piiname_first': self.faker.first_name(),
@@ -141,6 +161,10 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
         self.assertTrue(all(obj.zip_code is not None for obj in current_opt_in_records))
         self.assertTrue(all(obj.language_preference is not None and obj.language_preference in [1, 2] for obj in
                             current_opt_in_records))
+
+        # check participant mapping
+        current_mappings = self.rex_mapping_dao.get_all()
+        self.assertEqual(len(current_mappings), len(nph_opt_in_sync.items_ready_for_sync))
 
     def tearDown(self):
         super().tearDown()
