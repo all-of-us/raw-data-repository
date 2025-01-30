@@ -521,38 +521,49 @@ def insert_awardee_insite_data(
           ehr_cte AS (
               SELECT participant_id
                 , event_id
-                , MAX(event_authored_time) AS activity_date_time
+                , MAX(CASE WHEN data_element_name = 'activity_date_time' THEN data_element_value END) AS activity_date_time
                 , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
               FROM `{project}.{src_operational_dataset}.ppsc_consent_event`
               WHERE event_type_name ='EHR Authorization' AND ignore_flag = 0
               GROUP BY 1, 2
           ),
+          ehr_transformed_values AS (
+            SELECT participant_id
+              , event_id
+              , SAFE_CAST(activity_date_time AS DATETIME) AS activity_date_time
+              , CASE
+                  WHEN LOWER(activity_status) = 'submitted_yes' THEN 'yes'
+                  WHEN LOWER(activity_status) = 'submitted_no' THEN 'no'
+                  ELSE LOWER(activity_status)
+                END AS activity_status_cleaned
+            FROM ehr_cte
+          ),
           ehr_latest_submitted AS (
+            SELECT participant_id
+                , activity_status_cleaned AS consent_for_electronic_health_records
+                , activity_date_time AS consent_for_electronic_health_records_authored
+            FROM (
               SELECT participant_id
-                  , activity_status AS consent_for_electronic_health_records
-                  , activity_date_time AS consent_for_electronic_health_records_authored
-              FROM (
-                SELECT participant_id
-                  , activity_status
-                  , activity_date_time
-                  , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
-                FROM ehr_cte
-                WHERE LOWER(activity_status) IN ('yes', 'no')
-              )
-              WHERE rn = 1
+                , activity_status_cleaned
+                , activity_date_time
+                , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
+              FROM ehr_transformed_values
+            )
+            WHERE rn = 1
           ),
           ehr_first_yes_submitted AS (
-              SELECT participant_id
+            SELECT participant_id
                 , MIN(activity_date_time) AS consent_for_electronic_health_records_first_yes_authored
-              FROM ehr_cte
-              WHERE LOWER(activity_status) = 'yes'
-              GROUP BY 1
+            FROM ehr_transformed_values
+            WHERE LOWER(activity_status_cleaned) = 'yes'
+            GROUP BY 1
           ),
           ehr_receipt AS (
                SELECT participant_id
                     , MIN(event_date_time) AS first_ehr_receipt_time
                     , MAX(event_date_time) AS latest_ehr_receipt_time
                FROM `{project}.{destination_dataset}.datafeed_input_ehr`
+               WHERE ignore_flag = 0
                GROUP BY participant_id
           ),
           primary_consent_cte AS (
@@ -564,26 +575,38 @@ def insert_awardee_insite_data(
             WHERE event_type_name ='Primary Consent' AND ignore_flag = 0
             GROUP BY 1, 2
           ),
+          primary_consent_cleaned_values AS (
+            SELECT *
+              , CASE
+                  WHEN LOWER(activity_status) = 'submitted_yes' THEN 'yes'
+                  WHEN LOWER(activity_status) = 'submitted_no' THEN 'no'
+                  ELSE LOWER(activity_status)
+                END AS activity_status_cleaned
+            FROM primary_consent_cte
+          ),
           primary_consent_latest_submitted AS (
-            SELECT participant_id
-                , activity_status AS consent_for_study_enrollment
-                , activity_date_time AS consent_for_study_enrollment_authored
-            FROM (
               SELECT participant_id
-                , activity_status
-                , activity_date_time
-                , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
-              FROM primary_consent_cte
-              WHERE LOWER(activity_status) IN ('yes', 'no')
-            )
-            WHERE rn = 1
+                  , activity_status_cleaned AS consent_for_study_enrollment
+                  , activity_date_time AS consent_for_study_enrollment_authored
+              FROM (
+                SELECT participant_id
+                  , activity_status_cleaned
+                  , activity_date_time
+                  , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
+                FROM primary_consent_cleaned_values
+              )
+             WHERE rn = 1
           ),
           enrollment_status_cte AS (
-            SELECT *
+            SELECT participant_id
+                , data_element_name
+                , MAX(CASE WHEN data_element_value IN ('0', '1') THEN data_element_value END) AS data_element_value
+                , MAX(CASE WHEN data_element_value NOT IN ('0', '1') THEN data_element_value END) AS event_authored_time
             FROM `{project}.{src_operational_dataset}.ppsc_participant_status_event`
             WHERE LOWER(event_type_name) = 'enrollment status' AND ignore_flag = 0
               AND LOWER(data_element_name) IN
                 ('registered', 'participant', 'participant_ehr_consent', 'enrolled', 'pmb_eligible', 'core_minus_pm', 'core_participant')
+            GROUP BY 1, 2
           ),
           -- Get most recently received payload Enrollment Status event with a value of yes, but without a no after for that field name
           enrollment_status_recent_yes_ranked AS (
@@ -596,7 +619,7 @@ def insert_awardee_insite_data(
               AND es1.data_element_name = es2.data_element_name
               AND LOWER(es2.data_element_value) = 'no'
               AND es1.event_authored_time < es2.event_authored_time
-            WHERE es2.participant_id IS NULL AND LOWER(es1.data_element_value) = 'yes'
+            WHERE es2.participant_id IS NULL AND LOWER(es1.data_element_value) = '1'
           ),
           enrollment_status_recent_yes AS (
             SELECT participant_id
@@ -613,7 +636,7 @@ def insert_awardee_insite_data(
               , self_reported_physical_measurements_status
               , self_reported_physical_measurements_authored
               , patient_status
-              , s2.site_name AS biospecimen_source_site
+              , s2.google_group AS biospecimen_source_site
               , biospecimen_order_time
               , biospecimen_status
               , sample_1sal2_collection_method
