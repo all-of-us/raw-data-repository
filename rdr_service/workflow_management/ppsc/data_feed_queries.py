@@ -527,8 +527,9 @@ def insert_awardee_insite_data(
               WHERE event_type_name ='EHR Authorization' AND ignore_flag = 0
               GROUP BY 1, 2
           ),
-          ehr_cleaned_values AS (
+          ehr_transformed_values AS (
             SELECT *
+              , CAST(activity_date_time AS DATETIME) AS activity_date_time
               , CASE
                   WHEN LOWER(activity_status) = 'submitted_yes' THEN 'yes'
                   WHEN LOWER(activity_status) = 'submitted_no' THEN 'no'
@@ -539,20 +540,20 @@ def insert_awardee_insite_data(
           ehr_latest_submitted AS (
             SELECT participant_id
                 , activity_status_cleaned AS consent_for_electronic_health_records
-                , CAST(activity_date_time AS DATETIME) AS consent_for_electronic_health_records_authored
+                , activity_date_time AS consent_for_electronic_health_records_authored
             FROM (
               SELECT participant_id
                 , activity_status_cleaned
                 , activity_date_time
                 , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
-              FROM ehr_cleaned_values
+              FROM ehr_transformed_values
             )
             WHERE rn = 1
           ),
           ehr_first_yes_submitted AS (
             SELECT participant_id
                 , MIN(activity_date_time) AS consent_for_electronic_health_records_first_yes_authored
-            FROM ehr_cleaned_values
+            FROM ehr_transformed_values
             WHERE LOWER(activity_status_cleaned) = 'yes'
             GROUP BY 1
           ),
