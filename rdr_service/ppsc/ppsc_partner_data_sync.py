@@ -38,6 +38,14 @@ class NphOptInSync:
         current_nph_obj = self.usable_nph_objects[0]
         return current_nph_obj
 
+    @classmethod
+    def get_language_pref(cls, value: str) -> int:
+        lang_map = {
+            'en': 1,
+            'es': 2
+        }
+        return lang_map.get(value)
+
     def sync_items(self):
         self.get_items_for_sync()
         for item in self.items_ready_for_sync:
@@ -49,7 +57,7 @@ class NphOptInSync:
                 'email': item.email,
                 'phone': item.phone,
                 'zip_code': item.zip_code,
-                'language_preference': 1 if item.language_preference.lower() == 'english' else '2'
+                'language_preference': self.get_language_pref(item.language_preference.lower())
             }))
             self.eligible_dao.update(self.eligible_dao.model_type(**{
                 'id': usable_nph_obj.id,
