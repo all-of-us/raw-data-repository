@@ -100,7 +100,7 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
                 'piicontactinformation_email': self.faker.email(),
                 'piicontactinformation_phone': 11111111,
                 'streetaddress_piizip': 11111,
-                'language_preference': random.choice(['English', 'Spanish'])
+                'language_preference': random.choice(['en', 'es'])
             }
 
             participant_event_activity_profile = self.ppsc_data_gen.create_database_participant_event_activity(
