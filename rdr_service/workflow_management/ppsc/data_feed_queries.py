@@ -528,7 +528,8 @@ def insert_awardee_insite_data(
               GROUP BY 1, 2
           ),
           ehr_transformed_values AS (
-            SELECT *
+            SELECT participant_id
+              , event_id
               , CAST(activity_date_time AS DATETIME) AS activity_date_time
               , CASE
                   WHEN LOWER(activity_status) = 'submitted_yes' THEN 'yes'
