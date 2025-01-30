@@ -632,7 +632,7 @@ def insert_awardee_insite_data(
               participant_id
               , clinic_physical_measurements_status
               , clinic_physical_measurements_finalized_time
-              , s1.site_name AS clinic_physical_measurements_finalized_site
+              , s1.google_group AS clinic_physical_measurements_finalized_site
               , self_reported_physical_measurements_status
               , self_reported_physical_measurements_authored
               , patient_status
