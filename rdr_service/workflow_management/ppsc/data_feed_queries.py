@@ -539,7 +539,7 @@ def insert_awardee_insite_data(
           ehr_latest_submitted AS (
             SELECT participant_id
                 , activity_status_cleaned AS consent_for_electronic_health_records
-                , activity_date_time AS consent_for_electronic_health_records_authored
+                , CAST(activity_date_time AS DATETIME) AS consent_for_electronic_health_records_authored
             FROM (
               SELECT participant_id
                 , activity_status_cleaned
