@@ -3291,7 +3291,8 @@ class ManifestDefinitionProvider:
                 "ai_an",
                 "blocklisted",
                 "blocklisted_reason",
-                "pediatric"
+                "pediatric",
+                "sex_concordance_exception"
             ),
             GenomicManifestTypes.AW3_WGS: (
                 "biobank_id",
@@ -3321,7 +3322,8 @@ class ManifestDefinitionProvider:
                 "pipeline_id",
                 "processing_count",
                 "pediatric",
-                "sequencer"
+                "sequencer",
+                "sex_concordance_exception"
             ),
             GenomicManifestTypes.AW2F: (
                 "PACKAGE_ID",
