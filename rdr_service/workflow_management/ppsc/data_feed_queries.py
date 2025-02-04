@@ -558,14 +558,6 @@ def insert_awardee_insite_data(
             WHERE LOWER(activity_status_cleaned) = 'yes'
             GROUP BY 1
           ),
-          ehr_receipt AS (
-               SELECT participant_id
-                    , MIN(event_date_time) AS first_ehr_receipt_time
-                    , MAX(event_date_time) AS latest_ehr_receipt_time
-               FROM `{project}.{destination_dataset}.datafeed_input_ehr`
-               WHERE ignore_flag = 0
-               GROUP BY participant_id
-          ),
           primary_consent_cte AS (
             SELECT participant_id
                 , event_id
@@ -630,6 +622,8 @@ def insert_awardee_insite_data(
           participant_summary_cte AS (
             SELECT
               participant_id
+              , ehr_receipt_time AS first_ehr_receipt_time
+              , ehr_update_time AS latest_ehr_receipt_time
               , clinic_physical_measurements_status
               , clinic_physical_measurements_finalized_time
               , s1.google_group AS clinic_physical_measurements_finalized_site
@@ -746,8 +740,6 @@ def insert_awardee_insite_data(
             LEFT JOIN ehr_latest_submitted
             USING (participant_id)
             LEFT JOIN ehr_first_yes_submitted
-            USING (participant_id)
-            LEFT JOIN ehr_receipt
             USING (participant_id)
             LEFT JOIN primary_consent_latest_submitted
             USING (participant_id)
