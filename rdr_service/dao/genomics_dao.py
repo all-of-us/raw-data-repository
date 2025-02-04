@@ -4180,6 +4180,7 @@ class GenomicShortReadDao(BaseDao):
                     ],
                     else_=GenomicAW2Raw.pediatric
                 ).label('pediatric'),
+                GenomicSetMember.sexConcordanceException,
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
@@ -4351,7 +4352,8 @@ class GenomicShortReadDao(BaseDao):
                         (GenomicAW2Raw.sequencer.is_(None), 'N')
                     ],
                     else_=GenomicAW2Raw.sequencer
-                ).label('sequencer')
+                ).label('sequencer'),
+                GenomicSetMember.sexConcordanceException
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId

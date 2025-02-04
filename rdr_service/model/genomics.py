@@ -328,6 +328,7 @@ class GenomicSetMember(Base):
     diversionPouchSiteFlag = Column('diversion_pouch_site_flag', SmallInteger, nullable=False, default=0)
     informingLoopReadyFlag = Column('informing_loop_ready_flag', Integer, nullable=False, default=0)
     informingLoopReadyFlagModified = Column("informing_loop_ready_flag_modified", DateTime, nullable=True)
+    sexConcordanceException = Column("sex_concordance_exception", String(255), nullable=True)
 
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
@@ -639,6 +640,7 @@ class GenomicAW3Raw(Base):
     processing_count = Column(String(255), nullable=True)
     pediatric = Column(String(80), nullable=True, index=True)
     sequencer = Column(String(80), nullable=True, index=True)
+    sex_concordance_exception = Column(String(255), nullable=True, index=True)
 
 
 event.listen(GenomicAW3Raw, 'before_insert', model_insert_listener)
