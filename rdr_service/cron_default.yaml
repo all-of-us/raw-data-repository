@@ -24,11 +24,6 @@ cron:
   schedule: every day 03:00
   timezone: America/New_York
   target: offline
-- description: Participant count metrics (Do not manually start)
-  url: /offline/ParticipantCountsOverTime
-  schedule: every day 03:30
-  timezone: America/New_York
-  target: offline
 - description: Rebuild BigQuery Data (Manual)
   url: /offline/BigQueryRebuild
   timezone: America/New_York

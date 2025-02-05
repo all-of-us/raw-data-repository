@@ -17,7 +17,7 @@ from rdr_service.concepts import Concept
 from rdr_service.dao.calendar_dao import CalendarDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
-from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
+from rdr_service.researchers_offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from rdr_service.dao.participant_dao import ParticipantDao
