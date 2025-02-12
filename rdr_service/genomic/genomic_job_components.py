@@ -2914,7 +2914,6 @@ class GenomicBiobankSamplesCoupler:
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
-            "cohort_3_param": ParticipantCohort.COHORT_3.__int__(),
             "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
         }
 
@@ -2978,7 +2977,6 @@ class GenomicBiobankSamplesCoupler:
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
-            "cohort_param": ParticipantCohort.COHORT_2.__int__(),
             "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
         }
 
