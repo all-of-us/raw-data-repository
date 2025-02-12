@@ -2582,7 +2582,8 @@ class GenomicBiobankSamplesCoupler:
     def create_new_genomic_participants(self):
         """
         This method determines which samples to enter into the genomic system
-        from Cohort 3 (New Participants).
+        from Cohort 3 (New Participants). Note that no check is done for the cohort 3 flag
+        in participant summary.
         Validation is handled in the query that retrieves the newly consented
         participants' samples to process.
         :param: from_date : the date from which to lookup new biobank_ids
@@ -2977,6 +2978,7 @@ class GenomicBiobankSamplesCoupler:
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
+            "cohort_param": ParticipantCohort.COHORT_2.__int__(),
             "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
         }
 
