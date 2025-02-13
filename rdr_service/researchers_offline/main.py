@@ -33,18 +33,18 @@ def _build_pipeline_app():
     researchers_offline.config['TRAP_HTTP_EXCEPTIONS'] = True
 
     researchers_offline.add_url_rule(
-        RESEARCHERS_OFFLINE_PREFIX + "ParticipantCountsOverTimeTest",
-        endpoint="participant_counts_over_time",
-        view_func=participant_counts_over_time,
+        RESEARCHERS_OFFLINE_PREFIX + "TestJob",
+        endpoint="test_job",
+        view_func=test_job,
         methods=["GET", "POST"],
     )
 
-    # researchers_offline.add_url_rule(
-    #     RESEARCHERS_OFFLINE_PREFIX + "ParticipantCountsOverTime",
-    #     endpoint="participant_counts_over_time",
-    #     view_func=participant_counts_over_time,
-    #     methods=["GET"],
-    # )
+    researchers_offline.add_url_rule(
+        RESEARCHERS_OFFLINE_PREFIX + "ParticipantCountsOverTime",
+        endpoint="participant_counts_over_time",
+        view_func=participant_counts_over_time,
+        methods=["GET"],
+    )
 
     researchers_offline.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
     researchers_offline.add_url_rule("/_ah/stop", endpoint="stop", view_func=flask_stop, methods=["GET"])
