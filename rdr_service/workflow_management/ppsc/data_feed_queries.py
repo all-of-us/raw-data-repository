@@ -521,7 +521,7 @@ def insert_awardee_insite_data(
           ehr_cte AS (
               SELECT participant_id
                 , event_id
-                , MAX(CASE WHEN data_element_name = 'activity_date_time' THEN data_element_value END) AS activity_date_time
+                , MAX(event_authored_time) AS activity_date_time
                 , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
               FROM `{project}.{src_operational_dataset}.ppsc_consent_event`
               WHERE event_type_name ='EHR Authorization' AND ignore_flag = 0
