@@ -35,7 +35,6 @@ from rdr_service.offline.import_deceased_reports import DeceasedReportImporter
 from rdr_service.offline.import_hpo_lite_pairing import HpoLitePairingImporter
 from rdr_service.offline.enrollment_check import check_enrollment
 from rdr_service.genomic.utils import check_genomic_cron_job, interval_genomic_run_schedule
-from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.offline.retention_eligible_import import calculate_retention_eligible_metrics
 from rdr_service.offline.participant_maint import skew_duplicate_last_modified
 from rdr_service.offline.patient_status_backfill import backfill_patient_status
@@ -232,13 +231,6 @@ def delete_old_keys():
 def delete_expired_obfuscations():
     with ParticipantSummaryDao().session() as session:
         ObfuscationRepository.delete_expired_data(session=session)
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def participant_counts_over_time():
-    calculate_participant_metrics()
     return '{"success": "true"}'
 
 
@@ -1096,13 +1088,6 @@ def _build_pipeline_app():
         endpoint='delete_expired_obfuscation',
         view_func=delete_expired_obfuscations,
         methods=['GET']
-    )
-
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "ParticipantCountsOverTime",
-        endpoint="participant_counts_over_time",
-        view_func=participant_counts_over_time,
-        methods=["GET"],
     )
 
     offline_app.add_url_rule(
