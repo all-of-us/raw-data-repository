@@ -521,7 +521,7 @@ def insert_awardee_insite_data(
           ehr_cte AS (
               SELECT participant_id
                 , event_id
-                , MAX(CASE WHEN data_element_name = 'activity_date_time' THEN data_element_value END) AS activity_date_time
+                , MAX(event_authored_time) AS activity_date_time
                 , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
               FROM `{project}.{src_operational_dataset}.ppsc_consent_event`
               WHERE event_type_name ='EHR Authorization' AND ignore_flag = 0
@@ -571,6 +571,7 @@ def insert_awardee_insite_data(
             SELECT *
               , CASE
                   WHEN LOWER(activity_status) = 'submitted_yes' THEN 'yes'
+                  WHEN LOWER(activity_status) = 'submitted_complete' THEN 'yes'
                   WHEN LOWER(activity_status) = 'submitted_no' THEN 'no'
                   ELSE LOWER(activity_status)
                 END AS activity_status_cleaned
@@ -691,11 +692,25 @@ def insert_awardee_insite_data(
             ) self_reported
             WHERE rn = 1
           ),
+          enrollment_status_mapping AS (
+            SELECT 1 AS enrollment_status, "participant" AS status
+            UNION ALL
+            SELECT 2 AS enrollment_status, "participant_ehr_consent" AS status
+            UNION ALL
+            SELECT 3 AS enrollment_status, "enrolled" AS status
+            UNION ALL
+            SELECT 4 AS enrollment_status, "core_minus_pm" AS status
+            UNION ALL
+            SELECT 5 AS enrollment_status, "core_participant" AS status
+            UNION ALL
+            SELECT 6 AS enrollment_status, "pmb_eligible" AS status
+          ),
           participant_summary_cte AS (
             SELECT
               participant_id
               , ehr_receipt_time AS first_ehr_receipt_time
               , ehr_update_time AS latest_ehr_receipt_time
+              , map.status AS enrollment_status
               , patient_status
               , s2.google_group AS biospecimen_source_site
               , biospecimen_order_time
@@ -707,6 +722,8 @@ def insert_awardee_insite_data(
             FROM `{project}.{src_operational_dataset}.rdr_participant_summary` ps
             LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` s2
             ON ps.biospecimen_source_site_id = s2.site_id
+            LEFT JOIN enrollment_status_mapping map
+            ON ps.enrollment_status_v_3_2 = map.enrollment_status
           ),
           default_filled_columns AS (
             SELECT
@@ -805,8 +822,6 @@ def insert_awardee_insite_data(
             LEFT JOIN ehr_first_yes_submitted
             USING (participant_id)
             LEFT JOIN primary_consent_latest_submitted
-            USING (participant_id)
-            LEFT JOIN enrollment_status_recent_yes
             USING (participant_id)
             LEFT JOIN participant_summary_cte
             USING (participant_id)

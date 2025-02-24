@@ -6,6 +6,7 @@ from flask import Flask, got_request_exception
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
+from rdr_service.researchers_offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.services.flask import RESEARCHERS_OFFLINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
     flask_restful_log_exception_error
@@ -21,6 +22,10 @@ def test_job():
 
     return '{"success": "true"}'
 
+@app_util.auth_required_scheduler
+def participant_counts_over_time():
+    calculate_participant_metrics()
+    return '{"success": "true"}'
 
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -28,9 +33,16 @@ def _build_pipeline_app():
     researchers_offline.config['TRAP_HTTP_EXCEPTIONS'] = True
 
     researchers_offline.add_url_rule(
-        RESEARCHERS_OFFLINE_PREFIX + "ParticipantCountsOverTimeTest",
+        RESEARCHERS_OFFLINE_PREFIX + "TestJob",
         endpoint="test_job",
         view_func=test_job,
+        methods=["GET", "POST"],
+    )
+
+    researchers_offline.add_url_rule(
+        RESEARCHERS_OFFLINE_PREFIX + "ParticipantCountsOverTime",
+        endpoint="participant_counts_over_time",
+        view_func=participant_counts_over_time,
         methods=["GET"],
     )
 
