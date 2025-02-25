@@ -394,6 +394,12 @@ def insert_awardee_insite_data(
             FROM `{project}.{src_operational_dataset}.ppsc_participant`
             WHERE ignore_flag = 0
           ),
+          latest_profile_update_events AS (
+            SELECT *
+            , ROW_NUMBER() OVER(PARTITION BY participant_id, data_element_name ORDER BY event_authored_time DESC) AS rn
+          FROM `{project}.{src_operational_dataset}.ppsc_profile_updates_event`
+          WHERE ignore_flag = 0
+          ),
           profile_pivot AS (
             SELECT participant_id
               , piiname_first AS first_name
@@ -412,8 +418,8 @@ def insert_awardee_insite_data(
                 SELECT participant_id
                   , data_element_name
                   , data_element_value
-                FROM `{project}.{src_operational_dataset}.ppsc_profile_updates_event`
-                WHERE ignore_flag = 0
+                FROM latest_profile_update_events
+                WHERE rn = 1
               )
             PIVOT(ANY_VALUE(data_element_value)
                 FOR data_element_name IN
