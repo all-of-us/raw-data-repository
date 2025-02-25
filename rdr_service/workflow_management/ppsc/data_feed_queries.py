@@ -762,8 +762,8 @@ def insert_awardee_insite_data(
               , clinic_physical_measurements_finalized_time
               , clinic_physical_measurements_finalized_site
               , CASE self_reported_physical_measurements_id IS NOT NULL
-                  WHEN 0 THEN 'unset'
-                  WHEN 1 THEN 'completed'
+                  WHEN False THEN 'unset'
+                  WHEN True THEN 'completed'
                 END AS self_reported_physical_measurements_status
               , self_reported_physical_measurements_authored
               , COALESCE(patient_status, JSON_ARRAY()) AS patient_status
