@@ -206,7 +206,8 @@
     "Deactivation",
     "Participant Status",
     "Attribution",
-    "NPH Opt In"
+    "NPH Opt In",
+    "Account Linkage"
   ],
   "ppsc_intake_consent_event_types": ["Primary Consent", "Adult EHR Authorization"],
   "ppsc_intake_survey_completion_event_types": [
@@ -235,6 +236,7 @@
   ],
   "ppsc_intake_attribution_event_types": ["Org Attribution"],
   "ppsc_intake_nph_opt_in_event_types": ["NPH Opt In"],
+  "ppsc_intake_account_linkage_event_types": ["Relationship Type"],
   "enabled_status_field_list": [
     "enrollmentStatusV3_2",
     "enrollmentStatusParticipantV3_2Time",

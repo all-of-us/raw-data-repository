@@ -7,8 +7,9 @@ from rdr_service import clock, config
 from rdr_service.api_util import HEALTHPRO, PPSC, RDR
 from rdr_service.dao.ppsc_dao import PPSCDefaultBaseDao, PPSCNphOptEventInDao
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
-from rdr_service.model.ppsc import ParticipantEventActivity, ConsentEvent, SurveyCompletionEvent, ProfileUpdatesEvent, \
-    WithdrawalEvent, DeactivationEvent, ParticipantStatusEvent, AttributionEvent
+from rdr_service.model.ppsc import (
+    Activity, ParticipantEventActivity, ConsentEvent, SurveyCompletionEvent, ProfileUpdatesEvent,
+    WithdrawalEvent, DeactivationEvent, ParticipantStatusEvent, AttributionEvent, AccountLinkageEvent)
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -25,6 +26,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.participant_status_event_dao = PPSCDefaultBaseDao(model_type=ParticipantStatusEvent)
         self.attribution_event_dao = PPSCDefaultBaseDao(model_type=AttributionEvent)
         self.nph_opt_in_event_dao = PPSCNphOptEventInDao()
+        self.account_linkage_event_dao = PPSCDefaultBaseDao(model_type=AccountLinkageEvent)
 
         activities = [
             "ENROLLMENT",
@@ -35,7 +37,8 @@ class PPSCIntakeAPITest(BaseTestCase):
             "Deactivation",
             "Participant Status",
             "Attribution",
-            "NPH Opt In"
+            "NPH Opt In",
+            "Account Linkage"
         ]
         for activity in activities:
             self.ppsc_data_gen.create_database_activity(
@@ -882,6 +885,50 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual('NPH Opt In', nph_opt_in_events[1].event_type_name)
         self.assertEqual('activity_date_time', nph_opt_in_events[1].data_element_name)
         self.assertEqual("2024-05-20T14:30:00Z", nph_opt_in_events[1].data_element_value)
+
+    def test_intake_account_linkage_insert(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+
+        payload = {
+            "activity": "Account Linkage",
+            "eventType": "Relationship Type",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "relationship_type",
+                    "dataElementValue": "Child"
+                },
+                {
+                    "dataElementName": "relationship_participant_id",
+                    "dataElementValue": "P129821040"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2025-02-03T20:55:28.079Z"
+                },
+            ]
+        }
+        self.send_post('Intake', request_data=payload)
+
+        participant_event_activities = self.ppsc_participant_activity_dao.get_all()
+        self.assertEqual(1, len(participant_event_activities))
+
+        account_linkage_activity = self.session.query(Activity).filter(Activity.name == 'Account Linkage').one()
+        self.assertEqual(account_linkage_activity.id, participant_event_activities[0].activity_id)
+
+        account_linkage_events = self.account_linkage_event_dao.get_all()
+        self.assertEqual(3, len(account_linkage_events))
+
+        for index, (name, value) in enumerate([
+            ['relationship_type', 'Child'],
+            ['relationship_participant_id', 'P129821040'],
+            ['activity_date_time', '2025-02-03T20:55:28.079Z']
+        ]):
+            event_record = account_linkage_events[index]
+            self.assertEqual(participant.id, event_record.participant_id)
+            self.assertEqual('Relationship Type', event_record.event_type_name)
+            self.assertEqual(name, event_record.data_element_name)
+            self.assertEqual(value, event_record.data_element_value)
 
     def tearDown(self):
         super().tearDown()
