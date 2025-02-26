@@ -220,7 +220,10 @@
     "Social Determinants of Health",
     "Life Functioning Survey",
     "Emotional Health History and Well-Being",
-    "Behavioral Health & Personality"
+    "Behavioral Health & Personality",
+    "Pediatric Basics 0to6",
+    "Pediatric Overall Health 0to6",
+    "Pediatric Environmental Health 0to6"
   ],
   "ppsc_intake_profile_updates_event_types": ["Profile Data"],
   "ppsc_intake_withdrawal_event_types": ["Withdrawal"],
