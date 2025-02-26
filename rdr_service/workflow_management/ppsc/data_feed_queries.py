@@ -489,7 +489,7 @@ def insert_awardee_insite_data(
               WHERE LOWER(event_type_name) = 'deactivation' AND ignore_flag = 0
               GROUP BY 1, 2
           ),
-          latest_deactivation AS (
+          earliest_deactivation AS (
               SELECT participant_id
                 , activity_status AS deactivation_status
                 , activity_date_time AS deactivation_time
@@ -497,7 +497,7 @@ def insert_awardee_insite_data(
                 SELECT participant_id
                   , activity_status
                   , activity_date_time
-                  , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
+                  , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time ASC) AS rn
                 FROM deactivation_cte
               )
               WHERE rn = 1
@@ -756,7 +756,7 @@ def insert_awardee_insite_data(
             USING (participant_id)
             LEFT JOIN latest_withdrawn
             USING (participant_id)
-            LEFT JOIN latest_deactivation
+            LEFT JOIN earliest_deactivation
             USING (participant_id)
             LEFT JOIN latest_deceased
             USING (participant_id)
