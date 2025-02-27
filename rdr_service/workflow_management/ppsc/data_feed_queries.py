@@ -437,27 +437,6 @@ def insert_awardee_insite_data(
                     )
                 )
           ),
-          organization_cte AS (
-            SELECT participant_id
-                , event_id
-                , MAX(event_authored_time) AS activity_date_time
-                , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
-            FROM `{project}.{src_operational_dataset}.ppsc_attribution_event`
-            WHERE event_type_name = 'Org Attribution' AND ignore_flag = 0
-            GROUP BY 1, 2
-          ),
-          latest_organization AS (
-            SELECT participant_id
-                , activity_status AS organization
-            FROM (
-              SELECT participant_id
-                , activity_status
-                , activity_date_time
-                , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
-              FROM organization_cte
-            )
-            WHERE rn = 1
-          ),
           withdrawn_cte AS (
             SELECT participant_id
             , event_id
@@ -557,13 +536,6 @@ def insert_awardee_insite_data(
             )
             WHERE rn = 1
           ),
-          ehr_first_yes_submitted AS (
-            SELECT participant_id
-                , MIN(activity_date_time) AS consent_for_electronic_health_records_first_yes_authored
-            FROM ehr_transformed_values
-            WHERE LOWER(activity_status_cleaned) = 'yes'
-            GROUP BY 1
-          ),
           primary_consent_cte AS (
             SELECT participant_id
                 , event_id
@@ -659,6 +631,7 @@ def insert_awardee_insite_data(
               , sample_status_1sal2
               , sample_order_status_1sal2
               , sample_order_status_1sal2_time
+              , o.external_id AS organization
             FROM `{project}.{src_operational_dataset}.rdr_participant_summary` ps
             LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` s1
             ON ps.clinic_physical_measurements_finalized_site_id = s1.site_id
@@ -666,6 +639,8 @@ def insert_awardee_insite_data(
             ON ps.biospecimen_source_site_id = s2.site_id
             LEFT JOIN enrollment_status_mapping map
             ON ps.enrollment_status_v_3_2 = map.enrollment_status
+            LEFT JOIN `{project}.{src_operational_dataset}.rdr_organization` o
+            ON ps.organization_id = o.organization_id
           ),
           default_filled_columns AS (
             SELECT
@@ -752,8 +727,6 @@ def insert_awardee_insite_data(
               , sample_order_status_1sal2_time
             FROM participant_cte
             LEFT JOIN profile_pivot
-            USING (participant_id)
-            LEFT JOIN latest_organization
             USING (participant_id)
             LEFT JOIN latest_withdrawn
             USING (participant_id)
