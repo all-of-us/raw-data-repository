@@ -586,7 +586,6 @@ def insert_awardee_insite_data(
           primary_consent_latest_submitted AS (
               SELECT participant_id
                   , activity_status_cleaned AS consent_for_study_enrollment
-                  , activity_date_time AS consent_for_study_enrollment_authored
               FROM (
                 SELECT participant_id
                   , activity_status_cleaned
@@ -644,6 +643,8 @@ def insert_awardee_insite_data(
               participant_id
               , ehr_receipt_time AS first_ehr_receipt_time
               , ehr_update_time AS latest_ehr_receipt_time
+              , consent_for_electronic_health_records_first_yes_authored
+              , consent_for_study_enrollment_authored
               , map.status AS enrollment_status
               , clinic_physical_measurements_status
               , clinic_physical_measurements_finalized_time
@@ -761,8 +762,6 @@ def insert_awardee_insite_data(
             LEFT JOIN latest_deceased
             USING (participant_id)
             LEFT JOIN ehr_latest_submitted
-            USING (participant_id)
-            LEFT JOIN ehr_first_yes_submitted
             USING (participant_id)
             LEFT JOIN primary_consent_latest_submitted
             USING (participant_id)
