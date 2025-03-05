@@ -3,7 +3,7 @@ import http.client
 import json
 from copy import deepcopy
 
-from rdr_service import main, config
+from rdr_service import main, config, participant_enums
 from rdr_service.api_util import PPSC, REDCAP
 from rdr_service.clock import FakeClock
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -11,6 +11,8 @@ from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.measurements import Measurement
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import UNSET_HPO_ID
 from tests.test_data import data_path, load_measurement_json, load_measurement_json_amendment
@@ -345,7 +347,6 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
                 return entry['resource']
         return None
 
-
     def test_cancel_a_physical_measurement(self):
         _id = self.participant_id.strip("P")
         self.send_consent(self.participant_id)
@@ -387,6 +388,43 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsStatus"], "COMPLETED")
         self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsCreatedSite"], "hpo-site-monroeville")
         self.assertEqual(ps["entry"][0]["resource"]["clinicPhysicalMeasurementsFinalizedSite"], "hpo-site-bannerphoenix")
+
+    def test_canceling_measurement_ignores_self_reported(self):
+        participant_id = self.participant_id.strip("P")
+        self.send_consent(self.participant_id)
+
+        # set up a self-reported measurement
+        log_position = self.data_generator.create_database_log_position()
+        self_reported_measurement = PhysicalMeasurements(
+            participantId=participant_id,
+            created=datetime.datetime.now(),
+            finalized=datetime.datetime.now(),
+            collectType=participant_enums.PhysicalMeasurementsCollectType.SELF_REPORTED,
+            final=True,
+            logPositionId=log_position.logPositionId,
+            physicalMeasurementsId=1234567,
+            resource={}
+        )
+        self.session.add(self_reported_measurement)
+        self.session.commit()
+
+        # send a clinic physical measurement
+        measurement = load_measurement_json(self.participant_id)
+        response = self.send_post(f'Participant/P{participant_id}/PhysicalMeasurements', measurement)
+
+        # cancel the clinic measurement
+        pm_id = response['id']
+        cancel_info = BaseTestCase.get_restore_or_cancel_info()
+        self.send_patch(f'Participant/P{participant_id}/PhysicalMeasurements/{pm_id}', cancel_info)
+
+        # make sure the participant summary didn't get the self-reported data set in the clinic fields
+        summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant_id
+        ).one()
+        self.assertEqual(
+            participant_enums.PhysicalMeasurementsStatus.CANCELLED, summary.clinicPhysicalMeasurementsStatus
+        )
+        self.assertEqual(None, summary.clinicPhysicalMeasurementsFinalizedTime)
 
     def test_make_pm_after_cancel_first_pm(self):
         _id = self.participant_id.strip("P")
