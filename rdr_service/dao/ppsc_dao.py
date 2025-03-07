@@ -7,6 +7,7 @@ from sqlalchemy.orm import aliased
 from rdr_service.dao.base_dao import BaseDao, UpsertableDao
 from rdr_service.model.ppsc import Participant, Site, NPHOptInEvent, ProfileUpdatesEvent, ParticipantStatusEvent, \
     ConsentEvent
+from rdr_service.model.rex import ParticipantMapping
 from rdr_service.model.study_nph import EligibleParticipants
 
 
@@ -25,6 +26,10 @@ class ParticipantDao(BaseDao):
     def get_participant_by_biobank_id(self, *, biobank_id: int):
         with self.session() as session:
             return session.query(Participant).filter(Participant.biobank_id == biobank_id).all()
+
+    def get_all_participants_from_list(self, *, participant_ids: List[int]):
+        with self.session() as session:
+            return session.query(Participant).filter(Participant.id.in_(participant_ids)).all()
 
 
 class SiteDao(UpsertableDao):
@@ -151,6 +156,9 @@ class PPSCNphOptEventInDao(BaseDao):
                     ParticipantStatusEvent.participant_id == ProfileUpdatesEvent.participant_id,
                     ParticipantStatusEvent.event_type_name.ilike('%Test Account%')
                 )
+            ).outerjoin(
+                ParticipantMapping,
+                ParticipantMapping.primary_participant_id == ProfileUpdatesEvent.participant_id
             ).filter(
                 ProfileUpdatesEvent.data_element_name.in_(
                     ['piiname_first',
@@ -162,7 +170,8 @@ class PPSCNphOptEventInDao(BaseDao):
                 ),
                 profile_updates_alias.id.is_(None),
                 EligibleParticipants.id.is_(None),
-                ParticipantStatusEvent.id.is_(None)
+                ParticipantStatusEvent.id.is_(None),
+                ParticipantMapping.id.is_(None)
             ).group_by(
                 ProfileUpdatesEvent.participant_id,
                 case(

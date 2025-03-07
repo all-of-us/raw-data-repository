@@ -1,10 +1,11 @@
 import logging
+from sqlalchemy.exc import IntegrityError
 
 from rdr_service.config import NPH_STUDY_ID, AOU_STUDY_ID
-from rdr_service.dao.ppsc_dao import PPSCNphOptEventInDao
+from rdr_service.dao.ppsc_dao import PPSCNphOptEventInDao, ParticipantDao
 from rdr_service.dao.ppsc_partner_transfer_dao import RTIDataTransferBaseDao
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
-from rdr_service.dao.study_nph_dao import EligibleParticipantsDao
+from rdr_service.dao.study_nph_dao import EligibleParticipantsDao, NphParticipantDao
 from rdr_service.model.ppsc_partner_data_transfer import RTINphOptIn
 
 
@@ -15,6 +16,8 @@ class NphOptInSync:
         self.eligible_dao = EligibleParticipantsDao()
         self.nph_opt_in_event_dao = PPSCNphOptEventInDao()
         self.rex_mapping_dao = RexParticipantMappingDao()
+        self.nph_participant_dao = NphParticipantDao()
+        self.ppsc_participant_dao = ParticipantDao()
         self.usable_nph_objects = None
         self.items_ready_for_sync = []
 
@@ -48,8 +51,12 @@ class NphOptInSync:
 
     def sync_items(self):
         self.get_items_for_sync()
+        all_participant_data = self.ppsc_participant_dao.get_all_participants_from_list(
+            participant_ids=[obj.participant_id for obj in self.items_ready_for_sync])
+
         for item in self.items_ready_for_sync:
             usable_nph_obj = self.get_nph_obj_from_list()
+            participant_data = [obj for obj in all_participant_data if obj.id == item.participant_id]
             self.nph_opt_in_dao.insert(self.nph_opt_in_dao.model_type(**{
                 'nph_participant_id': usable_nph_obj.participant_id,
                 'first_name': item.first_name,
@@ -71,6 +78,14 @@ class NphOptInSync:
                 'primary_study_id': AOU_STUDY_ID
 
             }))
+            try:
+                self.nph_participant_dao.insert(self.nph_participant_dao.model_type(**{
+                    'id': usable_nph_obj.participant_id,
+                    'biobank_id': participant_data[0].biobank_id,
+                }))
+            except IntegrityError as e:
+                logging.error(f'The NPH participant record already exists for {usable_nph_obj.participant_id}: {e}')
+
             self.usable_nph_objects.pop(0)
 
     def run_sync(self):

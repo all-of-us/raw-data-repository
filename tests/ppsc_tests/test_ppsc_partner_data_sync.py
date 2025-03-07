@@ -6,7 +6,7 @@ from rdr_service import clock
 from rdr_service.dao.ppsc_dao import ParticipantDao
 from rdr_service.dao.ppsc_partner_transfer_dao import RTIDataTransferBaseDao
 from rdr_service.dao.rex_dao import RexStudyDao, RexParticipantMappingDao
-from rdr_service.dao.study_nph_dao import EligibleParticipantsDao
+from rdr_service.dao.study_nph_dao import EligibleParticipantsDao, NphParticipantDao
 from rdr_service.data_gen.generators.nph import NphDataGenerator
 from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.ppsc_partner_data_transfer import RTINphOptIn
@@ -24,6 +24,7 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
         self.nph_opt_in_dao = RTIDataTransferBaseDao(RTINphOptIn)
         self.rex_study_dao = RexStudyDao()
         self.rex_mapping_dao = RexParticipantMappingDao()
+        self.nph_participant_dao = NphParticipantDao()
         self.faker = Faker()
 
         activities = [
@@ -152,7 +153,6 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
 
         # nph opt in records
         current_opt_in_records = [obj for obj in self.nph_opt_in_dao.get_all()]
-
         self.assertEqual(len(current_opt_in_records), len(nph_opt_in_sync.items_ready_for_sync))
         self.assertTrue(all(obj.first_name is not None for obj in current_opt_in_records))
         self.assertTrue(all(obj.last_name is not None for obj in current_opt_in_records))
@@ -166,6 +166,11 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
         current_mappings = self.rex_mapping_dao.get_all()
         self.assertEqual(len(current_mappings), len(nph_opt_in_sync.items_ready_for_sync))
 
+        # check NPH record was created
+        current_nph_participants = self.nph_participant_dao.get_all()
+        synced_nph_id = current_opt_in_records[0].nph_participant_id
+        self.assertTrue(synced_nph_id in [obj.id for obj in current_nph_participants])
+
     def tearDown(self):
         super().tearDown()
         self.clear_table_after_test("ppsc.activity")
@@ -173,3 +178,4 @@ class PPSCPartnerDataSyncTest(BaseTestCase):
         self.clear_table_after_test("ppsc.participant_event_activity")
         self.clear_table_after_test("ppsc.profile_updates_event")
         self.clear_table_after_test("ppsc.nph_opt_in_event")
+        self.clear_table_after_test("nph.participant")
