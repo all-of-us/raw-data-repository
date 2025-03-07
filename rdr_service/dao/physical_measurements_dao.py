@@ -365,12 +365,11 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 and obj.status == PhysicalMeasurementsStatus.CANCELLED
                 and self.has_uncancelled_pm(session, participant)
             ):
-
-                get_latest_pm = self.get_latest_pm(session, participant)
-                participant_summary.clinicPhysicalMeasurementsFinalizedTime = get_latest_pm.finalized
-                participant_summary.clinicPhysicalMeasurementsTime = get_latest_pm.created
-                participant_summary.clinicPhysicalMeasurementsCreatedSiteId = get_latest_pm.createdSiteId
-                participant_summary.clinicPhysicalMeasurementsFinalizedSiteId = get_latest_pm.finalizedSiteId
+                latest_clinic_pm = self.get_latest_clinic_pm(session, participant)
+                participant_summary.clinicPhysicalMeasurementsFinalizedTime = latest_clinic_pm.finalized
+                participant_summary.clinicPhysicalMeasurementsTime = latest_clinic_pm.created
+                participant_summary.clinicPhysicalMeasurementsCreatedSiteId = latest_clinic_pm.createdSiteId
+                participant_summary.clinicPhysicalMeasurementsFinalizedSiteId = latest_clinic_pm.finalizedSiteId
         else:
             participant_summary.selfReportedPhysicalMeasurementsStatus = \
                 SelfReportedPhysicalMeasurementsStatus.COMPLETED
@@ -386,12 +385,14 @@ class PhysicalMeasurementsDao(UpdatableDao):
         )
         ParticipantSummaryDao().update_enrollment_status(summary, session=session)
 
-    def get_latest_pm(self, session, participant):
+    def get_latest_clinic_pm(self, session, participant):
         return (
             session.query(PhysicalMeasurements)
             .filter_by(participantId=participant.participantId)
-            .filter(PhysicalMeasurements.finalized != None)
-            .order_by(PhysicalMeasurements.finalized.desc())
+            .filter(
+                PhysicalMeasurements.finalized != None,
+                PhysicalMeasurements.collectType == PhysicalMeasurementsCollectType.SITE
+            ).order_by(PhysicalMeasurements.finalized.desc())
             .first()
         )
 
@@ -400,8 +401,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
         query = (
             session.query(PhysicalMeasurements.status)
             .filter_by(participantId=participant.participantId)
-            .filter(PhysicalMeasurements.finalized != None)
-            .all()
+            .filter(
+                PhysicalMeasurements.finalized != None,
+                PhysicalMeasurements.collectType == PhysicalMeasurementsCollectType.SITE
+            ).all()
         )
         valid_pm = False
         for pm in query:
