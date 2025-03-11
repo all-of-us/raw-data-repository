@@ -45,7 +45,8 @@ from rdr_service.participant_enums import PatientStatusFlag, QuestionnaireRespon
 
 
 class DataGenerator:
-    def __init__(self, session, faker):
+    def __init__(self, session, faker, project):
+        self.project = project
         self.session = session
         self.faker = faker
         self._next_unique_participant_id = 900000000
@@ -327,12 +328,16 @@ class DataGenerator:
             'hpoId': UNSET_HPO_ID,
             'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
             'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
-            'participantOrigin': 'example',
+            'participantOrigin': 'ppsc',
             'version': 1,
             'lastModified': datetime.now(),
             'signUpTime': datetime.now(),
             'isTestParticipant': False
         }
+
+        if self.project == 'test':
+            defaults.update(participantOrigin='example')
+
         defaults.update(kwargs)
 
         if 'biobankId' not in defaults:
