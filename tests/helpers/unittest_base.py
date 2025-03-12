@@ -520,7 +520,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             reset_mysql_instance(with_data, with_consent_codes)
 
             self.session = database_factory.get_database().make_session()
-            self.data_generator = DataGenerator(self.session, self.fake, project='test')
+            self.data_generator = DataGenerator(self.session, self.fake)
         else:
             # Some side effects of common code (like auth_required) use the database.
             database_patch = mock.patch('rdr_service.dao.database_factory.get_database')

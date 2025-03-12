@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 from rdr_service.code_constants import PPI_SYSTEM, WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES, \
@@ -45,8 +46,7 @@ from rdr_service.participant_enums import PatientStatusFlag, QuestionnaireRespon
 
 
 class DataGenerator:
-    def __init__(self, session, faker, project):
-        self.project = project
+    def __init__(self, session, faker):
         self.session = session
         self.faker = faker
         self._next_unique_participant_id = 900000000
@@ -335,7 +335,7 @@ class DataGenerator:
             'isTestParticipant': False
         }
 
-        if self.project == 'test':
+        if os.environ.get('UNITTEST_FLAG') == '1':
             defaults.update(participantOrigin='example')
 
         defaults.update(kwargs)

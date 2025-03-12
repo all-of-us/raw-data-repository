@@ -112,7 +112,7 @@ class ParticipantGenerator(GeneratorMixin):
     def initialize_data_generator(self):
         self.session = database_factory.get_database().make_session()
         fake = faker.Faker()
-        return DataGenerator(self.session, fake, self.project)
+        return DataGenerator(self.session, fake)
 
     @staticmethod
     def convert_case(string_value):
