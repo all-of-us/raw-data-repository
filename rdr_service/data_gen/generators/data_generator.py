@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 from rdr_service.code_constants import PPI_SYSTEM, WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES, \
@@ -327,12 +328,16 @@ class DataGenerator:
             'hpoId': UNSET_HPO_ID,
             'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
             'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
-            'participantOrigin': 'example',
+            'participantOrigin': 'ppsc',
             'version': 1,
             'lastModified': datetime.now(),
             'signUpTime': datetime.now(),
             'isTestParticipant': False
         }
+
+        if os.environ.get('UNITTEST_FLAG') == '1':
+            defaults.update(participantOrigin='example')
+
         defaults.update(kwargs)
 
         if 'biobankId' not in defaults:
