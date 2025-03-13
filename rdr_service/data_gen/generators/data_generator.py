@@ -1074,12 +1074,17 @@ class DataGenerator:
             withdrawalStatus=WithdrawalStatus.NO_USE,
             withdrawalReasonJustification=withdrawal_reason_justification
         )
-        if summary_kwargs or is_native_american:
-            self.create_database_participant_summary(
-                participant=participant,
-                aian=is_native_american,
-                **(summary_kwargs or {})
-            )
+        self.create_database_participant_summary(
+            participant=participant,
+            biobankId=participant.biobankId,
+            siteId=participant.siteId,
+            organizationId=participant.organizationId,
+            aian=is_native_american,
+            participantOrigin=participant.participantOrigin,
+            withdrawalAuthored=withdrawal_time,
+            withdrawalStatus=WithdrawalStatus.NO_USE,
+            **(summary_kwargs or {})
+        )
 
         # Withdrawal report only includes participants that have stored samples
         self.create_database_biobank_stored_sample(biobankId=participant.biobankId, test='test')

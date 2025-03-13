@@ -3,7 +3,7 @@ import mock
 
 from rdr_service import clock, config
 from rdr_service.model.participant import Participant
-from rdr_service.participant_enums import DeceasedStatus, WithdrawalAIANCeremonyStatus, WithdrawalStatus
+from rdr_service.participant_enums import DeceasedStatus, WithdrawalAIANCeremonyStatus
 from rdr_service.tools.tool_libs.biobank_report import BiobankReportTool
 from tests.helpers.tool_test_mixin import ToolTestMixin
 from tests.helpers.unittest_base import BaseTestCase
@@ -87,10 +87,9 @@ class BiobankReportToolTest(ToolTestMixin, BaseTestCase):
         five_days_ago = self._datetime_n_days_ago(5)
 
         # Create a participant that has a withdrawal time outside of the report range, but recently had a sample created
-        withdrawn_participant = self.data_generator.create_database_participant(
-            withdrawalTime=twenty_days_ago,
-            withdrawalStatus=WithdrawalStatus.NO_USE,
-            withdrawalReasonJustification='withdraw before delivery'
+        withdrawn_participant = self.data_generator.create_withdrawn_participant(
+            withdrawal_time=twenty_days_ago,
+            withdrawal_reason_justification='withdraw before delivery'
         )
         self.data_generator.create_database_biobank_stored_sample(
             biobankId=withdrawn_participant.biobankId,
