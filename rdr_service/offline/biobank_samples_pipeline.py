@@ -206,7 +206,7 @@ def get_withdrawal_report_query(start_date: datetime):
     (as biobank samples for Native Americans are disposed of differently)
     """
     ceremony_answer_subquery = _participant_answer_subquery(WITHDRAWAL_CEREMONY_QUESTION_CODE)
-    query = (
+    return (
         Query([
             func.concat(get_biobank_id_prefix(), ParticipantSummary.biobankId).label('biobank_id'),
             func.date_format(ParticipantSummary.withdrawalAuthored, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
@@ -246,7 +246,6 @@ def get_withdrawal_report_query(start_date: datetime):
             )
         ).distinct()
     )
-    return query
 
 
 def _build_query_params(start_date: datetime):
