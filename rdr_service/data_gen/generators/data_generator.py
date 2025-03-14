@@ -3,6 +3,7 @@ from datetime import datetime
 
 from rdr_service.code_constants import PPI_SYSTEM, WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES, \
     WITHDRAWAL_CEREMONY_NO
+from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.api_user import ApiUser
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankOrderHistory, \
@@ -47,6 +48,7 @@ from rdr_service.participant_enums import PatientStatusFlag, QuestionnaireRespon
 
 class DataGenerator:
     def __init__(self, session, faker):
+        self.ppsc_data_gen = PPSCDataGenerator()
         self.session = session
         self.faker = faker
         self._next_unique_participant_id = 900000000
@@ -1083,6 +1085,7 @@ class DataGenerator:
             participantOrigin=participant.participantOrigin,
             withdrawalAuthored=withdrawal_time,
             withdrawalStatus=WithdrawalStatus.NO_USE,
+            withdrawalReasonJustification=withdrawal_reason_justification,
             **(summary_kwargs or {})
         )
 
@@ -1110,6 +1113,15 @@ class DataGenerator:
             questionnaireVersion=questionnaire.version,
             answers=answers,
             participantId=participant.participantId
+        )
+
+        # Create a withdrawal event that satisfies the parameters for the test participant
+        ppsc_participant = self.ppsc_data_gen.create_database_participant(id=participant.participantId,
+                                                                          biobank_id=participant.biobankId)
+        self.ppsc_data_gen.create_database_withdrawal_event(
+            data_element_name='aian_ceremony_status',
+            data_element_value=requests_ceremony,
+            participant_id=ppsc_participant.id
         )
 
         return participant
