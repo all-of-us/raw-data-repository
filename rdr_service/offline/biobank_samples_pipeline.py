@@ -10,28 +10,22 @@ import logging
 import math
 import pytz
 from sqlalchemy import case
-from sqlalchemy.orm import aliased, Query
+from sqlalchemy.orm import Query
 from sqlalchemy.sql import func, or_
 from sqlalchemy.sql.functions import coalesce
 from typing import Dict
 
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs
-from rdr_service.code_constants import (
-    WITHDRAWAL_CEREMONY_YES, WITHDRAWAL_CEREMONY_NO, WITHDRAWAL_CEREMONY_QUESTION_CODE
-)
 from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, \
     BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN, RDR_SLACK_WEBHOOKS
 from rdr_service.dao.database_utils import MYSQL_ISO_DATE_FORMAT, parse_datetime, replace_isodate
+from rdr_service.model import ppsc
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
-from rdr_service.model.code import Code
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
-from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.questionnaire import QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.site import Site
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from rdr_service.offline.sql_exporter import SqlExporter
@@ -205,37 +199,43 @@ def get_withdrawal_report_query(start_date: datetime):
     including their biobank ID, withdrawal time, their origin, and whether they are Native American
     (as biobank samples for Native Americans are disposed of differently)
     """
-    ceremony_answer_subquery = _participant_answer_subquery(WITHDRAWAL_CEREMONY_QUESTION_CODE)
+    ceremony_answer_subquery = _participant_answer_subquery()
     return (
         Query([
-            func.concat(get_biobank_id_prefix(), Participant.biobankId).label('biobank_id'),
-            func.date_format(Participant.withdrawalTime, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
+            func.concat(get_biobank_id_prefix(), ParticipantSummary.biobankId).label('biobank_id'),
+            func.date_format(ParticipantSummary.withdrawalAuthored, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
             case([(ParticipantSummary.aian, 'Y')], else_='N').label('is_native_american'),
             case(
                 [
-                    (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_YES, 'Y'),
-                    (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_NO, 'N'),
+                    (ceremony_answer_subquery.c.data_element_value == 'yes', 'Y'),
+                    (ceremony_answer_subquery.c.data_element_value == 'no', 'N'),
                 ],
                 else_=case([(ParticipantSummary.aian, 'U')], else_='NA')
             ).label('needs_disposal_ceremony'),
-            Participant.participantOrigin.label('participant_origin'),
+            ParticipantSummary.participantOrigin.label('participant_origin'),
             HPO.name.label('paired_hpo'),
             coalesce(Organization.externalId, 'UNSET').label('paired_org'),
             coalesce(Site.googleGroup, 'UNSET').label('paired_site'),
-            Participant.withdrawalReasonJustification.label('withdrawal_reason_justification'),
-            coalesce(ParticipantSummary.deceasedStatus, 0).label('deceased_status')
+            ParticipantSummary.withdrawalReasonJustification.label('withdrawal_reason_justification'),
+            case(
+                [
+                    (ParticipantSummary.deceasedStatus == 1, 'PENDING'),
+                    (ParticipantSummary.deceasedStatus == 2, 'APPROVED'),
+                ],
+                else_='UNSET'
+            ).label('deceased_status'),
         ])
-        .select_from(Participant)
-        .outerjoin(ceremony_answer_subquery, ceremony_answer_subquery.c.participant_id == Participant.participantId)
-        .join(BiobankStoredSample, BiobankStoredSample.biobankId == Participant.biobankId)
-        .outerjoin(ParticipantSummary, ParticipantSummary.participantId == Participant.participantId)
-        .outerjoin(HPO, HPO.hpoId == Participant.hpoId)
-        .outerjoin(Organization, Organization.organizationId == Participant.organizationId)
-        .outerjoin(Site, Site.siteId == Participant.siteId)
+        .select_from(ParticipantSummary)
+        .outerjoin(ceremony_answer_subquery,
+                   ceremony_answer_subquery.c.participant_id == ParticipantSummary.participantId)
+        .join(BiobankStoredSample, BiobankStoredSample.biobankId == ParticipantSummary.biobankId)
+        .outerjoin(HPO, HPO.hpoId == ParticipantSummary.hpoId)
+        .outerjoin(Organization, Organization.organizationId == ParticipantSummary.organizationId)
+        .outerjoin(Site, Site.siteId == ParticipantSummary.siteId)
         .filter(
-            Participant.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
+            ParticipantSummary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
             or_(
-                Participant.withdrawalTime > start_date,
+                ParticipantSummary.withdrawalAuthored > start_date,
                 BiobankStoredSample.created > start_date
             )
         ).distinct()
@@ -502,20 +502,13 @@ _NATIVE_AMERICAN_SQL = """
   (CASE WHEN participant_summary.aian THEN 'Y' ELSE 'N' END) is_native_american"""
 
 
-def _participant_answer_subquery(question_code_value):
-    question_code = aliased(Code)
-    answer_code = aliased(Code)
+def _participant_answer_subquery():
     return (
-        Query([QuestionnaireResponse.participantId, answer_code.value])
-        .select_from(QuestionnaireResponse)
-        .join(QuestionnaireResponseAnswer)
-        .join(QuestionnaireQuestion)
-        .join(question_code, question_code.codeId == QuestionnaireQuestion.codeId)
-        .join(answer_code, answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId)
+        Query([ppsc.WithdrawalEvent.participant_id, ppsc.WithdrawalEvent.data_element_value])
+        .select_from(ppsc.WithdrawalEvent)
+        .join(ParticipantSummary, ppsc.WithdrawalEvent.participant_id == ParticipantSummary.participantId)
         .filter(
-            QuestionnaireResponse.participantId == Participant.participantId,
-            question_code.value == question_code_value,
-            QuestionnaireResponseAnswer.endTime.is_(None)
+            ppsc.WithdrawalEvent.data_element_name == 'aian_ceremony_status'
         )
         .subquery()
     )

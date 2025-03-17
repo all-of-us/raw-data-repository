@@ -5,7 +5,7 @@ import mock
 import random
 import os
 
-from rdr_service import clock, config, participant_enums
+from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file, get_blob
 from rdr_service.code_constants import BIOBANK_TESTS
 from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
@@ -437,10 +437,9 @@ class BiobankSamplesPipelineTest(BaseTestCase):
 
     def test_withdrawal_report(self):
         withdrawal_time = datetime(2024, 2, 17)
-        participant = self.data_generator.create_database_participant(
-            withdrawalStatus=participant_enums.WithdrawalStatus.NO_USE,
-            withdrawalTime=withdrawal_time,
-            withdrawalReasonJustification='testing report'
+        participant = self.data_generator.create_withdrawn_participant(
+            withdrawal_time=withdrawal_time,
+            withdrawal_reason_justification='testing report'
         )
         self.data_generator.create_database_biobank_stored_sample(
             biobankId=participant.biobankId
@@ -463,7 +462,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 'UNSET',    # paired_org
                 'UNSET',    # paired_site
                 'testing report',
-                participant_enums.DeceasedStatus.UNSET
+                'UNSET'
             )])
             mock_upload.assert_called_with(mock.ANY, 'reconciliation/report_2024-02_withdrawals.csv', None)
 
