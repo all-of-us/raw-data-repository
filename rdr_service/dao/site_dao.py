@@ -1,3 +1,6 @@
+
+from sqlalchemy import text
+
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import fhirdate
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.address import Address
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.backboneelement import BackboneElement
@@ -148,6 +151,6 @@ class SiteDao(CacheAllDao):
                 "now": clock.CLOCK.now(),
             }
 
-            session.execute(participant_sql, params)
-            session.execute(participant_summary_sql, params)
-            session.execute(participant_history_sql, params)
+            session.execute(text(participant_sql), params)
+            session.execute(text(participant_summary_sql), params)
+            session.execute(text(participant_history_sql), params)

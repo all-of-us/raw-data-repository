@@ -2,6 +2,8 @@ import datetime
 import json
 import re
 
+from sqlalchemy import text
+
 from rdr_service import config
 from rdr_service.resource.constants import SKIP_TEST_PIDS_FOR_PDR
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
@@ -101,11 +103,11 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         """
         dao = BigQuerySyncDao(backup=False)
         with dao.session() as session:
-            session.execute(sql, args)
+            session.execute(text(sql), args)
 
             sql = 'select resource from bigquery_sync where pk_id = :pid and table_id = :table_id limit 1'
 
-            rec = session.execute(sql, args).first()
+            rec = session.execute(text(sql), args).first()
             if rec:
                 return BQRecord(schema=BQParticipantSummarySchema, data=json.loads(rec.resource),
                                 convert_to_enum=False)

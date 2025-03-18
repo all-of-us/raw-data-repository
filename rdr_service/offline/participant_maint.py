@@ -1,5 +1,6 @@
 import logging
 
+from sqlalchemy import text
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 
 
@@ -22,7 +23,7 @@ def skew_duplicate_last_modified():
                 from participant_summary group by last_modified order by count desc
             ) a where a.count > :min_dups
         """
-        results = session.execute(sql, {"min_dups": min_dups}).fetchall()
+        results = session.execute(text(sql), {"min_dups": min_dups}).fetchall()
 
         if results and len(results) > 0:
             # loop over results and randomize only the microseconds value of the timestamp.
@@ -36,7 +37,7 @@ def skew_duplicate_last_modified():
                     where last_modified = :ts
                 """
 
-                session.execute(sql, {"ts": rec["last_modified"]})
+                session.execute(text(sql), {"ts": rec["last_modified"]})
                 session.commit()  # Release write locks
 
     logging.info('Skewing duplicate lastModified times complete')

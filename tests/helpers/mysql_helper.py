@@ -22,7 +22,7 @@ from types import ModuleType
 import warnings
 
 from alembic.script import ScriptDirectory
-from sqlalchemy import event
+from sqlalchemy import event, text
 
 from rdr_service import config, model, singletons
 from rdr_service.dao import database_factory
@@ -94,10 +94,10 @@ def start_mysql_instance():
     cmd = '{0} --port={1} --datadir={2} --tmpdir={3} --pid-file={4} --log-error={5} --socket={6} ' \
           '--log-bin-trust-function-creators=1'.format(mysqld, MYSQL_PORT, data_dir, tmp_dir, pid_file, log_file,
                                                        sock_file)
-    proc = subprocess.Popen(shlex.split(cmd), stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                            stdout=subprocess.DEVNULL, start_new_session=True)
+    print(cmd)
+    proc = subprocess.Popen(shlex.split(cmd), stdin=subprocess.DEVNULL, start_new_session=True)
 
-    sleep(1.5)
+    sleep(5)
     if not proc or not pid_is_running(proc.pid):
         raise OSError('new instance of mysqld service did not start.')
     # Register the stop method
@@ -131,13 +131,13 @@ def clear_table_on_next_reset(table_name):
 
 
 def _clear_data(engine):
-    engine.execute("set foreign_key_checks = 0")
+    engine.execute(text("set foreign_key_checks = 0"))
     for table_name, is_dirty in table_changed.items():
         if is_dirty:
-            engine.execute(f'truncate table {table_name}')
+            engine.execute(text(f'truncate table {table_name}'))
             table_changed[table_name] = False
 
-    engine.execute("set foreign_key_checks = 1")
+    engine.execute(text("set foreign_key_checks = 1"))
 
 
 def _initialize_database(with_data=True, with_consent_codes=False):
@@ -157,56 +157,57 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     with engine.begin():
         global initialize
         if initialize:
-            engine.execute("DROP DATABASE IF EXISTS rdr")
-            engine.execute("DROP DATABASE IF EXISTS metrics")
-            engine.execute("DROP DATABASE IF EXISTS cdm")
-            engine.execute("DROP DATABASE IF EXISTS nph")
-            engine.execute("DROP DATABASE IF EXISTS rex")
-            engine.execute("DROP DATABASE IF EXISTS voc")
-            engine.execute("DROP DATABASE IF EXISTS ppsc")
+            with engine.connect() as connection:
+                connection.execute(text("DROP DATABASE IF EXISTS rdr"))
+                connection.execute(text("DROP DATABASE IF EXISTS metrics"))
+                connection.execute(text("DROP DATABASE IF EXISTS cdm"))
+                connection.execute(text("DROP DATABASE IF EXISTS nph"))
+                connection.execute(text("DROP DATABASE IF EXISTS rex"))
+                connection.execute(text("DROP DATABASE IF EXISTS voc"))
+                connection.execute(text("DROP DATABASE IF EXISTS ppsc"))
 
-            # Keep in sync with tools/setup_local_database.sh.
-            engine.execute("CREATE DATABASE rdr CHARACTER SET utf8 COLLATE utf8_general_ci")
-            engine.execute("CREATE DATABASE metrics CHARACTER SET utf8 COLLATE utf8_general_ci")
-            engine.execute("CREATE DATABASE cdm CHARACTER SET utf8 COLLATE utf8_general_ci")
-            engine.execute("CREATE DATABASE nph CHARACTER SET utf8 COLLATE utf8_general_ci")
-            engine.execute("CREATE DATABASE rex CHARACTER SET utf8 COLLATE utf8_general_ci")
-            engine.execute("CREATE DATABASE voc CHARACTER SET utf8 COLLATE utf8_general_ci")
-            engine.execute("CREATE DATABASE ppsc CHARACTER SET utf8 COLLATE utf8_general_ci")
+                # Keep in sync with tools/setup_local_database.sh.
+                connection.execute(text("CREATE DATABASE rdr CHARACTER SET utf8 COLLATE utf8_general_ci"))
+                connection.execute(text("CREATE DATABASE metrics CHARACTER SET utf8 COLLATE utf8_general_ci"))
+                connection.execute(text("CREATE DATABASE cdm CHARACTER SET utf8 COLLATE utf8_general_ci"))
+                connection.execute(text("CREATE DATABASE nph CHARACTER SET utf8 COLLATE utf8_general_ci"))
+                connection.execute(text("CREATE DATABASE rex CHARACTER SET utf8 COLLATE utf8_general_ci"))
+                connection.execute(text("CREATE DATABASE voc CHARACTER SET utf8 COLLATE utf8_general_ci"))
+                connection.execute(text("CREATE DATABASE ppsc CHARACTER SET utf8 COLLATE utf8_general_ci"))
 
-            engine.execute("USE ppsc")
-            database.create_ppsc_schema()
+                connection.execute(text("USE ppsc"))
+                database.create_ppsc_schema()
 
-            engine.execute("USE nph")
-            database.create_nph_schema()
+                connection.execute(text("USE nph"))
+                database.create_nph_schema()
 
-            engine.execute("USE rex")
-            database.create_rex_schema()
+                connection.execute(text("USE rex"))
+                database.create_rex_schema()
 
-            engine.execute("USE metrics")
-            database.create_metrics_schema()
+                connection.execute(text("USE metrics"))
+                database.create_metrics_schema()
 
-            engine.execute("USE voc")
-            database.create_voc_schema()
+                connection.execute(text("USE voc"))
+                database.create_voc_schema()
 
-            engine.execute("USE cdm")
-            database.create_cdm_schema()
+                connection.execute(text("USE cdm"))
+                database.create_cdm_schema()
 
-            engine.execute("USE rdr")
-            database.create_schema()
+                connection.execute(text("USE rdr"))
+                database.create_schema()
 
-            # alter table charset like what db migration do
-            engine.execute("ALTER TABLE `questionnaire_response_answer` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
-                           "utf8mb4_unicode_ci")
-            engine.execute("ALTER TABLE `participant_summary` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
-                           "utf8mb4_unicode_ci")
-            _run_unit_test_migrations(engine)
+                # alter table charset like what db migration do
+                connection.execute(text("ALTER TABLE `questionnaire_response_answer` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
+                               "utf8mb4_unicode_ci"))
+                connection.execute(text("ALTER TABLE `participant_summary` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
+                               "utf8mb4_unicode_ci"))
+                _run_unit_test_migrations(engine)
 
             _track_database_changes()
             initialize = False
         else:
             session = database.make_session()
-            session.execute('USE rdr')
+            session.execute(text('USE rdr'))
             _clear_data(session)
             session.commit()
             session.close()
@@ -253,8 +254,10 @@ def _run_unit_test_migrations(engine):
                 warnings.simplefilter("ignore")
 
                 if hasattr(revision.module, 'unittest_schemas'):
-                    for operation in revision.module.unittest_schemas():
-                        engine.execute(operation)
+                    with engine.connect() as connection:
+                        connection.execute(text("USE rdr"))
+                        for operation in revision.module.unittest_schemas():
+                            connection.execute(text(operation))
 
 
 def _setup_consent_codes():

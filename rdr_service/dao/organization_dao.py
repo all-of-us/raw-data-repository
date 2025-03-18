@@ -1,3 +1,6 @@
+
+from sqlalchemy import text
+
 from rdr_service import clock
 from rdr_service.dao.base_dao import FhirMixin, FhirProperty
 from rdr_service.dao.cache_all_dao import CacheAllDao
@@ -61,9 +64,9 @@ class OrganizationDao(CacheAllDao):
                 "now": clock.CLOCK.now(),
             }
 
-            session.execute(participant_sql, params)
-            session.execute(participant_summary_sql, params)
-            session.execute(participant_history_sql, params)
+            session.execute(text(participant_sql), params)
+            session.execute(text(participant_summary_sql), params)
+            session.execute(text(participant_history_sql), params)
 
     def get_id(self, obj):
         return obj.organizationId

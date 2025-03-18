@@ -57,19 +57,18 @@ class GenomicQueryClass:
                         GenomicGCValidationMetrics.processingStatus,
                         GenomicGCValidationMetrics.contamination,
                         sqlalchemy.case(
-                            [
-                                (GenomicGCValidationMetrics.contaminationCategory ==
-                                 GenomicContaminationCategory.EXTRACT_WGS, "extract wgs"),
+                            (GenomicGCValidationMetrics.contaminationCategory ==
+                             GenomicContaminationCategory.EXTRACT_WGS, "extract wgs"),
 
-                                (GenomicGCValidationMetrics.contaminationCategory ==
-                                 GenomicContaminationCategory.NO_EXTRACT, "no extract"),
+                            (GenomicGCValidationMetrics.contaminationCategory ==
+                             GenomicContaminationCategory.NO_EXTRACT, "no extract"),
 
-                                (GenomicGCValidationMetrics.contaminationCategory ==
-                                 GenomicContaminationCategory.EXTRACT_BOTH, "extract both"),
+                            (GenomicGCValidationMetrics.contaminationCategory ==
+                             GenomicContaminationCategory.EXTRACT_BOTH, "extract both"),
 
-                                (GenomicGCValidationMetrics.contaminationCategory ==
-                                 GenomicContaminationCategory.TERMINAL_NO_EXTRACT, "terminal no extract"),
-                            ], else_=""
+                            (GenomicGCValidationMetrics.contaminationCategory ==
+                             GenomicContaminationCategory.TERMINAL_NO_EXTRACT, "terminal no extract"),
+                            else_=""
                         ),
                         sqlalchemy.func.IF(ParticipantSummary.consentForGenomicsROR
                                            == QuestionnaireStatus.SUBMITTED,

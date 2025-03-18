@@ -20,7 +20,7 @@ class _SqlDatabase(Database):
         if url.drivername != "sqlite" and (
                 not url.database
                 or (url.database != db_name and db_name is not None)):
-            url.database = db_name
+            url = url.set(database=db_name)
 
         super(_SqlDatabase, self).__init__(url, **kwargs)
 

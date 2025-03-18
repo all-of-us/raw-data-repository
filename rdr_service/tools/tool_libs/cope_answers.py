@@ -5,6 +5,8 @@
 
 import json
 
+from sqlalchemy import text
+
 from rdr_service import config
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
@@ -58,7 +60,7 @@ class CopeAnswersClass(ToolBase):
 
         question_totals = {}
         with self.get_session() as session:
-            answer_counts = session.execute(ANSWER_COUNT_SQL, params={
+            answer_counts = session.execute(text(ANSWER_COUNT_SQL), params={
                 'codes': codes,
                 'external_ids_for_month': external_ids
             })

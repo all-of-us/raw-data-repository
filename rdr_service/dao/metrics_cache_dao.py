@@ -2,7 +2,7 @@ import datetime
 import json
 
 import sqlalchemy
-from sqlalchemy import and_, desc, func, or_, distinct
+from sqlalchemy import and_, desc, func, or_, distinct, text
 
 from rdr_service.census_regions import census_regions
 from rdr_service.code_constants import PPI_SYSTEM
@@ -174,7 +174,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                 delete from metrics_enrollment_status_cache where date_inserted < :seven_days_ago
                 """
                 params = {'seven_days_ago': seven_days_ago}
-                session.execute(delete_sql, params)
+                session.execute(text(delete_sql), params)
 
     def to_metrics_client_json(self, result_set, enrollment_statuses=None):
         client_json = []
@@ -271,7 +271,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
 
             results_by_date = []
 
-            cursor = session.execute(sql, params)
+            cursor = session.execute(text(sql), params)
             try:
                 results = cursor.fetchall()
                 for result in results:
@@ -481,7 +481,7 @@ class MetricsGenderCacheDao(BaseDao):
                 params = {'start_date': start_date, 'end_date': end_date, 'date_inserted': last_inserted_date,
                           'cache_type': MetricsCacheType.METRICS_V2_API}
 
-            cursor = session.execute(sql, params)
+            cursor = session.execute(text(sql), params)
             try:
                 results = cursor.fetchall()
             finally:
@@ -524,7 +524,7 @@ class MetricsGenderCacheDao(BaseDao):
                   delete from metrics_gender_cache where date_inserted < :seven_days_ago and type = :type
                 """
                 params = {'seven_days_ago': seven_days_ago, 'type': self.cache_type}
-                session.execute(delete_sql, params)
+                session.execute(text(delete_sql), params)
 
     def to_metrics_client_json(self, result_set):
         client_json = []
@@ -2309,7 +2309,7 @@ class MetricsLifecycleCacheDao(BaseDao):
           delete from metrics_lifecycle_cache where date_inserted < :seven_days_ago and type = :type
         """
                 params = {'seven_days_ago': seven_days_ago, 'type': self.cache_type}
-                session.execute(delete_sql, params)
+                session.execute(text(delete_sql), params)
 
     def to_metrics_client_json(self, result_set):
         client_json = []

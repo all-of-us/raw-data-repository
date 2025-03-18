@@ -21,7 +21,7 @@ class PpiValidationResults(Base):
     obsoletion_timestamp = sa.Column(UTCDateTime, nullable=True)
     obsoletion_reason = sa.Column(sa.String(512), nullable=True)
 
-    errors: List['PpiValidationErrors'] = sa.orm.relationship('PpiValidationErrors', back_populates='result')
+    errors = sa.orm.relationship('PpiValidationErrors', back_populates='result')
 
 
 sa.event.listen(PpiValidationResults, "before_insert", model_insert_listener)

@@ -22,7 +22,7 @@ class Survey(Base):
     redcapProjectId = Column('redcap_project_id', Integer)
     redcapProjectTitle = Column('redcap_project_title', String(1024))
 
-    questions: List['SurveyQuestion'] = relationship('SurveyQuestion', back_populates='survey')
+    questions = relationship('SurveyQuestion', back_populates='survey')
 
 
 class SurveyQuestionType(messages.Enum):
@@ -58,7 +58,7 @@ class SurveyQuestion(Base):
     branching_logic = Column(String(1024))
     display = Column(String(2048))
 
-    options: List['SurveyQuestionOption'] = relationship('SurveyQuestionOption', back_populates='question')
+    options = relationship('SurveyQuestionOption', back_populates='question')
 
 
 class SurveyQuestionOption(Base):

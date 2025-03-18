@@ -1922,9 +1922,7 @@ class GenomicPiiDao(BaseDao):
                     ParticipantSummary.dateOfBirth,
                     GenomicSetMember.sexAtBirth,
                     sqlalchemy.case(
-                        [
-                            (informing_loop_ready.c.id.isnot(None), True)
-                        ],
+                        (informing_loop_ready.c.id.isnot(None), True),
                         else_=False
                     ).label('hgmInformingLoop')
                 ).join(
@@ -2531,9 +2529,7 @@ class GenomicSchedulingDao(BaseDao):
                 GenomicAppointmentEvent.language,
                 GenomicAppointmentEvent.cancellation_reason,
                 sqlalchemy.case(
-                    [
-                        (note_alias.id.isnot(None), True)
-                    ],
+                    (note_alias.id.isnot(None), True),
                     else_=False
                 ).label('note_available'),
             ).select_from(
@@ -2820,7 +2816,7 @@ class GenomicAW1RawDao(BaseDao, GenomicDaoMixin):
     def truncate(self):
         if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
             with self.session() as session:
-                session.execute("DELETE FROM genomic_aw1_raw WHERE TRUE")
+                session.execute(sqlalchemy.text("DELETE FROM genomic_aw1_raw WHERE TRUE"))
 
     def delete_from_filepath(self, filepath):
         with self.session() as session:
@@ -2893,7 +2889,7 @@ class GenomicAW2RawDao(BaseDao, GenomicDaoMixin):
     def truncate(self):
         if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
             with self.session() as session:
-                session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
+                session.execute(sqlalchemy.text("DELETE FROM genomic_aw2_raw WHERE TRUE"))
 
 
 class GenomicIncidentDao(UpdatableDao, GenomicDaoMixin):
@@ -3358,7 +3354,7 @@ class GcDataFileStagingDao(BaseDao, GenomicDaoMixin):
 
     def truncate(self):
         with self.session() as session:
-            session.execute("DELETE FROM gc_data_file_staging WHERE TRUE")
+            session.execute(sqlalchemy.text("DELETE FROM gc_data_file_staging WHERE TRUE"))
 
     def get_missing_gc_data_file_records(self, sample_ids=None):
         with self.session() as session:
@@ -3428,16 +3424,14 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
                 GenomicGcDataFileMissing.gc_validation_metric_id,
                 GenomicGcDataFileMissing.file_type,
                 sqlalchemy.case(
-                    [
-                        (GenomicSetMember.genomeType == 'aou_array', GenomicGCValidationMetrics.chipwellbarcode),
-                        (GenomicSetMember.genomeType == 'aou_wgs',
-                         GenomicSetMember.sampleId)
-                    ], ).label('identifier_value'),
+                    (GenomicSetMember.genomeType == 'aou_array', GenomicGCValidationMetrics.chipwellbarcode),
+                    (GenomicSetMember.genomeType == 'aou_wgs',
+                     GenomicSetMember.sampleId)
+                ).label('identifier_value'),
                 sqlalchemy.case(
-                    [
-                        (GenomicSetMember.genomeType == 'aou_array', 'chipwellbarcode'),
-                        (GenomicSetMember.genomeType == 'aou_wgs', 'sample_id')
-                    ], ).label('identifier_type')
+                    (GenomicSetMember.genomeType == 'aou_array', 'chipwellbarcode'),
+                    (GenomicSetMember.genomeType == 'aou_wgs', 'sample_id')
+                ).label('identifier_type')
             ).join(
                 GenomicGCValidationMetrics,
                 GenomicGCValidationMetrics.id == GenomicGcDataFileMissing.gc_validation_metric_id
@@ -3542,7 +3536,7 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
     def truncate(self):
         if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
             with self.session() as session:
-                session.execute("DELETE FROM user_event_metrics WHERE TRUE")
+                session.execute(sqlalchemy.text("DELETE FROM user_event_metrics WHERE TRUE"))
 
     def get_id(self, obj):
         pass
@@ -3600,11 +3594,9 @@ class UserEventMetricsDao(BaseDao, GenomicDaoMixin):
                 GenomicInformingLoop.sample_id,
                 coalesce(GenomicInformingLoop.event_authored_time, "0").label("event_authored_time"),
                 sqlalchemy.case(
-                    [
-                        (UserEventMetrics.event_name == event_mappings['yes'], 'yes'),
-                        (UserEventMetrics.event_name == event_mappings['no'], 'no'),
-                        (UserEventMetrics.event_name == event_mappings['maybe_later'], 'maybe_later')
-                    ],
+                    (UserEventMetrics.event_name == event_mappings['yes'], 'yes'),
+                    (UserEventMetrics.event_name == event_mappings['no'], 'no'),
+                    (UserEventMetrics.event_name == event_mappings['maybe_later'], 'maybe_later'),
                     else_="missing"
                 ).label('event_value')
             ).select_from(
@@ -3993,19 +3985,16 @@ class GenomicQueriesDao(BaseDao):
             records = session.query(
                 GenomicSetMember.participantId.label('participant_id'),
                 func.max(sqlalchemy.case(
-                    [
-                        (GenomicSetMember.gemA1ManifestJobRunId.isnot(None), True)
-                    ],
+                    (GenomicSetMember.gemA1ManifestJobRunId.isnot(None), True),
                     else_=False
                 )).label('array_results'),
                 func.max(sqlalchemy.case(
-                    [
-                        (
-                            or_(
-                                GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
-                                GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
-                            ), True)
-                    ],
+                    (
+                        or_(
+                            GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None),
+                            GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None)
+                        ), True
+                    ),
                     else_=False
                 )).label('cvl_results')
             ).join(
@@ -4175,9 +4164,7 @@ class GenomicShortReadDao(BaseDao):
                     sqlalchemy.sql.expression.literal("False")),
                 GenomicSetMember.blockResearchReason,
                 sqlalchemy.case(
-                    [
-                        (GenomicAW2Raw.pediatric.is_(None), 'N')
-                    ],
+                    (GenomicAW2Raw.pediatric.is_(None), 'N'),
                     else_=GenomicAW2Raw.pediatric
                 ).label('pediatric'),
                 GenomicSetMember.sexConcordanceException,
@@ -4336,21 +4323,15 @@ class GenomicShortReadDao(BaseDao):
                 GenomicSetMember.blockResearchReason,
                 GenomicGCValidationMetrics.pipelineId,
                 sqlalchemy.case(
-                    [
-                        (current_processed_count.c.processed_count.is_(None), 1)
-                    ],
+                    (current_processed_count.c.processed_count.is_(None), 1),
                     else_=current_processed_count.c.processed_count + 1
                 ).label('processingCount'),
                 sqlalchemy.case(
-                    [
-                        (GenomicAW2Raw.pediatric.is_(None), 'N')
-                    ],
+                    (GenomicAW2Raw.pediatric.is_(None), 'N'),
                     else_=GenomicAW2Raw.pediatric
                 ).label('pediatric'),
                 sqlalchemy.case(
-                    [
-                        (GenomicAW2Raw.sequencer.is_(None), 'N')
-                    ],
+                    (GenomicAW2Raw.sequencer.is_(None), 'N'),
                     else_=GenomicAW2Raw.sequencer
                 ).label('sequencer'),
                 GenomicSetMember.sexConcordanceException
@@ -4600,12 +4581,12 @@ class GenomicCVLDao(BaseDao):
                 ).label('ny_flag'),
                 sqlalchemy.func.upper(GenomicSetMember.gcSiteId).label('genome_center'),
                 sqlalchemy.case(
-                    [(ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED, 'Y')],
+                    (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED, 'Y'),
                     else_='N'
                 ).label('consent_for_gror'),
                 sqlalchemy.literal('aou_cvl').label('genome_type'),
                 sqlalchemy.case(
-                    [(informing_loop_subquery.decision_value.ilike('yes'), 'Y')],
+                    (informing_loop_subquery.decision_value.ilike('yes'), 'Y'),
                     else_='N'
                 ).label(f'informing_loop_{module}'),
                 GenomicGCValidationMetrics.aouHdrCoverage.label('aou_hdr_coverage'),
@@ -5411,9 +5392,7 @@ class GenomicPRDao(GenomicSubDao):
                 GenomicProteomics.genome_type,
                 GenomicSetMember.ai_an,
                 sqlalchemy.case(
-                    [
-                        (current_processed_count.c.processed_count.is_(None), 1)
-                    ],
+                    (current_processed_count.c.processed_count.is_(None), 1),
                     else_=current_processed_count.c.processed_count + 1
                 ),
                 GenomicP2Raw.software_version,

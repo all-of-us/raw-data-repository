@@ -1226,50 +1226,36 @@ class NphBiospecimenDao(BaseDao):
                             'timepointID', StudyCategory.name,
                             'clientID', Order.client_id,
                             'specimenCode', case(
-                                [
-                                    (OrderedSample.identifier.isnot(None), OrderedSample.identifier),
-                                ],
+                                (OrderedSample.identifier.isnot(None), OrderedSample.identifier),
                                 else_=OrderedSample.test
                             ),
                             'volume', OrderedSample.volume,
                             'volumeUOM', OrderedSample.volumeUnits,
                             'orderedSampleStatus', case(
-                                [
-                                    (Order.status == 'cancelled', 'Cancelled'),
-                                    (OrderedSample.status.ilike('cancelled'), 'Cancelled'),
-                                ],
+                                (Order.status == 'cancelled', 'Cancelled'),
+                                (OrderedSample.status.ilike('cancelled'), 'Cancelled'),
                                 else_='Active'
                             ),
                             'collectionDateUTC', case(
-                                [
-                                    (OrderedSample.parent_sample_id.isnot(None), parent_ordered_sample.collected),
-                                ],
+                                (OrderedSample.parent_sample_id.isnot(None), parent_ordered_sample.collected),
                                 else_=OrderedSample.collected
                             ),
                             'processingDateUTC', case(
-                                [
-                                    (OrderedSample.test.startswith("ST"), OrderedSample.supplemental_fields["freezed"]),
-                                    (OrderedSample.parent_sample_id.isnot(None), OrderedSample.collected),
-                                ],
+                                (OrderedSample.test.startswith("ST"), OrderedSample.supplemental_fields["freezed"]),
+                                (OrderedSample.parent_sample_id.isnot(None), OrderedSample.collected),
                                 else_=None
                             ),
                             'finalizedDateUTC', case(
-                                [
-                                    (OrderedSample.finalized.isnot(None), OrderedSample.finalized),
-                                ],
+                                (OrderedSample.finalized.isnot(None), OrderedSample.finalized),
                                 else_=None
                             ),
                             'sampleID', case(
-                                [
-                                    (OrderedSample.aliquot_id.isnot(None), OrderedSample.aliquot_id),
-                                ],
+                                (OrderedSample.aliquot_id.isnot(None), OrderedSample.aliquot_id),
                                 else_=OrderedSample.nph_sample_id
                             ),
                             'kitID', case(
-                                [
-                                    (OrderedSample.identifier.ilike("ST%"), Order.nph_order_id),
-                                    (OrderedSample.test.ilike("ST%"), Order.nph_order_id),
-                                ],
+                                (OrderedSample.identifier.ilike("ST%"), Order.nph_order_id),
+                                (OrderedSample.test.ilike("ST%"), Order.nph_order_id),
                                 else_=None
                             ),
                         )

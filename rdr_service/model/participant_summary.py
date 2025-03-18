@@ -520,12 +520,10 @@ class ParticipantSummary(Base):
         Enum(DigitalHealthSharingStatus),
         Computed(
             case(
-                [
-                    (isEhrDataAvailable, int(DigitalHealthSharingStatus.CURRENTLY_SHARING)),
-                    (isParticipantMediatedEhrDataAvailable, int(DigitalHealthSharingStatus.CURRENTLY_SHARING)),
-                    (wasEhrDataAvailable, int(DigitalHealthSharingStatus.EVER_SHARED)),
-                    (wasParticipantMediatedEhrAvailable, int(DigitalHealthSharingStatus.EVER_SHARED))
-                ],
+                (isEhrDataAvailable, int(DigitalHealthSharingStatus.CURRENTLY_SHARING)),
+                (isParticipantMediatedEhrDataAvailable, int(DigitalHealthSharingStatus.CURRENTLY_SHARING)),
+                (wasEhrDataAvailable, int(DigitalHealthSharingStatus.EVER_SHARED)),
+                (wasParticipantMediatedEhrAvailable, int(DigitalHealthSharingStatus.EVER_SHARED)),
                 else_=int(DigitalHealthSharingStatus.NEVER_SHARED)
             ),
             persisted=True
@@ -1910,7 +1908,7 @@ class ParticipantSummary(Base):
     regardless of when it was sent to RDR
     """
 
-    relatedParticipants: List[AccountLink] = None  # placeholder filled in by the DAO
+    relatedParticipants = None  # placeholder filled in by the DAO
     """
     Provides a list of participant accounts associated with this account.
     For a pediatric participant's summary, this will be the list of guardians associated with the pediatric participant.
@@ -1955,7 +1953,7 @@ class ParticipantSummary(Base):
         lazy='noload'
     )
 
-    pediatricData: List[PediatricDataLog] = relationship(
+    pediatricData = relationship(
         'PediatricDataLog',
         primaryjoin=and_(
             foreign(participantId) == remote(PediatricDataLog.participant_id),

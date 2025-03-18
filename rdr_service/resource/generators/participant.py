@@ -9,7 +9,7 @@ from collections import OrderedDict
 from dateutil import parser, tz
 from dateutil.parser import ParserError
 # from dateutil.relativedelta import relativedelta
-from sqlalchemy import func, desc, exc, inspect, or_
+from sqlalchemy import func, desc, exc, inspect, or_, text
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
 
@@ -298,13 +298,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         """
         dao = ResourceDataDao(backup=False)
         with dao.session() as session:
-            session.execute(sql, args)
+            session.execute(text(sql), args)
 
             sql = """
                 select resource from resource_data rd inner join resource_type rt on rd.resource_type_id = rt.id
                  where rd.resource_pk_id = :pid and rt.type_uid = :type_uid limit 1"""
 
-            rec = session.execute(sql, args).first()
+            rec = session.execute(text(sql), args).first()
             if rec:
                 summary = json.loads(rec.resource)
                 return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
@@ -1225,7 +1225,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # Find all biobank orders associated with this participant.  PDR-1432 WORKAROUND:  Certain biobank orders may
         # be excluded from the list due to rare occurrences of "orphaned" orders created by HPRO
         # TODO:  Update to use a new ignore column as filter when implemented for DA-3150 and backfill is completed
-        cursor = ro_session.execute(_biobank_orders_sql, {'p_id': p_id})
+        cursor = ro_session.execute(text(_biobank_orders_sql), {'p_id': p_id})
         biobank_orders = [r for r in cursor]
         # Create a unique identifier for each biobank order. This uid must be repeatable, so we sort by 'created'.
         # This unique biobank order id will be used as the prefix of the unique id for each biobank sample record.
@@ -1240,7 +1240,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # Find stored samples associated with this participant. For any stored samples for which there
         # is no known biobank order, create a separate list that will be consolidated into a "pseudo" order record
-        cursor = ro_session.execute(_biobank_stored_samples_sql, {'bb_id': p_bb_id})
+        cursor = ro_session.execute(text(_biobank_stored_samples_sql), {'bb_id': p_bb_id})
         bss_results = [r for r in cursor]
         bss_missing_orders = list(filter(lambda r: r.biobank_order_id is None, bss_results))
 
@@ -1248,7 +1248,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # This will reconcile ordered samples and stored samples (when available) to create sample summary records
         # for each sample associated with the order record
         for row in biobank_orders:
-            cursor = ro_session.execute(_biobank_ordered_samples_sql, {'p_id': p_id, 'bo_id': row.biobank_order_id})
+            cursor = ro_session.execute(text(_biobank_ordered_samples_sql), {'p_id': p_id, 'bo_id': row.biobank_order_id})
             bos_results = [r for r in cursor]
             bbo_samples = list()
             stored_count = 0
@@ -1416,7 +1416,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             ORDER BY psh.id
         """
         try:
-            cursor = ro_session.execute(sql, {'pid': p_id})
+            cursor = ro_session.execute(text(sql), {'pid': p_id})
         except exc.ProgrammingError:
             # The patient_status_history table does not exist when running unittests.
             return data
@@ -1629,7 +1629,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             ro_dao = ResourceDataDao(backup=True)
 
         with ro_dao.session() as session:
-            results = session.execute(_module_info_sql, {"p_id": p_id, "mod": module})
+            results = session.execute(text(_module_info_sql), {"p_id": p_id, "mod": module})
             if not results:
                 return None
 
@@ -1653,7 +1653,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             for row in results:
                 # Save parent record field values into data dict.
                 data = ro_dao.to_dict(row, result_proxy=results)
-                qnans = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
+                qnans = session.execute(text(_answers_sql), {'qr_id': row.questionnaire_response_id})
                 # Save answers into data dict.  Ignore duplicate answers to the same question from the same response
                 # (See: questionnaire_response_id 680418686 as an example)
                 last_question_code_id = None
@@ -1813,7 +1813,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             order by qr.authored, qr.created, qr.external_id"""
 
         args = { 'p_id': p_id, 'module': module, 'class_type': int(classification_type) }
-        results = ro_session.execute(sql, args)
+        results = ro_session.execute(text(sql), args)
         # Create distinct list of questionnaire_response_ids and preserve order
         qr_ids = list(dict.fromkeys([r.questionnaire_response_id for r in results]))
 
@@ -1953,7 +1953,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 from participant_summary
                 where participant_id = {p_id}
              """
-            result = ro_session.execute(ps_sql).first()
+            result = ro_session.execute(text(ps_sql)).first()
             if result and (result.consent_for_electronic_health_records_authored and
                            result.consent_for_electronic_health_records_authored == consent_response_rec.authored and
                            consent_response_rec.authored > pdf_validation_start_date
@@ -1969,7 +1969,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     where participant_id = {p_id}
                         and answer_hash = '{consent_response_rec.answerHash}'
                 """
-                qr_ids = [qr.questionnaire_response_id for qr in ro_session.execute(response_id_sql).fetchall()]
+                qr_ids = [qr.questionnaire_response_id for qr in ro_session.execute(text(response_id_sql)).fetchall()]
 
             # Default to just this response (e.g., answerHash field may have been null/not backfilled if it's older)
             if not qr_ids:
@@ -1985,7 +1985,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                  order by cf.sync_status desc
                  limit 1
             """
-            result = ro_session.execute(validation_status_sql, {'qr_ids': qr_ids}).fetchone()
+            result = ro_session.execute(text(validation_status_sql), {'qr_ids': qr_ids}).fetchone()
             if result:
                 if (result.created > pdf_validation_start_date and
                        result.sync_status in (int(ConsentSyncStatus.NEEDS_CORRECTING),
@@ -2026,7 +2026,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         args = {'p_id': p_id, 'consent_type': int(ConsentType.PRIMARY),
                 'status_filter': [int(ConsentSyncStatus.NEEDS_CORRECTING), int(ConsentSyncStatus.READY_FOR_SYNC),
                                       int(ConsentSyncStatus.SYNC_COMPLETE)]}
-        results = ro_session.execute(sql, args)
+        results = ro_session.execute(text(sql), args)
 
         if results:
             consent_file_ids = [r.id for r in results]

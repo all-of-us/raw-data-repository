@@ -53,7 +53,7 @@ class PhysicalMeasurements(Base):
     """The datetime at which the physical measurements were cancelled"""
     reason = Column("reason", UnicodeText)
     """If measurements are edited or cancelled, user notes to detail change"""
-    measurements: List['Measurement'] = relationship("Measurement", cascade="all, delete-orphan")
+    measurements = relationship("Measurement", cascade="all, delete-orphan")
     origin = Column("origin", String(255))
     collectType = Column("collect_type", Enum(PhysicalMeasurementsCollectType),
                          default=PhysicalMeasurementsCollectType.UNSET)

@@ -4,6 +4,7 @@ from datetime import datetime
 import re
 
 import pytz
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from rdr_service.dao.database_factory import get_database
@@ -91,7 +92,7 @@ class NamedLock:
         Execute the database command to obtain the lock.
         This will wait until either the lock is successfully obtained, or the timeout occurs.
         """
-        lock_result = self._session.execute(f"SELECT GET_LOCK('{self._name}', {self._lock_timout_seconds})").scalar()
+        lock_result = self._session.execute(text(f"SELECT GET_LOCK('{self._name}', {self._lock_timout_seconds})")).scalar()
 
         if lock_result == 1:
             self.is_locked = True
@@ -104,7 +105,7 @@ class NamedLock:
 
     def release_lock(self):
         if self.is_locked:
-            release_result = self._session.execute(f"SELECT RELEASE_LOCK('{self._name}')").scalar()
+            release_result = self._session.execute(text(f"SELECT RELEASE_LOCK('{self._name}')")).scalar()
 
             if release_result is None:
                 logging.error(f'Database lock did not exist for {self._name}!')

@@ -11,9 +11,8 @@ from sqlalchemy import (
     Text
 )
 from sqlalchemy import BLOB  # pylint: disable=unused-import
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.sql import text
-from typing import List
 
 from rdr_service.model.base import Base
 from rdr_service.model.utils import EnumZeroBased, UTCDateTime
@@ -72,7 +71,7 @@ class QuestionnaireResponse(Base):
         default=QuestionnaireResponseStatus.COMPLETED,
         server_default=text(str(int(QuestionnaireResponseStatus.COMPLETED)))
     )
-    answers: List['QuestionnaireResponseAnswer'] = relationship(
+    answers = relationship(
         "QuestionnaireResponseAnswer", cascade="all, delete-orphan"
     )
     extensions = relationship('QuestionnaireResponseExtension')

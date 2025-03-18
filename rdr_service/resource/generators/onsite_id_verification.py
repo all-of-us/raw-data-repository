@@ -5,6 +5,8 @@
 import logging
 from werkzeug.exceptions import NotFound
 
+from sqlalchemy import text
+
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.participant_enums import OnSiteVerificationType, OnSiteVerificationVisitType
 from rdr_service.resource import generators, schemas
@@ -31,7 +33,7 @@ class OnSiteIdVerificationGenerator(generators.BaseGenerator):
                 where id = :id
             """
 
-            row = ro_session.execute(sql, {'id': _pk}).first()
+            row = ro_session.execute(text(sql), {'id': _pk}).first()
             if not row:
                 msg = f'Lookup failed for onsite_id_verification_record {id}'
                 logging.error(msg)

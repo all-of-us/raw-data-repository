@@ -360,7 +360,7 @@ class CurationExportClass(ToolBase):
         )
 
     def _populate_questionnaire_answers_by_module(self, session, pid_list:List[int], cutoff_date=None):
-        session.execute("TRUNCATE TABLE questionnaire_answers_by_module")
+        session.execute(text("TRUNCATE TABLE questionnaire_answers_by_module"))
         self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept, QuestionnaireHistory,
                                     QuestionnaireQuestion, QuestionnaireResponseAnswer, CdrExcludedCode])
         column_map = {

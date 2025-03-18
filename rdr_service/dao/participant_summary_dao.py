@@ -773,8 +773,8 @@ class ParticipantSummaryDao(UpdatableDao):
             self._run_sql_updates(sample_sql, sample_params, counts_sql, counts_params, biobank_ids, session)
 
     def _run_sql_updates(self, sample_sql, sample_params, counts_sql, counts_params, biobank_ids, session):
-        session.execute(sample_sql, sample_params)
-        session.execute(counts_sql, counts_params)
+        session.execute(text(sample_sql), sample_params)
+        session.execute(text(counts_sql), counts_params)
         session.commit()
 
         if biobank_ids:
@@ -1084,15 +1084,15 @@ class ParticipantSummaryDao(UpdatableDao):
             self._clear_timestamp_if_set(summary, 'hasCoreDataTime')
 
         # Legacy code for setting CoreOrdered date field
-        consent = (
-                      summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
-                      and summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED
-                  ) or (
-                      summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
-                      and summary.consentForElectronicHealthRecords is None
-                      and summary.consentForDvElectronicHealthRecordsSharing == QuestionnaireStatus.SUBMITTED
-        )
-        summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
+        # consent = (
+        #               summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
+        #               and summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED
+        #           ) or (
+        #               summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
+        #               and summary.consentForElectronicHealthRecords is None
+        #               and summary.consentForDvElectronicHealthRecordsSharing == QuestionnaireStatus.SUBMITTED
+        # )
+        # summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
 
         if pdr_pubsub:
             # Capture any enrollment status history records that have been added to the session.
@@ -1692,9 +1692,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 ParticipantSummary.isEhrDataAvailable: True,
                 ParticipantSummary.ehrUpdateTime: sqlalchemy.bindparam("receipt_time"),
                 ParticipantSummary.ehrReceiptTime: sqlalchemy.case(
-                    [
-                        (ParticipantSummary.ehrReceiptTime.is_(None), sqlalchemy.bindparam("receipt_time"))
-                    ],
+                    (ParticipantSummary.ehrReceiptTime.is_(None), sqlalchemy.bindparam("receipt_time")),
                     else_=ParticipantSummary.ehrReceiptTime,
                 )
             }
@@ -1710,12 +1708,10 @@ class ParticipantSummaryDao(UpdatableDao):
                 ParticipantSummary.isParticipantMediatedEhrDataAvailable: True,
                 ParticipantSummary.latestParticipantMediatedEhrReceiptTime: sqlalchemy.bindparam("receipt_time"),
                 ParticipantSummary.firstParticipantMediatedEhrReceiptTime: sqlalchemy.case(
-                    [
-                        (
-                            ParticipantSummary.firstParticipantMediatedEhrReceiptTime.is_(None),
-                            sqlalchemy.bindparam("receipt_time")
-                        )
-                    ],
+                    (
+                        ParticipantSummary.firstParticipantMediatedEhrReceiptTime.is_(None),
+                        sqlalchemy.bindparam("receipt_time")
+                    ),
                     else_=ParticipantSummary.firstParticipantMediatedEhrReceiptTime,
                 )
             }

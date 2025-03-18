@@ -2,7 +2,7 @@ from typing import List
 
 from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Index, event
 from sqlalchemy.dialects.mysql import TINYINT, JSON
-from sqlalchemy.orm import relation, relationship
+from sqlalchemy.orm import relationship
 
 from rdr_service.ancillary_study_resources.nph.enums import ConsentOptInTypes, ParticipantOpsElementTypes, \
     StoredSampleStatus, IncidentStatus, IncidentType, DietType, DietStatus, ModuleTypes, VisitPeriod
@@ -23,8 +23,8 @@ class Participant(NphBase):
     disable_reason = Column(String(1024))
     biobank_id = Column(BigInteger, nullable=False, unique=True)
     research_id = Column(BigInteger, unique=True)
-    orders: List['Order'] = relationship('Order', back_populates='participant')
-    stored_samples: List['StoredSample'] = relationship(
+    orders = relationship('Order', back_populates='participant')
+    stored_samples = relationship(
         'StoredSample', back_populates="participant", order_by="desc(StoredSample.id)"
     )
 
@@ -43,8 +43,8 @@ class StudyCategory(NphBase):
     name = Column(String(128))
     type_label = Column(String(128))
     parent_id = Column(BigInteger, ForeignKey("study_category.id"))
-    parent = relation("StudyCategory", remote_side=[id])
-    children: List['StudyCategory'] = relation("StudyCategory", remote_side=[parent_id], uselist=True)
+    parent = relationship("StudyCategory", remote_side=[id])
+    children = relationship("StudyCategory", remote_side=[parent_id], uselist=True)
 
 
 event.listen(StudyCategory, "before_insert", model_insert_listener)
@@ -89,7 +89,7 @@ class Order(NphBase):
     notes = Column(JSON, nullable=False)
     status = Column(String(128))
     participant = relationship(Participant, back_populates='orders')
-    samples: List['OrderedSample'] = relationship('OrderedSample', back_populates='order')
+    samples = relationship('OrderedSample', back_populates='order')
 
 
 Index("order_participant_id", Order.participant_id)
@@ -120,8 +120,8 @@ class OrderedSample(NphBase):
     volumeUnits = Column(String(128))
     status = Column(String(128))
     supplemental_fields = Column(JSON, nullable=True)
-    parent = relation("OrderedSample", remote_side=[id])
-    children: List['OrderedSample'] = relation("OrderedSample", remote_side=[parent_sample_id], uselist=True)
+    parent = relationship("OrderedSample", remote_side=[id])
+    children = relationship("OrderedSample", remote_side=[parent_sample_id], uselist=True)
     order = relationship(Order, back_populates='samples')
 
 

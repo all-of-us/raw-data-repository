@@ -3,6 +3,7 @@ import logging
 from typing import Optional, List
 
 from dateutil.parser import parse
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 
 from rdr_service import config
@@ -264,7 +265,7 @@ def calculate_retention_eligible_metrics():
 
     dao = ParticipantSummaryDao()
     with dao.session() as session:
-        session.execute(update_sql)
+        session.execute(text(update_sql))
 
 
 def _parse_field(parser_func, field_str):

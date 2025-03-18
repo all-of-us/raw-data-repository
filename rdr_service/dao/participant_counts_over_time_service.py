@@ -5,6 +5,7 @@ import warnings
 
 from werkzeug.exceptions import BadRequest
 from google.cloud import bigquery
+from sqlalchemy import text
 
 from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao
@@ -108,16 +109,16 @@ class ParticipantCountsOverTimeService(BaseDao):
                 temp_table_name = TEMP_TABLE_PREFIX + str(hpo.hpoId)
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore')
-                    session.execute('DROP TABLE IF EXISTS {};'.format(temp_table_name))
+                    session.execute(text('DROP TABLE IF EXISTS {};'.format(temp_table_name)))
 
                 temp_table_columns = ", ".join([a + ' ' + b for a, b in self.TEMP_FIELDS])
 
                 sql_string = 'CREATE TABLE {} ({}) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'.format(
                     temp_table_name, temp_table_columns)
-                session.execute(sql_string)
+                session.execute(text(sql_string))
                 logging.info('temp table created for hpo_id: ' + str(hpo.hpoId))
 
-                indexes_cursor = session.execute('SHOW INDEX FROM {}'.format(temp_table_name))
+                indexes_cursor = session.execute(text('SHOW INDEX FROM {}'.format(temp_table_name)))
 
                 index_name_list = []
                 for index in indexes_cursor:
@@ -126,7 +127,7 @@ class ParticipantCountsOverTimeService(BaseDao):
 
                 for index_name in index_name_list:
                     if index_name != 'PRIMARY':
-                        session.execute('ALTER TABLE {} DROP INDEX  {}'.format(temp_table_name, index_name))
+                        session.execute(text('ALTER TABLE {} DROP INDEX  {}'.format(temp_table_name, index_name)))
 
                 columns_str = ", ".join(['p.' + a if a in self.PARTICIPANT_FIELDS else 'ps.' + a for a, b in
                                          self.TEMP_FIELDS])
@@ -138,29 +139,29 @@ class ParticipantCountsOverTimeService(BaseDao):
                     bigquery.ScalarQueryParameter("hpo_id", "INT64", hpo.hpoId),
                 ]
 
-                session.execute('CREATE INDEX idx_sign_up_time ON {} (sign_up_time)'.format(temp_table_name))
-                session.execute('CREATE INDEX idx_date_of_birth ON {} (date_of_birth)'.format(temp_table_name))
-                session.execute('CREATE INDEX idx_consent_time ON {} (consent_for_study_enrollment_time)'
-                                .format(temp_table_name))
-                session.execute('CREATE INDEX idx_member_time ON {} (enrollment_status_member_time)'
-                                .format(temp_table_name))
-                session.execute('CREATE INDEX idx_sample_time ON {} (enrollment_status_core_stored_sample_time)'
-                                .format(temp_table_name))
-                session.execute('CREATE INDEX idx_participant_origin ON {} (participant_origin)'
-                                .format(temp_table_name))
+                session.execute(text('CREATE INDEX idx_sign_up_time ON {} (sign_up_time)'.format(temp_table_name)))
+                session.execute(text('CREATE INDEX idx_date_of_birth ON {} (date_of_birth)'.format(temp_table_name)))
+                session.execute(text('CREATE INDEX idx_consent_time ON {} (consent_for_study_enrollment_time)'
+                                .format(temp_table_name)))
+                session.execute(text('CREATE INDEX idx_member_time ON {} (enrollment_status_member_time)'
+                                .format(temp_table_name)))
+                session.execute(text('CREATE INDEX idx_sample_time ON {} (enrollment_status_core_stored_sample_time)'
+                                .format(temp_table_name)))
+                session.execute(text('CREATE INDEX idx_participant_origin ON {} (participant_origin)'
+                                .format(temp_table_name)))
 
                 participant_data = self.build_participant_sql(params, columns_str)
                 self.batch_insert_results(session, temp_table_name, participant_data)
 
                 logging.info('data inserted into temp table for hpo_id: ' + str(hpo.hpoId))
 
-            session.execute('DROP TABLE IF EXISTS metrics_tmp_participant_origin;')
-            session.execute('CREATE TABLE metrics_tmp_participant_origin (participant_origin VARCHAR(50))')
+            session.execute(text('DROP TABLE IF EXISTS metrics_tmp_participant_origin;'))
+            session.execute(text('CREATE TABLE metrics_tmp_participant_origin (participant_origin VARCHAR(50))'))
             participant_origin_sql = """
                 INSERT INTO metrics_tmp_participant_origin
                 SELECT DISTINCT participant_origin FROM participant
             """
-            session.execute(participant_origin_sql)
+            session.execute(text(participant_origin_sql))
 
             logging.info('Init temp table for metrics cron job.')
 
@@ -200,11 +201,11 @@ class ParticipantCountsOverTimeService(BaseDao):
             records_to_insert.append(x)
 
             if len(records_to_insert) == batch_size:
-                session.execute(batch_insert_stmt, records_to_insert)
+                session.execute(text(batch_insert_stmt), records_to_insert)
                 records_to_insert.clear()
 
         if records_to_insert:
-            session.execute(batch_insert_stmt, records_to_insert)
+            session.execute(text(batch_insert_stmt), records_to_insert)
             records_to_insert.clear()
 
     def clean_tmp_tables(self):
@@ -217,7 +218,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                 temp_table_name = TEMP_TABLE_PREFIX + str(hpo.hpoId)
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore')
-                    session.execute('DROP TABLE IF EXISTS {};'.format(temp_table_name))
+                    session.execute(text('DROP TABLE IF EXISTS {};'.format(temp_table_name)))
 
     def refresh_metrics_cache_data(self, start_date, end_date, stage_number):
         self.start_date = start_date
@@ -302,7 +303,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                   'date_inserted': self.cronjob_time}
         with dao.session() as session:
             for sql in sql_arr:
-                session.execute(sql, params)
+                session.execute(text(sql), params)
 
     def get_filtered_results(
         self, stratification, start_date, end_date, history, awardee_ids, enrollment_statuses, sample_time_def,
@@ -398,7 +399,7 @@ class ParticipantCountsOverTimeService(BaseDao):
         results_by_date = []
 
         with self.session() as session:
-            cursor = session.execute(sql, params)
+            cursor = session.execute(text(sql), params)
 
         # Iterate through each result (by date), transforming tabular SQL results
         # into expected list-of-dictionaries response format

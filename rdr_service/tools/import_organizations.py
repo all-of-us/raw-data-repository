@@ -17,6 +17,8 @@ Usage:
 import logging
 import os
 
+from sqlalchemy import text
+
 import googlemaps
 from dateutil.parser import parse
 
@@ -134,7 +136,7 @@ class HPOImporter(CsvImporter):
             str_list=str_list
         )
 
-        session.execute(sql)
+        session.execute(text(sql))
 
     def _cleanup_old_entities(self, session, row_list, dry_run):
         self.hpo_dao = HPODao()
@@ -163,7 +165,7 @@ class HPOImporter(CsvImporter):
                     params=str_list
                 )
 
-                session.execute(sql)
+                session.execute(text(sql))
 
                 # Try to delete the old HPO's but if they are referenced in another table they are at least
                 # marked as obsolete
@@ -219,7 +221,7 @@ class OrganizationImporter(CsvImporter):
             str_list=str_list
         )
 
-        session.execute(sql)
+        session.execute(text(sql))
 
     def _cleanup_old_entities(self, session, row_list, dry_run):
         log_prefix = "(dry run) " if dry_run else ""
@@ -248,7 +250,7 @@ class OrganizationImporter(CsvImporter):
             WHERE organization_id in ({org_id_list})""".format(
                     org_id_list=str_list
                 )
-                session.execute(sql)
+                session.execute(text(sql))
 
                 logging.info(log_prefix + "Deleting old Organization no longer in Google sheet: %s", org)
                 self.delete_sql_statement(session, str_list)
@@ -375,7 +377,7 @@ class SiteImporter(CsvImporter):
             str_list=str_list
         )
 
-        session.execute(sql)
+        session.execute(text(sql))
 
     def _cleanup_old_entities(self, session, row_list, dry_run):
         log_prefix = "(dry run) " if dry_run else ""
@@ -407,7 +409,7 @@ class SiteImporter(CsvImporter):
         WHERE site_id in ({site_id_list})""".format(
             site_id_list=str_list
         )
-        session.execute(sql)
+        session.execute(text(sql))
 
         self.site_dao._invalidate_cache()
         # Try to delete old sites, this may partially fail if there are still foreign references.

@@ -103,7 +103,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             return None, list()
 
         with self.ro_dao.session() as session:
-            question_codes = session.execute(_question_code_sql, {'module_id': module_id, 'system': PPI_SYSTEM})
+            question_codes = session.execute(text(_question_code_sql), {'module_id': module_id, 'system': PPI_SYSTEM})
             pdr_schema = table().get_schema()
             pdr_field_list = {}
             expected_pdr_columns = [col['name'] for col in pdr_schema.get_fields()]
@@ -118,7 +118,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
 
             # Retrieve all the responses for this participant/module ID (most recent first)
             qnans = []
-            responses = session.execute(_participant_module_responses_sql, {'module_id': module_id, 'p_id': p_id,
+            responses = session.execute(text(_participant_module_responses_sql), {'module_id': module_id, 'p_id': p_id,
                                                                             'test_hpo': TEST_HPO_NAME,
                                                                             'system': PPI_SYSTEM})
             for qr in responses:
@@ -130,7 +130,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                     data['status_id'] = int(QuestionnaireResponseStatus(data['status']))
                     data['status'] = str(QuestionnaireResponseStatus(data['status']))
 
-                answers = session.execute(_response_answers_sql, {'qr_id': qr.questionnaire_response_id,
+                answers = session.execute(text(_response_answers_sql), {'qr_id': qr.questionnaire_response_id,
                                                                   'system': PPI_SYSTEM})
                 # Initialize values for each question code/column name in the data dict to null
                 ans_dict = {pdr_field_list[field]: None for field in pdr_field_list}

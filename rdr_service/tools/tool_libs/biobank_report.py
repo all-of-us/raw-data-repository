@@ -2,6 +2,8 @@ import argparse
 import csv
 from datetime import datetime, timedelta
 
+from sqlalchemy import text
+
 from rdr_service import clock, config
 from rdr_service.offline.biobank_samples_pipeline import get_withdrawal_report_query
 from rdr_service.participant_enums import DeceasedStatus
@@ -51,7 +53,7 @@ class BiobankReportTool(ToolBase):
             csv_writer.writeheader()
 
             report_query = get_withdrawal_report_query(start_date=start_date)
-            result_list = session.execute(report_query)
+            result_list = session.execute(text(report_query))
             for result in result_list:
                 deceased_status = result.deceased_status
                 if result.deceased_status is None:  # Can be None if the summary doesn't exist

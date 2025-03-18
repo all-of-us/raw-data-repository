@@ -2,6 +2,7 @@ import json
 
 import pytz
 from dateutil.parser import parse
+from sqlalchemy import text
 from sqlalchemy.sql.functions import concat
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
 
@@ -80,7 +81,7 @@ class PatientStatusDao(UpsertableDao):
             if len(data) > 0:
                 sql = "update participant_summary set patient_status = :data where participant_id = :pid"
                 # Note: don't bother to output pretty json or sort keys.
-                session.execute(sql, {"data": json.dumps(data, sort_keys=False), "pid": p_id})
+                session.execute(text(sql), {"data": json.dumps(data, sort_keys=False), "pid": p_id})
 
     def insert(self, obj):
         """Inserts an object into the database. The calling object may be mutated
@@ -226,7 +227,7 @@ class PatientStatusDao(UpsertableDao):
             )
             sql += "\nORDER BY patient_status_history.revision_id"
             args = {"p1": "Patient/P", "p2": p_id, "p3": org_obj.organizationId}
-            results = session.execute(sql, args)
+            results = session.execute(text(sql), args)
             for row in results:
                 data = self.to_dict(row, results)
                 records.append(data)

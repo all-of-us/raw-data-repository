@@ -176,7 +176,7 @@ class Database(object):
 
 
 def get_class_for_table_name(table_name):
-    for model in Base._decl_class_registry.values():
+    for model in Base._class_registry.values():
         if getattr(model, '__tablename__', '') == table_name:
             return model
 

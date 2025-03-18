@@ -684,7 +684,7 @@ class BaseDao(object):
         data = OrderedDict()
 
         # Get the list of columns returned in the query.
-        if result_proxy and isinstance(result_proxy, ResultProxy):  # this is a ResultProxy object
+        if result_proxy and isinstance(result_proxy, Result):  # this is a Result object
             columns = list()
             for column in result_proxy.cursor.description:
                 columns.append(column[0])

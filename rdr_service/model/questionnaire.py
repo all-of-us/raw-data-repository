@@ -21,7 +21,7 @@ from rdr_service.model.field_types import BlobUTF8
 class QuestionnaireBase(object):
     """Mixin containing columns for Questionnaire and QuestionnaireHistory"""
 
-    questionnaireId = Column("questionnaire_id", Integer, primary_key=True)
+    questionnaireId = Column("questionnaire_id", Integer, primary_key=True, nullable=False)
     """RDR identifier for the questionnaire"""
     # Incrementing version, starts at 1 and is incremented on each update.
     version = Column("version", Integer, nullable=False)
@@ -64,11 +64,30 @@ class Questionnaire(QuestionnaireBase, Base):
     )
 
 
-class QuestionnaireHistory(QuestionnaireBase, Base):
+class QuestionnaireHistory(Base):
     __tablename__ = "questionnaire_history"
-    version = Column("version", Integer, primary_key=True)
-    concepts: List['QuestionnaireConcept'] = relationship("QuestionnaireConcept", cascade="all, delete-orphan")
-    questions: List['QuestionnaireQuestion'] = relationship("QuestionnaireQuestion", cascade="all, delete-orphan")
+    questionnaireId = Column("questionnaire_id", Integer, primary_key=True, nullable=False)
+    """RDR identifier for the questionnaire"""
+    # Incrementing version, starts at 1 and is incremented on each update.
+    version = Column("version", Integer, nullable=False)
+    """RDR version of the questionnaire"""
+    semanticVersion = Column('semantic_version', String(100))
+    """PTSC's version of the questionnaire (does not necessarily match RDR version)"""
+    semanticDesc = Column('semantic_desc', String(500))
+    irbMapping = Column('irb_mapping', String(500))
+    created = Column("created", UTCDateTime, nullable=False)
+    """The date and time the questionnaire was created"""
+    lastModified = Column("last_modified", UTCDateTime, nullable=False)
+    """The date and time the questionnaire was last modified"""
+    # The JSON representation of the questionnaire provided by the client.
+    # Concepts and questions can be be parsed out of this for use in querying.
+    resource = Column("resource", BlobUTF8, nullable=False)
+    status = Column("status", Enum(QuestionnaireDefinitionStatus), default=QuestionnaireDefinitionStatus.VALID)
+
+    externalId = Column('external_id', String(100))
+    version = Column("version", Integer, primary_key=True, nullable=False)
+    concepts = relationship("QuestionnaireConcept", cascade="all, delete-orphan")
+    questions = relationship("QuestionnaireQuestion", cascade="all, delete-orphan")
 
 
 class QuestionnaireConcept(Base):

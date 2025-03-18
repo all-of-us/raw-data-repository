@@ -229,7 +229,7 @@ class ParticipantResourceClass(object):
                             select resource from resource_data
                             where resource_pk_id = {pid} and resource_type_id = 2
                         """
-                        old_gen_data = session.execute(sql).first()
+                        old_gen_data = session.execute(text(sql)).first()
                         if old_gen_data:
                             old_dict = json.loads(old_gen_data.resource)
                             pid_dict = res.get_data()

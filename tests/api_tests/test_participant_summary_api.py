@@ -5,6 +5,8 @@ import mock
 import threading
 import unittest
 
+from sqlalchemy import text
+
 from copy import deepcopy
 from dateutil.relativedelta import relativedelta
 from mock import patch
@@ -714,7 +716,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             where rdr.participant_summary.participant_id={}
             """.format(participant_id[1:])
         with dao.session() as session:
-            session.execute(sql)
+            session.execute(text(sql))
             session.commit()
         response = self.send_get(f"ParticipantSummary?consentForGenomicsROR=UNSET&_includeTotal=true")
         self.assertEqual(len(response['entry']), 1)
