@@ -9,7 +9,7 @@ from collections import OrderedDict
 from dateutil import parser, tz
 from dateutil.parser import ParserError
 # from dateutil.relativedelta import relativedelta
-from sqlalchemy import func, desc, exc, inspect, or_
+from sqlalchemy import func, desc, exc, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
 
@@ -34,7 +34,6 @@ from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_base import BQRecord
 # TODO: Create new versions of these ENUMs in resource.constants.
 from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum, BQModuleStatusEnum
-from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus
 from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
@@ -50,7 +49,7 @@ from rdr_service.model.site import Site
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseClassificationType
-from rdr_service.participant_enums import (EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason,
+from rdr_service.participant_enums import (WithdrawalStatus, WithdrawalReason,
                                            SuspensionStatus, DeceasedStatus, DeceasedReportStatus, SampleStatus,
                                            BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus,
                                            QuestionnaireResponseStatus, OrderStatus, WithdrawalAIANCeremonyStatus,
@@ -58,7 +57,7 @@ from rdr_service.participant_enums import (EnrollmentStatusV2, WithdrawalStatus,
 from rdr_service.resource import generators, schemas
 # from rdr_service.resource.calculators import EnrollmentStatusCalculator, ParticipantUBRCalculator as ubr
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
-    PDREnrollmentStatusEnum, PDRPhysicalMeasurementsStatus
+    PDRPhysicalMeasurementsStatus
 from rdr_service.resource.schemas.participant import BIOBANK_UNIQUE_TEST_IDS
 # from rdr_service.resource.calculators.participant_enrollment_status_v30 import EnrollmentStatusCalculator_v3_0
 
@@ -184,15 +183,6 @@ _unlayered_question_codes_map = {
     'EHRConsentPII': ['EHRConsentPII_ConsentExpired', ]
 }
 
-# Temporary:  for finding/debugging mismatches in new EnrollmentStatusCalculator results to old calculation results
-_enrollment_status_map = {
-    EnrollmentStatusV2.REGISTERED:  PDREnrollmentStatusEnum.Registered,
-    EnrollmentStatusV2.PARTICIPANT: PDREnrollmentStatusEnum.Participant,
-    EnrollmentStatusV2.FULLY_CONSENTED: PDREnrollmentStatusEnum.ParticipantPlusEHR,
-    EnrollmentStatusV2.CORE_MINUS_PM: PDREnrollmentStatusEnum.CoreParticipantMinusPM,
-    EnrollmentStatusV2.CORE_PARTICIPANT: PDREnrollmentStatusEnum.CoreParticipant
-}
-
 
 def get_ce_mediated_hpo_id_list():
     return config.getSettingJson(config.CE_MEDIATED_HPO_ID, default=None)
@@ -227,7 +217,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
     _baseline_sample_test_codes = config.getSettingList('baseline_sample_test_codes')
     _dna_sample_test_codes = config.getSettingList('dna_sample_test_codes')
 
-    def make_resource(self, p_id, qc_mode=False):
+    def make_resource(self, p_id, qc_mode=False): # pylint: disable=unused-argument
         """
         Build a Participant Summary Resource object for the given participant id.
         :param p_id: Participant ID
@@ -238,40 +228,38 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             self.ro_dao = ResourceDataDao(backup=True)
 
         with self.ro_dao.session() as ro_session:
+            # -- Build a basic record that still has the participant_module and nested biobank info
             # prep participant info from Participant record
             summary = self._prep_participant(p_id, ro_session)
             # prep additional participant profile info
             summary = self._merge_schema_dicts(summary, self._prep_participant_profile(p_id, ro_session))
             # prep ConsentPII questionnaire information
             summary = self._merge_schema_dicts(summary, self._prep_consentpii_answers(p_id))
-            # prep questionnaire modules information, includes gathering extra consents.
-            summary = self._merge_schema_dicts(summary, self._prep_modules(p_id, ro_session))
-            # prep physical measurements
-            summary = self._merge_schema_dicts(summary, self._prep_physical_measurements(p_id, ro_session))
-            # prep race, gender and sexual orientation
-            summary = self._merge_schema_dicts(summary, self._prep_the_basics(p_id, ro_session))
             # prep biobank orders and samples
             summary = self._merge_schema_dicts(summary, self._prep_biobank_info(p_id, summary['biobank_id'],
                                                                                 ro_session))
-            # prep patient status history
-            summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
-            # calculate enrollment status for participant
-            # summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary, p_id))
-            # calculate distinct visits
-            summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
-            # calculate UBR flags
-            # summary = self._merge_schema_dicts(summary, self._calculate_ubr(p_id, summary, ro_session))
-            # calculate test participant status (if it was not already set by _prep_participant() )
             if summary['test_participant'] == 0:
                 summary = self._merge_schema_dicts(summary, self._check_for_test_credentials(summary))
 
-            summary['activity'] = self.validate_activity_timestamps(summary['activity'])
-            # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
+            # --- Deprecated and migrated to new PDR pipeline generators
+            # prep questionnaire modules information, includes gathering extra consents.
+            # summary = self._merge_schema_dicts(summary, self._prep_modules(p_id, ro_session))
+            # # prep physical measurements
+            # summary = self._merge_schema_dicts(summary, self._prep_physical_measurements(p_id, ro_session))
+            # # prep race, gender and sexual orientation
+            # summary = self._merge_schema_dicts(summary, self._prep_the_basics(p_id, ro_session))
+            # prep patient status history
+            # summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
+            # # calculate enrollment status for participant
+            # # summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary, p_id))
+            # # calculate distinct visits
+            # summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
+            # calculate UBR flags
+            # summary = self._merge_schema_dicts(summary, self._calculate_ubr(p_id, summary, ro_session))
+            # calculate test participant status (if it was not already set by _prep_participant() )
 
-            # DA-2611 related: Closes a gap where primary consent metrics records in PDR have some stale errors for
-            # invalid DOB/invalid age at consent
-            if summary.get('date_of_birth', None) and not qc_mode:
-                self.generate_primary_consent_metrics(p_id, ro_session)
+            # summary['activity'] = self.validate_activity_timestamps(summary['activity'])
+            # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
 
             return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
 
@@ -526,8 +514,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         """
         # Goal 1.5.1:  Customize the generator to recognize columns based on current version of the model
-        ps_col_names = [col.name for col in inspect(ParticipantSummary).mapper.columns]
-        has_enrollment_v3_1 = 'enrollment_status_v_3_1' in ps_col_names
+        # ps_col_names = [col.name for col in inspect(ParticipantSummary).mapper.columns]
+        # has_enrollment_v3_1 = 'enrollment_status_v_3_1' in ps_col_names
 
         ps = ro_session.query(ParticipantSummary
         ).select_from(
@@ -548,22 +536,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # Check for Pediatric participant
         data['is_pediatric'] = 1 if ped_log else 0
 
-        # TODO:  add enrollment_status / enrollment_status_id after Goal 1 QC (move from _calculate_enrollment_status)
-        for key in ['enrollment_status_v2', 'enrollment_status_v3_0']:
-            data[key] = str(EnrollmentStatusV2.REGISTERED)
-            data[key + '_id'] = int(EnrollmentStatusV2.REGISTERED)
-
-        # PDR-1479:  Deprecating V3.1; leave PDR values as None if columns no longer exist in participant_summary
-        data['enrollment_status_v3_1'] = str(EnrollmentStatusV2.REGISTERED) if has_enrollment_v3_1 else None
-        data['enrollment_status_v3_1_id'] = int(EnrollmentStatusV2.REGISTERED) if has_enrollment_v3_1 else None
-
         if not ps:
             logging.debug(f'No participant_summary record found for {p_id}')
             # PDR-2025: Set default email/phone values if there is no participant_summary yet
             data['email'], data['email_available'] = None, 0
             data['phone_number'], data['login_phone_number'], data['phone_number_available'] = None, None, 0
         else:
-            enrollment_v2 = EnrollmentStatusV2(int(ps.enrollmentStatus))
             # SqlAlchemy may return None for our zero-based NOT_PRESENT EhrStatus Enum, so map None to NOT_PRESENT
             # See rdr_service.model.utils Enum decorator class
             ehr_status = EhrStatus.NOT_PRESENT if ps.ehrStatus is None else ps.ehrStatus
@@ -580,41 +558,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 # (and ehr_status_id) fields for PDR backwards compatibility
                 'was_ehr_data_available': int(ehr_status),
                 'is_ehr_data_available': int(ps.isEhrDataAvailable),
-                # TODO:  Move out of _calculate_enrollment_status() after Goal 1 / PEO QC
-                # 'enrollment_status': str(enrollment_v2)
-                # 'enrollment_status_id': int(enrollment_v2)
-                # 'enrollment_member': ps.enrollmentStatusMemberTime,
-                #'enrollment_core_minus_pm': ps.enrollmentStatusCoreMinusPMTime,
-                'enrollment_status_legacy_v2': str(enrollment_v2),     # temporary, for Goal 1 QC
-                'enrollment_status_legacy_v2_id': int(enrollment_v2),  # temporary, for Goal 1 QC
-                'enrollment_status_v3_0': str(ps.enrollmentStatusV3_0),
-                'enrollment_status_v3_0_id': int(ps.enrollmentStatusV3_0),
-                'enrollment_status_v3_0_participant_time': ps.enrollmentStatusParticipantV3_0Time,
-                'enrollment_status_v3_0_participant_plus_ehr_time': ps.enrollmentStatusParticipantPlusEhrV3_0Time,
-                'enrollment_status_v3_0_pmb_eligible_time': ps.enrollmentStatusPmbEligibleV3_0Time,
-                'enrollment_status_v3_0_core_minus_pm_time': ps.enrollmentStatusCoreMinusPmV3_0Time,
-                'enrollment_status_v3_0_core_time': ps.enrollmentStatusCoreV3_0Time,
-                # PDR-1479: Deprecating V3.1; leave PDR values as None if columns no longer exist in participant_summary
-                'enrollment_status_v3_1': str(ps.enrollmentStatusV3_1) if has_enrollment_v3_1 else None,
-                'enrollment_status_v3_1_id': int(ps.enrollmentStatusV3_1) if has_enrollment_v3_1 else None,
-                'enrollment_status_v3_1_participant_time': ps.enrollmentStatusParticipantV3_1Time \
-                    if has_enrollment_v3_1 else None,
-                'enrollment_status_v3_1_participant_plus_ehr_time': ps.enrollmentStatusParticipantPlusEhrV3_1Time \
-                    if has_enrollment_v3_1 else None,
-                'enrollment_status_v3_1_participant_plus_basics_time': ps.enrollmentStatusParticipantPlusBasicsV3_1Time\
-                    if has_enrollment_v3_1 else None,
-                'enrollment_status_v3_1_core_minus_pm_time': ps.enrollmentStatusCoreMinusPmV3_1Time \
-                    if has_enrollment_v3_1 else None,
-                'enrollment_status_v3_1_core_time': ps.enrollmentStatusCoreV3_1Time if has_enrollment_v3_1 else None,
-                'enrollment_status_v3_1_participant_plus_baseline_time':
-                    ps.enrollmentStatusParticipantPlusBaselineV3_1Time if has_enrollment_v3_1 else None,
-                'health_datastream_sharing_status_v3_1': str(ps.healthDataStreamSharingStatusV3_1) \
-                    if has_enrollment_v3_1 else None,
-                'health_datastream_sharing_status_v3_1_id': int(ps.healthDataStreamSharingStatusV3_1) \
-                    if has_enrollment_v3_1 else None,
-                'health_datastream_sharing_status_v3_1_time': ps.healthDataStreamSharingStatusV3_1Time \
-                    if has_enrollment_v3_1 else None,
-
                 # PDR-2025:  ParticipantSummary record now source for current email and phone creds sent via
                 # profile_update API, need most recent creds in PDR record to identify potential test pids
                 'email': ps.email,
@@ -745,7 +688,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         """
         activity = list()
         # Unittest config setting to not enforce check for validated (EHR) consents
-        skip_validation_check = config.getSettingJson('ENROLLMENT_STATUS_SKIP_VALIDATION', False)
+        # skip_validation_check = config.getSettingJson('ENROLLMENT_STATUS_SKIP_VALIDATION', False)
 
         code_id_query = ro_session.query(func.max(QuestionnaireConcept.codeId)). \
             filter(QuestionnaireResponse.questionnaireId ==
@@ -782,7 +725,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             last_answer_hash = None  # Track the answer hash of the payload of the last response processed (PDR-484)
             last_mod_processed = {}
             last_consent_processed = {}
-            prior_ehr_submitted_status = False
+            # prior_ehr_submitted_status = False
             for row in results:
                 # ROC-692 Exclude CE replayed ConsentPII responses that contain an invalid minimum authored date.
                 if row.authored and row.authored < min_valid_authored:
@@ -870,10 +813,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
                         # DA-3278 : "Yes" EHR consents now have module_status determined by consent PDF validation state
                         # Make sure once a participant has a SUBMITTED EHR module_status in their history, that sticks.
-                        if not skip_validation_check and module_name == 'EHRConsentPII'\
-                               and module_status == BQModuleStatusEnum.SUBMITTED and not prior_ehr_submitted_status:
-                            module_status = self.get_consent_pdf_validation_status(p_id, row, module_name, ro_session)
-                            prior_ehr_submitted_status = module_status == BQModuleStatusEnum.SUBMITTED
+                        # if not skip_validation_check and module_name == 'EHRConsentPII'\
+                        #        and module_status == BQModuleStatusEnum.SUBMITTED and not prior_ehr_submitted_status:
+                        #     module_status = self.get_consent_pdf_validation_status(p_id, row, module_name, ro_session)
+                        #     prior_ehr_submitted_status = module_status == BQModuleStatusEnum.SUBMITTED
 
                         module_data['status'] = module_status.name
                         module_data['status_id'] = module_status.value
@@ -1444,69 +1387,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return data
 
-    # # Leaving PDR calculations for EnrollmentStatusV2 enabled temporarily during Goal 1 transition, for QC/debugging
-    # # See _prep_participant_profile() for integration of RDR-calculated fields into the PDR participant_data record
-    # def _calculate_enrollment_status(self, summary, p_id):
-    #     """
-    #     Calculate the participant's enrollment status
-    #     :param summary: summary data
-    #     :param p_id:  (int) participant ID
-    #     :return: dict
-    #     """
-    #     # Verify activity timestamps are correct.
-    #     activity = self.validate_activity_timestamps(summary['activity'], p_id)
-    #     # Make sure activity has been sorted by timestamp before we run the enrollment status calculator.
-    #     esc = EnrollmentStatusCalculator()
-    #     esc.run(activity)
-    #
-    #     esc_v3_0 = EnrollmentStatusCalculator_v3_0()
-    #     esc_v3_0.run(activity)
-    #
-    #     # Support depreciated enrollment status field values.
-    #     status = EnrollmentStatusV2.REGISTERED
-    #     if esc.status == PDREnrollmentStatusEnum.Participant:
-    #         status = EnrollmentStatusV2.PARTICIPANT
-    #     elif esc.status == PDREnrollmentStatusEnum.ParticipantPlusEHR:
-    #         status = EnrollmentStatusV2.FULLY_CONSENTED
-    #     elif esc.status == PDREnrollmentStatusEnum.CoreParticipantMinusPM:
-    #         status = EnrollmentStatusV2.CORE_MINUS_PM
-    #     elif esc.status == PDREnrollmentStatusEnum.CoreParticipant:
-    #         status = EnrollmentStatusV2.CORE_PARTICIPANT
-    #
-    #     data = {
-    #         # Fields from EnrollmentStatusCalculator results.
-    #         'enrl_status': esc.status.name,
-    #         'enrl_status_id': esc.status.value,
-    #         'enrl_registered_time': esc.registered_time,
-    #         'enrl_participant_time': esc.participant_time,
-    #         'enrl_participant_plus_ehr_time': esc.participant_plus_ehr_time,
-    #         'enrl_core_participant_minus_pm_time': esc.core_participant_minus_pm_time,
-    #         'enrl_core_participant_time': esc.core_participant_time,
-    #         # Version 3.0 Enrollment Calculations
-    #         'enrl_v3_0_status': esc_v3_0.status.name,
-    #         'enrl_v3_0_status_id': esc_v3_0.status.value,
-    #         'enrl_v3_0_registered_time': esc_v3_0.registered_time,
-    #         'enrl_v3_0_participant_time': esc_v3_0.participant_time,
-    #         'enrl_v3_0_participant_plus_ehr_time': esc_v3_0.participant_plus_ehr_time,
-    #         'enrl_v3_0_participant_pmb_eligible_time': esc_v3_0.participant_pmb_eligible_time,
-    #         'enrl_v3_0_core_participant_minus_pm_time': esc_v3_0.core_participant_minus_pm_time,
-    #         'enrl_v3_0_core_participant_time': esc_v3_0.core_participant_time,
-    #
-    #         # TODO: PDR-calculated fields that can be deprecated / moved to _prep_participant_profile after goal 1 QC
-    #         'enrollment_status': str(status),
-    #         'enrollment_status_id': int(status),
-    #         'enrollment_member': esc.participant_time,
-    #         'enrollment_core_minus_pm': esc.core_participant_minus_pm_time
-    #     }
-    #
-    #     # Calculate age at consent.
-    #     if isinstance(data['enrl_participant_time'], datetime.datetime) and \
-    #                 'date_of_birth' in summary and isinstance(summary['date_of_birth'], datetime.date):
-    #         rd = relativedelta(data['enrl_participant_time'], summary['date_of_birth'])
-    #         data['age_at_consent'] = rd.years
-    #
-    #     return data
-
     def _calculate_distinct_visits(self, summary):  # pylint: disable=unused-argument
         """
         Calculate the distinct number of visits.
@@ -1826,92 +1706,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return qr_ids
 
-    # def _calculate_ubr(self, p_id, summary, ro_session):
-    #     """
-    #     Calculate the UBR values for this participant
-    #     :param p_id: participant id.
-    #     :param summary: summary data
-    #     :param ro_session: Readonly DAO session object
-    #     :return: dict
-    #     """
-    #     data = dict()
-    #     basics_qnan, lfs_qnan = None, None
-    #     ubr_disability_responses = []
-    #     # Return if participant has not yet submitted a primary consent response.
-    #     if summary.get('enrl_status_id', 0) < PDREnrollmentStatusEnum.Participant:
-    #         return data
-    #
-    #     #### ConsentPII UBR calculations.
-    #     # ubr_geography
-    #     addresses = summary.get('addresses', [])
-    #     consent_date = summary.get('enrl_participant_time', None)
-    #     if addresses and consent_date:
-    #         zip_code = None
-    #         for addr in addresses:
-    #             if addr['addr_type_id'] == StreetAddressTypeEnum.RESIDENCE.value:
-    #                 zip_code = addr.get('addr_zip', None)
-    #                 break
-    #         data['ubr_geography'] = ubr.ubr_geography(consent_date.date(), zip_code)
-    #     # ubr_age_at_consent
-    #     data['ubr_age_at_consent'] = \
-    #         ubr.ubr_age_at_consent(summary.get('enrl_participant_time', None), summary.get('date_of_birth', None))
-    #     # ubr_overall - This should be calculated here in case there is no TheBasics response available.
-    #     data['ubr_overall'] = ubr.ubr_overall(data)
-    #
-    #     #### TheBasics / lfs UBR calculations.
-    #     # Note: Due to PDR-484 we can't rely on the summary having a record for each valid submission so we
-    #     #       are going to do our own query to get the first TheBasics submission after consent.
-    #     # As of RDR 1.113.1, can filter on new classification_type to filter on full (COMPLETE) TheBasics surveys
-    #     basics_qr_id = self.find_questionnaire_response_id(
-    #         ro_session, p_id, "TheBasics", QuestionnaireResponseClassificationType.COMPLETE, ModuleLookupEnum.FIRST)
-    #     # PDR-1438: lfs survey released in 9/2022 for participants whose early version of TheBasics may not have
-    #     # included physical disability questions.  lfs presents the same 6 questions (e.g., Disability_Blind) and
-    #     # needs to be factored into UBR disability calculation
-    #     lfs_qr_id = self.find_questionnaire_response_id(
-    #         ro_session, p_id, "lfs", QuestionnaireResponseClassificationType.COMPLETE, ModuleLookupEnum.FIRST)
-    #
-    #     if basics_qr_id:
-    #         basics_qnan = self.get_module_answers(self.ro_dao, 'TheBasics', p_id=p_id, qr_id=basics_qr_id)
-    #     if lfs_qr_id:
-    #         lfs_qnan = self.get_module_answers(self.ro_dao, 'lfs', p_id=p_id, qr_id=lfs_qr_id)
-    #
-    #     # Add the response to the list for the ubr_disability calculator if it has content.
-    #     for qnan in [basics_qnan, lfs_qnan]:
-    #         if qnan:
-    #             ubr_disability_responses.append(qnan)
-    #
-    #     # Most UBR categories determined only from TheBasics data (+ lfs data for ubr_disability)
-    #     if basics_qnan:
-    #         # ubr_sex
-    #         data['ubr_sex'] = ubr.ubr_sex(basics_qnan.get('BiologicalSexAtBirth_SexAtBirth', None))
-    #         # ubr_sexual_orientation
-    #         data['ubr_sexual_orientation'] = ubr.ubr_sexual_orientation(basics_qnan.get('TheBasics_SexualOrientation',
-    #                                                                                     None))
-    #         # ubr_gender_identity
-    #         data['ubr_gender_identity'] = ubr.ubr_gender_identity(
-    #             basics_qnan.get('BiologicalSexAtBirth_SexAtBirth', None),
-    #             basics_qnan.get('Gender_GenderIdentity', None),
-    #             basics_qnan.get('Gender_CloserGenderDescription', None)
-    #         )
-    #         # ubr_sexual_gender_minority
-    #         data['ubr_sexual_gender_minority'] = \
-    #             ubr.ubr_sexual_gender_minority(data['ubr_sexual_orientation'], data['ubr_gender_identity'])
-    #         # ubr_ethnicity
-    #         data['ubr_ethnicity'] = ubr.ubr_ethnicity(basics_qnan.get('Race_WhatRaceEthnicity', None))
-    #         # ubr_education
-    #         data['ubr_education'] = ubr.ubr_education(basics_qnan.get('EducationLevel_HighestGrade', None))
-    #         # ubr_income
-    #         data['ubr_income'] = ubr.ubr_income(basics_qnan.get('Income_AnnualIncome', None))
-    #
-    #         # PDR-1572:  Still require TheBasics before calculating ubr_disability. Otherwise we can prematurely set
-    #         # RBR.
-    #         data['ubr_disability'] = ubr.ubr_disability(ubr_disability_responses)
-    #
-    #     # ubr_overall
-    #     data['ubr_overall'] = ubr.ubr_overall(data)
-    #
-    #     return data
-
     @staticmethod
     def get_consent_pdf_validation_status(p_id, consent_response_rec,
                                           module_name='EHRConsentPII', ro_session=None):
@@ -1977,23 +1771,23 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
             # Find consent validation result associated with this questionnaire response or its duplicates.
             # Reverse-ordering by sync_status values and taking first result should yield the most up-to-date status
-            validation_status_sql = """
-                 select cf.created, cf.sync_status
-                 from consent_response cr
-                 join consent_file cf on cr.id = cf.consent_response_id
-                 where cr.questionnaire_response_id IN :qr_ids
-                 order by cf.sync_status desc
-                 limit 1
-            """
-            result = ro_session.execute(validation_status_sql, {'qr_ids': qr_ids}).fetchone()
-            if result:
-                if (result.created > pdf_validation_start_date and
-                       result.sync_status in (int(ConsentSyncStatus.NEEDS_CORRECTING),
-                                              int(ConsentSyncStatus.OBSOLETE))):
-                    status = BQModuleStatusEnum.SUBMITTED_INVALID
-            elif consent_response_rec.authored and consent_response_rec.authored > pdf_validation_start_date:
-                # No consent_file (consent_response) record yet to match to the questionnaire_response_id
-                status = BQModuleStatusEnum.SUBMITTED_NOT_VALIDATED
+            # validation_status_sql = """
+            #      select cf.created, cf.sync_status
+            #      from consent_response cr
+            #      join consent_file cf on cr.id = cf.consent_response_id
+            #      where cr.questionnaire_response_id IN :qr_ids
+            #      order by cf.sync_status desc
+            #      limit 1
+            # """
+            # result = ro_session.execute(validation_status_sql, {'qr_ids': qr_ids}).fetchone()
+            # if result:
+            #     if (result.created > pdf_validation_start_date and
+            #            result.sync_status in (int(ConsentSyncStatus.NEEDS_CORRECTING),
+            #                                   int(ConsentSyncStatus.OBSOLETE))):
+            #         status = BQModuleStatusEnum.SUBMITTED_INVALID
+            # elif consent_response_rec.authored and consent_response_rec.authored > pdf_validation_start_date:
+            #     # No consent_file (consent_response) record yet to match to the questionnaire_response_id
+            #     status = BQModuleStatusEnum.SUBMITTED_NOT_VALIDATED
         else:
             logging.warning(f'PDF Validation status for consent {module_name} not currently supported')
 
@@ -2002,41 +1796,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return status
 
-    @staticmethod
-    def generate_primary_consent_metrics(p_id, ro_session=None):
-        """
-        Rebuild the PDR consent metrics records for a participant's primary consent(s).  Invalid DOB/age at consent
-        errors need to be checked for resolution when participant data is rebuilt, in case a new ConsentPII with a
-        different DOB value has been received.
-        :param p_id:  Participant id
-        :param ro_session:  Active DB session for running a read-only query (optional)
-        """
-        dao = None
-        if not ro_session:
-            dao = ResourceDataDao(backup=True)
-            ro_session = dao.session()
-
-        # Only need to regenerate metrics if there are already primary consent PDF validation results (could still be
-        # pending if this is a newly consented participant), with pertinent statuses.
-        sql = """
-             select id from consent_file
-             where participant_id = :p_id and type = :consent_type
-                   and sync_status in :status_filter
-        """
-        args = {'p_id': p_id, 'consent_type': int(ConsentType.PRIMARY),
-                'status_filter': [int(ConsentSyncStatus.NEEDS_CORRECTING), int(ConsentSyncStatus.READY_FOR_SYNC),
-                                      int(ConsentSyncStatus.SYNC_COMPLETE)]}
-        results = ro_session.execute(sql, args)
-
-        if results:
-            consent_file_ids = [r.id for r in results]
-            if len(consent_file_ids):
-                res_gen = generators.ConsentMetricGenerator(ro_dao=dao)
-                # Transform into consent metrics records for PDR (resource_data table/resource API only, not in BQ)
-                validation_results = res_gen.get_consent_validation_records(id_list=consent_file_ids)
-                for row in validation_results:
-                    res = res_gen.make_resource(row.id, consent_validation_rec=row)
-                    res.save()
 
 def rebuild_participant_summary_resource(p_id, res_gen=None, patch_data=None, qc_mode=False):
     """
