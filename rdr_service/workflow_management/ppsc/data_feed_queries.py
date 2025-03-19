@@ -518,6 +518,7 @@ def insert_awardee_insite_data(
               , SAFE_CAST(activity_date_time AS DATETIME) AS activity_date_time
               , CASE
                   WHEN LOWER(activity_status) = 'submitted_yes' THEN 'yes'
+                  WHEN LOWER(activity_status) = 'submitted_complete' THEN 'yes'
                   WHEN LOWER(activity_status) = 'submitted_no' THEN 'no'
                   ELSE LOWER(activity_status)
                 END AS activity_status_cleaned
