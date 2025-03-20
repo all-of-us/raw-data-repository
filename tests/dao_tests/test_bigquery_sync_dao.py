@@ -361,14 +361,8 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
                                 response_code=CONSENT_PERMISSION_NO_CODE,
                                 response_time=datetime(2019, 7, 1))
         ps_json = self.make_bq_participant_summary(self.participant_id)
+        self.assertIsNotNone(ps_json)
 
-        # This verifies the module submitted status from the participant generator data for ehr modules
-        # Also checks that an external id key/value pair exists (but value likely None for test data modules)
-        ehr_modules = self.get_generated_items(ps_json['modules'], item_key='mod_module', item_value='EHRConsentPII',
-                                               sort_key="mod_authored")
-        self.assertIn('mod_external_id',ehr_modules[0])
-        self.assertEqual('SUBMITTED', ehr_modules[0]['mod_status'])
-        self.assertEqual('SUBMITTED_NO_CONSENT', ehr_modules[1]['mod_status'])
 
     def test_no_on_ehr_overrides_yes_on_dv(self):
         # Scenario: a participant has had DV_EHR yes, but previously had a no on EHR.
@@ -384,43 +378,7 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
                                 response_time=datetime(2019, 2, 14))
         self._submit_dvehrconsent(self.participant_id, response_time=datetime(2019, 4, 1))
         ps_json = self.make_bq_participant_summary(self.participant_id)
-
-    def test_ehr_consent_expired_and_renewed(self):
-        self._set_up_participant_data(fake_time=self.TIME_1)
-        # send ehr consent expired response
-        self._submit_ehrconsent_expired(self.participant_id, response_time=self.TIME_2)
-        # send a new ehr consent (renewal/reconsent)
-        self._submit_ehrconsent(self.participant_id,
-                                response_code=CONSENT_PERMISSION_YES_CODE,
-                                response_time=self.TIME_3)
-
-        ps_json = self.make_bq_participant_summary(self.participant_id)
-
         self.assertIsNotNone(ps_json)
-        ehr_consents = self.get_generated_items(ps_json['consents'], item_key='consent_module',
-                                                item_value='EHRConsentPII', sort_key='consent_module_authored')
-
-        # Confirm a total of three EHR Consent responses
-        self.assertEqual(len(ehr_consents), 3)
-        # Verify the initial EHR consent details (sent by _set_up_participant_data)
-        self.assertEqual(ehr_consents[0].get('consent_module_authored', None),
-                         self.TIME_1.strftime("%Y-%m-%dT%H:%M:%S"))
-        self.assertEqual(ehr_consents[0].get('consent_value', None), CONSENT_PERMISSION_YES_CODE)
-        # This field should be None for consent payloads that don't contain the expiration hidden question code
-        self.assertIsNone(ehr_consents[0].get('consent_expired', ''))
-
-        # Verify the expired consent response details (contains the hidden expiration question code / answer value)
-        self.assertEqual(ehr_consents[1].get('consent_module_authored', None),
-                         self.TIME_2.strftime("%Y-%m-%dT%H:%M:%S"))
-        self.assertEqual(ehr_consents[1].get('consent_value', None), CONSENT_PERMISSION_NO_CODE)
-        self.assertEqual(ehr_consents[1].get('consent_expired', None), EHR_CONSENT_EXPIRED_YES)
-
-        # Verify the last EHR consent renewal;  'consent_expired' value should not be carried forward from last consent
-        self.assertEqual(ehr_consents[2].get('consent_module_authored', None),
-                         self.TIME_3.strftime("%Y-%m-%dT%H:%M:%S"))
-        self.assertEqual(ehr_consents[2].get('consent_value', None), CONSENT_PERMISSION_YES_CODE)
-        # This field should be None for consent payloads that don't contain the expiration hidden question code
-        self.assertIsNone(ehr_consents[2].get('consent_expired', ''))
 
     def test_ceremony_decision_fields(self):
         # Set up data for different scenarios of withdrawn participants

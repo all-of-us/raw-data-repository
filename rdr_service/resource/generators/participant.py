@@ -228,7 +228,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             self.ro_dao = ResourceDataDao(backup=True)
 
         with self.ro_dao.session() as ro_session:
-            # -- Build a basic record that still has the participant_module and nested biobank info
+            # Build a BQ pdr_participant record that still has the basic participant details and nested fields for
+            # physical measurements, biobank, and patient status history.  Remainder has been deprecated
             # prep participant info from Participant record
             summary = self._prep_participant(p_id, ro_session)
             # prep additional participant profile info
