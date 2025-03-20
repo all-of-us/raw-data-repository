@@ -235,21 +235,21 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             summary = self._merge_schema_dicts(summary, self._prep_participant_profile(p_id, ro_session))
             # prep ConsentPII questionnaire information
             summary = self._merge_schema_dicts(summary, self._prep_consentpii_answers(p_id))
+            # prep physical measurements
+            summary = self._merge_schema_dicts(summary, self._prep_physical_measurements(p_id, ro_session))
             # prep biobank orders and samples
             summary = self._merge_schema_dicts(summary, self._prep_biobank_info(p_id, summary['biobank_id'],
                                                                                 ro_session))
+            # prep patient status history
+            summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
             if summary['test_participant'] == 0:
                 summary = self._merge_schema_dicts(summary, self._check_for_test_credentials(summary))
 
             # --- Deprecated and migrated to new PDR pipeline generators
             # prep questionnaire modules information, includes gathering extra consents.
             # summary = self._merge_schema_dicts(summary, self._prep_modules(p_id, ro_session))
-            # # prep physical measurements
-            # summary = self._merge_schema_dicts(summary, self._prep_physical_measurements(p_id, ro_session))
             # # prep race, gender and sexual orientation
             # summary = self._merge_schema_dicts(summary, self._prep_the_basics(p_id, ro_session))
-            # prep patient status history
-            # summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
             # # calculate enrollment status for participant
             # # summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary, p_id))
             # # calculate distinct visits
