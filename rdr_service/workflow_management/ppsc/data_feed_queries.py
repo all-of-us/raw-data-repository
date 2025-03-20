@@ -188,7 +188,7 @@ INSERT INTO `{project}.{destination_dataset}.datafeed_input_ehr` (
 SELECT DISTINCT
     p.id,
     0 as ignore_flag,
-    participant_ehr.last_seen,
+    participant_ehr.file_timestamp,
     CURRENT_TIMESTAMP() AS created,
     CURRENT_TIMESTAMP() AS modified
 FROM `{project}.{src_operational_dataset}.ppsc_participant` p
@@ -201,7 +201,7 @@ WHERE TRUE
         SELECT 1
         FROM `{project}.{destination_dataset}.datafeed_input_ehr` t
         WHERE t.participant_id = p.id
-            AND t.event_date_time = participant_ehr.last_seen
+            AND t.event_date_time = participant_ehr.file_timestamp
             AND t.ignore_flag = 0
     )
 ;
