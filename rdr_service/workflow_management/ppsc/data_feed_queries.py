@@ -598,6 +598,78 @@ def insert_awardee_insite_data(
             FROM enrollment_status_recent_yes_ranked
             WHERE rn = 1
           ),
+          physical_measurement_cte AS (
+            SELECT physical_measurements_id
+                , participant_id
+                , collect_type
+                , status
+                , finalized
+                , finalized_site_id
+                , created
+                , log_position_id
+            FROM `{project}.{src_operational_dataset}.rdr_physical_measurements`
+            order by participant_id, created desc, log_position_id desc
+          ),
+          physical_measurement_latest_uncancelled AS (
+            SELECT clinic_physical_measurements_id
+                , participant_id
+                , finalized AS clinic_physical_measurements_finalized_time
+                , site.google_group AS clinic_physical_measurements_finalized_site
+            FROM (
+              SELECT physical_measurements_id AS clinic_physical_measurements_id
+                , participant_id
+                , finalized
+                , created
+                , log_position_id
+                , finalized_site_id
+                , ROW_NUMBER() OVER(
+                    PARTITION BY participant_id
+                    ORDER BY created DESC, log_position_id DESC
+                ) AS rn
+              FROM physical_measurement_cte
+              WHERE (status is null or status != 2) and collect_type = 1
+            ) measurement
+            LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` site
+            ON site.site_id = measurement.finalized_site_id
+            WHERE rn = 1
+          ),
+          physical_measurement_clinic_cancelled AS (
+            SELECT cancelled_measurement_id
+                , participant_id
+            FROM (
+              SELECT physical_measurements_id AS cancelled_measurement_id
+                , participant_id
+                , finalized
+                , created
+                , log_position_id
+                , ROW_NUMBER() OVER(
+                    PARTITION BY participant_id
+                    ORDER BY created, log_position_id DESC
+                ) AS rn
+              FROM physical_measurement_cte
+              WHERE (status = 2) and collect_type = 1
+            ) clinic_measurement
+            WHERE rn = 1
+          ),
+          physical_measurement_latest_self_reported AS (
+            SELECT self_reported_physical_measurements_id
+                , participant_id
+                , self_reported_physical_measurements_authored
+            FROM (
+              SELECT physical_measurements_id AS self_reported_physical_measurements_id
+                , participant_id
+                , finalized AS self_reported_physical_measurements_authored
+                , created
+                , log_position_id
+                , ROW_NUMBER() OVER(
+                    PARTITION BY participant_id
+                    ORDER BY created desc, log_position_id DESC
+                ) AS rn
+              FROM physical_measurement_cte
+              WHERE collect_type = 2
+            ) self_reported
+            WHERE rn = 1
+          ),
           enrollment_status_mapping AS (
             SELECT 1 AS enrollment_status, "participant" AS status
             UNION ALL
@@ -619,11 +691,6 @@ def insert_awardee_insite_data(
               , consent_for_electronic_health_records_first_yes_authored
               , consent_for_study_enrollment_authored
               , map.status AS enrollment_status
-              , clinic_physical_measurements_status
-              , clinic_physical_measurements_finalized_time
-              , s1.google_group AS clinic_physical_measurements_finalized_site
-              , self_reported_physical_measurements_status
-              , self_reported_physical_measurements_authored
               , patient_status
               , s2.google_group AS biospecimen_source_site
               , biospecimen_order_time
@@ -634,8 +701,6 @@ def insert_awardee_insite_data(
               , sample_order_status_1sal2_time
               , o.external_id AS organization
             FROM `{project}.{src_operational_dataset}.rdr_participant_summary` ps
-            LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` s1
-            ON ps.clinic_physical_measurements_finalized_site_id = s1.site_id
             LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` s2
             ON ps.biospecimen_source_site_id = s2.site_id
             LEFT JOIN enrollment_status_mapping map
@@ -672,18 +737,16 @@ def insert_awardee_insite_data(
               , COALESCE(consent_for_study_enrollment, 'no') AS consent_for_study_enrollment
               , consent_for_study_enrollment_authored
               , enrollment_status
-              , CASE clinic_physical_measurements_status
-                  WHEN 0 THEN 'unset'
-                  WHEN 1 THEN 'completed'
-                  WHEN 2 THEN 'cancelled'
+              , CASE
+                  WHEN clinic_physical_measurements_id IS NOT NULL THEN 'completed'
+                  WHEN cancelled_measurement_id IS NOT NULL THEN 'cancelled'
                   ELSE 'unset'
                 END AS clinic_physical_measurements_status
               , clinic_physical_measurements_finalized_time
               , clinic_physical_measurements_finalized_site
-              , CASE self_reported_physical_measurements_status
-                  WHEN 0 THEN 'unset'
-                  WHEN 1 THEN 'completed'
-                  ELSE 'unset'
+              , CASE self_reported_physical_measurements_id IS NOT NULL
+                  WHEN False THEN 'unset'
+                  WHEN True THEN 'completed'
                 END AS self_reported_physical_measurements_status
               , self_reported_physical_measurements_authored
               , COALESCE(patient_status, JSON_ARRAY()) AS patient_status
@@ -740,6 +803,12 @@ def insert_awardee_insite_data(
             LEFT JOIN primary_consent_latest_submitted
             USING (participant_id)
             LEFT JOIN participant_summary_cte
+            USING (participant_id)
+            LEFT JOIN physical_measurement_latest_uncancelled
+            USING (participant_id)
+            LEFT JOIN physical_measurement_clinic_cancelled
+            USING (participant_id)
+            LEFT JOIN physical_measurement_latest_self_reported
             USING (participant_id)
           ),
           withdrawn_update AS (
