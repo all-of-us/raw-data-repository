@@ -141,7 +141,7 @@ def _track_historical_participant_ehr_data(session, file_list: List[ParticipantE
     ])
 
 
-def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
+def update_participant_summaries_from_job(job, project_id=GAE_PROJECT): # pylint: disable=unused-argument
     job_start_time = datetime.utcnow()
 
     # record which participants have the current flags set,
@@ -157,7 +157,7 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
     # clear the current flags in the db (they'll get set again if they still have files, otherwise they'll remain unset)
     summary_dao.prepare_for_ehr_status_update()
 
-    batch_size = 100
+    # batch_size = 100
     for i, page in enumerate(job):
         LOG.info("Processing page {} of results...".format(i))
         hpo_ehr_tracking.clear_batch_list()
@@ -216,22 +216,28 @@ def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
                     summary_dao.update_enrollment_status(session=session, summary=summary)
                     participant_ids_to_rebuild.add(participant_id)
 
-            if participant_ids_to_rebuild:
-                create_rebuild_tasks_for_participants(
-                    list(participant_ids_to_rebuild), batch_size, project_id, summary_dao
-                )
+            # Deprecating; No longer need to run updates through old PDR pipeline data generator for EHR data fields
+            # Updates come through the participant_summary table directly in new PDR pipeline
+            # if participant_ids_to_rebuild:
+            #     create_rebuild_tasks_for_participants(
+            #         list(participant_ids_to_rebuild), batch_size, project_id, summary_dao
+            #     )
 
             for participant_id in participant_ids_to_rebuild:
                 dispatch_task(endpoint='update_retention_status', payload={'participant_id': participant_id})
 
+    # Deprecating old PDR pipeline rebuild tasks for all EHR-related fields
     # Rebuild any participants that had the "current" flag set before, but don't now
     # (because they didn't have a file today)
-    participant_ids_that_previously_had_ehr = hpo_ehr_tracking.get_participants_no_longer_current()
-    LOG.info(f'Rebuilding {len(participant_ids_that_previously_had_ehr)} '
-             f'participants that no longer appear in the view')
-    create_rebuild_tasks_for_participants(participant_ids_that_previously_had_ehr, batch_size, project_id, summary_dao)
+    # participant_ids_that_previously_had_ehr = hpo_ehr_tracking.get_participants_no_longer_current()
+    # LOG.info(f'Rebuilding {len(participant_ids_that_previously_had_ehr)} '
+    #          f'participants that no longer appear in the view')
+    # create_rebuild_tasks_for_participants(
+    #             participant_ids_that_previously_had_ehr, batch_size, project_id, summary_dao
+    # )
 
 
+# No longer called, leaving in source file until final deprecation of /resource/RebuildParticipant*  endpoints
 def create_rebuild_tasks_for_participants(participant_id_list, batch_size, project_id, dao):
     with dao.session() as session:
         # TOD0:  Handle mediated EHR fields if they become part of the UpdateEhrStatus job.  Those fields not
