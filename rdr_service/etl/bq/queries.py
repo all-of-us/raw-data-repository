@@ -96,7 +96,7 @@ queries = {
                 MIN(stcm1.source_concept_id) AS race_source_concept_id,
                 MIN(COALESCE(vc1.concept_id, 0)) AS race_target_concept_id
             FROM `{dataset_id}.src_mapped` src_m
-                INNER JOIN `{dataset_id}.source_to_concept_map` stcm1 ON src_m.value_ppi_code = stcm1.source_code
+                INNER JOIN `etl_filters.source_to_concept_map` stcm1 ON src_m.value_ppi_code = stcm1.source_code
                 AND stcm1.priority = 1 -- priority 1
                 AND stcm1.source_vocabulary_id = 'ppi-race'
                 LEFT JOIN `{dataset_id}.concept` vc1 ON stcm1.target_concept_id = vc1.concept_id
@@ -114,7 +114,7 @@ queries = {
                 MIN(stcm1.source_concept_id) AS race_source_concept_id,
                 MIN(COALESCE(vc1.concept_id, 0)) AS race_target_concept_id
             FROM `{dataset_id}.src_mapped` src_m
-                INNER JOIN `{dataset_id}.source_to_concept_map` stcm1 ON src_m.value_ppi_code = stcm1.source_code
+                INNER JOIN `etl_filters.source_to_concept_map` stcm1 ON src_m.value_ppi_code = stcm1.source_code
                 AND stcm1.priority = 2 -- priority 2
                 AND stcm1.source_vocabulary_id = 'ppi-race'
                 LEFT JOIN `{dataset_id}.concept` vc1 ON stcm1.target_concept_id = vc1.concept_id
@@ -140,7 +140,7 @@ queries = {
             FROM
               `{dataset_id}.src_mapped` src_m
             INNER JOIN
-              `{dataset_id}.source_to_concept_map` stcm1
+              `etl_filters.source_to_concept_map` stcm1
             ON
               src_m.value_ppi_code = stcm1.source_code
               AND stcm1.priority = 1              -- priority 1
@@ -170,7 +170,7 @@ queries = {
             FROM
               `{dataset_id}.src_mapped` src_m
             INNER JOIN
-              `{dataset_id}.source_to_concept_map` stcm1
+              `etl_filters.source_to_concept_map` stcm1
             ON
               src_m.value_ppi_code = stcm1.source_code
               AND stcm1.priority = 2              -- priority 2
@@ -365,7 +365,7 @@ queries = {
             FROM
               `{dataset_id}.src_mapped` src_m
             INNER JOIN
-              `{dataset_id}.source_to_concept_map` stcm1
+              `etl_filters.source_to_concept_map` stcm1
             ON
               src_m.value_ppi_code = stcm1.source_code
               AND stcm1.priority = 1              -- priority 1
@@ -826,7 +826,7 @@ queries = {
               SELECT
                 TRIM(question_ppi_code)
               FROM
-                `{dataset_id}.combined_question_filter`)""",
+                `etl_filters.combined_question_filter`)""",
         "destination": None,
         "append": False,
     },
@@ -841,7 +841,7 @@ queries = {
               SELECT
                 TRIM(survey_name)
               FROM
-                `{dataset_id}.combined_survey_filter`)""",
+                `etl_filters.combined_survey_filter`)""",
         "destination": None,
         "append": False,
     },
@@ -1386,7 +1386,7 @@ queries = {
                                 'procedure'                                 AS unit_id,
                                 src_m1.src_id                               AS src_id
                             FROM `{dataset_id}.src_mapped` src_m1
-                            INNER JOIN `{dataset_id}.source_to_concept_map` stcm
+                            INNER JOIN `etl_filters.source_to_concept_map` stcm
                                 ON src_m1.value_ppi_code = stcm.source_code
                                 AND stcm.source_vocabulary_id = 'ppi-proc'
                             INNER JOIN `{dataset_id}.src_mapped` src_m2

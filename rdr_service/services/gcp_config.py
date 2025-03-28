@@ -32,7 +32,7 @@ class RdrEnvironment(Enum):
 
 
 GCP_INSTANCES = {  # List of RDR's GCP projects mapped to their database instance names
-    "all-of-us-rdr-prod": "all-of-us-rdr-prod:us-central1:rdrmaindb",
+    "all-of-us-rdr-prod": "all-of-us-rdr-prod:us-central1:rdr-preprod-curation",
     "all-of-us-rdr-stable": "all-of-us-rdr-stable:us-central1:rdrmaindb",
     "all-of-us-rdr-staging": "all-of-us-rdr-staging:us-central1:rdrmaindb",
     "all-of-us-rdr-sandbox": "all-of-us-rdr-sandbox:us-central1:rdrmaindb",

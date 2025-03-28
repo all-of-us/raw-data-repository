@@ -25,9 +25,9 @@ class CurationBQ(ToolBase):
     import_tables = {
         'src_clean': 'cdm',
         'src_meas': 'cdm',
-        'combined_question_filter': 'cdm',
-        'combined_survey_filter': 'cdm',
-        'source_to_concept_map': 'cdm',
+        # 'combined_question_filter': 'cdm',
+        # 'combined_survey_filter': 'cdm',
+        # 'source_to_concept_map': 'cdm',
         'concept': 'voc',
         'concept_relationship': 'voc',
         'site': 'rdr',
