@@ -28,8 +28,8 @@ class CurationBQ(ToolBase):
         # 'combined_question_filter': 'cdm',
         # 'combined_survey_filter': 'cdm',
         # 'source_to_concept_map': 'cdm',
-        'concept': 'voc',
-        'concept_relationship': 'voc',
+        # 'concept': 'voc',
+        # 'concept_relationship': 'voc',
         'site': 'rdr',
         'measurement_to_qualifier': 'rdr',
         'deceased_report': 'rdr'
