@@ -237,6 +237,9 @@ where TRUE
             AND t.event_date_time = s.event_date_time
             AND t.ignore_flag = 0
     )
+  AND event_date_time >= '2025-03-28'
+  AND event_date_time <= '2025-04-01'
+LIMIT 800
 ;"""
 
 health_data_sharing_expected_sql = """

@@ -1,6 +1,7 @@
 """The main API definition file for ppsc-pipeline service endpoints."""
 import logging
 import traceback
+import datetime
 
 from flask import Flask, got_request_exception, request
 from sqlalchemy.exc import DBAPIError
@@ -38,8 +39,11 @@ def awardee_insite_input_feed():
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_input_feed():
     datafeed = request.get_json().get("datafeed")
+    start_date = request.get_json().get("earliest_date", '2025-03-28')
+    end_date = request.get_json().get("latest_date", datetime.datetime.utcnow().strftime('%Y-%m-%d'))
+    batch_size = request.get_json().get("batch_size", 800)
     input_feed = InputFeed(project=GAE_PROJECT)
-    input_feed.run_datafeed(datafeed)
+    input_feed.run_datafeed(datafeed, start_date, end_date, batch_size)
     return '{ "success": "true" }'
 
 
