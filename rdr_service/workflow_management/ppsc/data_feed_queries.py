@@ -292,8 +292,8 @@ where TRUE
             AND t.event_date_time = s.event_date_time
             AND t.ignore_flag = 0
     )
-  AND event_date_time >= {start_date}
-  AND event_date_time <= {end_date}
+  AND event_date_time >= '{start_date}'
+  AND event_date_time <= '{end_date}'
 LIMIT {batch_size}
 ;"""
 
