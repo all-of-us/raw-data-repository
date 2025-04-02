@@ -2,33 +2,23 @@ import datetime
 import time
 import mock
 
-from rdr_service import config
 from rdr_service.clock import FakeClock
-from rdr_service.code_constants import (
-    PMI_SKIP_CODE,
-    PPI_SYSTEM,
-    RACE_AIAN_CODE,
-    RACE_HISPANIC_CODE,
-    RACE_MENA_CODE,
-    RACE_NONE_OF_THESE_CODE,
-    RACE_WHITE_CODE,
-)
+from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
 from rdr_service.dao.calendar_dao import CalendarDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.researchers_offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.dao.organization_dao import OrganizationDao
-from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.site_dao import SiteDao
-from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantSummaryDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.calendar import Calendar
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.hpo import HPO
 from rdr_service.model.site import Site
 from rdr_service.model.participant import Participant
-from rdr_service.model.participant_summary import ParticipantGenderAnswers, ParticipantSummary
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import (
     EnrollmentStatus,
     OrganizationType,
@@ -46,43 +36,6 @@ TIME_3 = datetime.datetime(2018, 2, 10)
 
 def _questionnaire_response_url(participant_id):
     return "Participant/%s/QuestionnaireResponse" % participant_id
-
-
-def generate_mock_results(participant, summary, the_basics=None):
-    expected_bq_results = dict()
-
-    for field, _ in ParticipantCountsOverTimeService.TEMP_FIELDS:
-        temp = field.split('_')
-        camel_field = temp[0] + ''.join(f.title() for f in temp[1:])
-
-        try:
-            value = getattr(summary, camel_field)
-
-            if field in ParticipantCountsOverTimeService.PARTICIPANT_FIELDS:
-                value = getattr(participant, camel_field)
-        except Exception:  # pylint: disable=broad-except
-            value = None
-
-        expected_bq_results[field] = value
-
-    expected_bq_results['sample_status_1ed10_time'] = getattr(summary, 'sampleStatus1ED10Time')
-    expected_bq_results['sample_status_2ed10_time'] = getattr(summary, 'sampleStatus2ED10Time')
-    expected_bq_results['sample_status_1ed04_time'] = getattr(summary, 'sampleStatus1ED04Time')
-    expected_bq_results['sample_status_1sal_time'] = getattr(summary, 'sampleStatus1SALTime')
-    expected_bq_results['sample_status_1sal2_time'] = getattr(summary, 'sampleStatus1SAL2Time')
-
-    expected_bq_results['withdrawal_status'] = 1
-    expected_bq_results['suspension_status'] = 1
-    expected_bq_results['enrollment_status'] = 3
-    expected_bq_results['deceased_status'] = 0
-    expected_bq_results['race'] = 0
-    expected_bq_results['questionnaire_on_the_basics'] = 1
-    expected_bq_results['consent_for_electronic_health_records'] = 0
-
-    if the_basics is not None:
-        expected_bq_results['questionnaire_on_the_basics'] = 0
-
-    return expected_bq_results
 
 
 class PublicMetricsApiTest(BaseTestCase):
@@ -104,6 +57,8 @@ class PublicMetricsApiTest(BaseTestCase):
     )
 
     string_link_ids = ("firstName", "middleName", "lastName", "streetAddress", "city", "phoneNumber", "zipCode")
+
+    test_job_time = datetime.datetime.now().replace(microsecond=0)
 
     def setUp(self):
         super(PublicMetricsApiTest, self).setUp()
@@ -132,24 +87,15 @@ class PublicMetricsApiTest(BaseTestCase):
             CalendarDao().insert(calendar_day)
             curr_date = curr_date + datetime.timedelta(days=1)
 
-        self.clear_table_after_test('metrics_enrollment_status_cache')
-        self.clear_table_after_test('metrics_gender_cache')
-        self.clear_table_after_test('metrics_age_cache')
-        self.clear_table_after_test('metrics_race_cache')
-        self.clear_table_after_test('metrics_region_cache')
-        self.clear_table_after_test('metrics_lifecycle_cache')
-        self.clear_table_after_test('metrics_language_cache')
-
-        self.temporarily_override_config_setting(config.PUBLIC_METRICS_PROJECT_MAP, {
-            "localhost": "aou-warehouse-test",
-            "all-of-us-rdr-sandbox": "aou-warehouse-test",
-            "all-of-us-rdr-staging": "aou-warehouse-test",
-            "all-of-us-rdr-stable": "aou-warehouse-test",
-            "all-of-us-rdr-prod": "aou-warehouse-test",
-        })
-
     def tearDown(self):
         self.clear_table_after_test("rdr.metrics_enrollment_status_cache")
+        self.clear_table_after_test("rdr.metrics_gender_cache")
+        self.clear_table_after_test("rdr.metrics_age_cache")
+        self.clear_table_after_test("rdr.metrics_race_cache")
+        self.clear_table_after_test("rdr.metrics_region_cache")
+        self.clear_table_after_test("rdr.metrics_lifecycle_cache")
+        self.clear_table_after_test("rdr.metrics_language_cache")
+
         super().tearDown()
 
     def _insert(
@@ -185,8 +131,6 @@ class PublicMetricsApiTest(BaseTestCase):
     :return: Participant object
     """
 
-        expected_bq_results = dict()
-
         if unconsented is True:
             enrollment_status = None
         elif time_mem is None:
@@ -202,23 +146,6 @@ class PublicMetricsApiTest(BaseTestCase):
         participant.providerLink = make_primary_provider_link_for_name(hpo_name)
         with FakeClock(time_mem):
             self.dao.update(participant)
-
-        if enrollment_status is None:
-            for field, _ in ParticipantCountsOverTimeService.TEMP_FIELDS:
-                temp = field.split('_')
-                camel_field = temp[0] + ''.join(f.title() for f in temp[1:])
-
-                try:
-                    value = getattr(participant, camel_field)
-                except Exception:  # pylint: disable=broad-except
-                    value = None
-
-                expected_bq_results[field] = value
-
-            expected_bq_results['withdrawal_status'] = 1
-            expected_bq_results['suspension_status'] = 1
-
-            return None, expected_bq_results
 
         summary = self.participant_summary(participant)
 
@@ -281,10 +208,10 @@ class PublicMetricsApiTest(BaseTestCase):
 
         self.ps_dao.insert(summary)
 
-        return summary, generate_mock_results(participant, summary)
+        return summary
 
     def update_participant_summary(
-        self, participant_id, time_mem=None, time_fp=None, time_fp_stored=None, time_study=None, the_basics=None
+        self, participant_id, time_mem=None, time_fp=None, time_fp_stored=None, time_study=None
     ):
 
         participant = self.dao.get(participant_id)
@@ -332,38 +259,2228 @@ class PublicMetricsApiTest(BaseTestCase):
 
         self.ps_dao.update(summary)
 
-        return summary, generate_mock_results(participant, summary, the_basics)
+        return summary
 
+    def get_mock_data(self):
+        insert_time = self.test_job_time
+
+        enrollment_results_az = [
+            {
+                "dateInserted": insert_time,
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "registeredCount": "0",
+                "participantCount": "1",
+                "consentedCount": "0",
+                "coreCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "registeredCount": "0",
+                "participantCount": "2",
+                "consentedCount": "0",
+                "coreCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "registeredCount": "0",
+                "participantCount": "1",
+                "consentedCount": "1",
+                "coreCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "registeredCount": "0",
+                "participantCount": "1",
+                "consentedCount": "0",
+                "coreCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "registeredCount": "0",
+                "participantCount": "1",
+                "consentedCount": "0",
+                "coreCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-07",
+                "registeredCount": "0",
+                "participantCount": "1",
+                "consentedCount": "0",
+                "coreCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-08",
+                "registeredCount": "0",
+                "participantCount": "1",
+                "consentedCount": "0",
+                "coreCount": "1",
+                "participantOrigin": "example"
+            },
+        ]
+        enrollment_results_unst = [
+            {
+                "dateInserted": insert_time,
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2017-12-31",
+                "registeredCount": "1",
+                "participantCount": "0",
+                "consentedCount": "0",
+                "coreCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-01",
+                "registeredCount": "1",
+                "participantCount": "0",
+                "consentedCount": "0",
+                "coreCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-02",
+                "registeredCount": "1",
+                "participantCount": "0",
+                "consentedCount": "0",
+                "coreCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-03",
+                "registeredCount": "1",
+                "participantCount": "0",
+                "consentedCount": "0",
+                "coreCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-07",
+                "registeredCount": "1",
+                "participantCount": "0",
+                "consentedCount": "0",
+                "coreCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-08",
+                "registeredCount": "1",
+                "participantCount": "0",
+                "consentedCount": "0",
+                "coreCount": "0",
+                "participantOrigin": "example"
+            }
+        ]
+        age_results_az = [
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "ageRange": "18-29",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "ageRange": "18-29",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "registered",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "ageRange": "18-29",
+                "ageCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "ageRange": "18-29",
+                "ageCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "registered",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "ageRange": "18-29",
+                "ageCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "ageRange": "18-29",
+                "ageCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "registered",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "ageRange": "18-29",
+                "ageCount": "2",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "ageRange": "30-39",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "ageRange": "30-39",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "ageRange": "30-39",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "ageRange": "30-39",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {"dateInserted": insert_time,
+             "type": "PUBLIC_METRICS_EXPORT_API",
+             "enrollment_status": "consented",
+             "hpoId": 4,
+             "hpoName": "AZ_TUCSON",
+             "date": "2017-12-31",
+             "ageRange": "40-49",
+             "ageCount": "0",
+             "participantOrigin": "example"
+             },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "ageRange": "50-59",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "ageRange": "60-69",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "ageRange": "70-79",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "ageRange": "80-89",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "ageRange": "90-",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "ageRange": "UNSET",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "ageRange": "40-49",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "ageRange": "50-59",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "ageRange": "60-69",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "ageRange": "70-79",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "ageRange": "80-89",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "ageRange": "90-",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "ageRange": "UNSET",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "ageRange": "40-49",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "ageRange": "50-59",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "ageRange": "60-69",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "ageRange": "70-79",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "ageRange": "80-89",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "ageRange": "90-",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "ageRange": "UNSET",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "ageRange": "40-49",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "ageRange": "50-59",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "ageRange": "60-69",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "ageRange": "70-79",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "ageRange": "80-89",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "ageRange": "90-",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "ageRange": "UNSET",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "ageRange": "18-29",
+                "ageCount": "3",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "ageRange": "30-39",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "ageRange": "40-49",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "ageRange": "50-59",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "ageRange": "60-69",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "ageRange": "70-79",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "ageRange": "80-89",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "ageRange": "90-",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "ageRange": "UNSET",
+                "ageCount": "0",
+                "participantOrigin": "example"
+            }
+        ]
+        age_results_unst = [
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2017-12-31",
+                "ageRange": "30-39",
+                "ageCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-01",
+                "ageRange": "30-39",
+                "ageCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-02",
+                "ageRange": "30-39",
+                "ageCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-03",
+                "ageRange": "30-39",
+                "ageCount": "1",
+                "participantOrigin": "example"
+            },
+        ]
+        lang_results_az = [
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "registered",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-30",
+                "languageName": "ES",
+                "languageCount": "0",
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "registered",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "languageName": "UNSET",
+                "languageCount": "2",
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "registered",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "languageName": "ES",
+                "languageCount": "0",
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "registered",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "languageName": "ES",
+                "languageCount": "1",
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "registered",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "languageName": "UNSET",
+                "languageCount": "2",
+            }
+        ]
+        lang_results_unst = [
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "registered",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2017-12-30",
+                "languageName": "UNSET",
+                "languageCount": "0",
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "registered",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2017-12-30",
+                "languageName": "EN",
+                "languageCount": "0",
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "registered",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2017-12-31",
+                "languageName": "EN",
+                "languageCount": "1",
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "registered",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-03",
+                "languageName": "EN",
+                "languageCount": "1",
+            }
+        ]
+        region_results_az = [
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "stateName": "PIIState_IN",
+                "stateCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "stateName": "PIIState_IN",
+                "stateCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "stateName": "PIIState_IN",
+                "stateCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "stateName": "PIIState_CA",
+                "stateCount": "1",
+                "participantOrigin": "example"
+            }
+        ]
+        region_results_unst = [
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "consented",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2017-12-31",
+                "stateName": "PIIState_IL",
+                "stateCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "consented",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-01",
+                "stateName": "PIIState_IL",
+                "stateCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "consented",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-02",
+                "stateName": "PIIState_IL",
+                "stateCount": "1",
+                "participantOrigin": "example"
+            },
+        ]
+        region_results_pitt = [
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "consented",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2017-12-31",
+                "stateName": "PIIState_PR",
+                "stateCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "consented",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-01",
+                "stateName": "PIIState_PR",
+                "stateCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "consented",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-01",
+                "stateName": "PIIState_IN",
+                "stateCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "consented",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-02",
+                "stateName": "PIIState_IN",
+                "stateCount": "2",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "enrollmentStatus": "consented",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-02",
+                "stateName": "PIIState_PR",
+                "stateCount": "1",
+                "participantOrigin": "example"
+            }
+        ]
+        lifecycle_results_az = [
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "registered",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "registered": "0",
+                "consentEnrollment": "0",
+                "consentComplete": "0",
+                "ppiBasics": "0",
+                "ppiOverallHealth": "0",
+                "ppiLifestyle": "0",
+                "ppiHealthcareAccess": "0",
+                "ppiMedicalHistory": "0",
+                "ppiMedications": "0",
+                "ppiFamilyHealth": "0",
+                "ppiBaselineComplete": "0",
+                "retentionModulesEligible": "0",
+                "retentionModulesComplete": "0",
+                "physicalMeasurement": "0",
+                "sampleReceived": "0",
+                "fullParticipant": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "registered",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "registered": "1",
+                "consentEnrollment": "1",
+                "consentComplete": "1",
+                "ppiBasics": "1",
+                "ppiOverallHealth": "1",
+                "ppiLifestyle": "1",
+                "ppiHealthcareAccess": "1",
+                "ppiMedicalHistory": "1",
+                "ppiMedications": "1",
+                "ppiFamilyHealth": "1",
+                "ppiBaselineComplete": "1",
+                "retentionModulesEligible": "1",
+                "retentionModulesComplete": "1",
+                "physicalMeasurement": "1",
+                "sampleReceived": "1",
+                "fullParticipant": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "registered",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "registered": "2",
+                "consentEnrollment": "2",
+                "consentComplete": "2",
+                "ppiBasics": "2",
+                "ppiOverallHealth": "1",
+                "ppiLifestyle": "1",
+                "ppiHealthcareAccess": "1",
+                "ppiMedicalHistory": "1",
+                "ppiMedications": "1",
+                "ppiFamilyHealth": "1",
+                "ppiBaselineComplete": "1",
+                "retentionModulesEligible": "1",
+                "retentionModulesComplete": "1",
+                "physicalMeasurement": "1",
+                "sampleReceived": "2",
+                "fullParticipant": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-06",
+                "registered": "2",
+                "consentEnrollment": "2",
+                "consentComplete": "2",
+                "ppiBasics": "2",
+                "ppiOverallHealth": "2",
+                "ppiLifestyle": "2",
+                "ppiHealthcareAccess": "2",
+                "ppiMedicalHistory": "2",
+                "ppiMedications": "2",
+                "ppiFamilyHealth": "2",
+                "ppiBaselineComplete": "2",
+                "retentionModulesEligible": "2",
+                "retentionModulesComplete": "2",
+                "physicalMeasurement": "2",
+                "sampleReceived": "2",
+                "fullParticipant": "2",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-08",
+                "registered": "2",
+                "consentEnrollment": "2",
+                "consentComplete": "2",
+                "ppiBasics": "2",
+                "ppiOverallHealth": "2",
+                "ppiLifestyle": "2",
+                "ppiHealthcareAccess": "2",
+                "ppiMedicalHistory": "2",
+                "ppiMedications": "2",
+                "ppiFamilyHealth": "2",
+                "ppiBaselineComplete": "2",
+                "retentionModulesEligible": "2",
+                "retentionModulesComplete": "2",
+                "physicalMeasurement": "2",
+                "sampleReceived": "2",
+                "fullParticipant": "2",
+                "participantOrigin": "example"
+            }
+        ]
+        lifecycle_results_unst = [
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "registered",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-03",
+                "registered": "1",
+                "consentEnrollment": "1",
+                "consentComplete": "1",
+                "ppiBasics": "1",
+                "ppiOverallHealth": "1",
+                "ppiLifestyle": "1",
+                "ppiHealthcareAccess": "1",
+                "ppiMedicalHistory": "1",
+                "ppiMedications": "1",
+                "ppiFamilyHealth": "1",
+                "ppiBaselineComplete": "1",
+                "retentionModulesEligible": "1",
+                "retentionModulesComplete": "1",
+                "physicalMeasurement": "1",
+                "sampleReceived": "1",
+                "fullParticipant": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "consented",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-08",
+                "registered": "1",
+                "consentEnrollment": "1",
+                "consentComplete": "1",
+                "ppiBasics": "1",
+                "ppiOverallHealth": "1",
+                "ppiLifestyle": "1",
+                "ppiHealthcareAccess": "1",
+                "ppiMedicalHistory": "1",
+                "ppiMedications": "1",
+                "ppiFamilyHealth": "1",
+                "ppiBaselineComplete": "1",
+                "retentionModulesEligible": "1",
+                "retentionModulesComplete": "1",
+                "physicalMeasurement": "1",
+                "sampleReceived": "1",
+                "fullParticipant": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "registered",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2017-12-31",
+                "registered": "1",
+                "consentEnrollment": "1",
+                "consentComplete": "1",
+                "ppiBasics": "1",
+                "ppiOverallHealth": "1",
+                "ppiLifestyle": "1",
+                "ppiHealthcareAccess": "1",
+                "ppiMedicalHistory": "1",
+                "ppiMedications": "1",
+                "ppiFamilyHealth": "1",
+                "ppiBaselineComplete": "1",
+                "retentionModulesEligible": "1",
+                "retentionModulesComplete": "1",
+                "physicalMeasurement": "1",
+                "sampleReceived": "1",
+                "fullParticipant": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "registered",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-02",
+                "registered": "1",
+                "consentEnrollment": "1",
+                "consentComplete": "1",
+                "ppiBasics": "1",
+                "ppiOverallHealth": "1",
+                "ppiLifestyle": "1",
+                "ppiHealthcareAccess": "1",
+                "ppiMedicalHistory": "1",
+                "ppiMedications": "1",
+                "ppiFamilyHealth": "1",
+                "ppiBaselineComplete": "1",
+                "retentionModulesEligible": "1",
+                "retentionModulesComplete": "1",
+                "physicalMeasurement": "1",
+                "sampleReceived": "1",
+                "fullParticipant": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "consented",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-06",
+                "registered": "1",
+                "consentEnrollment": "1",
+                "consentComplete": "1",
+                "ppiBasics": "1",
+                "ppiOverallHealth": "1",
+                "ppiLifestyle": "1",
+                "ppiHealthcareAccess": "1",
+                "ppiMedicalHistory": "1",
+                "ppiMedications": "1",
+                "ppiFamilyHealth": "1",
+                "ppiBaselineComplete": "1",
+                "retentionModulesEligible": "1",
+                "retentionModulesComplete": "1",
+                "physicalMeasurement": "1",
+                "sampleReceived": "1",
+                "fullParticipant": "1",
+                "participantOrigin": "example"
+            }
+        ]
+        lifecycle_results_pitt = [
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "registered",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-03",
+                "registered": "2",
+                "consentEnrollment": "2",
+                "consentComplete": "1",
+                "ppiBasics": "0",
+                "ppiOverallHealth": "1",
+                "ppiLifestyle": "1",
+                "ppiHealthcareAccess": "1",
+                "ppiMedicalHistory": "1",
+                "ppiMedications": "1",
+                "ppiFamilyHealth": "1",
+                "ppiBaselineComplete": "1",
+                "retentionModulesEligible": "0",
+                "retentionModulesComplete": "0",
+                "physicalMeasurement": "1",
+                "sampleReceived": "0",
+                "fullParticipant": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "consented",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-08",
+                "registered": "2",
+                "consentEnrollment": "2",
+                "consentComplete": "2",
+                "ppiBasics": "2",
+                "ppiOverallHealth": "2",
+                "ppiLifestyle": "2",
+                "ppiHealthcareAccess": "2",
+                "ppiMedicalHistory": "2",
+                "ppiMedications": "2",
+                "ppiFamilyHealth": "2",
+                "ppiBaselineComplete": "2",
+                "retentionModulesEligible": "2",
+                "retentionModulesComplete": "2",
+                "physicalMeasurement": "2",
+                "sampleReceived": "2",
+                "fullParticipant": "2",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "registered",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2017-12-31",
+                "registered": "0",
+                "consentEnrollment": "0",
+                "consentComplete": "0",
+                "ppiBasics": "0",
+                "ppiOverallHealth": "0",
+                "ppiLifestyle": "0",
+                "ppiHealthcareAccess": "0",
+                "ppiMedicalHistory": "0",
+                "ppiMedications": "0",
+                "ppiFamilyHealth": "0",
+                "ppiBaselineComplete": "0",
+                "retentionModulesEligible": "0",
+                "retentionModulesComplete": "0",
+                "physicalMeasurement": "0",
+                "sampleReceived": "0",
+                "fullParticipant": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "registered",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-02",
+                "registered": "0",
+                "consentEnrollment": "0",
+                "consentComplete": "0",
+                "ppiBasics": "0",
+                "ppiOverallHealth": "0",
+                "ppiLifestyle": "0",
+                "ppiHealthcareAccess": "0",
+                "ppiMedicalHistory": "0",
+                "ppiMedications": "0",
+                "ppiFamilyHealth": "0",
+                "ppiBaselineComplete": "0",
+                "retentionModulesEligible": "0",
+                "retentionModulesComplete": "0",
+                "physicalMeasurement": "0",
+                "sampleReceived": "0",
+                "fullParticipant": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollmentStatus": "consented",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-06",
+                "registered": "2",
+                "consentEnrollment": "2",
+                "consentComplete": "2",
+                "ppiBasics": "2",
+                "ppiOverallHealth": "2",
+                "ppiLifestyle": "2",
+                "ppiHealthcareAccess": "2",
+                "ppiMedicalHistory": "2",
+                "ppiMedications": "2",
+                "ppiFamilyHealth": "2",
+                "ppiBaselineComplete": "2",
+                "retentionModulesEligible": "2",
+                "retentionModulesComplete": "2",
+                "physicalMeasurement": "2",
+                "sampleReceived": "2",
+                "fullParticipant": "2",
+                "participantOrigin": "example"
+            }
+        ]
+        gender_results_az = [
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "genderName": "Man",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "genderName": "Man",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "genderName": "Transgender",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "genderName": "Man",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "genderName": "Transgender",
+                "genderCount": "2",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "genderName": "Man",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "genderName": "Transgender",
+                "genderCount": "2",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "genderName": "More than one gender identity",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+        ]
+        gender_results_unst = [
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2017-12-31",
+                "genderName": "Woman",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-01",
+                "genderName": "Woman",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-02",
+                "genderName": "Woman",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-03",
+                "genderName": "Woman",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "enrollment_status": "",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-04",
+                "genderName": "Woman",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            }
+        ]
+        gender_v2_results_az = [
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "genderName": "Man",
+                "genderCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "genderName": "Woman",
+                "genderCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "genderName": "Man",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "genderName": "Woman",
+                "genderCount": "0",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "genderName": "Man",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "genderName": "Transgender",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "genderName": "Man",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-03",
+                "genderName": "Transgender",
+                "genderCount": "2",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "genderName": "Man",
+                "genderCount": "2",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "genderName": "Woman",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "genderName": "Transgender",
+                "genderCount": "2",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "consented",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-04",
+                "genderName": "More than one gender identity",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+        ]
+        gender_v2_results_unst = [
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2017-12-31",
+                "genderName": "Woman",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-01",
+                "genderName": "Woman",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-02",
+                "genderName": "Woman",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-03",
+                "genderName": "Woman",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "enrollment_status": "",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-04",
+                "genderName": "Woman",
+                "genderCount": "1",
+                "participantOrigin": "example"
+            }
+        ]
+        race_results_az = [
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "0",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "0",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "1",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "0",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "1",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "1",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            }
+        ]
+        race_results_unst = [
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2017-12-31",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "0",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "1",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-01",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "0",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "1",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "1",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-02",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "1",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "1",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "1",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "1"
+            }
+        ]
+        race_results_pitt = [
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2017-12-31",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "0",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "0",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-01",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "0",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "0",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-02",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "0",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "0",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-03",
+                "registeredFlag": 1,
+                "participantFlag": 1,
+                "consentedFlag": 1,
+                "coreFlag": 1,
+                "americanIndianAlaskaNative": "1",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "1",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "2",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "PUBLIC_METRICS_EXPORT_API",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-04",
+                "registeredFlag": 1,
+                "participantFlag": 1,
+                "consentedFlag": 1,
+                "coreFlag": 1,
+                "americanIndianAlaskaNative": "1",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "1",
+                "noAncestryChecked": "1",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            }
+        ]
+        race_v2_results_az = [
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2017-12-31",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "0",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "0",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-01",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "1",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "0",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "hpoId": 4,
+                "hpoName": "AZ_TUCSON",
+                "date": "2018-01-02",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "2",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "1",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "1",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            }
+        ]
+        race_v2_results_unst = [
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2017-12-31",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "0",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "1",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-01",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "0",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "1",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "hpoId": 0,
+                "hpoName": "UNSET",
+                "date": "2018-01-02",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "1",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "0",
+                "hispanicLatinoSpanish": "0",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "1",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "1"
+            }
+        ]
+        race_v2_results_pitt = [
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2017-12-31",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "0",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "1",
+                "hispanicLatinoSpanish": "1",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "0",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-01",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "0",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "1",
+                "hispanicLatinoSpanish": "1",
+                "noneOfTheseFullyDescribeMe": "1",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "0",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-02",
+                "registeredFlag": 0,
+                "participantFlag": 0,
+                "consentedFlag": 0,
+                "coreFlag": 0,
+                "americanIndianAlaskaNative": "0",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "1",
+                "hispanicLatinoSpanish": "1",
+                "noneOfTheseFullyDescribeMe": "1",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "0",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-03",
+                "registeredFlag": 1,
+                "participantFlag": 1,
+                "consentedFlag": 1,
+                "coreFlag": 1,
+                "americanIndianAlaskaNative": "1",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "2",
+                "hispanicLatinoSpanish": "2",
+                "noneOfTheseFullyDescribeMe": "1",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "2",
+                "noAncestryChecked": "0",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            },
+            {
+                "dateInserted": insert_time,
+                "type": "METRICS_V2_API",
+                "hpoId": 2,
+                "hpoName": "PITT",
+                "date": "2018-01-04",
+                "registeredFlag": 1,
+                "participantFlag": 1,
+                "consentedFlag": 1,
+                "coreFlag": 1,
+                "americanIndianAlaskaNative": "1",
+                "asian": "0",
+                "blackAfricanAmerican": "0",
+                "middleEasternNorthAfrican": "0",
+                "nativeHawaiianOtherPacificIslander": "0",
+                "white": "1",
+                "hispanicLatinoSpanish": "1",
+                "noneOfTheseFullyDescribeMe": "0",
+                "preferNotToAnswer": "0",
+                "multiAncestry": "1",
+                "noAncestryChecked": "1",
+                "participantOrigin": "example",
+                "unsetNoBasics": "0"
+            }
+        ]
+
+        return [lifecycle_results_unst, lifecycle_results_pitt, lifecycle_results_az,
+                gender_results_unst, [], gender_results_az,
+                age_results_unst, [], age_results_az,
+                race_results_unst, race_results_pitt, race_results_az,
+                enrollment_results_unst, [], enrollment_results_az,
+                region_results_unst, region_results_pitt, region_results_az,
+                lang_results_unst, [], lang_results_az,
+                gender_v2_results_unst, [], gender_v2_results_az,  [],
+                [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
+                [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
+                [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
+                [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
+                race_v2_results_unst, race_v2_results_pitt, race_v2_results_az]
+
+    @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
+                test_job_time)
     @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_enrollment_status_api(self, big_query):
-
-        p1 = Participant(participantId=1, biobankId=4)
-        _, expected_bq_results_1 = self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, time_study=self.time1)
-
-        p2 = Participant(participantId=2, biobankId=5)
-        _, expected_bq_results_2 = self._insert(
-            p2, "Bob", "Builder", "AZ_TUCSON", "AZ_TUCSON_BANNER_HEALTH", time_int=self.time2, time_study=self.time2
-        )
-
-        p3 = Participant(participantId=3, biobankId=6)
-        _, expected_bq_results_3 = self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time3,
-            time_fp_stored=self.time4,
-        )
-
-        big_query().query.side_effect = [[expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3]]
+        big_query().query.side_effect = self.get_mock_data()
 
         calculate_participant_metrics()
 
         self.assertTrue(big_query().query.called)
-        self.assertEqual(big_query().query.call_count, 3)
+        self.assertEqual(big_query().query.call_count, 72)
 
         qs = "&stratification=ENROLLMENT_STATUS" "&startDate=2018-01-01" "&endDate=2018-01-08"
 
@@ -379,144 +2496,16 @@ class PublicMetricsApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-02", "metrics": {"consented": 1, "core": 0, "registered": 1}}, results)
         self.assertIn({"date": "2018-01-03", "metrics": {"consented": 0, "core": 1, "registered": 1}}, results)
 
+    @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
+                test_job_time)
     @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_gender_api(self, big_query):
-
-        self.init_gender_codes()
-        gender_code_dict = {
-            "GenderIdentity_Woman": 1,
-            "GenderIdentity_Transgender": 2,
-            "GenderIdentity_Man": 3,
-            "GenderIdentity_AdditionalOptions": 4,
-            "GenderIdentity_NonBinary": 5,
-            "PMI_PreferNotToAnswer": 6,
-            "PMI_Skip": 7,
-        }
-
-        participant_gender_answer_dao = ParticipantGenderAnswersDao()
-        p1 = Participant(participantId=1, biobankId=4)
-        _, expected_bq_results_1 = self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1,
-                                                gender_identity=3)
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=1,
-                    created=self.time1,
-                    modified=self.time1,
-                    codeId=gender_code_dict["GenderIdentity_Woman"],
-                )
-            )
-        )
-
-        p2 = Participant(participantId=2, biobankId=5)
-        _, expected_bq_results_2 = self._insert(
-            p2,
-            "Bob",
-            "Builder",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time2,
-            time_study=self.time2,
-            time_mem=self.time3,
-            gender_identity=2
-        )
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=2,
-                    created=self.time2,
-                    modified=self.time2,
-                    codeId=gender_code_dict["GenderIdentity_Man"],
-                )
-            )
-        )
-
-        p3 = Participant(participantId=3, biobankId=6)
-        _, expected_bq_results_3 = self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time3,
-            time_study=self.time3,
-            time_mem=self.time5,
-            gender_identity=5
-        )
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=3,
-                    created=self.time3,
-                    modified=self.time3,
-                    codeId=gender_code_dict["GenderIdentity_Transgender"],
-                )
-            )
-        )
-
-        p4 = Participant(participantId=4, biobankId=7)
-        _, expected_bq_results_4 = self._insert(
-            p4,
-            "Chad2",
-            "Caterpillar2",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time4,
-            time_study=self.time4,
-            time_mem=self.time5,
-            gender_identity=5
-        )
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=4,
-                    created=self.time4,
-                    modified=self.time4,
-                    codeId=gender_code_dict["GenderIdentity_Transgender"],
-                )
-            )
-        )
-
-        p6 = Participant(participantId=6, biobankId=9)
-        _, expected_bq_results_6 = self._insert(
-            p6,
-            "Chad3",
-            "Caterpillar3",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time5,
-            time_study=self.time5,
-            time_mem=self.time5,
-            gender_identity=7
-        )
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=6,
-                    created=self.time5,
-                    modified=self.time5,
-                    codeId=gender_code_dict["GenderIdentity_Woman"],
-                )
-            )
-        )
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=6,
-                    created=self.time5,
-                    modified=self.time5,
-                    codeId=gender_code_dict["GenderIdentity_Man"],
-                )
-            )
-        )
-
-        big_query().query.side_effect = [[expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3,
-                                                                       expected_bq_results_4, expected_bq_results_6]]
+        big_query().query.side_effect = self.get_mock_data()
 
         calculate_participant_metrics()
 
         self.assertTrue(big_query().query.called)
-        self.assertEqual(big_query().query.call_count, 3)
+        self.assertEqual(big_query().query.call_count, 72)
 
         qs = "&stratification=GENDER_IDENTITY" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -734,136 +2723,11 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
+    @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
+                test_job_time)
     @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_gender_api_v2(self, big_query):
-
-        self.init_gender_codes()
-        gender_code_dict = {
-            "GenderIdentity_Woman": 1,
-            "GenderIdentity_Transgender": 2,
-            "GenderIdentity_Man": 3,
-            "GenderIdentity_AdditionalOptions": 4,
-            "GenderIdentity_NonBinary": 5,
-            "PMI_PreferNotToAnswer": 6,
-            "PMI_Skip": 7,
-        }
-
-        participant_gender_answer_dao = ParticipantGenderAnswersDao()
-        p1 = Participant(participantId=1, biobankId=4)
-        _, expected_bq_results_1 = self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1,
-                                                gender_identity=3)
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=1,
-                    created=self.time1,
-                    modified=self.time1,
-                    codeId=gender_code_dict["GenderIdentity_Woman"],
-                )
-            )
-        )
-
-        p2 = Participant(participantId=2, biobankId=5)
-        _, expected_bq_results_2 = self._insert(
-            p2,
-            "Bob",
-            "Builder",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time2,
-            time_mem=self.time3,
-            gender_identity=2,
-        )
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=2,
-                    created=self.time2,
-                    modified=self.time2,
-                    codeId=gender_code_dict["GenderIdentity_Man"],
-                )
-            )
-        )
-
-        p3 = Participant(participantId=3, biobankId=6)
-        _, expected_bq_results_3 = self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time3,
-            time_mem=self.time5,
-            gender_identity=5,
-        )
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=3,
-                    created=self.time3,
-                    modified=self.time3,
-                    codeId=gender_code_dict["GenderIdentity_Transgender"],
-                )
-            )
-        )
-
-        p4 = Participant(participantId=4, biobankId=7)
-        _, expected_bq_results_4 = self._insert(
-            p4,
-            "Chad2",
-            "Caterpillar2",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time4,
-            time_mem=self.time5,
-            gender_identity=5,
-        )
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=4,
-                    created=self.time4,
-                    modified=self.time4,
-                    codeId=gender_code_dict["GenderIdentity_Transgender"],
-                )
-            )
-        )
-        p6 = Participant(participantId=6, biobankId=9)
-        _, expected_bq_results_6 = self._insert(
-            p6,
-            "Chad3",
-            "Caterpillar3",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time5,
-            time_mem=self.time5,
-            gender_identity=7,
-        )
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=6,
-                    created=self.time5,
-                    modified=self.time5,
-                    codeId=gender_code_dict["GenderIdentity_Woman"],
-                )
-            )
-        )
-        participant_gender_answer_dao.insert(
-            ParticipantGenderAnswers(
-                **dict(
-                    participantId=6,
-                    created=self.time5,
-                    modified=self.time5,
-                    codeId=gender_code_dict["GenderIdentity_Man"],
-                )
-            )
-        )
-
-        big_query().query.side_effect = [[expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3,
-                                                                       expected_bq_results_4, expected_bq_results_6],
-                                         [expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3,
-                                                                       expected_bq_results_4, expected_bq_results_6]]
+        big_query().query.side_effect = self.get_mock_data()
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
@@ -875,7 +2739,7 @@ class PublicMetricsApiTest(BaseTestCase):
             calculate_participant_metrics()
 
         self.assertTrue(big_query().query.called)
-        self.assertEqual(big_query().query.call_count, 6)
+        self.assertEqual(big_query().query.call_count, 132)
 
         qs = "&stratification=GENDER_IDENTITY" "&startDate=2017-12-31" "&endDate=2018-01-08" "&version=2"
 
@@ -1154,57 +3018,11 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
+    @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
+                test_job_time)
     @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_age_range_api(self, big_query):
-        dob1 = datetime.date(1978, 10, 10)
-        dob2 = datetime.date(1988, 10, 10)
-        dob3 = datetime.date(1988, 10, 10)
-        dob4 = datetime.date(1998, 10, 10)
-        p1 = Participant(participantId=1, biobankId=4)
-        _, expected_bq_results_1 = self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, dob=dob1)
-
-        p2 = Participant(participantId=2, biobankId=5)
-        _, expected_bq_results_2 = self._insert(
-            p2,
-            "Bob",
-            "Builder",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time2,
-            time_study=self.time2,
-            time_mem=self.time3,
-            dob=dob2
-        )
-
-        p3 = Participant(participantId=3, biobankId=6)
-        _, expected_bq_results_3 = self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_study=self.time3,
-            time_int=self.time3,
-            time_mem=self.time5,
-            dob=dob3
-        )
-
-        p4 = Participant(participantId=4, biobankId=7)
-        _, expected_bq_results_4 = self._insert(
-            p4,
-            "Chad2",
-            "Caterpillar2",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_study=self.time4,
-            time_int=self.time4,
-            time_mem=self.time5,
-            dob=dob4
-        )
-
-        big_query().query.side_effect = [[expected_bq_results_1], [],
-                                         [expected_bq_results_2, expected_bq_results_3, expected_bq_results_4],
-                                         [expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3]]
+        big_query().query.side_effect = self.get_mock_data()
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
@@ -1216,7 +3034,7 @@ class PublicMetricsApiTest(BaseTestCase):
             calculate_participant_metrics()
 
         self.assertTrue(big_query().query.called)
-        self.assertEqual(big_query().query.call_count, 6)
+        self.assertEqual(big_query().query.call_count, 132)
 
         qs = "&stratification=AGE_RANGE" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -1459,120 +3277,47 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
+    @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
+                test_job_time)
     @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_total_api(self, big_query):
-
-        p1 = Participant(participantId=1, biobankId=4)
-        _, expected_bq_results_1 = self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1,
-                                                time_study=self.time1)
-
-        p2 = Participant(participantId=2, biobankId=5)
-        _, expected_bq_results_2 = self._insert(
-            p2, "Bob", "Builder", "AZ_TUCSON", "AZ_TUCSON_BANNER_HEALTH", time_int=self.time2, time_study=self.time2
-        )
-
-        p3 = Participant(participantId=3, biobankId=6)
-        _, expected_bq_results_3 = self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time3,
-            time_study=self.time3,
-            time_mem=self.time4,
-            time_fp_stored=self.time5,
-        )
-
-        big_query().query.side_effect = [[expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3]]
+        big_query().query.side_effect = self.get_mock_data()
 
         calculate_participant_metrics()
 
         self.assertTrue(big_query().query.called)
-        self.assertEqual(big_query().query.call_count, 3)
+        self.assertEqual(big_query().query.call_count, 72)
 
-        qs = "&stratification=TOTAL" "&startDate=2018-01-01" "&endDate=2018-01-08"
+        qs = "&stratification=TOTAL" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
         response = self.send_get("PublicMetrics", query_string=qs)
 
-        self.assertIn({"date": "2018-01-01", "metrics": {"TOTAL": 2}}, response)
+        self.assertIn({"date": "2017-12-31", "metrics": {"TOTAL": 2}}, response)
+        self.assertIn({"date": "2018-01-01", "metrics": {"TOTAL": 3}}, response)
         self.assertIn({"date": "2018-01-02", "metrics": {"TOTAL": 3}}, response)
         self.assertIn({"date": "2018-01-07", "metrics": {"TOTAL": 3}}, response)
         self.assertIn({"date": "2018-01-08", "metrics": {"TOTAL": 3}}, response)
 
-        qs = "&stratification=TOTAL" "&startDate=2018-01-01" "&endDate=2018-01-08" "&awardee=AZ_TUCSON"
+        qs = "&stratification=TOTAL" "&startDate=2017-12-31" "&endDate=2018-01-08" "&awardee=AZ_TUCSON"
 
         response = self.send_get("PublicMetrics", query_string=qs)
 
-        self.assertIn({"date": "2018-01-01", "metrics": {"TOTAL": 1}}, response)
+        self.assertIn({"date": "2017-12-31", "metrics": {"TOTAL": 1}}, response)
+        self.assertIn({"date": "2018-01-01", "metrics": {"TOTAL": 2}}, response)
         self.assertIn({"date": "2018-01-02", "metrics": {"TOTAL": 2}}, response)
         self.assertIn({"date": "2018-01-07", "metrics": {"TOTAL": 2}}, response)
         self.assertIn({"date": "2018-01-08", "metrics": {"TOTAL": 2}}, response)
 
+    @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
+                test_job_time)
     @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_race_api(self, big_query):
-
-        questionnaire_id = self.create_demographics_questionnaire()
-
-        def setup_participant(when, race_code_list, providerLink=self.provider_link, no_demographic=False):
-            # Set up participant, questionnaire, and consent
-            with FakeClock(when):
-                participant = self.send_post("Participant", {"providerLink": [providerLink]})
-                participant_id = participant["participantId"]
-                self.send_consent(participant_id)
-                if no_demographic:
-                    return participant
-                # Populate some answers to the questionnaire
-                answers = {
-                    "race": race_code_list,
-                    "genderIdentity": PMI_SKIP_CODE,
-                    "firstName": self.fake.first_name(),
-                    "middleName": self.fake.first_name(),
-                    "lastName": self.fake.last_name(),
-                    "zipCode": "78751",
-                    "state": PMI_SKIP_CODE,
-                    "streetAddress": "1234 Main Street",
-                    "city": "Austin",
-                    "sex": PMI_SKIP_CODE,
-                    "sexualOrientation": PMI_SKIP_CODE,
-                    "phoneNumber": "512-555-5555",
-                    "recontactMethod": PMI_SKIP_CODE,
-                    "language": PMI_SKIP_CODE,
-                    "education": PMI_SKIP_CODE,
-                    "income": PMI_SKIP_CODE,
-                    "dateOfBirth": datetime.date(1978, 10, 9),
-                    "CABoRSignature": "signature.pdf",
-                }
-            self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
-            return participant
-
-        p1 = setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        _, expected_bq_results_1 = self.update_participant_summary(p1["participantId"][1:], time_mem=self.time2)
-        p2 = setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
-        _, expected_bq_results_2 = self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3,
-                                                                   time_fp_stored=self.time5)
-        p3 = setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
-        p6 = setup_participant(self.time3, [PMI_SKIP_CODE], self.provider_link, no_demographic=True)
-        _, expected_bq_results_3 = self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4)
-        _, expected_bq_results_6 = self.update_participant_summary(p6["participantId"][1:], the_basics=0)
-        p4 = setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
-        _, expected_bq_results_4 = self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5)
-        p5 = setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        _, expected_bq_results_5 = self.update_participant_summary(p5["participantId"][1:], time_mem=self.time4,
-                                                                   time_fp_stored=self.time5)
-        p7 = setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
-        p8 = setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
-        _, expected_bq_results_7 = self.update_participant_summary(p7["participantId"][1:])
-        _, expected_bq_results_8 = self.update_participant_summary(p8["participantId"][1:])
-
-        big_query().query.side_effect = [[], [expected_bq_results_1, expected_bq_results_2, expected_bq_results_3,
-                                              expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
-                                         [expected_bq_results_7, expected_bq_results_8]]
+        big_query().query.side_effect = self.get_mock_data()
 
         calculate_participant_metrics()
 
         self.assertTrue(big_query().query.called)
-        self.assertEqual(big_query().query.call_count, 3)
+        self.assertEqual(big_query().query.call_count, 72)
 
         qs = "&stratification=RACE" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -1732,70 +3477,11 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
+    @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
+                test_job_time)
     @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_race_api_v2(self, big_query):
-
-        questionnaire_id = self.create_demographics_questionnaire()
-
-        def setup_participant(when, race_code_list, providerLink=self.provider_link, no_demographic=False):
-            # Set up participant, questionnaire, and consent
-            with FakeClock(when):
-                participant = self.send_post("Participant", {"providerLink": [providerLink]})
-                participant_id = participant["participantId"]
-                self.send_consent(participant_id)
-                if no_demographic:
-                    return participant
-                # Populate some answers to the questionnaire
-                answers = {
-                    "race": race_code_list,
-                    "genderIdentity": PMI_SKIP_CODE,
-                    "firstName": self.fake.first_name(),
-                    "middleName": self.fake.first_name(),
-                    "lastName": self.fake.last_name(),
-                    "zipCode": "78751",
-                    "state": PMI_SKIP_CODE,
-                    "streetAddress": "1234 Main Street",
-                    "city": "Austin",
-                    "sex": PMI_SKIP_CODE,
-                    "sexualOrientation": PMI_SKIP_CODE,
-                    "phoneNumber": "512-555-5555",
-                    "recontactMethod": PMI_SKIP_CODE,
-                    "language": PMI_SKIP_CODE,
-                    "education": PMI_SKIP_CODE,
-                    "income": PMI_SKIP_CODE,
-                    "dateOfBirth": datetime.date(1978, 10, 9),
-                    "CABoRSignature": "signature.pdf",
-                }
-            self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
-            return participant
-
-        p1 = setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        _, expected_bq_results_1 = self.update_participant_summary(p1["participantId"][1:], time_mem=self.time2)
-        p2 = setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
-        _, expected_bq_results_2 = self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3,
-                                                                   time_fp_stored=self.time5)
-        p3 = setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
-        _, expected_bq_results_3 = self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4)
-        # Setup participant with no demographic questionnaire.
-        p6 = setup_participant(self.time3, [PMI_SKIP_CODE], self.provider_link, no_demographic=True)
-        _, expected_bq_results_6 = self.update_participant_summary(p6["participantId"][1:], the_basics=0)
-
-        p4 = setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
-        _, expected_bq_results_4 = self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5)
-        p5 = setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        _, expected_bq_results_5 = self.update_participant_summary(p5["participantId"][1:], time_mem=self.time4,
-                                                                   time_fp_stored=self.time5)
-        p7 = setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
-        p8 = setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
-        _, expected_bq_results_7 = self.update_participant_summary(p7["participantId"][1:])
-        _, expected_bq_results_8 = self.update_participant_summary(p8["participantId"][1:])
-
-        big_query().query.side_effect = [[], [expected_bq_results_1, expected_bq_results_2, expected_bq_results_3,
-                                              expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
-                                         [expected_bq_results_7, expected_bq_results_8],
-                                         [], [expected_bq_results_1, expected_bq_results_2, expected_bq_results_3,
-                                              expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
-                                         [expected_bq_results_7, expected_bq_results_8]]
+        big_query().query.side_effect = self.get_mock_data()
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
@@ -1807,7 +3493,7 @@ class PublicMetricsApiTest(BaseTestCase):
             calculate_participant_metrics()
 
         self.assertTrue(big_query().query.called)
-        self.assertEqual(big_query().query.call_count, 6)
+        self.assertEqual(big_query().query.call_count, 132)
 
         qs = "&stratification=RACE" "&startDate=2017-12-31" "&endDate=2018-01-08" "&version=2"
 
@@ -1968,143 +3654,16 @@ class PublicMetricsApiTest(BaseTestCase):
             results,
         )
 
+    @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
+                test_job_time)
     @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_region_api(self, big_query):
-
-        code1 = Code(
-            codeId=1,
-            system="a",
-            value="PIIState_IL",
-            display="PIIState_IL",
-            topic="a",
-            codeType=CodeType.MODULE,
-            mapped=True,
-        )
-        code2 = Code(
-            codeId=2,
-            system="b",
-            value="PIIState_IN",
-            display="PIIState_IN",
-            topic="b",
-            codeType=CodeType.MODULE,
-            mapped=True,
-        )
-        code3 = Code(
-            codeId=3,
-            system="c",
-            value="PIIState_CA",
-            display="PIIState_CA",
-            topic="c",
-            codeType=CodeType.MODULE,
-            mapped=True,
-        )
-
-        code4 = Code(
-            codeId=4,
-            system="c",
-            value="PIIState_PR",
-            display="PIIState_PR",
-            topic="c",
-            codeType=CodeType.MODULE,
-            mapped=True,
-        )
-
-        self.code_dao.insert(code1)
-        self.code_dao.insert(code2)
-        self.code_dao.insert(code3)
-        self.code_dao.insert(code4)
-
-        p1 = Participant(participantId=1, biobankId=4)
-        _, expected_bq_results_1 = self._insert(
-            p1,
-            "Alice",
-            "Aardvark",
-            "UNSET",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp_stored=self.time1,
-            state_id=1,
-        )
-
-        p2 = Participant(participantId=2, biobankId=5)
-        _, expected_bq_results_2 = self._insert(
-            p2,
-            "Bob",
-            "Builder",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time2,
-            time_study=self.time2,
-            time_mem=self.time2,
-            time_fp_stored=self.time2,
-            state_id=2,
-        )
-
-        p3 = Participant(participantId=3, biobankId=6)
-        _, expected_bq_results_3 = self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time3,
-            time_study=self.time3,
-            time_mem=self.time3,
-            time_fp_stored=self.time3,
-            state_id=3,
-        )
-
-        p4 = Participant(participantId=4, biobankId=7)
-        _, expected_bq_results_4 = self._insert(
-            p4,
-            "Chad2",
-            "Caterpillar2",
-            "PITT",
-            "PITT_BANNER_HEALTH",
-            time_int=self.time3,
-            time_study=self.time3,
-            time_mem=self.time3,
-            time_fp_stored=self.time3,
-            state_id=2,
-        )
-
-        p5 = Participant(participantId=6, biobankId=9)
-        _, expected_bq_results_5 = self._insert(
-            p5,
-            "Chad3",
-            "Caterpillar3",
-            "PITT",
-            "PITT_BANNER_HEALTH",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time2,
-            time_fp_stored=self.time3,
-            state_id=2,
-        )
-
-        p6 = Participant(participantId=7, biobankId=10)
-        _, expected_bq_results_6 = self._insert(
-            p6,
-            "Angela",
-            "Alligator",
-            "PITT",
-            "PITT_BANNER_HEALTH",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time2,
-            time_fp_stored=self.time3,
-            state_id=4,
-        )
-
-        big_query().query.side_effect = [[expected_bq_results_1],
-                                         [expected_bq_results_4, expected_bq_results_5, expected_bq_results_6],
-                                         [expected_bq_results_2, expected_bq_results_3]]
+        big_query().query.side_effect = self.get_mock_data()
 
         calculate_participant_metrics()
 
         self.assertTrue(big_query().query.called)
-        self.assertEqual(big_query().query.call_count, 3)
+        self.assertEqual(big_query().query.call_count, 72)
 
         qs1 = "&stratification=GEO_STATE" "&endDate=2017-12-31"
 
@@ -2193,82 +3752,11 @@ class PublicMetricsApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-02", "count": 3, "hpo": "PITT"}, results3)
         self.assertIn({"date": "2018-01-02", "count": 2, "hpo": "AZ_TUCSON"}, results3)
 
+    @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
+                test_job_time)
     @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_lifecycle_api(self, big_query):
-
-        p1 = Participant(participantId=1, biobankId=4)
-        _, expected_bq_results_1 = self._insert(
-            p1,
-            "Alice",
-            "Aardvark",
-            "UNSET",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp=self.time1,
-            time_fp_stored=self.time1,
-        )
-
-        p2 = Participant(participantId=2, biobankId=5)
-        _, expected_bq_results_2 = self._insert(
-            p2,
-            "Bob",
-            "Builder",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time2,
-            time_study=self.time2,
-            time_mem=self.time2,
-            time_fp=self.time3,
-            time_fp_stored=self.time3,
-        )
-
-        p3 = Participant(participantId=3, biobankId=6)
-        _, expected_bq_results_3 = self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time4,
-            time_fp=self.time5,
-            time_fp_stored=self.time5,
-        )
-
-        p4 = Participant(participantId=4, biobankId=7)
-        _, expected_bq_results_4 = self._insert(
-            p4,
-            "Chad2",
-            "Caterpillar2",
-            "PITT",
-            "PITT_BANNER_HEALTH",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time5,
-            time_fp=self.time5,
-            time_fp_stored=self.time5,
-        )
-
-        p4 = Participant(participantId=6, biobankId=9)
-        _, expected_bq_results_5 = self._insert(
-            p4,
-            "Chad3",
-            "Caterpillar3",
-            "PITT",
-            "PITT_BANNER_HEALTH",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time4,
-            time_fp=self.time4,
-            time_fp_stored=self.time5,
-        )
-
-        big_query().query.side_effect = [[expected_bq_results_1], [expected_bq_results_4, expected_bq_results_5],
-                                         [expected_bq_results_2, expected_bq_results_3],
-                                         [expected_bq_results_1], [expected_bq_results_4, expected_bq_results_5],
-                                         [expected_bq_results_2, expected_bq_results_3]]
+        big_query().query.side_effect = self.get_mock_data()
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
@@ -2280,7 +3768,7 @@ class PublicMetricsApiTest(BaseTestCase):
             calculate_participant_metrics()
 
         self.assertTrue(big_query().query.called)
-        self.assertEqual(big_query().query.call_count, 6)
+        self.assertEqual(big_query().query.call_count, 132)
 
         qs1 = "&stratification=LIFECYCLE" "&endDate=2018-01-03"
 
@@ -2374,132 +3862,27 @@ class PublicMetricsApiTest(BaseTestCase):
             ],
         )
 
+    @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
+                test_job_time)
     @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_language_api(self, big_query):
-
-        p1 = Participant(participantId=1, biobankId=4)
-        _, expected_bq_results_1 = self._insert(p1, "Alice", "Aardvark", "UNSET",
-                                                unconsented=True, time_int=self.time1, primary_language="en")
-
-        p2 = Participant(participantId=2, biobankId=5)
-        _, expected_bq_results_2 = self._insert(p2, "Bob", "Builder", "AZ_TUCSON",
-                                                "AZ_TUCSON_BANNER_HEALTH", time_int=self.time2, primary_language="es"
-        )
-
-        p3 = Participant(participantId=3, biobankId=6)
-        _, expected_bq_results_3 = self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time1,
-            time_mem=self.time3,
-            time_fp_stored=self.time4,
-            primary_language="en",
-        )
-
-        p4 = Participant(participantId=5, biobankId=7)
-        _, expected_bq_results_4 = self._insert(
-            p4,
-            "Chad2",
-            "Caterpillar2",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time1,
-            time_mem=self.time2,
-            time_fp_stored=self.time4,
-        )
-
-        big_query().query.side_effect = [[expected_bq_results_1], [], [expected_bq_results_2, expected_bq_results_3,
-                                                                       expected_bq_results_4]]
+        big_query().query.side_effect = self.get_mock_data()
 
         calculate_participant_metrics()
         qs = "&stratification=LANGUAGE" "&startDate=2017-12-30" "&endDate=2018-01-03"
 
         results = self.send_get("PublicMetrics", query_string=qs)
         self.assertTrue(big_query().query.called)
-        self.assertEqual(big_query().query.call_count, 3)
+        self.assertEqual(big_query().query.call_count, 72)
         self.assertIn({"date": "2017-12-30", "metrics": {"EN": 0, "UNSET": 0, "ES": 0}}, results)
         self.assertIn({"date": "2017-12-31", "metrics": {"EN": 1, "UNSET": 2, "ES": 0}}, results)
         self.assertIn({"date": "2018-01-03", "metrics": {"EN": 1, "UNSET": 2, "ES": 1}}, results)
 
+    @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
+                test_job_time)
     @mock.patch('google.cloud.bigquery.Client')
     def test_public_metrics_get_primary_consent_api(self, big_query):
-
-        p1 = Participant(participantId=1, biobankId=4)
-        _, expected_bq_results_1 = self._insert(
-            p1,
-            "Alice",
-            "Aardvark",
-            "UNSET",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp=self.time1,
-            time_fp_stored=self.time1,
-        )
-
-        p2 = Participant(participantId=2, biobankId=5)
-        _, expected_bq_results_2 = self._insert(
-            p2,
-            "Bob",
-            "Builder",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time2,
-            time_study=self.time2,
-            time_mem=self.time2,
-            time_fp=self.time3,
-            time_fp_stored=self.time3,
-        )
-
-        p3 = Participant(participantId=3, biobankId=6)
-        _, expected_bq_results_3 = self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            "AZ_TUCSON_BANNER_HEALTH",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time4,
-            time_fp=self.time5,
-            time_fp_stored=self.time5,
-        )
-
-        p4 = Participant(participantId=4, biobankId=7)
-        _, expected_bq_results_4 = self._insert(
-            p4,
-            "Chad2",
-            "Caterpillar2",
-            "PITT",
-            "PITT_BANNER_HEALTH",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time5,
-            time_fp=self.time5,
-            time_fp_stored=self.time5,
-        )
-
-        p5 = Participant(participantId=6, biobankId=9)
-        _, expected_bq_results_5 = self._insert(
-            p5,
-            "Chad3",
-            "Caterpillar3",
-            "PITT",
-            "PITT_BANNER_HEALTH",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time4,
-            time_fp=self.time4,
-            time_fp_stored=self.time5,
-        )
-
-        big_query().query.side_effect = [[expected_bq_results_1], [expected_bq_results_4, expected_bq_results_5],
-                                         [expected_bq_results_2, expected_bq_results_3], [expected_bq_results_1],
-                                         [expected_bq_results_4, expected_bq_results_5],
-                                         [expected_bq_results_2, expected_bq_results_3]]
+        big_query().query.side_effect = self.get_mock_data()
 
         with FakeClock(TIME_2):
             calculate_participant_metrics()
@@ -2514,7 +3897,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         results = self.send_get("PublicMetrics", query_string=qs)
         self.assertTrue(big_query().query.called)
-        self.assertEqual(big_query().query.call_count, 6)
+        self.assertEqual(big_query().query.call_count, 132)
         self.assertIn({"date": "2017-12-31", "metrics": {"Primary_Consent": 1}}, results)
         self.assertIn({"date": "2018-01-02", "metrics": {"Primary_Consent": 2}}, results)
         self.assertIn({"date": "2018-01-06", "metrics": {"Primary_Consent": 5}}, results)

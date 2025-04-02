@@ -299,11 +299,15 @@ SENSITIVE_EHR_RELEASE_DATE = 'sensitive_ehr_release_date'
 PM_HEIGHT_CODES = 'pm_height_codes'
 PM_WEIGHT_CODES = 'pm_weight_codes'
 
-# The ParticipantCountsOverTime job runs in the AOU RDR Prod, but the job uses participant and participant_summary
-# tables from the Warehouse project BigQuery. This maps the RDR project to the correct Warehouse project.
-PUBLIC_METRICS_PROJECT_MAP = "public_metrics_project_map"
+# BigQuery tables used in the ParticipantCountsOverTime job
 PUBLIC_METRICS_PARTICIPANT_TABLE = "public_metrics_participant_table"
 PUBLIC_METRICS_PARTICIPANT_SUMMARY_TABLE = "public_metrics_participant_summary_table"
+
+PUBLIC_METRICS_HPO_TABLE = "public_metrics_hpo_table"
+PUBLIC_METRICS_CALENDAR_TABLE = "public_metrics_calendar_table"
+PUBLIC_METRICS_CODE_TABLE = "public_metrics_code_table"
+PUBLIC_METRICS_GENDER_ANSWERS_TABLE = "public_metrics_gender_answers_table"
+PUBLIC_METRICS_RACE_ANSWERS_TABLE = "public_metrics_race_answers_table"
 
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}

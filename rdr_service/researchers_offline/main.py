@@ -24,6 +24,7 @@ def test_job():
 
 @app_util.auth_required_scheduler
 def participant_counts_over_time():
+    logging.info('Starting participant metrics calculation...')
     calculate_participant_metrics()
     return '{"success": "true"}'
 
