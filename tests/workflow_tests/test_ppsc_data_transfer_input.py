@@ -100,7 +100,7 @@ class DataTransferInputTest(GenomicDataGenMixin):
 
         self.assertEqual(staging_data_expected_sql, query)
 
-        feed.run_datafeed("ehr")
+        feed.run_datafeed("ehr", '2025-03-28', '2025-04-01', 800)
 
         self.assertEqual(mock_bq_instance.query.call_count, 2)
 
