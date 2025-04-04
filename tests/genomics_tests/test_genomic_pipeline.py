@@ -191,8 +191,7 @@ class GenomicPipelineTest(BaseTestCase):
         i = self._participant_i
         self._participant_i += 1
         bid = kwargs.pop('biobankId', i)
-        testParticipant = kwargs.pop('isTestParticipant', i)
-        participant = Participant(participantId=i, biobankId=bid, researchId=1000000 + i, isTestParticipant=testParticipant, **kwargs)
+        participant = Participant(participantId=i, biobankId=bid, researchId=1000000 + i, **kwargs)
         self.participant_dao.insert(participant)
         return participant
 
@@ -263,7 +262,6 @@ class GenomicPipelineTest(BaseTestCase):
             consentForStudyEnrollmentAuthored=datetime.datetime(2019, 1, 1),
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
-
         )
         kwargs = dict(valid_kwargs, **override_kwargs)
         summary = self.data_generator._participant_summary_with_defaults(**kwargs)
@@ -1327,10 +1325,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Setup the biobank order backend
         for i, bid in enumerate(test_biobank_ids):
-            #p = self._make_participant(biobankId=bid,  isTestParticipant =True if bid == 100002 else False,)
-            p = self._make_participant(biobankId=bid, isTestParticipant= False, )
-            # Needed by test_switch_to_test_account
-
+            p = self._make_participant(biobankId=bid)
             self._make_summary(p, sexId=intersex_code if bid == 100004 else female_code,
                                consentForStudyEnrollment=0 if bid == 100006 else 1,
                                sampleStatus1ED04=0,
@@ -1339,8 +1334,7 @@ class GenomicPipelineTest(BaseTestCase):
                                samplesToIsolateDNA=0,
                                race=Race.HISPANIC_LATINO_OR_SPANISH,
                                consentCohort=3,
-                               participantOrigin=participant_origins[0 if i % 2 == 0 else 1],
-                              )
+                               participantOrigin=participant_origins[0 if i % 2 == 0 else 1])
             # Insert participant races
             race_answer = ParticipantRaceAnswers(
                 participantId=p.participantId,
@@ -1432,7 +1426,7 @@ class GenomicPipelineTest(BaseTestCase):
         new_genomic_set = self.set_dao.get_all()
         self.assertEqual(1, len(new_genomic_set))
 
-        # Should be a aou_wgs and aou_array for each
+        # Should be a aou_wgs and aou_array for each and exclude the test participant
         new_genomic_members = self.member_dao.get_all()
         self.assertEqual(16, len(new_genomic_members) - 2)
 
