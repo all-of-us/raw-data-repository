@@ -665,7 +665,7 @@ class MetricsGenderCacheDao(BaseDao, MetricsDaoMixin):
             SELECT
               @date_inserted AS dateInserted,
               '{cache_type}' as type,
-              'core' as enrollmentStatus,
+              'core' as enrollment_status,
               @hpo_id AS hpoId,
               (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
               c.day AS date,
@@ -693,7 +693,7 @@ class MetricsGenderCacheDao(BaseDao, MetricsDaoMixin):
             SELECT
               @date_inserted AS dateInserted,
               '{cache_type}' as type,
-              'registered' as enrollmentStatus,
+              'registered' as enrollment_status,
               @hpo_id AS hpoId,
               (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
               c.day AS date,
@@ -720,7 +720,7 @@ class MetricsGenderCacheDao(BaseDao, MetricsDaoMixin):
             SELECT
               @date_inserted AS dateInserted,
               '{cache_type}' as type,
-              'consented' as enrollmentStatus,
+              'consented' as enrollment_status,
               @hpo_id AS hpoId,
               (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
               c.day AS date,
@@ -794,7 +794,7 @@ class MetricsGenderCacheDao(BaseDao, MetricsDaoMixin):
                 SELECT
                   @date_inserted AS dateInserted,
                   '{cache_type}' AS type,
-                  '{enrollment_status}' AS enrollmentStatus,
+                  '{enrollment_status}' AS enrollment_status,
                   @hpo_id AS hpoId,
                   (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
                   c.day AS date,
@@ -1002,7 +1002,7 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
         sql += """
             SELECT
               @date_inserted AS dateInserted,
-              'core' as enrollmentStatus,
+              'core' as enrollment_status,
               '{cache_type}' as type,
               @hpo_id AS hpoId,
               (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
@@ -1029,7 +1029,7 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
             UNION DISTINCT
             SELECT
               @date_inserted AS dateInserted,
-              'registered' as enrollmentStatus,
+              'registered' as enrollment_status,
               '{cache_type}' as type,
               @hpo_id AS hpoId,
               (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
@@ -1057,7 +1057,7 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
             UNION DISTINCT
             SELECT
               @date_inserted AS dateInserted,
-              'participant' as enrollmentStatus,
+              'participant' as enrollment_status,
               '{cache_type}' as type,
               @hpo_id AS hpoId,
               (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
@@ -1086,7 +1086,7 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
             UNION DISTINCT
             SELECT
               @date_inserted AS dateInserted,
-              'consented' as enrollmentStatus,
+              'consented' as enrollment_status,
               '{cache_type}' as type,
               @hpo_id AS hpoId,
               (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
@@ -1129,7 +1129,7 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
         sql_template = """
           SELECT
             @date_inserted AS dateInserted,
-            'core' as enrollmentStatus,
+            'core' as enrollment_status,
             '{cache_type}' as type,
             @hpo_id AS hpoId,
             (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
@@ -1158,7 +1158,7 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
           UNION DISTINCT
           SELECT
             @date_inserted AS dateInserted,
-            'registered' as enrollmentStatus,
+            'registered' as enrollment_status,
             '{cache_type}' as type,
             @hpo_id AS hpoId,
             (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
@@ -1187,7 +1187,7 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
           UNION DISTINCT
           SELECT
             @date_inserted AS dateInserted,
-            'participant' as enrollmentStatus,
+            'participant' as enrollment_status,
             '{cache_type}' as type,
             @hpo_id AS hpoId,
             (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
@@ -1217,7 +1217,7 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
           UNION DISTINCT
           SELECT
             @date_inserted AS dateInserted,
-            'consented' as enrollmentStatus,
+            'consented' as enrollment_status,
             '{cache_type}' as type,
             @hpo_id AS hpoId,
             (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
