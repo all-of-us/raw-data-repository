@@ -38,6 +38,8 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireDao, QuestionnaireQue
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao, QuestionnaireResponseAnswerDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.code_dao import CodeDao, CodeType
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.model.hpo import HPO
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import (
     BiobankOrder,
@@ -67,7 +69,7 @@ from rdr_service.participant_enums import (
     SampleStatus,
     Race,
     QuestionnaireStatus,
-    WithdrawalStatus
+    WithdrawalStatus, TEST_HPO_ID, TEST_HPO_NAME, OrganizationType
 )
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
@@ -189,7 +191,8 @@ class GenomicPipelineTest(BaseTestCase):
         i = self._participant_i
         self._participant_i += 1
         bid = kwargs.pop('biobankId', i)
-        participant = Participant(participantId=i, biobankId=bid, researchId=1000000 + i, **kwargs)
+        testParticipant = kwargs.pop('isTestParticipant', i)
+        participant = Participant(participantId=i, biobankId=bid, researchId=1000000 + i, isTestParticipant=testParticipant, **kwargs)
         self.participant_dao.insert(participant)
         return participant
 
@@ -260,6 +263,7 @@ class GenomicPipelineTest(BaseTestCase):
             consentForStudyEnrollmentAuthored=datetime.datetime(2019, 1, 1),
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
+
         )
         kwargs = dict(valid_kwargs, **override_kwargs)
         summary = self.data_generator._participant_summary_with_defaults(**kwargs)
@@ -1305,7 +1309,7 @@ class GenomicPipelineTest(BaseTestCase):
     def test_new_participant_workflow(self):
         # Test for Cohort 3 workflow
         # create test samples
-        test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006, 100007, 100008, 100009)
+        test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006, 100007, 100008, 100009, 100010)
         fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
         fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
         participant_origins = ['careevolution', 'example']
@@ -1323,7 +1327,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Setup the biobank order backend
         for i, bid in enumerate(test_biobank_ids):
-            p = self._make_participant(biobankId=bid)
+            #p = self._make_participant(biobankId=bid,  isTestParticipant =True if bid == 100002 else False,)
+            p = self._make_participant(biobankId=bid, isTestParticipant= False, )
+            # Needed by test_switch_to_test_account
+
             self._make_summary(p, sexId=intersex_code if bid == 100004 else female_code,
                                consentForStudyEnrollment=0 if bid == 100006 else 1,
                                sampleStatus1ED04=0,
@@ -1332,7 +1339,8 @@ class GenomicPipelineTest(BaseTestCase):
                                samplesToIsolateDNA=0,
                                race=Race.HISPANIC_LATINO_OR_SPANISH,
                                consentCohort=3,
-                               participantOrigin=participant_origins[0 if i % 2 == 0 else 1])
+                               participantOrigin=participant_origins[0 if i % 2 == 0 else 1],
+                              )
             # Insert participant races
             race_answer = ParticipantRaceAnswers(
                 participantId=p.participantId,
@@ -1400,6 +1408,13 @@ class GenomicPipelineTest(BaseTestCase):
                 mko.stateId = ny_code.codeId
 
                 self.mk_dao.update(mko)
+        #Add one Test Participant to ensure we do not pick up test participants
+        if bid == 100010:
+            self.hpo_dao = HPODao()
+            self.hpo_dao.insert(
+                HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName="Test", organizationType=OrganizationType.UNSET))
+            participant = Participant(participantId=100010)
+            ParticipantDao().switch_to_test_account(None, participant,commit_update=False)
 
         # insert an 'already ran' workflow to test proper exclusions
         self.job_run_dao.insert(GenomicJobRun(
@@ -1419,7 +1434,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Should be a aou_wgs and aou_array for each
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(16, len(new_genomic_members))
+        self.assertEqual(16, len(new_genomic_members) - 2)
 
         all_ps_origins = [self.summary_dao.get_by_participant_id(obj.participantId).participantOrigin
                        for obj in new_genomic_members]

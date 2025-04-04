@@ -416,6 +416,7 @@ class GenomicQueryClass:
         WHERE TRUE
             AND ss.test in ('1ED04', '1ED10', '1SAL2')
             AND m.id IS NULL
+            AND p.is_test_participant != 1
         """
 
     # BEGIN Data Quality Pipeline Report Queries

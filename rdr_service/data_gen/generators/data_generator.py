@@ -386,6 +386,7 @@ class DataGenerator:
             "nphDeactivation": False,
             "hasCoreData": False,
             "hasHeightAndWeight": False,
+
         }
 
         defaults.update(kwargs)
