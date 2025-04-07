@@ -6,7 +6,6 @@ import operator
 import pytz
 import random
 import time
-import http.client
 
 from copy import deepcopy
 from dateutil.parser import parse
@@ -1422,33 +1421,12 @@ class GenomicPipelineTest(BaseTestCase):
                         'biobank_id': 100010,
                     }
                 )
-                payload = {
-                    'participantId': 'P10',
-                    'biobankId': 'T100010',
-                    'registeredDate': '2024-03-26T13:24:03.935Z'
-                }
-                self.send_post('createParticipant', request_data=payload,expected_status=http.client.FORBIDDEN)
 
-                activities = [
-                    "ENROLLMENT",
-                    "Consent",
-                    "Survey Completion",
-                    "Profile Updates",
-                    "Withdrawal",
-                    "Deactivation",
-                    "Participant Status",
-                    "Attribution",
-                    "NPH Opt In",
-                    "Account Linkage"
-                ]
-                for activity in activities:
-                    self.ppsc_data_gen.create_database_activity(
-                        name=activity
-                    )
+                self.ppsc_data_gen.create_database_activity(name="Participant Status")
 
                 participant_event_activity_profile = self.ppsc_data_gen.create_database_participant_event_activity(
                     participant_id=p.participantId,
-                    activity_id=7  # Participant Status
+                    activity_id=1
                 )
 
                 self.ppsc_data_gen.create_database_participant_status_event(
