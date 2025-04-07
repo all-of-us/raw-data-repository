@@ -408,17 +408,17 @@ def insert_awardee_insite_data(
           ),
           profile_pivot AS (
             SELECT participant_id
-              , piiname_first AS first_name
-              , piiname_middle AS middle_name
-              , piiname_last AS last_name
-              , streetaddress_piizip AS zip_code
-              , streetaddress_piistate AS state
-              , streetaddress_piicity AS city
-              , piiaddress_streetaddress AS street_address
-              , piiaddress_streetaddress2 AS street_address2
-              , piicontactinformation_phone AS phone_number
-              , piicontactinformation_email AS email
-              , piibirthinformation_birthdate AS date_of_birth
+              , coalesce(piiname_first,'') AS first_name
+              , coalesce(piiname_middle,'')  AS middle_name
+              , coalesce(piiname_last,'')  AS last_name
+              , coalesce(streetaddress_piizip,'')  AS zip_code
+              , coalesce(streetaddress_piistate,'')  AS state
+              , coalesce(streetaddress_piicity,'')  AS city
+              , coalesce(piiaddress_streetaddress,'')  AS street_address
+              , coalesce(piiaddress_streetaddress2,'')  AS street_address2
+              , coalesce(piicontactinformation_phone,'')  AS phone_number
+              , coalesce(piicontactinformation_email ,'') AS email
+              , coalesce(piibirthinformation_birthdate,'')  AS date_of_birth
             FROM
               (
                 SELECT participant_id
