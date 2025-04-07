@@ -246,6 +246,7 @@ WHERE TRUE
 ;
 """
 
+
 def get_ppsc_core_to_stream(project: str, destination_dataset: str) -> str:
     return f"""
     SELECT distinct participant_id, ignore_flag, event_date_time, created, modified, has_core_data
@@ -260,6 +261,7 @@ def get_ppsc_core_to_stream(project: str, destination_dataset: str) -> str:
                 AND t.ignore_flag = 0
         )
     ;"""
+
 
 def get_ppsc_biospecimen_to_stream(project: str, destination_dataset: str) -> str:
     return f"""
@@ -276,7 +278,8 @@ def get_ppsc_biospecimen_to_stream(project: str, destination_dataset: str) -> st
         )
     ;"""
 
-def get_ppsc_ehr_to_stream(project: str, destination_dataset: str) -> str:
+def get_ppsc_ehr_to_stream(project: str, destination_dataset: str, start_date: str,
+                           end_date: str, batch_size: int) -> str:
     return f"""
 SELECT distinct participant_id, ignore_flag, created, modified, event_date_time
 FROM `{project}.{destination_dataset}.datafeed_input_ehr` s
@@ -289,6 +292,9 @@ where TRUE
             AND t.event_date_time = s.event_date_time
             AND t.ignore_flag = 0
     )
+  AND event_date_time >= '{start_date}'
+  AND event_date_time <= '{end_date}'
+LIMIT {batch_size}
 ;"""
 
 def get_health_data_to_stream(project: str, destination_dataset: str) -> str:
