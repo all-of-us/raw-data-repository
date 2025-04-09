@@ -18,6 +18,7 @@ from rdr_service.code_constants import (
 from rdr_service.config import GENOMIC_GEM_A3_MANIFEST_SUBFOLDER
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+
 from rdr_service.dao.genomics_dao import (
     GenomicSetDao,
     GenomicSetMemberDao,
@@ -38,12 +39,15 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireDao, QuestionnaireQue
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao, QuestionnaireResponseAnswerDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.code_dao import CodeDao, CodeType
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.model.hpo import HPO
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import (
     BiobankOrder,
     BiobankOrderIdentifier,
     BiobankOrderedSample
 )
+from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus
@@ -67,7 +71,7 @@ from rdr_service.participant_enums import (
     SampleStatus,
     Race,
     QuestionnaireStatus,
-    WithdrawalStatus
+    WithdrawalStatus, TEST_HPO_ID, TEST_HPO_NAME, OrganizationType
 )
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
@@ -172,6 +176,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.qq_dao = QuestionnaireQuestionDao()
         self.aw1_raw_dao = GenomicAW1RawDao()
         self.aw2_raw_dao = GenomicAW2RawDao()
+        self.ppsc_data_gen = PPSCDataGenerator()
 
         self._participant_i = 1
 
@@ -1305,7 +1310,7 @@ class GenomicPipelineTest(BaseTestCase):
     def test_new_participant_workflow(self):
         # Test for Cohort 3 workflow
         # create test samples
-        test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006, 100007, 100008, 100009)
+        test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006, 100007, 100008, 100009, 100010)
         fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
         fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
         participant_origins = ['careevolution', 'example']
@@ -1401,6 +1406,39 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.mk_dao.update(mko)
 
+            #Add one Test Participant to ensure we do not pick up test participants
+            if bid == 100010:
+
+                self.hpo_dao = HPODao()
+                self.hpo_dao.insert(
+                    HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName="Test", organizationType=OrganizationType.UNSET))
+                participant = Participant(participantId=p.participantId)
+                ParticipantDao().switch_to_test_account(None, participant,commit_update=False)
+
+                self.ppsc_data_gen.create_database_participant(
+                    **{
+                        'id': 10,
+                        'biobank_id': 100010,
+                    }
+                )
+
+                self.ppsc_data_gen.create_database_activity(name="Participant Status")
+
+                participant_event_activity_profile = self.ppsc_data_gen.create_database_participant_event_activity(
+                    participant_id=p.participantId,
+                    activity_id=1
+                )
+
+                self.ppsc_data_gen.create_database_participant_status_event(
+                    participant_id=p.participantId,
+                    event_type_name='Test Account',
+                    event_id=participant_event_activity_profile.id,
+                    data_element_name='activity_status',
+                    data_element_value='test',
+                    event_authored_time=clock.CLOCK.now()
+                )
+
+
         # insert an 'already ran' workflow to test proper exclusions
         self.job_run_dao.insert(GenomicJobRun(
             id=1,
@@ -1417,9 +1455,9 @@ class GenomicPipelineTest(BaseTestCase):
         new_genomic_set = self.set_dao.get_all()
         self.assertEqual(1, len(new_genomic_set))
 
-        # Should be a aou_wgs and aou_array for each
+        # Should be a aou_wgs and aou_array for each and exclude the test participant
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(16, len(new_genomic_members))
+        self.assertEqual(16, len(new_genomic_members) )
 
         all_ps_origins = [self.summary_dao.get_by_participant_id(obj.participantId).participantOrigin
                        for obj in new_genomic_members]
@@ -1441,6 +1479,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test GenomicMember's data
         # 100001 : Excluded, created before last run,
         # 100005 : Excluded, no DNA sample
+        # 100010 : Excluded, test participant
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
         for member in new_genomic_members:
             member_genome_types[member.biobankId].append(member.genomeType)
