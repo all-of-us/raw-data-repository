@@ -408,9 +408,9 @@ def insert_awardee_insite_data(
           ),
           profile_pivot AS (
             SELECT participant_id
-              , piiname_first AS first_name
+              , coalesce(piiname_first,'') AS first_name
               , piiname_middle AS middle_name
-              , piiname_last AS last_name
+              , coalesce(piiname_last,'')  AS last_name
               , streetaddress_piizip AS zip_code
               , streetaddress_piistate AS state
               , streetaddress_piicity AS city
@@ -429,9 +429,9 @@ def insert_awardee_insite_data(
               )
             PIVOT(ANY_VALUE(data_element_value)
                 FOR data_element_name IN
-                    (, coalesce(piiname_first,'') AS first_name
+                    ('piiname_first'
                       , 'piiname_middle'
-                      , coalesce(piiname_last,'')  AS last_name
+                      , 'piiname_last'
                       , 'streetaddress_piizip'
                       , 'streetaddress_piistate'
                       , 'streetaddress_piicity'
