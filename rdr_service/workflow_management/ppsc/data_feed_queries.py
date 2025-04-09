@@ -408,9 +408,9 @@ def insert_awardee_insite_data(
           ),
           profile_pivot AS (
             SELECT participant_id
-              , piiname_first AS first_name
+              , coalesce(piiname_first,'') AS first_name
               , piiname_middle AS middle_name
-              , piiname_last AS last_name
+              , coalesce(piiname_last,'')  AS last_name
               , streetaddress_piizip AS zip_code
               , streetaddress_piistate AS state
               , streetaddress_piicity AS city
