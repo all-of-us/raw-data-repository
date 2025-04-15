@@ -21,61 +21,59 @@ class GenomicQueryClass:
         self.genomic_data_config = {
             GenomicManifestTypes.AW2F: (
                 sqlalchemy.select(
-                    [
-                        GenomicSetMember.packageId,
-                        sqlalchemy.func.concat(get_biobank_id_prefix(),
-                                               GenomicSetMember.biobankId, "_", GenomicSetMember.sampleId),
-                        GenomicSetMember.gcManifestBoxStorageUnitId,
-                        GenomicSetMember.gcManifestBoxPlateId,
-                        GenomicSetMember.gcManifestWellPosition,
-                        GenomicSetMember.sampleId,
-                        GenomicSetMember.gcManifestParentSampleId,
-                        GenomicSetMember.collectionTubeId,
-                        GenomicSetMember.gcManifestMatrixId,
-                        sqlalchemy.bindparam('collection_date', ''),
-                        GenomicSetMember.biobankId,
-                        GenomicSetMember.sexAtBirth,
-                        sqlalchemy.bindparam('age', ''),
-                        sqlalchemy.func.IF(GenomicSetMember.nyFlag == 1,
-                                           sqlalchemy.sql.expression.literal("Y"),
-                                           sqlalchemy.sql.expression.literal("N")),
-                        sqlalchemy.bindparam('sample_type', 'DNA'),
-                        GenomicSetMember.gcManifestTreatments,
-                        GenomicSetMember.gcManifestQuantity_ul,
-                        GenomicSetMember.gcManifestTotalConcentration_ng_per_ul,
-                        GenomicSetMember.gcManifestTotalDNA_ng,
-                        GenomicSetMember.gcManifestVisitDescription,
-                        GenomicSetMember.gcManifestSampleSource,
-                        GenomicSetMember.gcManifestStudy,
-                        GenomicSetMember.gcManifestTrackingNumber,
-                        GenomicSetMember.gcManifestContact,
-                        GenomicSetMember.gcManifestEmail,
-                        GenomicSetMember.gcManifestStudyPI,
-                        GenomicSetMember.gcManifestTestName,
-                        GenomicSetMember.gcManifestFailureMode,
-                        GenomicSetMember.gcManifestFailureDescription,
-                        GenomicGCValidationMetrics.processingStatus,
-                        GenomicGCValidationMetrics.contamination,
-                        sqlalchemy.case(
-                            (GenomicGCValidationMetrics.contaminationCategory ==
-                             GenomicContaminationCategory.EXTRACT_WGS, "extract wgs"),
+                    GenomicSetMember.packageId,
+                    sqlalchemy.func.concat(get_biobank_id_prefix(),
+                                           GenomicSetMember.biobankId, "_", GenomicSetMember.sampleId),
+                    GenomicSetMember.gcManifestBoxStorageUnitId,
+                    GenomicSetMember.gcManifestBoxPlateId,
+                    GenomicSetMember.gcManifestWellPosition,
+                    GenomicSetMember.sampleId,
+                    GenomicSetMember.gcManifestParentSampleId,
+                    GenomicSetMember.collectionTubeId,
+                    GenomicSetMember.gcManifestMatrixId,
+                    sqlalchemy.bindparam('collection_date', ''),
+                    GenomicSetMember.biobankId,
+                    GenomicSetMember.sexAtBirth,
+                    sqlalchemy.bindparam('age', ''),
+                    sqlalchemy.func.IF(GenomicSetMember.nyFlag == 1,
+                                       sqlalchemy.sql.expression.literal("Y"),
+                                       sqlalchemy.sql.expression.literal("N")),
+                    sqlalchemy.bindparam('sample_type', 'DNA'),
+                    GenomicSetMember.gcManifestTreatments,
+                    GenomicSetMember.gcManifestQuantity_ul,
+                    GenomicSetMember.gcManifestTotalConcentration_ng_per_ul,
+                    GenomicSetMember.gcManifestTotalDNA_ng,
+                    GenomicSetMember.gcManifestVisitDescription,
+                    GenomicSetMember.gcManifestSampleSource,
+                    GenomicSetMember.gcManifestStudy,
+                    GenomicSetMember.gcManifestTrackingNumber,
+                    GenomicSetMember.gcManifestContact,
+                    GenomicSetMember.gcManifestEmail,
+                    GenomicSetMember.gcManifestStudyPI,
+                    GenomicSetMember.gcManifestTestName,
+                    GenomicSetMember.gcManifestFailureMode,
+                    GenomicSetMember.gcManifestFailureDescription,
+                    GenomicGCValidationMetrics.processingStatus,
+                    GenomicGCValidationMetrics.contamination,
+                    sqlalchemy.case(
+                        (GenomicGCValidationMetrics.contaminationCategory ==
+                         GenomicContaminationCategory.EXTRACT_WGS, "extract wgs"),
 
-                            (GenomicGCValidationMetrics.contaminationCategory ==
-                             GenomicContaminationCategory.NO_EXTRACT, "no extract"),
+                        (GenomicGCValidationMetrics.contaminationCategory ==
+                         GenomicContaminationCategory.NO_EXTRACT, "no extract"),
 
-                            (GenomicGCValidationMetrics.contaminationCategory ==
-                             GenomicContaminationCategory.EXTRACT_BOTH, "extract both"),
+                        (GenomicGCValidationMetrics.contaminationCategory ==
+                         GenomicContaminationCategory.EXTRACT_BOTH, "extract both"),
 
-                            (GenomicGCValidationMetrics.contaminationCategory ==
-                             GenomicContaminationCategory.TERMINAL_NO_EXTRACT, "terminal no extract"),
-                            else_=""
-                        ),
-                        sqlalchemy.func.IF(ParticipantSummary.consentForGenomicsROR
-                                           == QuestionnaireStatus.SUBMITTED,
-                                           sqlalchemy.sql.expression.literal("yes"),
-                                           sqlalchemy.sql.expression.literal("no")),
-                        GenomicSetMember.id.label('genomic_set_member_id')
-                    ]
+                        (GenomicGCValidationMetrics.contaminationCategory ==
+                         GenomicContaminationCategory.TERMINAL_NO_EXTRACT, "terminal no extract"),
+                        else_=""
+                    ),
+                    sqlalchemy.func.IF(ParticipantSummary.consentForGenomicsROR
+                                       == QuestionnaireStatus.SUBMITTED,
+                                       sqlalchemy.sql.expression.literal("yes"),
+                                       sqlalchemy.sql.expression.literal("no")),
+                    GenomicSetMember.id.label('genomic_set_member_id')
                 ).select_from(
                     sqlalchemy.join(
                         ParticipantSummary,
@@ -102,7 +100,7 @@ class GenomicQueryClass:
 
     @staticmethod
     def remaining_c2_participants():
-        return """
+        return sqlalchemy.text("""
                 SELECT DISTINCT
                   ss.biobank_id,
                   p.participant_id,
@@ -156,7 +154,7 @@ class GenomicQueryClass:
                     AND ss.status IS NOT NULL
                     AND ps.consent_cohort = :cohort_param
                     AND m.id IS NULL
-            """
+            """)
 
     @staticmethod
     def remaining_saliva_participants(query_config):
@@ -250,7 +248,7 @@ class GenomicQueryClass:
 
     @staticmethod
     def remaining_c1_samples():
-        return """
+        return sqlalchemy.text("""
             SELECT DISTINCT
               ss.biobank_id,
               p.participant_id,
@@ -311,7 +309,7 @@ class GenomicQueryClass:
                 AND ps.consent_cohort = :cohort_param
                 AND ps.participant_origin != 'careevolution'
                 AND m.id IS NULL
-        """
+        """)
 
     @staticmethod
     def usable_blood_sample():
@@ -362,7 +360,7 @@ class GenomicQueryClass:
 
     @staticmethod
     def new_biobank_samples():
-        return """
+        return sqlalchemy.text("""
         SELECT DISTINCT
           ss.biobank_id,
           p.participant_id,
@@ -415,7 +413,7 @@ class GenomicQueryClass:
         WHERE TRUE
             AND ss.test in ('1ED04', '1ED10', '1SAL2')
             AND m.id IS NULL
-        """
+        """)
 
     # BEGIN Data Quality Pipeline Report Queries
     @staticmethod

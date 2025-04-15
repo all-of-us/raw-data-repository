@@ -198,7 +198,7 @@ class GenomicSetDao(UpdatableDao, GenomicDaoMixin):
     :return: sqlalchemy query
     """
         existing_valid_query = (
-            sqlalchemy.select([func.count().label("existing_count")])
+            sqlalchemy.select(func.count().label("existing_count"))
                 .select_from(
                 sqlalchemy.join(GenomicSet, GenomicSetMember, GenomicSetMember.genomicSetId == GenomicSet.id))
                 .where(
@@ -209,17 +209,15 @@ class GenomicSetDao(UpdatableDao, GenomicDaoMixin):
 
         return (
             sqlalchemy.select(
-                [
-                    GenomicSetMember,
-                    Participant.withdrawalStatus.label("withdrawal_status"),
-                    ParticipantSummary.dateOfBirth.label("birth_date"),
-                    ParticipantSummary.consentForStudyEnrollmentTime.label("consent_time"),
-                    ParticipantSummary.sampleStatus1ED04.label("sample_status_1ED04"),
-                    ParticipantSummary.sampleStatus1SAL2.label("sample_status_1SAL2"),
-                    ParticipantSummary.samplesToIsolateDNA.label("samples_to_isolate_dna"),
-                    ParticipantSummary.zipCode.label("zip_code"),
-                    existing_valid_query.label("existing_valid_genomic_count"),
-                ]
+                GenomicSetMember,
+                Participant.withdrawalStatus.label("withdrawal_status"),
+                ParticipantSummary.dateOfBirth.label("birth_date"),
+                ParticipantSummary.consentForStudyEnrollmentTime.label("consent_time"),
+                ParticipantSummary.sampleStatus1ED04.label("sample_status_1ED04"),
+                ParticipantSummary.sampleStatus1SAL2.label("sample_status_1SAL2"),
+                ParticipantSummary.samplesToIsolateDNA.label("samples_to_isolate_dna"),
+                ParticipantSummary.zipCode.label("zip_code"),
+                existing_valid_query.label("existing_valid_genomic_count")
             )
             .select_from(
                 sqlalchemy.join(
@@ -272,7 +270,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 .where(GenomicSetMember.genomicSetId == sqlalchemy.bindparam("genomic_set_id_param"))
                 .values(
                 {
-                    GenomicSetMember.biobankId.name: sqlalchemy.select([Participant.biobankId])
+                    GenomicSetMember.biobankId.name: sqlalchemy.select(Participant.biobankId)
                         .where(Participant.participantId == GenomicSetMember.participantId)
                         .limit(1)
                 }
@@ -318,7 +316,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                     GenomicSetMember.validatedTime.name: status_case,
                 }
             )
-        )
+        ).execution_options(synchronize_session=False)
         parameter_sets = [
             {"member_id": member_id, "status": int(status), "flags": flags, "time": now}
             for member_id, status, flags in member_update_params_iterable
@@ -911,8 +909,8 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         """
         with self.session() as session:
             members = session.query(GenomicSetMember).join(
-                (ParticipantSummary,
-                 GenomicSetMember.participantId == ParticipantSummary.participantId)
+                ParticipantSummary,
+                GenomicSetMember.participantId == ParticipantSummary.participantId
             ).filter(
                 GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicSetMember.genomicWorkflowState.in_(workflow_states) &
@@ -2611,7 +2609,7 @@ class GenomicManifestFileDao(BaseDao, GenomicDaoMixin):
                     GenomicManifestFile.id == GenomicFileProcessed.genomicManifestFileId
                 ).filter(
                     GenomicManifestFile.id == manifest_file_obj.id
-                ).one_or_none()
+                ).scalar()
 
     def get_record_count_from_filepath(self, filepath):
         with self.session() as session:
@@ -3785,13 +3783,13 @@ class GenomicQueriesDao(BaseDao):
                     GenomicSetMember.sampleId.label('sample_id'),
                     GenomicSetMember.gcSiteId.label('gc'),
                     sqlalchemy.func.concat_ws(', ',
-                                              case([(idat_red_path.file_type.is_(None), 'Red.idat')]),
-                                              case([(idat_red_md5_path.file_type.is_(None), 'Red.idat.md5sum')]),
-                                              case([(idat_green_path.file_type.is_(None), 'Grn.idat')]),
-                                              case([(idat_green_md5_path.file_type.is_(None), 'Grn.idat.md5sum')]),
-                                              case([(vcf_path.file_type.is_(None), 'vcf.gz')]),
-                                              case([(vcf_tbi_path.file_type.is_(None), 'vcf.gz.tbi')]),
-                                              case([(vcf_md5_path.file_type.is_(None), 'vcf.gz.md5sum')])
+                                              case((idat_red_path.file_type.is_(None), 'Red.idat')),
+                                              case((idat_red_md5_path.file_type.is_(None), 'Red.idat.md5sum')),
+                                              case((idat_green_path.file_type.is_(None), 'Grn.idat')),
+                                              case((idat_green_md5_path.file_type.is_(None), 'Grn.idat.md5sum')),
+                                              case((vcf_path.file_type.is_(None), 'vcf.gz')),
+                                              case((vcf_tbi_path.file_type.is_(None), 'vcf.gz.tbi')),
+                                              case((vcf_md5_path.file_type.is_(None), 'vcf.gz.md5sum'))
                                               ).label('missing_files')
                 ).join(
                     ParticipantSummary,
@@ -3872,19 +3870,18 @@ class GenomicQueriesDao(BaseDao):
                     GenomicSetMember.sampleId.label('sample_id'),
                     GenomicSetMember.gcSiteId.label('gc'),
                     sqlalchemy.func.concat_ws(', ',
-                                              case(
-                                                  [(hard_filtered_vcf_gz.file_type.is_(None), 'hard-filtered.vcf.gz')]),
-                                              case([(hard_filtered_vcf_gz_tbi.file_type.is_(None),
-                                                     'hard-filtered.vcf.gz.tbi')]),
-                                              case([(hard_filtered_vcf_gz_md5_sum.file_type.is_(None),
-                                                     'hard-filtered.vcf.gz.md5sum')]),
-                                              case([(cram.file_type.is_(None), 'cram')]),
-                                              case([(cram_md5_sum.file_type.is_(None), 'cram.md5sum')]),
-                                              case([(cram_crai.file_type.is_(None), 'cram.crai')]),
-                                              case([(hard_filtered_gvcf_gz.file_type.is_(None),
-                                                     'hard-filtered.gvcf.gz')]),
-                                              case([(hard_filtered_gvcf_gz_md5_sum.file_type.is_(None),
-                                                     'hard-filtered.gvcf.gz.md5sum')])
+                                              case((hard_filtered_vcf_gz.file_type.is_(None), 'hard-filtered.vcf.gz')),
+                                              case((hard_filtered_vcf_gz_tbi.file_type.is_(None),
+                                                     'hard-filtered.vcf.gz.tbi')),
+                                              case((hard_filtered_vcf_gz_md5_sum.file_type.is_(None),
+                                                     'hard-filtered.vcf.gz.md5sum')),
+                                              case((cram.file_type.is_(None), 'cram')),
+                                              case((cram_md5_sum.file_type.is_(None), 'cram.md5sum')),
+                                              case((cram_crai.file_type.is_(None), 'cram.crai')),
+                                              case((hard_filtered_gvcf_gz.file_type.is_(None),
+                                                     'hard-filtered.gvcf.gz')),
+                                              case((hard_filtered_gvcf_gz_md5_sum.file_type.is_(None),
+                                                     'hard-filtered.gvcf.gz.md5sum'))
                                               ).label('missing_files')
                 ).join(
                     ParticipantSummary,
@@ -5753,5 +5750,5 @@ class GenomicRNAReportingDao(GenomicReportingDao):
                     )
                 )
             )
-            return ingested_query.all()
+            return session.execute(ingested_query).all()
 

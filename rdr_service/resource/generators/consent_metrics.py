@@ -6,6 +6,7 @@ import logging
 
 from dateutil.relativedelta import relativedelta
 from datetime import datetime, date
+from sqlalchemy import select
 
 from re import findall as re_findall
 
@@ -360,7 +361,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
             dao = self.ro_dao or ResourceDataDao(backup=True)
 
         with dao.session() as session:
-            query = session.query(ConsentFile.id,
+            query = select(ConsentFile.id,
                                   ConsentFile.created,
                                   ConsentFile.modified,
                                   ConsentFile.participant_id,
@@ -415,7 +416,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
             if consent_types:
                 query = query.filter(ConsentFile.type.in_(consent_types))
 
-            results = query.all()
+            results = session.execute(query).all()
             if not results:
                 logging.debug('No consent metrics results matching filters were found.')
 

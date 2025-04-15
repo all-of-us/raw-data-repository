@@ -84,45 +84,33 @@ class PPSCNphOptEventInDao(BaseDao):
             lastest_nph_ppi_data = session.query(
                 ProfileUpdatesEvent.participant_id,
                 case(
-                    [
-                        (ProfileUpdatesEvent.data_element_name == 'piiname_first',
-                         ProfileUpdatesEvent.data_element_value)
-                    ],
+                    (ProfileUpdatesEvent.data_element_name == 'piiname_first',
+                     ProfileUpdatesEvent.data_element_value),
                     else_=None
                 ).label('first_name'),
                 case(
-                    [
-                        (ProfileUpdatesEvent.data_element_name == 'piiname_last',
-                         ProfileUpdatesEvent.data_element_value)
-                    ],
+                    (ProfileUpdatesEvent.data_element_name == 'piiname_last',
+                     ProfileUpdatesEvent.data_element_value),
                     else_=None
                 ).label('last_name'),
                 case(
-                    [
-                        (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_email',
-                         ProfileUpdatesEvent.data_element_value)
-                    ],
+                    (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_email',
+                     ProfileUpdatesEvent.data_element_value),
                     else_=None
                 ).label('email'),
                 case(
-                    [
-                        (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_phone',
-                         ProfileUpdatesEvent.data_element_value)
-                    ],
+                    (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_phone',
+                    ProfileUpdatesEvent.data_element_value),
                     else_=None
                 ).label('phone'),
                 case(
-                    [
-                        (ProfileUpdatesEvent.data_element_name == 'streetaddress_piizip',
-                         ProfileUpdatesEvent.data_element_value)
-                    ],
+                    (ProfileUpdatesEvent.data_element_name == 'streetaddress_piizip',
+                     ProfileUpdatesEvent.data_element_value),
                     else_=None
                 ).label('zip_code'),
                 case(
-                    [
-                        (ProfileUpdatesEvent.data_element_name == 'language_preference',
-                         ProfileUpdatesEvent.data_element_value)
-                    ],
+                    (ProfileUpdatesEvent.data_element_name == 'language_preference',
+                     ProfileUpdatesEvent.data_element_value),
                     else_=None
                 ).label('language_preference')
             ).join(
@@ -175,45 +163,33 @@ class PPSCNphOptEventInDao(BaseDao):
             ).group_by(
                 ProfileUpdatesEvent.participant_id,
                 case(
-                    [
-                        (ProfileUpdatesEvent.data_element_name == 'piiname_first',
-                         ProfileUpdatesEvent.data_element_value)
-                    ],
+                    (ProfileUpdatesEvent.data_element_name == 'piiname_first',
+                     ProfileUpdatesEvent.data_element_value),
                     else_=None
                 ),
                 case(
-                    [
-                        (ProfileUpdatesEvent.data_element_name == 'piiname_last',
-                         ProfileUpdatesEvent.data_element_value)
-                    ],
+                    (ProfileUpdatesEvent.data_element_name == 'piiname_last',
+                     ProfileUpdatesEvent.data_element_value),
                     else_=None
                 ),
                 case(
-                    [
-                        (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_email',
-                         ProfileUpdatesEvent.data_element_value)
-                    ],
+                    (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_email',
+                     ProfileUpdatesEvent.data_element_value),
                     else_=None
                 ),
                 case(
-                    [
-                        (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_phone',
-                         ProfileUpdatesEvent.data_element_value)
-                    ],
+                    (ProfileUpdatesEvent.data_element_name == 'piicontactinformation_phone',
+                     ProfileUpdatesEvent.data_element_value),
                     else_=None
                 ).label('phone'),
                 case(
-                    [
-                        (ProfileUpdatesEvent.data_element_name == 'streetaddress_piizip',
-                         ProfileUpdatesEvent.data_element_value)
-                    ],
+                    (ProfileUpdatesEvent.data_element_name == 'streetaddress_piizip',
+                     ProfileUpdatesEvent.data_element_value),
                     else_=None
                 ).label('zip_code'),
                 case(
-                    [
-                        (ProfileUpdatesEvent.data_element_name == 'language_preference',
-                         ProfileUpdatesEvent.data_element_value)
-                    ],
+                    (ProfileUpdatesEvent.data_element_name == 'language_preference',
+                     ProfileUpdatesEvent.data_element_value),
                     else_=None
                 ).label('language_preference')
             ).subquery()

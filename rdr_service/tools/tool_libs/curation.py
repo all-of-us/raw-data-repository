@@ -355,7 +355,7 @@ class CurationExportClass(ToolBase):
     @staticmethod
     def _module_code_or_external_id_if_cope(code_reference: Type[Code]):
         return case(
-            [(code_reference.value == 'COPE', QuestionnaireHistory.externalId)],
+            (code_reference.value == 'COPE', QuestionnaireHistory.externalId),
             else_=code_reference.value
         )
 
@@ -419,9 +419,7 @@ class CurationExportClass(ToolBase):
     @classmethod
     def _null_if_answer_ignored(cls, else_value):
         return case(
-            [
-                (QuestionnaireResponseAnswer.ignore.is_(True), None)
-            ],
+            (QuestionnaireResponseAnswer.ignore.is_(True), None),
             else_=else_value
         )
 
@@ -444,19 +442,17 @@ class CurationExportClass(ToolBase):
             SrcClean.question_ppi_code: question_code.value,
             SrcClean.question_code_id: QuestionnaireQuestion.codeId,
             SrcClean.value_ppi_code: case(
-                [
-                    (QuestionnaireResponseAnswer.ignore.is_(True), PMI_SKIP_CODE)
-                ],
+                (QuestionnaireResponseAnswer.ignore.is_(True), PMI_SKIP_CODE),
                 else_=answer_code.value
             ),
             SrcClean.topic_value: answer_code.topic,
             SrcClean.is_invalid: QuestionnaireResponseAnswer.ignore.is_(True),
             SrcClean.value_code_id: cls._null_if_answer_ignored(else_value=QuestionnaireResponseAnswer.valueCodeId),
-            SrcClean.value_number: cls._null_if_answer_ignored(else_value=case([(
+            SrcClean.value_number: cls._null_if_answer_ignored(else_value=case((
                 # Only set value number if the question code is not one of the zip codes to re-map
                 question_code.value.notin_(zipcode_question_codes_to_remap),
                 coalesce(QuestionnaireResponseAnswer.valueDecimal, QuestionnaireResponseAnswer.valueInteger)
-            )])),
+            ))),
             SrcClean.value_boolean: cls._null_if_answer_ignored(else_value=QuestionnaireResponseAnswer.valueBoolean),
             SrcClean.value_date: cls._null_if_answer_ignored(else_value=coalesce(
                 QuestionnaireResponseAnswer.valueDate,
@@ -467,33 +463,29 @@ class CurationExportClass(ToolBase):
                 QuestionnaireResponseAnswer.valueDate,
                 QuestionnaireResponseAnswer.valueDateTime,
                 answer_code.display,
-                case([  # Use valueInteger if the question code should be re-mapped
+                case(  # Use valueInteger if the question code should be re-mapped
                     (question_code.value.in_(zipcode_question_codes_to_remap),
                      QuestionnaireResponseAnswer.valueInteger)
-                ])
+                )
             )),
             SrcClean.questionnaire_response_id: QuestionnaireResponse.questionnaireResponseId,
             SrcClean.unit_id: concat(
                 'cln.',
                 case(
-                    [
-                        (QuestionnaireResponseAnswer.valueCodeId.isnot(None), 'code'),
-                        (QuestionnaireResponseAnswer.valueInteger.isnot(None), 'int'),
-                        (QuestionnaireResponseAnswer.valueDecimal.isnot(None), 'dec'),
-                        (QuestionnaireResponseAnswer.valueBoolean.isnot(None), 'bool'),
-                        (QuestionnaireResponseAnswer.valueDate.isnot(None), 'date'),
-                        (QuestionnaireResponseAnswer.valueDateTime.isnot(None), 'dtime'),
-                        (QuestionnaireResponseAnswer.valueString.isnot(None), 'str'),
-                    ],
+                    (QuestionnaireResponseAnswer.valueCodeId.isnot(None), 'code'),
+                    (QuestionnaireResponseAnswer.valueInteger.isnot(None), 'int'),
+                    (QuestionnaireResponseAnswer.valueDecimal.isnot(None), 'dec'),
+                    (QuestionnaireResponseAnswer.valueBoolean.isnot(None), 'bool'),
+                    (QuestionnaireResponseAnswer.valueDate.isnot(None), 'date'),
+                    (QuestionnaireResponseAnswer.valueDateTime.isnot(None), 'dtime'),
+                    (QuestionnaireResponseAnswer.valueString.isnot(None), 'str'),
                     else_=''
                 )
             ),
             SrcClean.filter: literal_column('0'),
             SrcClean.src_id: case(
-                [
-                    (Participant.participantOrigin == 'careevolution', 'ce'),
-                    (Participant.participantOrigin == 'vibrent', 'vibrent'),
-                ],
+                (Participant.participantOrigin == 'careevolution', 'ce'),
+                (Participant.participantOrigin == 'vibrent', 'vibrent'),
                 else_=Participant.participantOrigin
             )
         }
@@ -602,8 +594,8 @@ class CurationExportClass(ToolBase):
                 responses_by_module_subquery.c.response_id != QuestionnaireResponse.questionnaireResponseId,
                 responses_by_module_subquery.c.survey == self._module_code_or_external_id_if_cope(module_code),
                 case(  # If the authored date for the responses match, then join based on the created date instead
-                    [(responses_by_module_subquery.c.authored == QuestionnaireResponse.authored,
-                      responses_by_module_subquery.c.created > QuestionnaireResponse.created)],
+                    (responses_by_module_subquery.c.authored == QuestionnaireResponse.authored,
+                      responses_by_module_subquery.c.created > QuestionnaireResponse.created),
                     else_=(responses_by_module_subquery.c.authored > QuestionnaireResponse.authored)
                 )
             )
@@ -625,7 +617,7 @@ class CurationExportClass(ToolBase):
                 QuestionnaireAnswersByModule.response_id != QuestionnaireResponse.questionnaireResponseId,
                 QuestionnaireAnswersByModule.survey == self._module_code_or_external_id_if_cope(module_code),
                 case(
-                    [(
+                    (
                         # Any street address 2 answers should also be ignored if there are any later
                         # street address 1 answers
                         question_code.value == STREET_ADDRESS2_QUESTION_CODE,
@@ -633,12 +625,12 @@ class CurationExportClass(ToolBase):
                             QuestionnaireQuestion.codeId,
                             street_address_1_code.codeId
                         ])
-                    )],
+                    ),
                     else_=QuestionnaireAnswersByModule.question_code_id == QuestionnaireQuestion.codeId
                 ),
                 case(  # If the authored date for the responses match, then join based on the created date instead
-                    [(QuestionnaireAnswersByModule.authored == QuestionnaireResponse.authored,
-                      QuestionnaireAnswersByModule.created > QuestionnaireResponse.created)],
+                    (QuestionnaireAnswersByModule.authored == QuestionnaireResponse.authored,
+                      QuestionnaireAnswersByModule.created > QuestionnaireResponse.created),
                     else_=(QuestionnaireAnswersByModule.authored > QuestionnaireResponse.authored)
                 )
             )
@@ -725,9 +717,9 @@ class CurationExportClass(ToolBase):
             Death.death_date: DeceasedReport.dateOfDeath,
             Death.death_datetime: DeceasedReport.dateOfDeath.label('date_of_death_datetime'),
             Death.death_type_concept_id: literal("32809"),  # 32809 is the Case Report Form concept id
-            Death.cause_concept_id: 'NULL',  # CDR requires the text value of these columns to be 'NULL'
-            Death.cause_source_value: 'NULL',
-            Death.cause_source_concept_id: 'NULL',
+            Death.cause_concept_id: text('NULL'),  # CDR requires the text value of these columns to be 'NULL'
+            Death.cause_source_value: text('NULL'),
+            Death.cause_source_concept_id: text('NULL'),
             Death.src_id: literal("healthpro")
         }
         deceased_select = session.query(*column_map.values()).select_from(
@@ -758,10 +750,8 @@ class CurationExportClass(ToolBase):
             WearConsent.authored: QuestionnaireResponse.authored,
             WearConsent.consent_status: answer_code.value,
             WearConsent.src_id: case(
-                [
-                    (Participant.participantOrigin == 'careevolution', 'ce'),
-                    (Participant.participantOrigin == 'vibrent', 'vibrent'),
-                ],
+                (Participant.participantOrigin == 'careevolution', 'ce'),
+                (Participant.participantOrigin == 'vibrent', 'vibrent'),
                 else_=Participant.participantOrigin
             )
         }
@@ -1062,7 +1052,7 @@ class CurationExportClass(ToolBase):
     def _finalize_cdm(self, session, drop_tables: bool = False, drop_columns: bool = True):
         # -- In patient surveys data only organs transplantation information
         # -- fits the procedure_occurrence table.
-        session.execute("""INSERT INTO cdm.procedure_occurrence
+        session.execute(text("""INSERT INTO cdm.procedure_occurrence
                             SELECT
                                 NULL                                        AS procedure_occurrence_id,
                                 src_m1.participant_id                       AS person_id,
@@ -1092,12 +1082,12 @@ class CurationExportClass(ToolBase):
                                 ON stcm.target_concept_id = vc.concept_id
                                 AND vc.standard_concept = 'S'
                                 AND vc.invalid_reason IS NULL
-                                """)
+                                """))
 
 
 
 
-        session.execute("""INSERT INTO cdm.temp_obs_target
+        session.execute(text("""INSERT INTO cdm.temp_obs_target
                             -- VISIT_OCCURENCE
                             SELECT
                                 0 AS id,
@@ -1159,11 +1149,11 @@ class CurationExportClass(ToolBase):
                                 drug_exposure_start_date                                        AS start_date,
                                 COALESCE( drug_exposure_end_date, drug_exposure_start_date) AS end_date
                             FROM cdm.drug_exposure
-                                    """)
-        session.execute("""CREATE INDEX temp_obs_target_idx_start ON cdm.temp_obs_target (person_id, start_date);
+                                    """))
+        session.execute(text("""CREATE INDEX temp_obs_target_idx_start ON cdm.temp_obs_target (person_id, start_date);
                            CREATE INDEX temp_obs_target_idx_end ON cdm.temp_obs_target (person_id, end_date);
-                        """)
-        session.execute("""SELECT NULL INTO @partition_expr;
+                        """))
+        session.execute(text("""SELECT NULL INTO @partition_expr;
                             SELECT NULL INTO @last_part_expr;
                             SELECT NULL INTO @row_number;
                             SELECT NULL INTO @reset_num;
@@ -1204,12 +1194,12 @@ class CurationExportClass(ToolBase):
                               1                                 AS event_type,
                               NULL                              AS start_ordinal
                             FROM cdm.temp_obs_target
-                                    """)
+                                    """))
         # -- We need to re-count event ordinal number in 'overall_ord' and define null start_ordinal
         # -- by start_ordinal of start_event. So events, owned by the same observation, will have
         # -- the same ordinal number - the start_ordinal of start observation event.
         # -- overall_ord is overall counter of start and end observations events.
-        session.execute("""SELECT NULL INTO @partition_expr;
+        session.execute(text("""SELECT NULL INTO @partition_expr;
                             SELECT NULL INTO @last_part_expr;
                             SELECT NULL INTO @row_number;
                             SELECT NULL INTO @reset_num;
@@ -1251,11 +1241,11 @@ class CurationExportClass(ToolBase):
                                         event_date,
                                         event_type
                                         ) F
-        """)
+        """))
         # -- Here we just filter observations ends. As start_ordinal of start and
         # -- end events is the same, expression
         # -- (2 * start_ordinal) == e.overall_ord gives us observation end event.
-        session.execute("""INSERT INTO  cdm.temp_obs_end
+        session.execute(text("""INSERT INTO  cdm.temp_obs_end
                             SELECT
                                 0                                             AS id,
                                 person_id                                     AS person_id,
@@ -1265,11 +1255,11 @@ class CurationExportClass(ToolBase):
                             FROM cdm.temp_obs_end_union_part e
                             WHERE
                                 (2 * e.start_ordinal) - e.overall_ord = 0
-                        """)
-        session.execute("""CREATE INDEX temp_obs_end_idx ON cdm.temp_obs_end (person_id, end_date)""")
+                        """))
+        session.execute(text("""CREATE INDEX temp_obs_end_idx ON cdm.temp_obs_end (person_id, end_date)"""))
         # -- Here we form observations start and end dates. For each start_date
         # -- we look for minimal end_date for the particular person observation.
-        session.execute("""INSERT INTO cdm.temp_obs
+        session.execute(text("""INSERT INTO cdm.temp_obs
                             SELECT
                                 0                             AS id,
                                 dt.person_id,
@@ -1282,12 +1272,12 @@ class CurationExportClass(ToolBase):
                             GROUP BY
                                 dt.person_id,
                                 dt.start_date
-                                    """)
-        session.execute("""CREATE INDEX temp_obs_idx ON cdm.temp_obs (person_id, observation_end_date)""")
+                                    """))
+        session.execute(text("""CREATE INDEX temp_obs_idx ON cdm.temp_obs (person_id, observation_end_date)"""))
 
         # -- observation_period is formed as merged possibly intersecting
         # -- tmp_obs intervals
-        session.execute("""INSERT INTO cdm.observation_period
+        session.execute(text("""INSERT INTO cdm.observation_period
                             SELECT
                                 NULL                                    AS observation_period_id,
                                 temp_obs.person_id                               AS person_id,
@@ -1301,37 +1291,37 @@ class CurationExportClass(ToolBase):
                             GROUP BY
                                 person_id,
                                 observation_end_date
-                                    """)
+                                    """))
 
 
 
 
-        session.execute("""INSERT INTO cdm.pid_rid_mapping
+        session.execute(text("""INSERT INTO cdm.pid_rid_mapping
                             SELECT DISTINCT sc.participant_id, sc.research_id, sc.external_id, sc.src_id
                             FROM cdm.src_clean sc join cdm.person p on sc.participant_id=p.person_id
-                                    """)
+                                    """))
         if drop_tables:
             # Drop Temporary Tables
-            session.execute("""  DROP TABLE IF EXISTS cdm.src_gender;
+            session.execute(text("""  DROP TABLE IF EXISTS cdm.src_gender;
                                 DROP TABLE IF EXISTS cdm.src_race;
                                 DROP TABLE IF EXISTS cdm.src_person_location;
-                            """)
-            session.execute("""DROP TABLE IF EXISTS cdm.temp_cdm_observation_period;
+                            """))
+            session.execute(text("""DROP TABLE IF EXISTS cdm.temp_cdm_observation_period;
                                 DROP TABLE IF EXISTS cdm.temp_obs_target;
                                 DROP TABLE IF EXISTS cdm.temp_obs_end_union;
                                 DROP TABLE IF EXISTS cdm.temp_obs_end;
                                 DROP TABLE IF EXISTS cdm.temp_obs_end_union_part;
                                 DROP TABLE IF EXISTS cdm.temp_obs;
-            """)
-            session.execute("""DROP TABLE IF EXISTS cdm.tmp_visits_src""")
-            session.execute("""DROP TABLE IF EXISTS cdm.tmp_fact_rel_sd;""")
-            session.execute("""DROP TABLE IF EXISTS cdm.tmp_cv_concept_lk;
+            """))
+            session.execute(text("""DROP TABLE IF EXISTS cdm.tmp_visits_src"""))
+            session.execute(text("""DROP TABLE IF EXISTS cdm.tmp_fact_rel_sd;"""))
+            session.execute(text("""DROP TABLE IF EXISTS cdm.tmp_cv_concept_lk;
                                DROP TABLE IF EXISTS cdm.tmp_vcv_concept_lk;
-                            """)
+                            """))
 
         if drop_columns:
             # Drop columns only used for ETL purposes
-            session.execute("""ALTER TABLE cdm.care_site DROP COLUMN unit_id, DROP COLUMN id;
+            session.execute(text("""ALTER TABLE cdm.care_site DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.condition_era DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.condition_occurrence DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.cost DROP COLUMN unit_id, DROP COLUMN id;
@@ -1339,8 +1329,8 @@ class CurationExportClass(ToolBase):
                                 ALTER TABLE cdm.dose_era DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.drug_era DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.drug_exposure DROP COLUMN unit_id, DROP COLUMN id;
-                                ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id, DROP COLUMN id;""")
-            session.execute("""
+                                ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id, DROP COLUMN id;"""))
+            session.execute(text("""
                                 ALTER TABLE cdm.location DROP COLUMN unit_id;
                                 ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN parent_id, DROP COLUMN id;
                                 ALTER TABLE cdm.observation DROP COLUMN unit_id, DROP COLUMN meas_id;
@@ -1354,36 +1344,36 @@ class CurationExportClass(ToolBase):
                                 ALTER TABLE cdm.death DROP COLUMN id;
                                 ALTER TABLE cdm.consent DROP COLUMN id;
                                 ALTER TABLE cdm.wear_consent DROP COLUMN id;
-                                        """)
+                                        """))
 
     @staticmethod
     def _finalize_src_clean(session):
 
-        session.execute("Delete from voc.concept WHERE concept_id IN (1585549, 1585565, 1585548)")
+        session.execute(text("Delete from voc.concept WHERE concept_id IN (1585549, 1585565, 1585548)"))
         # Update cdm.src_clean to filter specific surveys.
-        session.execute("UPDATE combined_survey_filter SET survey_name = REPLACE(survey_name, '\r', '');")
-        session.execute("""UPDATE cdm.src_clean
+        session.execute(text("UPDATE combined_survey_filter SET survey_name = REPLACE(survey_name, '\r', '');"))
+        session.execute(text("""UPDATE cdm.src_clean
                             INNER JOIN cdm.combined_survey_filter ON
                                 cdm.src_clean.survey_name = cdm.combined_survey_filter.survey_name
                             SET cdm.src_clean.filter = 1
-                            WHERE TRUE""")
+                            WHERE TRUE"""))
 
         # Update cdm.src_clean to filter specific survey questions.
-        session.execute("UPDATE combined_question_filter SET question_ppi_code = REPLACE(question_ppi_code, '\r', '')")
-        session.execute("""CREATE INDEX src_cln_p_id ON cdm.src_clean (participant_id);
-                           CREATE INDEX src_cln_filter ON cdm.src_clean (filter)""")
+        session.execute(text("UPDATE combined_question_filter SET question_ppi_code = REPLACE(question_ppi_code, '\r', '')"))
+        session.execute(text("""CREATE INDEX src_cln_p_id ON cdm.src_clean (participant_id);
+                           CREATE INDEX src_cln_filter ON cdm.src_clean (filter)"""))
 
     @staticmethod
     def _filter_question(session, pid_list):
-        session.execute(f"""UPDATE cdm.src_clean
+        session.execute(text(f"""UPDATE cdm.src_clean
                             INNER JOIN cdm.combined_question_filter ON
                                 cdm.src_clean.question_ppi_code = cdm.combined_question_filter.question_ppi_code
                             SET cdm.src_clean.filter = 1
-                            WHERE cdm.src_clean.participant_id IN ({",".join([str(pid) for pid in pid_list])})""")
+                            WHERE cdm.src_clean.participant_id IN ({",".join([str(pid) for pid in pid_list])})"""))
 
     @staticmethod
     def _populate_src_participant(session, pid_list):
-        session.execute(f"""INSERT INTO cdm.src_participant
+        session.execute(text(f"""INSERT INTO cdm.src_participant
                             SELECT
                                 f1.participant_id,
                                 f1.latest_date_of_survey,
@@ -1418,11 +1408,11 @@ class CurationExportClass(ToolBase):
                                     t1.participant_id,
                                     t1.latest_date_of_survey,
                                     t1.src_id
-                                ) f1""")
+                                ) f1"""))
 
     @staticmethod
     def _populate_src_mapped(session, pid_list):
-        session.execute(f"""INSERT INTO cdm.src_mapped
+        session.execute(text(f"""INSERT INTO cdm.src_mapped
                             SELECT
                                 0                                   AS id,
                                 src_c.participant_id                AS participant_id,
@@ -1469,16 +1459,16 @@ class CurationExportClass(ToolBase):
                                 ON  vcr2.concept_id_2 = vc4.concept_id
                             WHERE src_c.participant_id IN ({",".join([str(pid) for pid in pid_list])})
                             AND src_c.filter = 0
-                            """)
+                            """))
 
     def _populate_src_tables(self, session):
-        session.execute("""
+        session.execute(text("""
                 ALTER TABLE cdm.src_mapped ADD KEY (question_ppi_code);
                 CREATE INDEX mapped_p_id_and_ppi ON cdm.src_mapped (participant_id, question_ppi_code);
                 CREATE INDEX mapped_qr_id_and_ppi ON cdm.src_mapped (questionnaire_response_id, question_ppi_code)
-                        """)
+                        """))
 
-        session.execute("""
+        session.execute(text("""
                 INSERT INTO cdm.src_person_location
                 SELECT
                     src_participant.participant_id        AS participant_id,
@@ -1516,9 +1506,9 @@ class CurationExportClass(ToolBase):
                     WHERE m_address_1_2.participant_id = m_address_1.participant_id
                       AND m_address_1_2.question_ppi_code = 'PIIAddress_StreetAddress')
                 GROUP BY src_participant.participant_id;
-                """)
+                """))
 
-        session.execute("""
+        session.execute(text("""
         INSERT INTO cdm.location (location_id, address_1, address_2, city, state, zip, county, location_source_value, unit_id)
             SELECT DISTINCT
                 NULL                            AS location_id,
@@ -1531,22 +1521,22 @@ class CurationExportClass(ToolBase):
                 src.state_ppi_code              AS location_source_value,
                 'loc'                           AS unit_id
             FROM cdm.src_person_location src
-        """)
+        """))
 
-        session.execute("CREATE INDEX location_address ON cdm.location (address_1, zip)")
+        session.execute(text("CREATE INDEX location_address ON cdm.location (address_1, zip)"))
 
-        session.execute("""UPDATE cdm.src_person_location person_loc, cdm.location loc
+        session.execute(text("""UPDATE cdm.src_person_location person_loc, cdm.location loc
                            SET person_loc.location_id = loc.location_id
                          WHERE person_loc.address_1 <=> loc.address_1
                            AND person_loc.address_2 <=> loc.address_2
                            AND person_loc.city <=> loc.city
                            AND person_loc.state <=> loc.state
                            AND person_loc.zip <=> loc.zip
-        """)
+        """))
 
         # -- Map many non-standard genders from src_mapped to allowed
         # -- by cdm standards by 'source_to_concept_map' relation.
-        session.execute("""INSERT INTO cdm.src_gender
+        session.execute(text("""INSERT INTO cdm.src_gender
                             SELECT DISTINCT
                                 src_m.participant_id                    AS person_id,
                                 MIN(stcm1.source_code)                  AS ppi_code,
@@ -1564,14 +1554,14 @@ class CurationExportClass(ToolBase):
                             GROUP BY src_m.participant_id
                             HAVING
                                 COUNT(distinct src_m.value_ppi_code) = 1
-                                """)
+                                """))
         # -- Map many non-standard races from src_mapped to allowed
         # -- by cdm standards by 'source_to_concept_map' relation.
         # -- priority = 1 means more detailed racial
         # -- information over priority = 2. So if patient provides
         # -- detailed answer about his/her race, we firstly
         # -- use it.
-        session.execute("""INSERT INTO cdm.src_race
+        session.execute(text("""INSERT INTO cdm.src_race
                             SELECT DISTINCT
                                 src_m.participant_id                    AS person_id,
                                 MIN(stcm1.source_code)                  AS ppi_code,
@@ -1589,11 +1579,11 @@ class CurationExportClass(ToolBase):
                             GROUP BY src_m.participant_id
                             HAVING
                                 COUNT(distinct src_m.value_ppi_code) = 1
-                                """)
+                                """))
         # -- Then we find and insert priority-2 (more common)
         # -- race info, if priority-1 info was not already
         # -- provided.
-        session.execute("""INSERT INTO cdm.src_race
+        session.execute(text("""INSERT INTO cdm.src_race
                             SELECT DISTINCT
                                 src_m.participant_id                    AS person_id,
                                 MIN(stcm1.source_code)                  AS ppi_code,
@@ -1614,14 +1604,14 @@ class CurationExportClass(ToolBase):
                             GROUP BY src_m.participant_id
                             HAVING
                                 COUNT(distinct src_m.value_ppi_code) = 1
-                                """)
+                                """))
         # -- Map many non-standard ethnicities from src_mapped to allowed
         # -- by cdm standards by 'source_to_concept_map' relation.
         # -- priority = 1 means more detailed ethnic
         # -- information over priority = 2. So if patient provides
         # -- detailed answer about his/her ethnicity, we firstly
         # -- use it.
-        session.execute("""INSERT INTO cdm.src_ethnicity
+        session.execute(text("""INSERT INTO cdm.src_ethnicity
                             SELECT DISTINCT
                                 src_m.participant_id                    AS person_id,
                                 MIN(stcm1.source_code)                  AS ppi_code,
@@ -1639,11 +1629,11 @@ class CurationExportClass(ToolBase):
                             GROUP BY src_m.participant_id
                             HAVING
                                 COUNT(distinct src_m.value_ppi_code) = 1
-                                """)
+                                """))
         # -- Then we find and insert priority-2 (more common)
         # -- ethnicity info, if priority-1 info was not already
         # -- provided.
-        session.execute("""INSERT INTO cdm.src_ethnicity
+        session.execute(text("""INSERT INTO cdm.src_ethnicity
                             SELECT DISTINCT
                                 src_m.participant_id                    AS person_id,
                                 MIN(stcm1.source_code)                  AS ppi_code,
@@ -1664,10 +1654,10 @@ class CurationExportClass(ToolBase):
                             GROUP BY src_m.participant_id
                             HAVING
                                 COUNT(distinct src_m.value_ppi_code) = 1
-                                """)
+                                """))
         # Assembles person's birthday, gender, racial, ethnicity and location information altogether from 'src_mapped',
         # 'src_gender', 'src_race', 'src_ethnicity', 'src_person_location' relations.
-        session.execute("""
+        session.execute(text("""
         DROP TABLE IF EXISTS cdm.tmp_person;
         CREATE TABLE cdm.tmp_person LIKE cdm.person;
         ALTER TABLE cdm.tmp_person DROP COLUMN id;
@@ -1706,8 +1696,8 @@ class CurationExportClass(ToolBase):
                             LEFT JOIN cdm.src_person_location person_loc
                                 ON src_m.participant_id = person_loc.participant_id;
                             ;
-                            """)
-        session.execute("""SET @row_number = 0;
+                            """))
+        session.execute(text("""SET @row_number = 0;
                             INSERT INTO cdm.person
                             SELECT
                               (@row_number:=@row_number + 1)              AS id,
@@ -1715,7 +1705,7 @@ class CurationExportClass(ToolBase):
                             FROM cdm.tmp_person;
 
                             DROP TABLE cdm.tmp_person;
-                            """)
+                            """))
 
 
     def _populate_measurements(self, session, cutoff_date: Union[None, datetime], include_onsite: bool = True,
@@ -1731,7 +1721,7 @@ class CurationExportClass(ToolBase):
         elif include_remote:
             collect_type_filter = "AND pm.collect_type = 2"
 
-        session.execute(f"""INSERT INTO cdm.src_meas
+        session.execute(text(f"""INSERT INTO cdm.src_meas
                             SELECT
                                 0                               AS id,
                                 pm.participant_id               AS participant_id,
@@ -1760,14 +1750,14 @@ class CurationExportClass(ToolBase):
                                 AND (pm.status <> 2 OR pm.status IS NULL) {cutoff_filter}
                             WHERE pm.participant_id IN ({",".join([str(pid) for pid in self.pid_list])})
                             ;
-                            """)
+                            """))
 
     @staticmethod
     def _finish_measurements(session):
-        session.execute("""ALTER TABLE cdm.src_meas ADD KEY (code_value);
+        session.execute(text("""ALTER TABLE cdm.src_meas ADD KEY (code_value);
                             ALTER TABLE cdm.src_meas ADD KEY (physical_measurements_id);
-                            """)
-        session.execute("""INSERT INTO cdm.tmp_cv_concept_lk
+                            """))
+        session.execute(text("""INSERT INTO cdm.tmp_cv_concept_lk
                             SELECT DISTINCT
                                 meas.code_value                                 AS code_value,
                                 vc1.concept_id                                  AS cv_source_concept_id,
@@ -1787,9 +1777,9 @@ class CurationExportClass(ToolBase):
                                 AND vc2.invalid_reason IS NULL
                             WHERE
                                 meas.code_value IS NOT NULL
-                                    """)
+                                    """))
 
-        session.execute("""INSERT INTO cdm.tmp_vcv_concept_lk
+        session.execute(text("""INSERT INTO cdm.tmp_vcv_concept_lk
                             SELECT DISTINCT
                                 meas.value_code_value                           AS value_code_value,
                                 vcv1.concept_id                                 AS vcv_source_concept_id,
@@ -1809,8 +1799,8 @@ class CurationExportClass(ToolBase):
                                 AND vcv2.invalid_reason IS NULL
                             WHERE
                                 meas.value_code_value IS NOT NULL
-                                    """)
-        session.execute(f"""INSERT INTO cdm.src_meas_mapped
+                                    """))
+        session.execute(text(f"""INSERT INTO cdm.src_meas_mapped
                             SELECT
                                 0                                           AS id,
                                 meas.participant_id                         AS participant_id,
@@ -1843,18 +1833,18 @@ class CurationExportClass(ToolBase):
                                 ON meas.value_code_value = tmp2.value_code_value
                             WHERE
                                 meas.code_value <> 'notes'
-                                    """)
-        session.execute("""alter table cdm.src_meas_mapped add key (physical_measurements_id);
+                                    """))
+        session.execute(text("""alter table cdm.src_meas_mapped add key (physical_measurements_id);
                            alter table cdm.src_meas_mapped add key (measurement_id);
                            CREATE INDEX src_meas_pm_ids ON cdm.src_meas_mapped
                                         (physical_measurements_id, measurement_id);
-                        """)
+                        """))
 
-        session.execute("""DROP TABLE IF EXISTS cdm.tmp_care_site;
+        session.execute(text("""DROP TABLE IF EXISTS cdm.tmp_care_site;
                             CREATE TABLE cdm.tmp_care_site LIKE cdm.care_site;
                             ALTER TABLE cdm.tmp_care_site DROP COLUMN id;
-                        """)
-        session.execute("""INSERT INTO cdm.tmp_care_site
+                        """))
+        session.execute(text("""INSERT INTO cdm.tmp_care_site
                             SELECT DISTINCT
                                 site.site_id                            AS care_site_id,
                                 site.site_name                          AS care_site_name,
@@ -1865,16 +1855,16 @@ class CurationExportClass(ToolBase):
                                 'care_site'                             AS unit_id,
                                 ''                                      AS src_id
                             FROM rdr.site site
-                            """)
-        session.execute("""SET @row_number = 0;
+                            """))
+        session.execute(text("""SET @row_number = 0;
                             INSERT INTO cdm.care_site
                             SELECT
                             (@row_number:=@row_number + 1)              AS id,
                               cdm.tmp_care_site.*
                             FROM cdm.tmp_care_site;
-                        """)
-        session.execute("""DROP TABLE IF EXISTS cdm.tmp_care_site""")
-        session.execute("""INSERT INTO cdm.tmp_visits_src
+                        """))
+        session.execute(text("""DROP TABLE IF EXISTS cdm.tmp_care_site"""))
+        session.execute(text("""INSERT INTO cdm.tmp_visits_src
                             SELECT
                                 src_meas.physical_measurements_id       AS visit_occurrence_id,
                                 src_meas.participant_id                 AS person_id,
@@ -1888,8 +1878,8 @@ class CurationExportClass(ToolBase):
                                 src_meas.participant_id,
                                 src_meas.finalized_site_id,
                                 src_meas.src_id
-                        """)
-        session.execute("""SET @row_number = 0;
+                        """))
+        session.execute(text("""SET @row_number = 0;
                             INSERT INTO cdm.visit_occurrence
                             SELECT
                                 (@row_number:=@row_number + 1)          AS id,
@@ -1913,10 +1903,10 @@ class CurationExportClass(ToolBase):
                                 'vis.meas'                              AS unit_id,
                                 src.src_id                              AS src_id
                             FROM cdm.tmp_visits_src src
-                        """)
+                        """))
 
         # unit: observ.meas - observations from measurement table
-        session.execute("""
+        session.execute(text("""
         INSERT INTO cdm.observation
                             SELECT
                                 NULL                                    AS observation_id,
@@ -1946,13 +1936,13 @@ class CurationExportClass(ToolBase):
                             FROM cdm.src_meas_mapped meas
                             WHERE
                                 meas.cv_domain_id = 'Observation'
-                                    """)
-        session.execute("""ALTER TABLE cdm.observation ADD KEY (meas_id)""")
+                                    """))
+        session.execute(text("""ALTER TABLE cdm.observation ADD KEY (meas_id)"""))
         # -- unit: meas.dec   - measurements represented as decimal values
         # -- unit: meas.value - measurements represented as value_code_value
         # -- unit: meas.empty - measurements with empty value_decimal and value_code_value fields
         # -- 'measurement' table is filled from src_meas_mapped table only.
-        session.execute("""SET @row_number = 0;
+        session.execute(text("""SET @row_number = 0;
                                   INSERT INTO cdm.measurement
                                   SELECT
                                       (@row_number:=@row_number + 1)          AS id,
@@ -1996,11 +1986,11 @@ class CurationExportClass(ToolBase):
                                   FROM cdm.src_meas_mapped meas
                                   WHERE
                                       meas.cv_domain_id = 'Measurement' OR meas.cv_domain_id IS NULL
-                                          """)
-        session.execute("""CREATE INDEX measurement_idx
+                                          """))
+        session.execute(text("""CREATE INDEX measurement_idx
                                   ON cdm.measurement (person_id, measurement_date, measurement_datetime, parent_id)
-                              """)
-        session.execute("""SET @row_number = 0;
+                              """))
+        session.execute(text("""SET @row_number = 0;
                                   INSERT INTO cdm.note
                                   SELECT
                                       (@row_number:=@row_number + 1)          AS id,
@@ -2022,9 +2012,9 @@ class CurationExportClass(ToolBase):
                                   FROM cdm.src_meas meas
                                   WHERE
                                       meas.code_value = 'notes'
-                                          """)
+                                          """))
         # Insert to fact_relationships measurement-to-observation relations
-        session.execute("""SET @row_number = 0;
+        session.execute(text("""SET @row_number = 0;
                              INSERT INTO cdm.fact_relationship
                              SELECT
                                  (@row_number:=@row_number + 1)  AS id,
@@ -2038,8 +2028,8 @@ class CurationExportClass(ToolBase):
                              FROM cdm.observation cdm_obs
                              INNER JOIN rdr.measurement_to_qualifier mtq
                                  ON mtq.qualifier_id = cdm_obs.meas_id
-                                     """)
-        session.execute("""INSERT INTO cdm.fact_relationship
+                                     """))
+        session.execute(text("""INSERT INTO cdm.fact_relationship
                              SELECT
                                  (@row_number:=@row_number + 1)  AS id,
                                  27                              AS domain_concept_id_1,     -- Observation
@@ -2052,11 +2042,11 @@ class CurationExportClass(ToolBase):
                              FROM cdm.observation cdm_obs
                              INNER JOIN rdr.measurement_to_qualifier mtq
                                  ON mtq.qualifier_id = cdm_obs.meas_id
-                         """)
+                         """))
 
         # temporary table for populating cdm_fact_relationship table from systolic and
         # diastolic blood pressure measurements
-        session.execute("""INSERT INTO cdm.tmp_fact_rel_sd
+        session.execute(text("""INSERT INTO cdm.tmp_fact_rel_sd
                              SELECT
                                  0                                                           AS id,
                                  m.measurement_id                                            AS measurement_id,
@@ -2087,13 +2077,13 @@ class CurationExportClass(ToolBase):
                                      'blood-pressure-diastolic-3', 'blood-pressure-diastolic-mean'
                                  )
                                  AND m.parent_id IS NOT NULL
-                                     """)
-        session.execute("""ALTER TABLE cdm.tmp_fact_rel_sd ADD KEY (person_id, parent_id)""")
+                                     """))
+        session.execute(text("""ALTER TABLE cdm.tmp_fact_rel_sd ADD KEY (person_id, parent_id)"""))
 
         # -- unit: syst.diast.*[1,2] - to link systolic and diastolic blood pressure
         # -- Insert into fact_relationship table systolic to disatolic blood pressure
         # -- measurements relations
-        session.execute("""INSERT INTO cdm.fact_relationship
+        session.execute(text("""INSERT INTO cdm.fact_relationship
                              SELECT
                                  (@row_number:=@row_number + 1)  AS id,
                                  21                          AS domain_concept_id_1,     -- Measurement
@@ -2116,10 +2106,10 @@ class CurationExportClass(ToolBase):
                                                                                                             -- first, second, third and mean blood pressure measurements
                              WHERE tmp1.systolic_blood_pressure_ind != 0              -- take only systolic blood pressure measurements
                                  AND tmp2.diastolic_blood_pressure_ind != 0             -- take only diastolic blood pressure measurements
-                                     """)
+                                     """))
         # -- Insert into fact_relationship diastolic to systolic blood pressure
         # -- measurements relation
-        session.execute("""INSERT INTO cdm.fact_relationship
+        session.execute(text("""INSERT INTO cdm.fact_relationship
                              SELECT
                                  (@row_number:=@row_number + 1)  AS id,
                                  21                          AS domain_concept_id_1,     -- Measurement
@@ -2142,10 +2132,10 @@ class CurationExportClass(ToolBase):
                                                                                                             -- first, second, third and mean blood pressurre measurements
                              WHERE tmp1.systolic_blood_pressure_ind != 0              -- take only systolic blood pressure measurements
                                  AND tmp2.diastolic_blood_pressure_ind != 0             -- take only diastolic blood pressure measurements
-                                     """)
+                                     """))
 
         # Insert into fact_relationship child-to-parent measurements relations
-        session.execute("""INSERT INTO cdm.fact_relationship
+        session.execute(text("""INSERT INTO cdm.fact_relationship
                              SELECT
                                  (@row_number:=@row_number + 1)  AS id,
                                  21                              AS domain_concept_id_1,     -- Measurement
@@ -2157,8 +2147,8 @@ class CurationExportClass(ToolBase):
                                  cdm_meas.src_id                 AS src_id
                              FROM cdm.measurement cdm_meas
                              WHERE cdm_meas.parent_id IS NOT NULL
-                                     """)
-        session.execute("""INSERT INTO cdm.fact_relationship
+                                     """))
+        session.execute(text("""INSERT INTO cdm.fact_relationship
                              SELECT
                                  (@row_number:=@row_number + 1)  AS id,
                                  21                              AS domain_concept_id_1,     -- Measurement
@@ -2170,7 +2160,7 @@ class CurationExportClass(ToolBase):
                                  cdm_meas.src_id                 AS src_id
                              FROM cdm.measurement cdm_meas
                              WHERE cdm_meas.parent_id IS NOT NULL
-                                     """)
+                                     """))
 
     def _populate_observation_surveys(self, session, pid_list:List[int]):
         # -- units: observ.code, observ.str, observ.num, observ.bool
@@ -2180,7 +2170,7 @@ class CurationExportClass(ToolBase):
         # -- First part we fill from 'src_mapped', second -
         # -- from 'src_meas_mapped'
 
-        session.execute(f"""INSERT INTO cdm.observation
+        session.execute(text(f"""INSERT INTO cdm.observation
                             SELECT
                                 NULL                                        AS observation_id,
                                 src_m.participant_id                        AS person_id,
@@ -2226,18 +2216,18 @@ class CurationExportClass(ToolBase):
                             FROM cdm.src_mapped src_m
                             WHERE src_m.question_ppi_code is not null
                             AND src_m.participant_id IN ({",".join([str(pid) for pid in pid_list])})
-                                    """)
+                                    """))
 
         # remove special character
-        session.execute("""update cdm.observation set value_as_string = replace(value_as_string, '\0', '')
-                           where value_as_string like '%\0%'""")
+        session.execute(text("""update cdm.observation set value_as_string = replace(value_as_string, '\0', '')
+                           where value_as_string like '%\0%'"""))
 
     @staticmethod
     def _populate_questionnaire_response_additional_info(session):
         # Preventing locks on questionnaire_response table when reading data
-        session.execute("""SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED""")
+        session.execute(text("""SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED"""))
 
-        session.execute("""INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
+        session.execute(text("""INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
                             0 AS id,
                             qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, qr.non_participant_author as value,
                             p.participant_origin src_id
@@ -2245,16 +2235,16 @@ class CurationExportClass(ToolBase):
                             JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
                             JOIN rdr.participant p ON qr.participant_id = p.participant_id
                             where qr.non_participant_author is not null and qr.questionnaire_response_id=qri.questionnaire_response_id
-                                    """)
-        session.execute("""INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
+                                    """))
+        session.execute(text("""INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
                             0 AS id,
                             qr.questionnaire_response_id, 'LANGUAGE' as type, qr.language as value, p.participant_origin src_id
                             from rdr.questionnaire_response qr
                             JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
                             JOIN rdr.participant p ON qr.participant_id = p.participant_id
                             where qr.language is not null and qr.questionnaire_response_id=qri.questionnaire_response_id
-                                    """)
-        session.execute("""INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
+                                    """))
+        session.execute(text("""INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
                             0 AS id,
                             qr.questionnaire_response_id, 'CODE' as type, c.value as value, p.participant_origin src_id
                             from rdr.questionnaire_response qr
@@ -2265,9 +2255,9 @@ class CurationExportClass(ToolBase):
                             where qr.questionnaire_id=qc.questionnaire_id
                             and qc.code_id=c.code_id
                             and qr.questionnaire_response_id=qri.questionnaire_response_id
-                                    """)
+                                    """))
         # Reset ISOLATION level to previous setting (assuming here that it was MySql's default)
-        session.execute("""SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ""")
+        session.execute(text("""SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ"""))
 
     def _populate_ehr_consent(self, session):
         self._set_rdr_model_schema([ConsentFile, ConsentResponse])
@@ -2280,7 +2270,7 @@ class CurationExportClass(ToolBase):
         column_map = {
             EHRConsentStatus.person_id: SrcClean.participant_id,
             EHRConsentStatus.research_id: SrcClean.research_id,
-            EHRConsentStatus.consent_for_electronic_health_records: case([
+            EHRConsentStatus.consent_for_electronic_health_records: case(
                 (SrcClean.value_ppi_code == 'No', 'SUBMITTED_NO'),
                 (and_(SrcClean.value_ppi_code == 'Yes', ConsentResponse.created.is_(None)), 'SUBMITTED'),
                 # Consents submitted before validation was implemented
@@ -2294,7 +2284,7 @@ class CurationExportClass(ToolBase):
                  'SUBMITTED'),
                 (and_(SrcClean.value_ppi_code == 'Yes', ConsentFile.sync_status.notin_(
                     (ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE))), 'SUBMITTED_INVALID')
-            ]),
+            ),
             EHRConsentStatus.consent_for_electronic_health_records_authored: SrcClean.date_of_survey,
             EHRConsentStatus.src_id: SrcClean.src_id
         }

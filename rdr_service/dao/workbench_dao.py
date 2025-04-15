@@ -341,11 +341,13 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         workbench_workspace_snapshot_alias.workspaceSourceId)\
                 .as_scalar()
             case_stmt = case(
-                [
-                    (and_(workbench_workspace_snapshot_alias.status == WorkbenchWorkspaceStatus.INACTIVE,
-                          active_id != None),
-                     active_id)
-                ],
+                (
+                    and_(
+                        workbench_workspace_snapshot_alias.status == WorkbenchWorkspaceStatus.INACTIVE,
+                        active_id != None
+                    ),
+                    active_id
+                ),
                 else_=workbench_workspace_snapshot_alias.id
             )
             subquery = session.query(case_stmt.label('active_id'), workbench_workspace_snapshot_alias).subquery()

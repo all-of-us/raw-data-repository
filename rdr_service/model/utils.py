@@ -25,6 +25,7 @@ class Enum(TypeDecorator):
     """A type for a SQLAlchemy column based on a protomsg Enum provided in the constructor"""
 
     impl = SmallInteger
+    cache_ok = True
 
     def __init__(self, enum_type):
         super(Enum, self).__init__()
@@ -43,6 +44,8 @@ class Enum(TypeDecorator):
 class EnumZeroBased(Enum):
     """A type for a SQLAlchemy column based on a protomsg Enum provided in the constructor.
        This implementation allows for 0's as a value."""
+
+    cache_ok = True
 
     def process_bind_param(self, value, dialect):  # pylint: disable=unused-argument
         return int(value) if value is not None else None
@@ -91,6 +94,8 @@ class UTCDateTime(TypeDecorator):
             return value.astimezone(tzutc()).replace(tzinfo=None)
         return value
 
+    cache_ok = True
+
 
 class UTCDateTime6(TypeDecorator):
     impl = DATETIME(fsp=6)
@@ -102,6 +107,8 @@ class UTCDateTime6(TypeDecorator):
         if value is not None and value.tzinfo:
             return value.astimezone(tzutc()).replace(tzinfo=None)
         return value
+
+    cache_ok = True
 
 
 def to_client_participant_id(participant_id):

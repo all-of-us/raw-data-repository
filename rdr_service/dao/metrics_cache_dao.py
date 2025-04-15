@@ -170,11 +170,11 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
             if last_inserted_record is not None:
                 last_date_inserted = last_inserted_record.dateInserted
                 seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
-                delete_sql = """
+                delete_sql = text("""
                 delete from metrics_enrollment_status_cache where date_inserted < :seven_days_ago
-                """
+                """)
                 params = {'seven_days_ago': seven_days_ago}
-                session.execute(text(delete_sql), params)
+                session.execute(delete_sql, params)
 
     def to_metrics_client_json(self, result_set, enrollment_statuses=None):
         client_json = []
@@ -520,11 +520,11 @@ class MetricsGenderCacheDao(BaseDao):
             if last_inserted_record is not None:
                 last_date_inserted = last_inserted_record.dateInserted
                 seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
-                delete_sql = """
+                delete_sql = text("""
                   delete from metrics_gender_cache where date_inserted < :seven_days_ago and type = :type
-                """
+                """)
                 params = {'seven_days_ago': seven_days_ago, 'type': self.cache_type}
-                session.execute(text(delete_sql), params)
+                session.execute(delete_sql, params)
 
     def to_metrics_client_json(self, result_set):
         client_json = []
@@ -889,7 +889,7 @@ class MetricsAgeCacheDao(BaseDao):
             params = {'start_date': start_date, 'end_date': end_date, 'date_inserted': last_inserted_date,
                       'cache_type': str(self.cache_type)}
 
-            cursor = session.execute(sql, params)
+            cursor = session.execute(text(sql), params)
             try:
                 results = cursor.fetchall()
             finally:
@@ -928,9 +928,9 @@ class MetricsAgeCacheDao(BaseDao):
             if last_inserted_record is not None:
                 last_date_inserted = last_inserted_record.dateInserted
                 seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
-                delete_sql = """
+                delete_sql = text("""
           delete from metrics_age_cache where date_inserted < :seven_days_ago and type = :type
-        """
+        """)
                 params = {'seven_days_ago': seven_days_ago, 'type': self.cache_type}
                 session.execute(delete_sql, params)
 
@@ -1400,9 +1400,9 @@ class MetricsRaceCacheDao(BaseDao):
             if last_inserted_record is not None:
                 last_date_inserted = last_inserted_record.dateInserted
                 seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
-                delete_sql = """
+                delete_sql = text("""
                   delete from metrics_race_cache where date_inserted < :seven_days_ago and type = :type
-                """
+                """)
                 params = {'seven_days_ago': seven_days_ago, 'type': self.cache_type}
                 session.execute(delete_sql, params)
 
@@ -1880,9 +1880,9 @@ class MetricsRegionCacheDao(BaseDao):
             if last_inserted_record is not None:
                 last_date_inserted = last_inserted_record.dateInserted
                 seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
-                delete_sql = """
+                delete_sql = text("""
                   delete from metrics_region_cache where date_inserted < :seven_days_ago
-                """
+                """)
                 params = {'seven_days_ago': seven_days_ago}
                 session.execute(delete_sql, params)
 
@@ -2305,11 +2305,11 @@ class MetricsLifecycleCacheDao(BaseDao):
             if last_inserted_record is not None:
                 last_date_inserted = last_inserted_record.dateInserted
                 seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
-                delete_sql = """
+                delete_sql = text("""
           delete from metrics_lifecycle_cache where date_inserted < :seven_days_ago and type = :type
-        """
+        """)
                 params = {'seven_days_ago': seven_days_ago, 'type': self.cache_type}
-                session.execute(text(delete_sql), params)
+                session.execute(delete_sql, params)
 
     def to_metrics_client_json(self, result_set):
         client_json = []
@@ -2748,9 +2748,9 @@ class MetricsLanguageCacheDao(BaseDao):
             if last_inserted_record is not None:
                 last_date_inserted = last_inserted_record.dateInserted
                 seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
-                delete_sql = """
+                delete_sql = text("""
           delete from metrics_language_cache where date_inserted < :seven_days_ago
-        """
+        """)
                 params = {'seven_days_ago': seven_days_ago}
                 session.execute(delete_sql, params)
 

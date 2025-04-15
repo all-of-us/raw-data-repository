@@ -86,8 +86,8 @@ class QuestionnaireHistory(Base):
 
     externalId = Column('external_id', String(100))
     version = Column("version", Integer, primary_key=True, nullable=False)
-    concepts = relationship("QuestionnaireConcept", cascade="all, delete-orphan")
-    questions = relationship("QuestionnaireQuestion", cascade="all, delete-orphan")
+    concepts = relationship("QuestionnaireConcept", cascade="all, delete-orphan", overlaps='concepts')
+    questions = relationship("QuestionnaireQuestion", cascade="all, delete-orphan", overlaps='questions')
 
 
 class QuestionnaireConcept(Base):

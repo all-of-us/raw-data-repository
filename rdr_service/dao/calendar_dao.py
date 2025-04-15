@@ -47,7 +47,7 @@ class CalendarDao(BaseDao):
         else:
             raise NotImplemented("invalid interval: {interval}".format(interval=interval_key))
         start_date_query = (
-            select([start_field.label("start_date")])
+            select(start_field.label("start_date"))
             .where((Calendar.day >= start) & (Calendar.day <= end))
             .group_by(start_field)
             .alias("start_date_query")
@@ -56,4 +56,4 @@ class CalendarDao(BaseDao):
         fields = [start_date_query.c.start_date.label("start_date")]
         if include_end_date:
             fields.append(end_date_field)
-        return select(fields).alias("interval_query")
+        return select(*fields)

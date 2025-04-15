@@ -1673,7 +1673,7 @@ class ParticipantSummaryDao(UpdatableDao):
             .where(ParticipantSummary.participantId == sqlalchemy.bindparam('pid'))
             .values(values_to_update)
         )
-        query_result = session.execute(query, [
+        query_result = session.execute(query.execution_options(synchronize_session=False), [
             {
                 'pid': record.participant_id,
                 'receipt_time': record.receipt_time

@@ -176,9 +176,9 @@ class Database(object):
 
 
 def get_class_for_table_name(table_name):
-    for model in Base._class_registry.values():
-        if getattr(model, '__tablename__', '') == table_name:
-            return model
+    for model in list(Base.registry.mappers):
+        if getattr(model.class_, '__tablename__', '') == table_name:
+            return model.class_
 
 
 class AutoHistoryRevisionGenerator:

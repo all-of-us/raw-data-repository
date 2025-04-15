@@ -161,7 +161,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
             id_ = (
                 session.query(AwardeeInSite.id)
                 .filter(AwardeeInSite.participantId == pid_for_az_org)
-                .first()
+                .scalar()
             )
 
         awardee_insite_values = {

@@ -718,7 +718,7 @@ class QuestionnaireResponseDao(BaseDao):
         participant = ParticipantDao().get_for_update(
             session,
             questionnaire_response.participantId,
-            options=joinedload(Participant.participantSummary).joinedload(ParticipantSummary.pediatricData)
+            options=[joinedload(Participant.participantSummary).joinedload(ParticipantSummary.pediatricData)]
         )
 
         if participant is None:

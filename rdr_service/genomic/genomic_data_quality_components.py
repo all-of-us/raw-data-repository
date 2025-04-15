@@ -2,6 +2,8 @@ import abc
 from datetime import timedelta
 from typing import List, Union
 
+import sqlalchemy
+
 from rdr_service import clock
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicJobRunDao, GenomicPRReportingDao, \
@@ -145,7 +147,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         with dao.session() as session:
             result = session.execute(
-                self.report_def.source_data_query,
+                sqlalchemy.text(self.report_def.source_data_query),
                 self.report_def.source_data_params
             )
 

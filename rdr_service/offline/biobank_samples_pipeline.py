@@ -166,11 +166,11 @@ def _parse_timestamp(row, key, sample):
     return None
 
 
-def write_reconciliation_report(now, session, report_type="daily"):
+def write_reconciliation_report(now, report_type="daily"):
     """Writes order/sample reconciliation reports to GCS."""
     bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
     _query_and_write_reports(
-        SqlExporter(bucket_name, session), now, report_type, *_get_report_paths(now, report_type)
+        SqlExporter(bucket_name), now, report_type, *_get_report_paths(now, report_type)
     )
 
 
@@ -212,10 +212,8 @@ def get_withdrawal_report_query(start_date: datetime):
             func.date_format(Participant.withdrawalTime, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
             case((ParticipantSummary.aian, 'Y'), else_='N').label('is_native_american'),
             case(
-                [
-                    (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_YES, 'Y'),
-                    (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_NO, 'N'),
-                ],
+                (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_YES, 'Y'),
+                (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_NO, 'N'),
                 else_=case((ParticipantSummary.aian, 'U'), else_='NA')
             ).label('needs_disposal_ceremony'),
             Participant.participantOrigin.label('participant_origin'),
@@ -226,7 +224,7 @@ def get_withdrawal_report_query(start_date: datetime):
             coalesce(ParticipantSummary.deceasedStatus, 0).label('deceased_status')
         ])
         .select_from(Participant)
-        .outerjoin(ceremony_answer_subquery, ceremony_answer_subquery.c.participant_id == Participant.participantId)
+        .outerjoin(ceremony_answer_subquery, ceremony_answer_subquery.c.participantId == Participant.participantId)
         .join(BiobankStoredSample, BiobankStoredSample.biobankId == Participant.biobankId)
         .outerjoin(ParticipantSummary, ParticipantSummary.participantId == Participant.participantId)
         .outerjoin(HPO, HPO.hpoId == Participant.hpoId)
@@ -244,7 +242,7 @@ def get_withdrawal_report_query(start_date: datetime):
 
 def _build_query_params(start_date: datetime):
     return {
-        "biobank_id_prefix": 'A',
+        "biobank_id_prefix": get_biobank_id_prefix(),
         "pmi_ops_system": _PMI_OPS_SYSTEM,
         "ce_quest_system": _CE_QUEST_SYSTEM,
         "kit_id_system": _KIT_ID_SYSTEM,
@@ -290,9 +288,9 @@ def _query_and_write_reports(exporter, now: datetime, report_type, path_received
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
   """
 
-    report_cover_range = 30
-    # if report_type == "monthly":
-    #     report_cover_range = 60
+    report_cover_range = 10
+    if report_type == "monthly":
+        report_cover_range = 60
 
     # Gets all sample/order pairs where everything arrived, within the past n days.
     received_predicate = lambda result: (
@@ -303,75 +301,75 @@ def _query_and_write_reports(exporter, now: datetime, report_type, path_received
 
     # Gets samples or orders where something has gone missing within the past n days, and if an order
     # was placed, it was placed at least 36 hours ago.
-    # missing_predicate = lambda result: (
-    #     (
-    #         result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX]
-    #         or (result[_SENT_FINALIZED_INDEX] and not result[_RECEIVED_TEST_INDEX])
-    #     )
-    #     and in_past_n_days(result, now, report_cover_range, ordered_before=now - _THIRTY_SIX_HOURS_AGO)
-    #     and result[_EDITED_CANCELLED_RESTORED_STATUS_FLAG_INDEX] != 'cancelled'
-    # )
+    missing_predicate = lambda result: (
+        (
+            result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX]
+            or (result[_SENT_FINALIZED_INDEX] and not result[_RECEIVED_TEST_INDEX])
+        )
+        and in_past_n_days(result, now, report_cover_range, ordered_before=now - _THIRTY_SIX_HOURS_AGO)
+        and result[_EDITED_CANCELLED_RESTORED_STATUS_FLAG_INDEX] != 'cancelled'
+    )
 
     # Gets samples or orders where something has modified within the past n days.
-    # modified_predicate = lambda result: (
-    #     result[_EDITED_CANCELLED_RESTORED_STATUS_FLAG_INDEX] and in_past_n_days(result, now, report_cover_range)
-    # )
+    modified_predicate = lambda result: (
+        result[_EDITED_CANCELLED_RESTORED_STATUS_FLAG_INDEX] and in_past_n_days(result, now, report_cover_range)
+    )
 
     # break into three steps to avoid OOM issue
-    # report_paths = [path_missing, path_modified]
-    # report_predicates = [missing_predicate, modified_predicate]
+    report_paths = [path_missing, path_modified]
+    report_predicates = [missing_predicate, modified_predicate]
 
     start_of_report_range = now - datetime.timedelta(days=report_cover_range+1)
     query_params = _build_query_params(start_date=start_of_report_range)
     _query_and_write_received_report(exporter, path_received, query_params, received_predicate)
 
-    # for report_path, report_predicate in zip(report_paths, report_predicates):
-    #     if report_path == path_missing:
-    #         query_params['dv_order_filter'] = 1
-    #
-    #     logging.info(f"Writing {report_path} report.")
-    #     exporter.run_export(
-    #         report_path,
-    #         replace_isodate(_RECONCILIATION_REPORT_SELECTS_SQL + _RECONCILIATION_REPORT_SOURCE_SQL),
-    #         query_params,
-    #         backup=True,
-    #         predicate=report_predicate
-    #     )
-    #     logging.info(f"Completed {report_path} report.")
-    #
-    # # Check if cumulative received report should be generated
-    # # biobank_cumulative_received_schedule should be a dictionary with keys giving when the report should
-    # # run, and the values giving the dates that should be used for the first start date.
-    # cumulative_received_schedule: Dict[str, str] = config.getSettingJson(
-    #     config.BIOBANK_CUMULATIVE_RECEIVED_SCHEDULE,
-    #     default={}
-    # )
-    # for run_date, start_date in cumulative_received_schedule.items():
-    #     if parse(run_date).date() == now.date():
-    #         report_start_date = parse(start_date)
-    #         cumulative_received_params = _build_query_params(start_date=report_start_date)
-    #         _query_and_write_received_report(
-    #             exporter=exporter,
-    #             report_path=_get_report_path(report_datetime=now, report_name='cumulative_received'),
-    #             query_params=cumulative_received_params,
-    #             report_predicate=received_predicate
-    #         )
-    #
-    # # Generate the missing salivary report, within last n days
-    # if report_type != "monthly" and path_salivary_missing is not None:
-    #     missing_report_day_interval = config.getSettingJson(
-    #         config.BIOBANK_MISSING_REPORT_DAY_INTERVAL,
-    #         default=report_cover_range
-    #     )
-    #     exporter.run_export(
-    #         path_salivary_missing,
-    #         _SALIVARY_MISSING_REPORT_SQL,
-    #         {
-    #             "biobank_id_prefix": get_biobank_id_prefix(),
-    #             "n_days_interval": missing_report_day_interval,
-    #         },
-    #         backup=True,
-    #     )
+    for report_path, report_predicate in zip(report_paths, report_predicates):
+        if report_path == path_missing:
+            query_params['dv_order_filter'] = 1
+
+        logging.info(f"Writing {report_path} report.")
+        exporter.run_export(
+            report_path,
+            replace_isodate(_RECONCILIATION_REPORT_SELECTS_SQL + _RECONCILIATION_REPORT_SOURCE_SQL),
+            query_params,
+            backup=True,
+            predicate=report_predicate
+        )
+        logging.info(f"Completed {report_path} report.")
+
+    # Check if cumulative received report should be generated
+    # biobank_cumulative_received_schedule should be a dictionary with keys giving when the report should
+    # run, and the values giving the dates that should be used for the first start date.
+    cumulative_received_schedule: Dict[str, str] = config.getSettingJson(
+        config.BIOBANK_CUMULATIVE_RECEIVED_SCHEDULE,
+        default={}
+    )
+    for run_date, start_date in cumulative_received_schedule.items():
+        if parse(run_date).date() == now.date():
+            report_start_date = parse(start_date)
+            cumulative_received_params = _build_query_params(start_date=report_start_date)
+            _query_and_write_received_report(
+                exporter=exporter,
+                report_path=_get_report_path(report_datetime=now, report_name='cumulative_received'),
+                query_params=cumulative_received_params,
+                report_predicate=received_predicate
+            )
+
+    # Generate the missing salivary report, within last n days
+    if report_type != "monthly" and path_salivary_missing is not None:
+        missing_report_day_interval = config.getSettingJson(
+            config.BIOBANK_MISSING_REPORT_DAY_INTERVAL,
+            default=report_cover_range
+        )
+        exporter.run_export(
+            path_salivary_missing,
+            _SALIVARY_MISSING_REPORT_SQL,
+            {
+                "biobank_id_prefix": get_biobank_id_prefix(),
+                "n_days_interval": missing_report_day_interval,
+            },
+            backup=True,
+        )
     logging.info("Completed monthly reconciliation report.")
 
 

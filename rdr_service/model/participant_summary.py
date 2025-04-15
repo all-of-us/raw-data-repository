@@ -1940,7 +1940,8 @@ class ParticipantSummary(Base):
             AccountLink.get_active_filter()
         ),
         uselist=True,
-        lazy='noload'
+        lazy='noload',
+        viewonly=True
     )
 
     childParticipants = relationship(
@@ -1950,7 +1951,8 @@ class ParticipantSummary(Base):
             AccountLink.get_active_filter()
         ),
         uselist=True,
-        lazy='noload'
+        lazy='noload',
+        viewonly=True
     )
 
     pediatricData = relationship(
@@ -1960,7 +1962,8 @@ class ParticipantSummary(Base):
             PediatricDataLog.replaced_by_id.is_(None)
         ),
         uselist=True,
-        lazy='noload'
+        lazy='noload',
+        overlaps="participant,participantSummary"
     )
 
     @property

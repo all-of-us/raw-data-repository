@@ -19,7 +19,7 @@ from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRVa
 from protorpc import messages
 from sqlalchemy import and_, inspect, or_
 from sqlalchemy.dialects import mysql
-from sqlalchemy.engine.result import ResultProxy
+from sqlalchemy.engine.result import Result
 from sqlalchemy.exc import IntegrityError, OperationalError
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
@@ -216,12 +216,7 @@ class BaseDao(object):
 
     def get_with_session(self, session, obj_id, for_update=False, options=None):
         """Gets an object by ID for this type using the specified session. Returns None if not found."""
-        query = session.query(self.model_type)
-        if for_update:
-            query = query.with_for_update()
-        if options:
-            query = query.options(options)
-        return query.get(obj_id)
+        return session.get(self.model_type, obj_id, options=options, with_for_update=for_update)
 
     def get(self, obj_id):
         """Gets an object with the specified ID for this type from the database.

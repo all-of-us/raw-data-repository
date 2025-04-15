@@ -38,15 +38,13 @@ class EhrReceiptDao(BaseDao):
         )
         if organization_ids:
             active_org_count_conditions &= EhrReceipt.organizationId.in_(organization_ids)
-        active_org_count_query = select([func.count(EhrReceipt.organizationId.distinct())]).where(
+        active_org_count_query = select(func.count(EhrReceipt.organizationId.distinct())).where(
             active_org_count_conditions
         )
         query = select(
-            [
-                interval_query.c.start_date,
-                interval_query.c.end_date,
-                active_org_count_query.label("active_organization_count"),
-            ]
+            interval_query.c.start_date,
+            interval_query.c.end_date,
+            active_org_count_query.label("active_organization_count")
         )
         with self.session() as session:
             cursor = session.execute(query)

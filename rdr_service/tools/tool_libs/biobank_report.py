@@ -53,7 +53,7 @@ class BiobankReportTool(ToolBase):
             csv_writer.writeheader()
 
             report_query = get_withdrawal_report_query(start_date=start_date)
-            result_list = session.execute(text(report_query))
+            result_list = session.execute(report_query)
             for result in result_list:
                 deceased_status = result.deceased_status
                 if result.deceased_status is None:  # Can be None if the summary doesn't exist

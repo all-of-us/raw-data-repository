@@ -1,5 +1,6 @@
 import datetime
 import mock
+import sqlalchemy
 from sqlalchemy.exc import OperationalError
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, PreconditionFailed, ServiceUnavailable
 
@@ -626,7 +627,7 @@ class ParticipantDaoTest(BaseTestCase):
         """
 
         # Lock the participants table and set the lock_wait_timeout low so the test isn't slow
-        self.session.execute('set global innodb_lock_wait_timeout = 1')
+        self.session.execute(sqlalchemy.text('set global innodb_lock_wait_timeout = 1'))
         self.session.query(Participant).with_for_update().all()
 
         # Use the error logging to know when the lock timeout was triggered,

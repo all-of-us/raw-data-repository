@@ -388,7 +388,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # PDR-252:  The AIAN withdrawal ceremony decision needs to be made available to PDR.  Look for the latest
         # authored answer code, if one exists
-        ceremony_question_code = ro_session.query(Code.codeId).filter(Code.value == WITHDRAWAL_CEREMONY_QUESTION_CODE)
+        ceremony_question_code = ro_session.query(Code.codeId).filter(
+            Code.value == WITHDRAWAL_CEREMONY_QUESTION_CODE
+        ).scalar_subquery()
         answer_code_filter = Code.value.in_([WITHDRAWAL_CEREMONY_NO, WITHDRAWAL_CEREMONY_YES])
         ceremony_response = ro_session.query(Code.value).\
             join(QuestionnaireResponseAnswer, QuestionnaireResponseAnswer.valueCodeId == Code.codeId).\

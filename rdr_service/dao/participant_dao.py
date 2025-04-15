@@ -206,7 +206,7 @@ class ParticipantDao(UpdatableDao):
         # updating both.
 
         if options is None:
-            options = joinedload(Participant.participantSummary)
+            options = [joinedload(Participant.participantSummary)]
 
         return self.get_with_session(session, obj_id, for_update=True, options=options)
 
