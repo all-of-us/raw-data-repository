@@ -86,6 +86,17 @@ class PPSCIntakeAPI(BaseApi):
         else:
             raise BadRequest("No activity_date_time_value provided.")
 
+        # Check for Primary Consent
+        if req_data['eventType'] != "Primary Consent":
+            with self.dao.session() as session:
+                is_primary = session.query(ConsentEvent).filter(
+                    ConsentEvent.participant_id == req_data['participantId'].split('P')[1],
+                    ConsentEvent.event_type_name == 'Primary Consent'
+                ).first()
+                if not is_primary:
+                    raise BadRequest("No Primary Consent record found.")
+
+
     def handle_event_insert(self, *, req_data: dict) -> dict:
         activity_record = list(filter(lambda x: x.name.lower() == req_data['activity'].lower(),
                                       self.activity_records))
