@@ -88,7 +88,9 @@ class PPSCIntakeAPI(BaseApi):
 
         # Check for Primary Consent
         if req_data['eventType'] != "Primary Consent":
-            if not self.check_primary_consent(req_data['participantId'].split('P')[1]):
+            if not self.check_primary_consent(req_data['participantId'].split('P')[1],
+                                              'Primary Consent',
+                                              'activity_status', 'Yes'):
                 raise BadRequest("No Primary Consent record found.")
 
     def handle_event_insert(self, *, req_data: dict) -> dict:
@@ -149,11 +151,11 @@ class PPSCIntakeAPI(BaseApi):
 
         return participant_event_activity.resource
 
-    def check_primary_consent(self, participant_id):
+    def check_primary_consent(self, participant_id, event_type, data_element_name, data_element_value):
         with self.dao.session() as session:
             return session.query(ConsentEvent).filter(
                 ConsentEvent.participant_id == participant_id,
                 ConsentEvent.event_type_name == 'Primary Consent',
-                ConsentEvent.data_element_name == 'activity_status',
-                ConsentEvent.data_element_value == 'Yes'
+                ConsentEvent.data_element_name == data_element_name,
+                ConsentEvent.data_element_value == data_element_value
             ).first()
