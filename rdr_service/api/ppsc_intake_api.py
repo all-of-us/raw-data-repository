@@ -1,7 +1,6 @@
 from dateutil import parser
 from flask import request
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service.api.base_api import BaseApi, log_api_request
