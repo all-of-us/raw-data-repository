@@ -45,6 +45,32 @@ class PPSCIntakeAPITest(BaseTestCase):
                 name=activity
             )
 
+    def send_valid_primary_consent(self, participant):
+        payload = {
+            "activity": "Consent",
+            "eventType": "Primary Consent",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "yes"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00Z"
+                },
+            ]
+        }
+
+        test_time = datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+    def filter_events_by_type(self, events, activity_id):
+        for event in events:
+            if event.activity_id == activity_id:
+                return event
+
     def overwrite_test_user_roles(self, roles):
         new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
         new_user_info['example@example.com']['roles'] = roles
@@ -331,6 +357,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
     def test_intake_survey_completion_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
 
         payload = {
             "activity": "Survey Completion",
@@ -353,19 +380,19 @@ class PPSCIntakeAPITest(BaseTestCase):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
         participant_event_activities = self.ppsc_participant_activity_dao.get_all()
-        self.assertEqual(1, len(participant_event_activities))
+        participant_event_activities = self.filter_events_by_type(participant_event_activities, 3)
 
-        self.assertEqual(test_time, participant_event_activities[0].created)
-        self.assertEqual(test_time, participant_event_activities[0].modified)
-        self.assertEqual(participant.id, participant_event_activities[0].participant_id)
-        self.assertEqual(payload, participant_event_activities[0].resource)
-        self.assertEqual(3, participant_event_activities[0].activity_id)
+        self.assertEqual(test_time, participant_event_activities.created)
+        self.assertEqual(test_time, participant_event_activities.modified)
+        self.assertEqual(participant.id, participant_event_activities.participant_id)
+        self.assertEqual(payload, participant_event_activities.resource)
+        self.assertEqual(3, participant_event_activities.activity_id)
 
         survey_events = self.survey_completion_event_dao.get_all()
         self.assertEqual(2, len(survey_events))
         self.assertEqual(test_time, survey_events[0].created)
         self.assertEqual(test_time, survey_events[0].modified)
-        self.assertEqual(1, survey_events[0].event_id)
+        self.assertEqual(participant_event_activities.id, survey_events[0].event_id)
         self.assertEqual(participant.id, survey_events[0].participant_id)
         self.assertEqual('The Basics', survey_events[0].event_type_name)
         self.assertEqual('activity_status', survey_events[0].data_element_name)
@@ -373,7 +400,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
         self.assertEqual(test_time, survey_events[1].created)
         self.assertEqual(test_time, survey_events[1].modified)
-        self.assertEqual(1, survey_events[1].event_id)
+        self.assertEqual(participant_event_activities.id, survey_events[1].event_id)
         self.assertEqual(participant.id, survey_events[1].participant_id)
         self.assertEqual('The Basics', survey_events[1].event_type_name)
         self.assertEqual('activity_date_time', survey_events[1].data_element_name)
@@ -381,6 +408,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
     def test_intake_survey_data_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
 
         payload = {
             "activity": "Survey Completion",
@@ -465,6 +493,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
     def test_intake_profile_updates_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
 
         payload = {
             "activity": "Profile Updates",
@@ -491,20 +520,20 @@ class PPSCIntakeAPITest(BaseTestCase):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
         participant_event_activities = self.ppsc_participant_activity_dao.get_all()
-        self.assertEqual(1, len(participant_event_activities))
+        participant_event_activities = self.filter_events_by_type(participant_event_activities, 4)
 
-        self.assertEqual(test_time, participant_event_activities[0].created)
-        self.assertEqual(test_time, participant_event_activities[0].modified)
-        self.assertEqual(participant.id, participant_event_activities[0].participant_id)
-        self.assertEqual(payload, participant_event_activities[0].resource)
-        self.assertEqual(4, participant_event_activities[0].activity_id)
+        self.assertEqual(test_time, participant_event_activities.created)
+        self.assertEqual(test_time, participant_event_activities.modified)
+        self.assertEqual(participant.id, participant_event_activities.participant_id)
+        self.assertEqual(payload, participant_event_activities.resource)
+        self.assertEqual(4, participant_event_activities.activity_id)
 
         profile_updates_events = self.profile_updates_event_dao.get_all()
         self.assertEqual(3, len(profile_updates_events))
 
         self.assertEqual(test_time, profile_updates_events[0].created)
         self.assertEqual(test_time, profile_updates_events[0].modified)
-        self.assertEqual(1, profile_updates_events[0].event_id)
+        self.assertEqual(participant_event_activities.id, profile_updates_events[0].event_id)
         self.assertEqual(participant.id, profile_updates_events[0].participant_id)
         self.assertEqual('Profile Data', profile_updates_events[0].event_type_name)
         self.assertEqual('first_name', profile_updates_events[0].data_element_name)
@@ -512,7 +541,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
         self.assertEqual(test_time, profile_updates_events[1].created)
         self.assertEqual(test_time, profile_updates_events[1].modified)
-        self.assertEqual(1, profile_updates_events[1].event_id)
+        self.assertEqual(participant_event_activities.id, profile_updates_events[1].event_id)
         self.assertEqual(participant.id, profile_updates_events[1].participant_id)
         self.assertEqual('Profile Data', profile_updates_events[1].event_type_name)
         self.assertEqual('last_name', profile_updates_events[1].data_element_name)
@@ -520,7 +549,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
         self.assertEqual(test_time, profile_updates_events[2].created)
         self.assertEqual(test_time, profile_updates_events[2].modified)
-        self.assertEqual(1, profile_updates_events[2].event_id)
+        self.assertEqual(participant_event_activities.id, profile_updates_events[2].event_id)
         self.assertEqual(participant.id, profile_updates_events[2].participant_id)
         self.assertEqual('Profile Data', profile_updates_events[2].event_type_name)
         self.assertEqual('activity_date_time', profile_updates_events[2].data_element_name)
@@ -528,6 +557,26 @@ class PPSCIntakeAPITest(BaseTestCase):
 
     def test_intake_withdrawal_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()
+
+        payload = {
+            "activity": "Consent",
+            "eventType": "Primary Consent",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "yes"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00Z"
+                },
+            ]
+        }
+
+        test_time = datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
         payload = {
             "activity": "Withdrawal",
@@ -550,6 +599,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
     def test_intake_withdrawal_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
 
         payload = {
             "activity": "Withdrawal",
@@ -572,19 +622,19 @@ class PPSCIntakeAPITest(BaseTestCase):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
         participant_event_activities = self.ppsc_participant_activity_dao.get_all()
-        self.assertEqual(1, len(participant_event_activities))
+        participant_event_activities = self.filter_events_by_type(participant_event_activities, 5)
 
-        self.assertEqual(test_time, participant_event_activities[0].created)
-        self.assertEqual(test_time, participant_event_activities[0].modified)
-        self.assertEqual(participant.id, participant_event_activities[0].participant_id)
-        self.assertEqual(payload, participant_event_activities[0].resource)
-        self.assertEqual(5, participant_event_activities[0].activity_id)
+        self.assertEqual(test_time, participant_event_activities.created)
+        self.assertEqual(test_time, participant_event_activities.modified)
+        self.assertEqual(participant.id, participant_event_activities.participant_id)
+        self.assertEqual(payload, participant_event_activities.resource)
+        self.assertEqual(5, participant_event_activities.activity_id)
 
         withdrawal_events = self.withdrawal_event_dao.get_all()
         self.assertEqual(2, len(withdrawal_events))
         self.assertEqual(test_time, withdrawal_events[0].created)
         self.assertEqual(test_time, withdrawal_events[0].modified)
-        self.assertEqual(1, withdrawal_events[0].event_id)
+        self.assertEqual(participant_event_activities.id, withdrawal_events[0].event_id)
         self.assertEqual(participant.id, withdrawal_events[0].participant_id)
         self.assertEqual('Withdrawal', withdrawal_events[0].event_type_name)
         self.assertEqual('activity_status', withdrawal_events[0].data_element_name)
@@ -592,7 +642,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
         self.assertEqual(test_time, withdrawal_events[1].created)
         self.assertEqual(test_time, withdrawal_events[1].modified)
-        self.assertEqual(1, withdrawal_events[1].event_id)
+        self.assertEqual(participant_event_activities.id, withdrawal_events[1].event_id)
         self.assertEqual(participant.id, withdrawal_events[1].participant_id)
         self.assertEqual('Withdrawal', withdrawal_events[1].event_type_name)
         self.assertEqual('activity_date_time', withdrawal_events[1].data_element_name)
@@ -622,6 +672,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
     def test_intake_deactivation_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
 
         payload = {
             "activity": "Deactivation",
@@ -644,19 +695,18 @@ class PPSCIntakeAPITest(BaseTestCase):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
         participant_event_activities = self.ppsc_participant_activity_dao.get_all()
-        self.assertEqual(1, len(participant_event_activities))
-
-        self.assertEqual(test_time, participant_event_activities[0].created)
-        self.assertEqual(test_time, participant_event_activities[0].modified)
-        self.assertEqual(participant.id, participant_event_activities[0].participant_id)
-        self.assertEqual(payload, participant_event_activities[0].resource)
-        self.assertEqual(6, participant_event_activities[0].activity_id)
+        participant_event_activities = self.filter_events_by_type(participant_event_activities,6)
+        self.assertEqual(test_time, participant_event_activities.created)
+        self.assertEqual(test_time, participant_event_activities.modified)
+        self.assertEqual(participant.id, participant_event_activities.participant_id)
+        self.assertEqual(payload, participant_event_activities.resource)
+        self.assertEqual(6, participant_event_activities.activity_id)
 
         deactivation_events = self.deactivation_event_dao.get_all()
         self.assertEqual(2, len(deactivation_events))
         self.assertEqual(test_time, deactivation_events[0].created)
         self.assertEqual(test_time, deactivation_events[0].modified)
-        self.assertEqual(1, deactivation_events[0].event_id)
+        self.assertEqual(participant_event_activities.id, deactivation_events[0].event_id)
         self.assertEqual(participant.id, deactivation_events[0].participant_id)
         self.assertEqual('Deactivation', deactivation_events[0].event_type_name)
         self.assertEqual('activity_status', deactivation_events[0].data_element_name)
@@ -664,7 +714,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
         self.assertEqual(test_time, deactivation_events[1].created)
         self.assertEqual(test_time, deactivation_events[1].modified)
-        self.assertEqual(1, deactivation_events[1].event_id)
+        self.assertEqual(participant_event_activities.id, deactivation_events[1].event_id)
         self.assertEqual(participant.id, deactivation_events[1].participant_id)
         self.assertEqual('Deactivation', deactivation_events[1].event_type_name)
         self.assertEqual('activity_date_time', deactivation_events[1].data_element_name)
@@ -694,6 +744,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
     def test_intake_participant_status_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
 
         payload = {
             "activity": "Participant Status",
@@ -716,19 +767,19 @@ class PPSCIntakeAPITest(BaseTestCase):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
         participant_event_activities = self.ppsc_participant_activity_dao.get_all()
-        self.assertEqual(1, len(participant_event_activities))
+        participant_event_activities = self.filter_events_by_type(participant_event_activities, 7)
 
-        self.assertEqual(test_time, participant_event_activities[0].created)
-        self.assertEqual(test_time, participant_event_activities[0].modified)
-        self.assertEqual(participant.id, participant_event_activities[0].participant_id)
-        self.assertEqual(payload, participant_event_activities[0].resource)
-        self.assertEqual(7, participant_event_activities[0].activity_id)
+        self.assertEqual(test_time, participant_event_activities.created)
+        self.assertEqual(test_time, participant_event_activities.modified)
+        self.assertEqual(participant.id, participant_event_activities.participant_id)
+        self.assertEqual(payload, participant_event_activities.resource)
+        self.assertEqual(7, participant_event_activities.activity_id)
 
         participant_status_events = self.participant_status_event_dao.get_all()
         self.assertEqual(2, len(participant_status_events))
         self.assertEqual(test_time, participant_status_events[0].created)
         self.assertEqual(test_time, participant_status_events[0].modified)
-        self.assertEqual(1, participant_status_events[0].event_id)
+        self.assertEqual(participant_event_activities.id, participant_status_events[0].event_id)
         self.assertEqual(participant.id, participant_status_events[0].participant_id)
         self.assertEqual('Participant Status', participant_status_events[0].event_type_name)
         self.assertEqual('activity_status', participant_status_events[0].data_element_name)
@@ -736,7 +787,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
         self.assertEqual(test_time, participant_status_events[1].created)
         self.assertEqual(test_time, participant_status_events[1].modified)
-        self.assertEqual(1, participant_status_events[1].event_id)
+        self.assertEqual(participant_event_activities.id, participant_status_events[1].event_id)
         self.assertEqual(participant.id, participant_status_events[1].participant_id)
         self.assertEqual('Participant Status', participant_status_events[1].event_type_name)
         self.assertEqual('activity_date_time', participant_status_events[1].data_element_name)
@@ -766,6 +817,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
     def test_intake_attribution_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
 
         payload = {
             "activity": "Attribution",
@@ -788,19 +840,19 @@ class PPSCIntakeAPITest(BaseTestCase):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
         participant_event_activities = self.ppsc_participant_activity_dao.get_all()
-        self.assertEqual(1, len(participant_event_activities))
+        participant_event_activities = self.filter_events_by_type(participant_event_activities, 8)
 
-        self.assertEqual(test_time, participant_event_activities[0].created)
-        self.assertEqual(test_time, participant_event_activities[0].modified)
-        self.assertEqual(participant.id, participant_event_activities[0].participant_id)
-        self.assertEqual(payload, participant_event_activities[0].resource)
-        self.assertEqual(8, participant_event_activities[0].activity_id)
+        self.assertEqual(test_time, participant_event_activities.created)
+        self.assertEqual(test_time, participant_event_activities.modified)
+        self.assertEqual(participant.id, participant_event_activities.participant_id)
+        self.assertEqual(payload, participant_event_activities.resource)
+        self.assertEqual(8, participant_event_activities.activity_id)
 
         attribution_events = self.attribution_event_dao.get_all()
         self.assertEqual(2, len(attribution_events))
         self.assertEqual(test_time, attribution_events[0].created)
         self.assertEqual(test_time, attribution_events[0].modified)
-        self.assertEqual(1, attribution_events[0].event_id)
+        self.assertEqual(participant_event_activities.id, attribution_events[0].event_id)
         self.assertEqual(participant.id, attribution_events[0].participant_id)
         self.assertEqual('Org Attribution', attribution_events[0].event_type_name)
         self.assertEqual('site_name', attribution_events[0].data_element_name)
@@ -808,7 +860,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
         self.assertEqual(test_time, attribution_events[1].created)
         self.assertEqual(test_time, attribution_events[1].modified)
-        self.assertEqual(1, attribution_events[1].event_id)
+        self.assertEqual(participant_event_activities.id, attribution_events[1].event_id)
         self.assertEqual(participant.id, attribution_events[1].participant_id)
         self.assertEqual('Org Attribution', attribution_events[1].event_type_name)
         self.assertEqual('activity_date_time', attribution_events[1].data_element_name)
@@ -838,6 +890,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
     def test_intake_nph_opt_in_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
 
         payload = {
             "activity": "NPH Opt In",
@@ -860,19 +913,19 @@ class PPSCIntakeAPITest(BaseTestCase):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
         participant_event_activities = self.ppsc_participant_activity_dao.get_all()
-        self.assertEqual(1, len(participant_event_activities))
+        participant_event_activities = self.filter_events_by_type(participant_event_activities, 9)
 
-        self.assertEqual(test_time, participant_event_activities[0].created)
-        self.assertEqual(test_time, participant_event_activities[0].modified)
-        self.assertEqual(participant.id, participant_event_activities[0].participant_id)
-        self.assertEqual(payload, participant_event_activities[0].resource)
-        self.assertEqual(9, participant_event_activities[0].activity_id)
+        self.assertEqual(test_time, participant_event_activities.created)
+        self.assertEqual(test_time, participant_event_activities.modified)
+        self.assertEqual(participant.id, participant_event_activities.participant_id)
+        self.assertEqual(payload, participant_event_activities.resource)
+        self.assertEqual(9, participant_event_activities.activity_id)
 
         nph_opt_in_events = self.nph_opt_in_event_dao.get_all()
         self.assertEqual(2, len(nph_opt_in_events))
         self.assertEqual(test_time, nph_opt_in_events[0].created)
         self.assertEqual(test_time, nph_opt_in_events[0].modified)
-        self.assertEqual(1, nph_opt_in_events[0].event_id)
+        self.assertEqual(participant_event_activities.id, nph_opt_in_events[0].event_id)
         self.assertEqual(participant.id, nph_opt_in_events[0].participant_id)
         self.assertEqual('NPH Opt In', nph_opt_in_events[0].event_type_name)
         self.assertEqual('activity_status', nph_opt_in_events[0].data_element_name)
@@ -880,7 +933,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
         self.assertEqual(test_time, nph_opt_in_events[1].created)
         self.assertEqual(test_time, nph_opt_in_events[1].modified)
-        self.assertEqual(1, nph_opt_in_events[1].event_id)
+        self.assertEqual(participant_event_activities.id, nph_opt_in_events[1].event_id)
         self.assertEqual(participant.id, nph_opt_in_events[1].participant_id)
         self.assertEqual('NPH Opt In', nph_opt_in_events[1].event_type_name)
         self.assertEqual('activity_date_time', nph_opt_in_events[1].data_element_name)
@@ -888,6 +941,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
     def test_intake_account_linkage_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
 
         payload = {
             "activity": "Account Linkage",
@@ -911,10 +965,10 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.send_post('Intake', request_data=payload)
 
         participant_event_activities = self.ppsc_participant_activity_dao.get_all()
-        self.assertEqual(1, len(participant_event_activities))
+        participant_event_activities = self.filter_events_by_type(participant_event_activities, 10)
 
         account_linkage_activity = self.session.query(Activity).filter(Activity.name == 'Account Linkage').one()
-        self.assertEqual(account_linkage_activity.id, participant_event_activities[0].activity_id)
+        self.assertEqual(account_linkage_activity.id, participant_event_activities.activity_id)
 
         account_linkage_events = self.account_linkage_event_dao.get_all()
         self.assertEqual(3, len(account_linkage_events))
@@ -929,6 +983,28 @@ class PPSCIntakeAPITest(BaseTestCase):
             self.assertEqual('Relationship Type', event_record.event_type_name)
             self.assertEqual(name, event_record.data_element_name)
             self.assertEqual(value, event_record.data_element_value)
+
+    def test_intake_consent_validation(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+
+        payload = {
+            "activity": "Survey Completion",
+            "eventType": "The Basics",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "submitted_complete"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00Z"
+                },
+            ]
+        }
+        response = self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
+        self.assertTrue(response is not None)
+
 
     def tearDown(self):
         super().tearDown()
