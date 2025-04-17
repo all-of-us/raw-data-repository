@@ -1,6 +1,7 @@
 from dateutil import parser
 from flask import request
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service.api.base_api import BaseApi, log_api_request
@@ -88,10 +89,10 @@ class PPSCIntakeAPI(BaseApi):
 
         # Check for Primary Consent
         if req_data['eventType'] != "Primary Consent":
-            if not self.check_primary_consent(req_data['participantId'].split('P')[1],
+            if not self.check_consent(req_data['participantId'].split('P')[1],
                                               'Primary Consent',
                                               'activity_status',
-                                              'Yes'):
+                                              'yes'):
                 raise BadRequest("No Primary Consent record found.")
 
     def handle_event_insert(self, *, req_data: dict) -> dict:
@@ -152,11 +153,11 @@ class PPSCIntakeAPI(BaseApi):
 
         return participant_event_activity.resource
 
-    def check_primary_consent(self, participant_id, event_type, data_element_name, data_element_value):
+    def check_consent(self, participant_id, event_type, data_element_name, data_element_value):
         with self.dao.session() as session:
             return session.query(ConsentEvent).filter(
                 ConsentEvent.participant_id == participant_id,
                 ConsentEvent.event_type_name == event_type,
                 ConsentEvent.data_element_name == data_element_name,
-                ConsentEvent.data_element_value == data_element_value
+                ConsentEvent.data_element_value.ilike(data_element_value)
             ).first()
