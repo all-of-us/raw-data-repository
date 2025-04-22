@@ -1,6 +1,6 @@
 from datetime import datetime
 from protorpc import messages
-from sqlalchemy import MetaData
+from sqlalchemy import MetaData, text
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sphinx.pycode import ModuleAnalyzer
 

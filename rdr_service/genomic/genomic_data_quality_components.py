@@ -160,7 +160,8 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         :return: string
         """
         if rows:
-            header = rows[0].keys() if not hasattr(rows, 'keys') else rows.keys()
+            row = rows[0] if isinstance(rows, list) else rows
+            header = row._asdict().keys()
             # Report title
             report_string = "```" + self.report_def.display_name + '\n'
             # Header row
