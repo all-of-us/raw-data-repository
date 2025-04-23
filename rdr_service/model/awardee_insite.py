@@ -62,7 +62,7 @@ class AwardeeInSite(PPSCBase):
     * withdrawn
     """
     withdrawalTime = Column("withdrawal_time", UTCDateTime, nullable=True)
-    """The date and time at which the participant withdrew from the study."""
+    """The actual date and time at which the participant chose to stop participating in the Participant Portal."""
 
     deactivationStatus = Column(
         "deactivation_status", String(32), nullable=False, default="not_deactivated"
