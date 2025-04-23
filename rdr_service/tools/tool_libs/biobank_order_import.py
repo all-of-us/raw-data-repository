@@ -20,7 +20,6 @@ file_path = 'order_data.csv'
 @dataclass()
 class OrderInformation:
     participant_id: int
-    # biobank_id: int
     order_id: str
     mayo_order_id: str
     created_user: str
@@ -44,9 +43,6 @@ class OrderInformation:
     finalized_notes: str
     fedex_tracking: str
 
-    def as_dict(self):
-        return self.__dict__
-
 
 class BiobankOrderImport(ToolBase):
     def run(self):
@@ -57,7 +53,7 @@ class BiobankOrderImport(ToolBase):
         print("checking db for orders...")
         order_ids = {order.mayo_order_id for order in file_data}
         with self.get_session() as session:
-            db_orders = session.query(BiobankOrder).filter(
+            db_orders = session.query(BiobankOrder.biobankOrderId).filter(
                 BiobankOrder.biobankOrderId.in_(order_ids)
             ).all()
             print(f"skipping {len(db_orders)} orders that are already in the db")
