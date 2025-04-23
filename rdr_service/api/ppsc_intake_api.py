@@ -104,7 +104,7 @@ class PPSCIntakeAPI(BaseApi):
                 if name in ['registered', 'participant', 'participant_ehr_consent', 'enrolled',
                                                'pmb_eligible', 'core_minus_pm', 'core_participant']:
                     if not name+'_date_time' in data_element_names:
-                        raise BadRequest("Timestamp required for Enrollment Status.")
+                        raise BadRequest(f"Enrollment Status {name} is missing {name+'_date_time'}.")
 
     def handle_event_insert(self, *, req_data: dict) -> dict:
         activity_record = list(filter(lambda x: x.name.lower() == req_data['activity'].lower(),
