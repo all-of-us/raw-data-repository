@@ -101,8 +101,7 @@ class PPSCIntakeAPI(BaseApi):
         if req_data['eventType'] == "Enrollment Status":
             data_element_names = [item['dataElementName'].lower() for item in req_data['dataElements']]
             for name in data_element_names:
-                if name in ['registered', 'participant', 'participant_ehr_consent', 'enrolled',
-                                               'pmb_eligible', 'core_minus_pm', 'core_participant']:
+                if '_date_time' not in name:
                     if not name+'_date_time' in data_element_names:
                         raise BadRequest(f"Enrollment Status {name} is missing {name+'_date_time'}.")
 
