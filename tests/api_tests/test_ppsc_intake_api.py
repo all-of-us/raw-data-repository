@@ -1016,7 +1016,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 {
                     "dataElementName": "registered",
                     "dataElementValue": "yes"
-                }
+                },
             ]
         }
 
@@ -1057,37 +1057,13 @@ class PPSCIntakeAPITest(BaseTestCase):
                     "dataElementValue": "2024-10-28T19:20:42.000Z"
                 },
                 {
-                    "dataElementName": "enrolled",
+                    "dataElementName": "outdoors",
                     "dataElementValue": "yes"
                 },
                 {
-                    "dataElementName": "enrolled_date_time",
-                    "dataElementValue": "2024-10-28T19:20:42.000Z"
+                    "dataElementName": "outdoors_date_time",
+                    "dataElementValue": "2024-10-31T19:20:42.000Z"
                 },
-                {
-                    "dataElementName": "pmb_eligible",
-                    "dataElementValue": "yes"
-                },
-                {
-                    "dataElementName": "pmb_eligible_date_time",
-                    "dataElementValue": "2024-10-28T19:20:42.000Z"
-                },
-                {
-                    "dataElementName": "core_minus_pm",
-                    "dataElementValue": "yes"
-                },
-                {
-                    "dataElementName": "core_minus_pm_date_time",
-                    "dataElementValue": "2024-10-28T19:20:42.000Z"
-                },
-                {
-                    "dataElementName": "core_participant",
-                    "dataElementValue": "yes"
-                },
-                {
-                    "dataElementName": "core_participant_date_time",
-                    "dataElementValue": "2024-10-28T19:20:42.000Z"
-                }
             ]
         }
 
@@ -1105,7 +1081,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual(7, participant_event_activities.activity_id)
 
         participant_status_events = self.participant_status_event_dao.get_all()
-        self.assertEqual(14, len(participant_status_events))
+        self.assertEqual(8, len(participant_status_events))
         self.assertEqual(test_time, participant_status_events[0].created)
         self.assertEqual(test_time, participant_status_events[0].modified)
         self.assertEqual(participant_event_activities.id, participant_status_events[0].event_id)
@@ -1119,6 +1095,21 @@ class PPSCIntakeAPITest(BaseTestCase):
 
         self.assertEqual('participant', participant_status_events[2].data_element_name)
         self.assertEqual('yes', participant_status_events[2].data_element_value)
+
+        self.assertEqual('participant_date_time', participant_status_events[3].data_element_name)
+        self.assertEqual('2024-10-28T19:20:42.000Z', participant_status_events[3].data_element_value)
+
+        self.assertEqual('participant_ehr_consent', participant_status_events[4].data_element_name)
+        self.assertEqual('yes', participant_status_events[4].data_element_value)
+
+        self.assertEqual('participant_ehr_consent_date_time', participant_status_events[5].data_element_name)
+        self.assertEqual('2024-10-28T19:20:42.000Z', participant_status_events[5].data_element_value)
+
+        self.assertEqual('outdoors', participant_status_events[2].data_element_name)
+        self.assertEqual('yes', participant_status_events[2].data_element_value)
+
+        self.assertEqual('outdoors_date_time', participant_status_events[3].data_element_name)
+        self.assertEqual('2024-10-31T19:20:42.000Z', participant_status_events[3].data_element_value)
 
     def test_intake_ubr_status_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
@@ -1153,30 +1144,6 @@ class PPSCIntakeAPITest(BaseTestCase):
                  "dataElementName": "ubr_sex_at_birth",
                  "dataElementValue": "RBR"
                },
-               {
-                 "dataElementName": "ubr_sexual_orientation",
-                 "dataElementValue": "RBR"
-               },
-               {
-                 "dataElementName": "ubr_sexual_and_gender_minority",
-                 "dataElementValue": "UBR"
-               },
-               {
-                 "dataElementName": "ubr_education",
-                 "dataElementValue": "RBR"
-               },
-               {
-                 "dataElementName": "ubr_disability",
-                 "dataElementValue": "RBR"
-               },
-               {
-                 "dataElementName": "ubr_income",
-                 "dataElementValue": "RBR"
-               },
-               {
-                 "dataElementName": "ubr_age",
-                 "dataElementValue": "UBR"
-               }
              ]
             }
 
@@ -1209,6 +1176,15 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual('ubr_healthcare_access_and_utilization', participant_status_events[2].data_element_name)
         self.assertEqual('Unknown', participant_status_events[2].data_element_value)
 
+        self.assertEqual('ubr_racial_identity', participant_status_events[1].data_element_name)
+        self.assertEqual('UBR', participant_status_events[1].data_element_value)
+
+        self.assertEqual('ubr_gender_identity', participant_status_events[1].data_element_name)
+        self.assertEqual('RBR', participant_status_events[1].data_element_value)
+
+        self.assertEqual('ubr_sex_at_birth', participant_status_events[1].data_element_name)
+        self.assertEqual('RBR', participant_status_events[1].data_element_value)
+
     def test_intake_retention_status_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
         self.send_valid_primary_consent(participant)
@@ -1233,7 +1209,7 @@ class PPSCIntakeAPITest(BaseTestCase):
           {
            "dataElementName": "last_retention_activity_date_time",
            "dataElementValue": "2020-04-17T19:00:00.000Z"
-          }
+          },
          ]
         }
 
