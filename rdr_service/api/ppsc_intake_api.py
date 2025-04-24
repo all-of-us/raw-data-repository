@@ -84,7 +84,10 @@ class PPSCIntakeAPI(BaseApi):
             except ValueError:
                 raise BadRequest("The activity_date_time_value is not valid.")
         else:
-            raise BadRequest("No activity_date_time_value provided.")
+            if req_data['eventType'] in ['Enrollment Status', 'UBR Status'] :
+                pass
+            else:
+                raise BadRequest("No activity_date_time_value provided.")
 
         # Check for Primary Consent
         if req_data['eventType'] != "Primary Consent":
@@ -93,6 +96,14 @@ class PPSCIntakeAPI(BaseApi):
                                               'activity_status',
                                               'yes'):
                 raise BadRequest("No Primary Consent record found.")
+
+        # Check Enrollment Status for timestamps
+        if req_data['eventType'] == "Enrollment Status":
+            data_element_names = [item['dataElementName'].lower() for item in req_data['dataElements']]
+            for name in data_element_names:
+                if '_date_time' not in name:
+                    if not name+'_date_time' in data_element_names:
+                        raise BadRequest(f"Enrollment Status {name} is missing {name+'_date_time'}.")
 
     def handle_event_insert(self, *, req_data: dict) -> dict:
         activity_record = list(filter(lambda x: x.name.lower() == req_data['activity'].lower(),
