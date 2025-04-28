@@ -19,6 +19,7 @@ class PPSCIntakeAPI(BaseApi):
     def __init__(self):
         self.participant_event_activity_dao = PPSCDefaultBaseDao(model_type=ParticipantEventActivity)
         self.intake_activities = config.getSettingJson("ppsc_intake_activities")
+        self.primary_consent_types = config.getSettingJson("ppsc_primary_consent_types")
         self.activity_records = PPSCDefaultBaseDao(model_type=Activity).get_all()
         self.consent_event_dao = PPSCDefaultBaseDao(model_type=ConsentEvent)
         self.profile_updates_event_dao = PPSCDefaultBaseDao(model_type=ProfileUpdatesEvent)
@@ -90,9 +91,9 @@ class PPSCIntakeAPI(BaseApi):
                 raise BadRequest("No activity_date_time_value provided.")
 
         # Check for Primary Consent
-        if req_data['eventType'] != "Primary Consent":
+        if req_data['eventType'] not in self.primary_consent_types:
             if not self.check_consent(req_data['participantId'].split('P')[1],
-                                              'Primary Consent',
+                                              self.primary_consent_types,
                                               'activity_status',
                                               'yes'):
                 raise BadRequest("No Primary Consent record found.")
@@ -163,11 +164,11 @@ class PPSCIntakeAPI(BaseApi):
 
         return participant_event_activity.resource
 
-    def check_consent(self, participant_id, event_type, data_element_name, data_element_value):
+    def check_consent(self, participant_id, event_types, data_element_name, data_element_value):
         with self.dao.session() as session:
             return session.query(ConsentEvent).filter(
                 ConsentEvent.participant_id == participant_id,
-                ConsentEvent.event_type_name == event_type,
+                ConsentEvent.event_type_name.in_(event_types),
                 ConsentEvent.data_element_name == data_element_name,
                 ConsentEvent.data_element_value.ilike(data_element_value)
             ).first()
