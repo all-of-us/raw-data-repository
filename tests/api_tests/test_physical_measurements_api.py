@@ -57,6 +57,20 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.assertEqual(response["entry"][0]["resource"]["originMeasurementUnit"], 'UNSET')
         self.assertEqual(response["entry"][0]["resource"]["origin"], 'hpro')
 
+    def test_get_collect_type_remote(self):
+        self.send_consent(self.participant_id)
+        now = self.time1.isoformat()
+        measurements_1 = load_measurement_json(self.participant_id, now, "self-report")
+        path_1 = "Participant/%s/PhysicalMeasurements" % self.participant_id
+        self.send_post(path_1, measurements_1)
+
+        response = self.send_get("Participant/%s/PhysicalMeasurements" % self.participant_id)
+        print(json.dumps(response))
+        self.assertEqual(1, len(response["entry"]))
+        self.assertEqual(response["entry"][0]["resource"]["collectType"], 'SELF_REPORTED')
+        self.assertEqual(response["entry"][0]["resource"]["originMeasurementUnit"], 'UNSET')
+        self.assertEqual(response["entry"][0]["resource"]["origin"], 'hpro')
+
     def test_insert(self):
         self.send_consent(self.participant_id)
         self.send_consent(self.participant_id_2)

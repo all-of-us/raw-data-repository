@@ -36,15 +36,40 @@ from rdr_service.participant_enums import (
 
 TEMP_TABLE_QUERY = """
   WITH temp_table AS (
-  SELECT p.participant_id, p.biobank_id, p.sign_up_time, ps.first_name, ps.last_name, ps.suspension_status, ps.deceased_status, ps.is_ehr_data_available, ps.is_participant_mediated_ehr_data_available, ps.was_participant_mediated_ehr_available, p.withdrawal_status, p.hpo_id, p.organization_id, p.site_id, p.participant_origin, ps.date_of_birth, ps.consent_for_study_enrollment_time, ps.enrollment_status, ps.enrollment_status_member_time, ps.enrollment_status_core_stored_sample_time, ps.questionnaire_on_the_basics, ps.primary_language, ps.language_id, ps.gender_identity_id, ps.gender_identity, ps.race, ps.questionnaire_on_the_basics_time, ps.questionnaire_on_lifestyle_time, ps.questionnaire_on_medications_time, ps.questionnaire_on_family_health_time, ps.questionnaire_on_overall_health_time, ps.questionnaire_on_healthcare_access_time, ps.questionnaire_on_medical_history_time, ps.clinic_physical_measurements_time, ps.self_reported_physical_measurements_authored, ps.sample_status_1ed10_time, ps.sample_status_2ed10_time, ps.sample_status_1ed04_time, ps.sample_status_1sal_time, ps.sample_status_1sal2_time, ps.state_id, ps.consent_for_electronic_health_records, ps.clinic_physical_measurements_finalized_time
+  SELECT ps.participant_id,
+    p.sign_up_time,
+    p.participant_origin,
+    ps.hpo_id,
+    ps.date_of_birth,
+    ps.primary_language,
+    ps.gender_identity,
+    ps.race,
+    ps.state_id,
+    ps.questionnaire_on_the_basics,
+    ps.consent_for_study_enrollment_authored,
+    ps.questionnaire_on_the_basics_authored,
+    ps.questionnaire_on_lifestyle_authored,
+    ps.questionnaire_on_overall_health_authored,
+    ps.questionnaire_on_healthcare_access_authored,
+    ps.questionnaire_on_personal_and_family_health_history_authored,
+    ps.sample_status_1ed10_time,
+    ps.sample_status_2ed10_time,
+    ps.sample_status_1ed04_time,
+    ps.sample_status_1sal_time,
+    ps.sample_status_1sal2_time,
+    ps.enrollment_status_core_v_3_2_time,
+    ps.enrollment_status_participant_plus_ehr_v_3_2_time,
+    ps.clinic_physical_measurements_time,
+    ps.self_reported_physical_measurements_authored,
+    ps.questionnaire_on_medical_history_time
   FROM `{participant}` AS p
   LEFT JOIN `{participant_summary}` AS ps ON p.participant_id = ps.participant_id
-  WHERE p.hpo_id != 21
+  WHERE ps.hpo_id != 21
   AND (p.is_ghost_id != 1 OR p.is_ghost_id IS NULL)
   AND p.is_test_participant != 1
   AND (ps.email IS NULL OR NOT ps.email LIKE '%@example.com')
   AND p.withdrawal_status = 1
-  AND p.hpo_id = @hpo_id
+  AND ps.hpo_id = @hpo_id
   )"""
 
 PARTICIPANT_ORIGIN_SQL = """, participant_origin AS ( SELECT DISTINCT participant_origin FROM `{participant}` )"""
@@ -337,53 +362,53 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
                   FROM
                   (
                     SELECT DATE(ps.sign_up_time) AS sign_up_time,
-                           DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
+                           DATE(ps.consent_for_study_enrollment_authored) AS consent_for_study_enrollment_authored,
                            ps.participant_origin,
                            count(*) enrollment_count
                     FROM temp_table ps
-                    GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_time), ps.participant_origin
+                    GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_authored), ps.participant_origin
                   ) AS results
-                  WHERE c.day>=DATE(sign_up_time) AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>c.day)
+                  WHERE c.day>=DATE(sign_up_time) AND (consent_for_study_enrollment_authored IS NULL OR DATE(consent_for_study_enrollment_authored)>c.day)
                   and results.participant_origin = d.participant_origin
                 ),0) AS registeredCount,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
                   FROM
                   (
-                    SELECT DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
-                           DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                    SELECT DATE(ps.consent_for_study_enrollment_authored) AS consent_for_study_enrollment_authored,
+                           DATE(ps.enrollment_status_core_v_3_2_time) AS enrollment_status_core_v_3_2_time,
                            ps.participant_origin,
                            count(*) enrollment_count
                     FROM temp_table ps
-                    GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time), ps.participant_origin
+                    GROUP BY DATE(ps.consent_for_study_enrollment_authored), DATE(ps.enrollment_status_core_v_3_2_time), ps.participant_origin
                   ) AS results
-                  WHERE consent_for_study_enrollment_time IS NOT NULL AND c.day>=DATE(consent_for_study_enrollment_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
+                  WHERE consent_for_study_enrollment_authored IS NOT NULL AND c.day>=DATE(consent_for_study_enrollment_authored) AND (enrollment_status_core_v_3_2_time IS NULL OR c.day < DATE(enrollment_status_core_v_3_2_time))
                   and results.participant_origin = d.participant_origin
                 ),0) AS participantCount,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
                   FROM
                   (
-                    SELECT DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
-                           DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                    SELECT DATE(ps.enrollment_status_core_v_3_2_time) AS enrollment_status_core_v_3_2_time,
+                           DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) AS enrollment_status_participant_plus_ehr_v_3_2_time,
                            ps.participant_origin,
                            count(*) enrollment_count
                     FROM temp_table ps
-                    GROUP BY DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time), ps.participant_origin
+                    GROUP BY DATE(ps.enrollment_status_core_v_3_2_time), DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time), ps.participant_origin
                   ) AS results
-                  WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (enrollment_status_core_stored_sample_time IS NULL OR day < DATE(enrollment_status_core_stored_sample_time))
+                  WHERE enrollment_status_core_v_3_2_time IS NOT NULL AND day>=DATE(enrollment_status_core_v_3_2_time) AND (enrollment_status_participant_plus_ehr_v_3_2_time IS NULL OR day < DATE(enrollment_status_participant_plus_ehr_v_3_2_time))
                   and results.participant_origin = d.participant_origin
                 ),0) AS consentedCount,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
                   FROM
                   (
-                    SELECT DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                    SELECT DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) AS enrollment_status_participant_plus_ehr_v_3_2_time,
                            ps.participant_origin, count(*) enrollment_count
                     FROM temp_table ps
-                    GROUP BY DATE(ps.enrollment_status_core_stored_sample_time), ps.participant_origin
+                    GROUP BY DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time), ps.participant_origin
                   ) AS results
-                  WHERE enrollment_status_core_stored_sample_time IS NOT NULL AND day>=DATE(enrollment_status_core_stored_sample_time)
+                  WHERE enrollment_status_participant_plus_ehr_v_3_2_time IS NOT NULL AND day>=DATE(enrollment_status_participant_plus_ehr_v_3_2_time)
                   and results.participant_origin = d.participant_origin
                 ),0) AS coreCount,
                 d.participant_origin AS participantOrigin
@@ -675,16 +700,16 @@ class MetricsGenderCacheDao(BaseDao, MetricsDaoMixin):
                 FROM
                 (
                   SELECT DATE(ps.sign_up_time) as day,
-                         DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                         DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) as enrollment_status_participant_plus_ehr_v_3_2_time,
                          COUNT(*) gender_count
                   FROM temp_table ps
                   LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
                   WHERE {gender_condition}
-                  GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                  GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time)
                 ) AS results
                 WHERE results.day <= c.day
-                AND enrollment_status_core_stored_sample_time IS NOT NULL
-                AND DATE(enrollment_status_core_stored_sample_time) <= c.day
+                AND enrollment_status_participant_plus_ehr_v_3_2_time IS NOT NULL
+                AND DATE(enrollment_status_participant_plus_ehr_v_3_2_time) <= c.day
               ),0) AS genderCount,
               '' as participantOrigin
             FROM `{calendar}` c
@@ -703,15 +728,15 @@ class MetricsGenderCacheDao(BaseDao, MetricsDaoMixin):
                 FROM
                 (
                   SELECT DATE(ps.sign_up_time) as day,
-                         DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                         DATE(ps.enrollment_status_core_v_3_2_time) as enrollment_status_core_v_3_2_time,
                          COUNT(*) gender_count
                   FROM temp_table ps
                   LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
                   WHERE {gender_condition}
-                  GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time)
+                  GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_core_v_3_2_time)
                 ) AS results
                 WHERE results.day <= c.day
-                AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
+                AND (enrollment_status_core_v_3_2_time is null or DATE(enrollment_status_core_v_3_2_time)>c.day)
               ),0) AS genderCount,
               '' as participantOrigin
             FROM `{calendar}` c
@@ -730,18 +755,18 @@ class MetricsGenderCacheDao(BaseDao, MetricsDaoMixin):
                 FROM
                 (
                   SELECT DATE(ps.sign_up_time) as day,
-                         DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
-                         DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                         DATE(ps.enrollment_status_core_v_3_2_time) as enrollment_status_core_v_3_2_time,
+                         DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) as enrollment_status_participant_plus_ehr_v_3_2_time,
                          COUNT(*) gender_count
                   FROM temp_table ps
                   LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
                   WHERE {gender_condition}
-                  GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                  GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_core_v_3_2_time), DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time)
                 ) AS results
                 WHERE results.day <= c.day
-                AND enrollment_status_member_time IS NOT NULL
-                AND DATE(enrollment_status_member_time) <= c.day
-                AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
+                AND enrollment_status_core_v_3_2_time IS NOT NULL
+                AND DATE(enrollment_status_core_v_3_2_time) <= c.day
+                AND (enrollment_status_participant_plus_ehr_v_3_2_time is null or DATE(enrollment_status_participant_plus_ehr_v_3_2_time)>c.day)
               ),0) AS genderCount,
               '' as participantOrigin
             FROM `{calendar}` c
@@ -761,18 +786,18 @@ class MetricsGenderCacheDao(BaseDao, MetricsDaoMixin):
         else:
             enrollment_status_criteria_arr = [
                 ('registered', 'c.day>=DATE(ps.sign_up_time) '
-                               'AND (ps.consent_for_study_enrollment_time IS NULL OR '
-                               'DATE(ps.consent_for_study_enrollment_time)>c.day)'),
-                ('participant', 'ps.consent_for_study_enrollment_time IS NOT NULL '
-                                'AND c.day>=DATE(ps.consent_for_study_enrollment_time) '
-                                'AND (ps.enrollment_status_member_time IS NULL '
-                                'OR c.day < DATE(ps.enrollment_status_member_time))'),
-                ('consented', 'ps.enrollment_status_member_time IS NOT NULL '
-                              'AND c.day>=DATE(ps.enrollment_status_member_time) '
-                              'AND (ps.enrollment_status_core_stored_sample_time IS NULL '
-                              'OR c.day < DATE(ps.enrollment_status_core_stored_sample_time))'),
-                ('core', 'ps.enrollment_status_core_stored_sample_time IS NOT NULL '
-                         'AND c.day>=DATE(ps.enrollment_status_core_stored_sample_time)')
+                               'AND (ps.consent_for_study_enrollment_authored IS NULL OR '
+                               'DATE(ps.consent_for_study_enrollment_authored)>c.day)'),
+                ('participant', 'ps.consent_for_study_enrollment_authored IS NOT NULL '
+                                'AND c.day>=DATE(ps.consent_for_study_enrollment_authored) '
+                                'AND (ps.enrollment_status_core_v_3_2_time IS NULL '
+                                'OR c.day < DATE(ps.enrollment_status_core_v_3_2_time))'),
+                ('consented', 'ps.enrollment_status_core_v_3_2_time IS NOT NULL '
+                              'AND c.day>=DATE(ps.enrollment_status_core_v_3_2_time) '
+                              'AND (ps.enrollment_status_participant_plus_ehr_v_3_2_time IS NULL '
+                              'OR c.day < DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time))'),
+                ('core', 'ps.enrollment_status_participant_plus_ehr_v_3_2_time IS NOT NULL '
+                         'AND c.day>=DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time)')
             ]
             gender_conditions = [
                 ' ps.gender_identity IS NULL ',
@@ -1012,15 +1037,15 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
                 SELECT SUM(results.age_count)
                 FROM
                 (
-                  SELECT DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                  SELECT DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) as enrollment_status_participant_plus_ehr_v_3_2_time,
                          participant_origin,
                          count(*) age_count
                   FROM temp_table ps
                   WHERE ps.date_of_birth IS NULL
-                  GROUP BY DATE(ps.enrollment_status_core_stored_sample_time), participant_origin
+                  GROUP BY DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time), participant_origin
                 ) AS results
-                WHERE enrollment_status_core_stored_sample_time IS NOT NULL
-                AND DATE(enrollment_status_core_stored_sample_time) <= c.day
+                WHERE enrollment_status_participant_plus_ehr_v_3_2_time IS NOT NULL
+                AND DATE(enrollment_status_participant_plus_ehr_v_3_2_time) <= c.day
                 AND results.participant_origin = d.participant_origin
               ),0) AS ageCount,
               d.participant_origin AS participantOrigin
@@ -1040,15 +1065,15 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
                 FROM
                 (
                   SELECT DATE(ps.sign_up_time) AS day,
-                         DATE(ps.consent_for_study_enrollment_time) as consent_for_study_enrollment_time,
+                         DATE(ps.consent_for_study_enrollment_authored) as consent_for_study_enrollment_authored,
                          participant_origin,
                          count(*) age_count
                   FROM temp_table ps
                   WHERE ps.date_of_birth IS NULL
-                  GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_time), participant_origin
+                  GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_authored), participant_origin
                 ) AS results
                 WHERE results.day <= c.day
-                AND (consent_for_study_enrollment_time is NULL OR DATE(consent_for_study_enrollment_time)>c.day)
+                AND (consent_for_study_enrollment_authored is NULL OR DATE(consent_for_study_enrollment_authored)>c.day)
                 AND results.participant_origin = d.participant_origin
               ),0) AS ageCount,
               d.participant_origin AS participantOrigin
@@ -1067,17 +1092,17 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
                 SELECT SUM(results.age_count)
                 FROM
                 (
-                  SELECT DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
-                         DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                  SELECT DATE(ps.consent_for_study_enrollment_authored) AS consent_for_study_enrollment_authored,
+                         DATE(ps.enrollment_status_core_v_3_2_time) as enrollment_status_core_v_3_2_time,
                          participant_origin,
                          count(*) age_count
                   FROM temp_table ps
                   WHERE ps.date_of_birth IS NULL
-                  GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time), participant_origin
+                  GROUP BY DATE(ps.consent_for_study_enrollment_authored), DATE(ps.enrollment_status_core_v_3_2_time), participant_origin
                 ) AS results
-                WHERE consent_for_study_enrollment_time IS NOT NULL
-                AND c.day>=DATE(consent_for_study_enrollment_time)
-                AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
+                WHERE consent_for_study_enrollment_authored IS NOT NULL
+                AND c.day>=DATE(consent_for_study_enrollment_authored)
+                AND (enrollment_status_core_v_3_2_time is null or DATE(enrollment_status_core_v_3_2_time)>c.day)
                 AND results.participant_origin = d.participant_origin
               ),0) AS ageCount,
               d.participant_origin AS participantOrigin
@@ -1096,17 +1121,17 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
                 SELECT SUM(results.age_count)
                 FROM
                 (
-                  SELECT DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
-                         DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                  SELECT DATE(ps.enrollment_status_core_v_3_2_time) as enrollment_status_core_v_3_2_time,
+                         DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) as enrollment_status_participant_plus_ehr_v_3_2_time,
                          participant_origin,
                          count(*) age_count
                   FROM temp_table ps
                   WHERE ps.date_of_birth IS NULL
-                  GROUP BY DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time), participant_origin
+                  GROUP BY DATE(ps.enrollment_status_core_v_3_2_time), DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time), participant_origin
                 ) AS results
-                WHERE enrollment_status_member_time IS NOT NULL
-                AND DATE(enrollment_status_member_time) <= c.day
-                AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
+                WHERE enrollment_status_core_v_3_2_time IS NOT NULL
+                AND DATE(enrollment_status_core_v_3_2_time) <= c.day
+                AND (enrollment_status_participant_plus_ehr_v_3_2_time is null or DATE(enrollment_status_participant_plus_ehr_v_3_2_time)>c.day)
                 AND results.participant_origin = d.participant_origin
               ),0) AS ageCount,
               d.participant_origin AS participantOrigin
@@ -1140,15 +1165,15 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
               FROM
               (
                 SELECT DATE(ps.date_of_birth) AS dob,
-                       DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                       DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) as enrollment_status_participant_plus_ehr_v_3_2_time,
                        participant_origin,
                        count(*) age_count
                 FROM temp_table ps
                 WHERE ps.date_of_birth IS NOT NULL
-                GROUP BY DATE(ps.date_of_birth), DATE(ps.enrollment_status_core_stored_sample_time), participant_origin
+                GROUP BY DATE(ps.date_of_birth), DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time), participant_origin
               ) AS results
-              WHERE enrollment_status_core_stored_sample_time IS NOT NULL
-              AND DATE(enrollment_status_core_stored_sample_time) <= c.day
+              WHERE enrollment_status_participant_plus_ehr_v_3_2_time IS NOT NULL
+              AND DATE(enrollment_status_participant_plus_ehr_v_3_2_time) <= c.day
               AND results.participant_origin = d.participant_origin
               {age_range_condition}
             ),0) AS ageCount,
@@ -1170,14 +1195,14 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
               (
                 SELECT DATE(ps.sign_up_time) AS day,
                        DATE(ps.date_of_birth) AS dob,
-                       DATE(ps.consent_for_study_enrollment_time) as consent_for_study_enrollment_time,
+                       DATE(ps.consent_for_study_enrollment_authored) as consent_for_study_enrollment_authored,
                        participant_origin,
                        count(*) age_count
                 FROM temp_table ps
                 WHERE ps.date_of_birth IS NOT NULL
-                GROUP BY DATE(ps.sign_up_time), DATE(ps.date_of_birth), DATE(ps.consent_for_study_enrollment_time), participant_origin
+                GROUP BY DATE(ps.sign_up_time), DATE(ps.date_of_birth), DATE(ps.consent_for_study_enrollment_authored), participant_origin
               ) AS results
-              WHERE results.day <= c.day AND (consent_for_study_enrollment_time is NULL OR DATE(consent_for_study_enrollment_time)>c.day)
+              WHERE results.day <= c.day AND (consent_for_study_enrollment_authored is NULL OR DATE(consent_for_study_enrollment_authored)>c.day)
               AND results.participant_origin = d.participant_origin
               {age_range_condition}
             ),0) AS ageCount,
@@ -1197,17 +1222,17 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
               SELECT SUM(results.age_count)
               FROM
               (
-                SELECT DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
+                SELECT DATE(ps.consent_for_study_enrollment_authored) AS consent_for_study_enrollment_authored,
                        DATE(ps.date_of_birth) AS dob,
-                       DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                       DATE(ps.enrollment_status_core_v_3_2_time) as enrollment_status_core_v_3_2_time,
                        participant_origin,
                        count(*) age_count
                 FROM temp_table ps
                 WHERE ps.date_of_birth IS NOT NULL
-                GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.date_of_birth), DATE(ps.enrollment_status_member_time), participant_origin
+                GROUP BY DATE(ps.consent_for_study_enrollment_authored), DATE(ps.date_of_birth), DATE(ps.enrollment_status_core_v_3_2_time), participant_origin
               ) AS results
-              WHERE consent_for_study_enrollment_time IS NOT NULL AND consent_for_study_enrollment_time <= c.day
-              AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
+              WHERE consent_for_study_enrollment_authored IS NOT NULL AND consent_for_study_enrollment_authored <= c.day
+              AND (enrollment_status_core_v_3_2_time is null or DATE(enrollment_status_core_v_3_2_time)>c.day)
               AND results.participant_origin = d.participant_origin
               {age_range_condition}
             ),0) AS ageCount,
@@ -1228,17 +1253,17 @@ class MetricsAgeCacheDao(BaseDao, MetricsDaoMixin):
               FROM
               (
                 SELECT DATE(ps.date_of_birth) AS dob,
-                       DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
-                       DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                       DATE(ps.enrollment_status_core_v_3_2_time) as enrollment_status_core_v_3_2_time,
+                       DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) as enrollment_status_participant_plus_ehr_v_3_2_time,
                        participant_origin,
                        count(*) age_count
                 FROM temp_table ps
                 WHERE ps.date_of_birth IS NOT NULL
-                GROUP BY DATE(ps.date_of_birth), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time), participant_origin
+                GROUP BY DATE(ps.date_of_birth), DATE(ps.enrollment_status_core_v_3_2_time), DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time), participant_origin
               ) AS results
-              WHERE enrollment_status_member_time IS NOT NULL
-              AND DATE(enrollment_status_member_time) <= c.day
-              AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
+              WHERE enrollment_status_core_v_3_2_time IS NOT NULL
+              AND DATE(enrollment_status_core_v_3_2_time) <= c.day
+              AND (enrollment_status_participant_plus_ehr_v_3_2_time is null or DATE(enrollment_status_participant_plus_ehr_v_3_2_time)>c.day)
               AND results.participant_origin = d.participant_origin
               {age_range_condition}
             ),0) AS ageCount,
@@ -1525,7 +1550,7 @@ class MetricsRaceCacheDao(BaseDao, MetricsDaoMixin):
                 participant as participantFlag,
                 consented as consentedFlag,
                 core as coreFlag,
-                hpo_id AS hpoId,
+                @hpo_id AS hpoId,
                 (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
                 day AS date,
                 SUM(American_Indian_Alaska_Native) AS americanIndianAlaskaNative,
@@ -1547,15 +1572,15 @@ class MetricsRaceCacheDao(BaseDao, MetricsDaoMixin):
                          p.hpo_id,
                          day,
                          p.participant_origin,
-                         CASE WHEN DATE(sign_up_time)<=c.day AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>c.day)
+                         CASE WHEN DATE(sign_up_time)<=c.day AND (consent_for_study_enrollment_authored IS NULL OR DATE(consent_for_study_enrollment_authored)>c.day)
                                    THEN 1 ELSE 0 END AS registered,
-                         CASE WHEN (consent_for_study_enrollment_time IS NOT NULL AND DATE(consent_for_study_enrollment_time)<=c.day) AND
-                                   (enrollment_status_member_time IS NULL OR DATE(enrollment_status_member_time)>c.day)
+                         CASE WHEN (consent_for_study_enrollment_authored IS NOT NULL AND DATE(consent_for_study_enrollment_authored)<=c.day) AND
+                                   (enrollment_status_core_v_3_2_time IS NULL OR DATE(enrollment_status_core_v_3_2_time)>c.day)
                              THEN 1 ELSE 0 END AS participant,
-                         CASE WHEN (enrollment_status_member_time IS NOT NULL AND DATE(enrollment_status_member_time)<=c.day) AND
-                                   (enrollment_status_core_stored_sample_time IS NULL OR DATE(enrollment_status_core_stored_sample_time)>c.day)
+                         CASE WHEN (enrollment_status_core_v_3_2_time IS NOT NULL AND DATE(enrollment_status_core_v_3_2_time)<=c.day) AND
+                                   (enrollment_status_participant_plus_ehr_v_3_2_time IS NULL OR DATE(enrollment_status_participant_plus_ehr_v_3_2_time)>c.day)
                              THEN 1 ELSE 0 END AS consented,
-                         CASE WHEN enrollment_status_core_stored_sample_time IS NOT NULL AND DATE(enrollment_status_core_stored_sample_time)<=c.day
+                         CASE WHEN enrollment_status_participant_plus_ehr_v_3_2_time IS NOT NULL AND DATE(enrollment_status_participant_plus_ehr_v_3_2_time)<=c.day
                              THEN 1 ELSE 0 END AS core,
                          CASE WHEN WhatRaceEthnicity_AIAN=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS American_Indian_Alaska_Native,
                          CASE WHEN WhatRaceEthnicity_Asian=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Asian,
@@ -1589,9 +1614,9 @@ class MetricsRaceCacheDao(BaseDao, MetricsDaoMixin):
                          SELECT participant_id,
                                 hpo_id,
                                 sign_up_time,
-                                consent_for_study_enrollment_time,
-                                enrollment_status_member_time,
-                                enrollment_status_core_stored_sample_time,
+                                consent_for_study_enrollment_authored,
+                                enrollment_status_core_v_3_2_time,
+                                enrollment_status_participant_plus_ehr_v_3_2_time,
                                 participant_origin,
                                 MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
                                 MAX(WhatRaceEthnicity_Black)                    AS WhatRaceEthnicity_Black,
@@ -1610,9 +1635,9 @@ class MetricsRaceCacheDao(BaseDao, MetricsDaoMixin):
                                 SELECT ps.participant_id,
                                        ps.hpo_id,
                                        ps.sign_up_time,
-                                       consent_for_study_enrollment_time,
-                                       ps.enrollment_status_member_time,
-                                       ps.enrollment_status_core_stored_sample_time,
+                                       ps.consent_for_study_enrollment_authored,
+                                       ps.enrollment_status_core_v_3_2_time,
+                                       ps.enrollment_status_participant_plus_ehr_v_3_2_time,
                                        ps.participant_origin,
                                        ps.questionnaire_on_the_basics,
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
@@ -1629,7 +1654,7 @@ class MetricsRaceCacheDao(BaseDao, MetricsDaoMixin):
                                 FROM temp_table ps
                                 LEFT JOIN `{participant_race_answers}` q ON ps.participant_id = q.participant_id
                               ) x
-                         GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time, participant_origin
+                         GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_authored, enrollment_status_core_v_3_2_time, enrollment_status_participant_plus_ehr_v_3_2_time, participant_origin
                        ) p,
                        `{calendar}` c, participant_origin po
                   WHERE c.day >= @start_date
@@ -1664,7 +1689,7 @@ class MetricsRaceCacheDao(BaseDao, MetricsDaoMixin):
                       participant as participantFlag,
                       consented as consentedFlag,
                       core as coreFlag,
-                      hpo_id AS hpoId,
+                      @hpo_id AS hpoId,
                       (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
                       day AS date,
                       SUM(American_Indian_Alaska_Native) AS americanIndianAlaskaNative,
@@ -1686,15 +1711,15 @@ class MetricsRaceCacheDao(BaseDao, MetricsDaoMixin):
                                p.hpo_id,
                                day,
                                p.participant_origin,
-                               CASE WHEN DATE(sign_up_time)<=c.day AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>c.day)
+                               CASE WHEN DATE(sign_up_time)<=c.day AND (consent_for_study_enrollment_authored IS NULL OR DATE(consent_for_study_enrollment_authored)>c.day)
                                    THEN 1 ELSE 0 END AS registered,
-                               CASE WHEN (consent_for_study_enrollment_time IS NOT NULL AND DATE(consent_for_study_enrollment_time)<=c.day) AND
-                                         (enrollment_status_member_time IS NULL OR DATE(enrollment_status_member_time)>c.day)
+                               CASE WHEN (consent_for_study_enrollment_authored IS NOT NULL AND DATE(consent_for_study_enrollment_authored)<=c.day) AND
+                                         (enrollment_status_core_v_3_2_time IS NULL OR DATE(enrollment_status_core_v_3_2_time)>c.day)
                                    THEN 1 ELSE 0 END AS participant,
-                               CASE WHEN (enrollment_status_member_time IS NOT NULL AND DATE(enrollment_status_member_time)<=c.day) AND
-                                         (enrollment_status_core_stored_sample_time IS NULL OR DATE(enrollment_status_core_stored_sample_time)>c.day)
+                               CASE WHEN (enrollment_status_core_v_3_2_time IS NOT NULL AND DATE(enrollment_status_core_v_3_2_time)<=c.day) AND
+                                         (enrollment_status_participant_plus_ehr_v_3_2_time IS NULL OR DATE(enrollment_status_participant_plus_ehr_v_3_2_time)>c.day)
                                    THEN 1 ELSE 0 END AS consented,
-                               CASE WHEN enrollment_status_core_stored_sample_time IS NOT NULL AND DATE(enrollment_status_core_stored_sample_time)<=c.day
+                               CASE WHEN enrollment_status_participant_plus_ehr_v_3_2_time IS NOT NULL AND DATE(enrollment_status_participant_plus_ehr_v_3_2_time)<=c.day
                                    THEN 1 ELSE 0 END AS core,
                                CASE WHEN WhatRaceEthnicity_AIAN=1 THEN 1 ELSE 0 END AS American_Indian_Alaska_Native,
                                CASE WHEN WhatRaceEthnicity_Asian=1 THEN 1 ELSE 0 END AS Asian,
@@ -1728,9 +1753,9 @@ class MetricsRaceCacheDao(BaseDao, MetricsDaoMixin):
                                SELECT participant_id,
                                       hpo_id,
                                       sign_up_time,
-                                      consent_for_study_enrollment_time,
-                                      enrollment_status_member_time,
-                                      enrollment_status_core_stored_sample_time,
+                                      consent_for_study_enrollment_authored,
+                                      enrollment_status_core_v_3_2_time,
+                                      enrollment_status_participant_plus_ehr_v_3_2_time,
                                       participant_origin,
                                       MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
                                       MAX(WhatRaceEthnicity_Black)                    AS WhatRaceEthnicity_Black,
@@ -1749,9 +1774,9 @@ class MetricsRaceCacheDao(BaseDao, MetricsDaoMixin):
                                       SELECT ps.participant_id,
                                              ps.hpo_id,
                                              ps.sign_up_time,
-                                             consent_for_study_enrollment_time,
-                                             ps.enrollment_status_member_time,
-                                             ps.enrollment_status_core_stored_sample_time,
+                                             ps.consent_for_study_enrollment_authored,
+                                             ps.enrollment_status_core_v_3_2_time,
+                                             ps.enrollment_status_participant_plus_ehr_v_3_2_time,
                                              ps.participant_origin,
                                              ps.questionnaire_on_the_basics,
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
@@ -1768,7 +1793,7 @@ class MetricsRaceCacheDao(BaseDao, MetricsDaoMixin):
                                       FROM temp_table ps
                                       LEFT JOIN `{participant_race_answers}` q ON ps.participant_id = q.participant_id
                                     ) x
-                               GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time, participant_origin
+                               GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_authored, enrollment_status_core_v_3_2_time, enrollment_status_participant_plus_ehr_v_3_2_time, participant_origin
                              ) p,
                              `{calendar}` c, participant_origin po
                         WHERE c.day >= @start_date
@@ -2078,14 +2103,14 @@ class MetricsRegionCacheDao(BaseDao, MetricsDaoMixin):
               ps.participant_origin AS participantOrigin
             FROM
               (
-              SELECT participant_id, participant_origin, hpo_id, value, enrollment_status_core_stored_sample_time
+              SELECT participant_id, participant_origin, hpo_id, value, enrollment_status_participant_plus_ehr_v_3_2_time
               FROM temp_table
               JOIN `{code}` code ON temp_table.state_id = code.code_id
               ) ps
               JOIN participant_origin po ON ps.participant_origin = po.participant_origin,
               `{calendar}` c
-            WHERE ps.enrollment_status_core_stored_sample_time IS NOT NULL
-            AND DATE(ps.enrollment_status_core_stored_sample_time) <= c.day
+            WHERE ps.enrollment_status_participant_plus_ehr_v_3_2_time IS NOT NULL
+            AND DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) <= c.day
             AND c.day BETWEEN @start_date AND @end_date
             GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
             UNION DISTINCT
@@ -2100,7 +2125,7 @@ class MetricsRegionCacheDao(BaseDao, MetricsDaoMixin):
               ps.participant_origin  AS participantOrigin
             FROM
               (
-              SELECT participant_id, participant_origin, hpo_id, value, sign_up_time, consent_for_study_enrollment_time
+              SELECT participant_id, participant_origin, hpo_id, value, sign_up_time, consent_for_study_enrollment_authored
               FROM temp_table
               JOIN `{code}` code ON temp_table.state_id = code.code_id
               ) ps
@@ -2108,7 +2133,7 @@ class MetricsRegionCacheDao(BaseDao, MetricsDaoMixin):
               `{calendar}` c
             WHERE ps.sign_up_time IS NOT NULL
             AND DATE(ps.sign_up_time) <= c.day
-            AND (ps.consent_for_study_enrollment_time IS NULL OR DATE(ps.consent_for_study_enrollment_time)>c.day)
+            AND (ps.consent_for_study_enrollment_authored IS NULL OR DATE(ps.consent_for_study_enrollment_authored)>c.day)
             AND c.day BETWEEN @start_date AND @end_date
             GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
             UNION DISTINCT
@@ -2123,15 +2148,15 @@ class MetricsRegionCacheDao(BaseDao, MetricsDaoMixin):
               ps.participant_origin AS participantOrigin
             FROM
               (
-              SELECT participant_id, participant_origin, hpo_id, value, consent_for_study_enrollment_time, enrollment_status_member_time
+              SELECT participant_id, participant_origin, hpo_id, value, consent_for_study_enrollment_authored, enrollment_status_core_v_3_2_time
               FROM temp_table
               JOIN `{code}` code ON temp_table.state_id = code.code_id
               ) ps
               JOIN participant_origin po ON ps.participant_origin = po.participant_origin,
               `{calendar}` c
-            WHERE ps.consent_for_study_enrollment_time IS NOT NULL
-            AND DATE(ps.consent_for_study_enrollment_time) <= c.day
-            AND (ps.enrollment_status_member_time is null or DATE(ps.enrollment_status_member_time)>c.day)
+            WHERE ps.consent_for_study_enrollment_authored IS NOT NULL
+            AND DATE(ps.consent_for_study_enrollment_authored) <= c.day
+            AND (ps.enrollment_status_core_v_3_2_time is null or DATE(ps.enrollment_status_core_v_3_2_time)>c.day)
             AND c.day BETWEEN @start_date AND @end_date
             GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
             UNION DISTINCT
@@ -2146,15 +2171,15 @@ class MetricsRegionCacheDao(BaseDao, MetricsDaoMixin):
               ps.participant_origin AS participantOrigin
             FROM
               (
-              SELECT participant_id, participant_origin, hpo_id, value, enrollment_status_member_time, enrollment_status_core_stored_sample_time
+              SELECT participant_id, participant_origin, hpo_id, value, enrollment_status_core_v_3_2_time, enrollment_status_participant_plus_ehr_v_3_2_time
               FROM temp_table
               JOIN `{code}` code ON temp_table.state_id = code.code_id
               ) ps
               JOIN participant_origin po ON ps.participant_origin = po.participant_origin,
               `{calendar}` c
-            WHERE ps.enrollment_status_member_time IS NOT NULL
-            AND DATE(ps.enrollment_status_member_time) <= c.day
-            AND (ps.enrollment_status_core_stored_sample_time is null or DATE(ps.enrollment_status_core_stored_sample_time)>c.day)
+            WHERE ps.enrollment_status_core_v_3_2_time IS NOT NULL
+            AND DATE(ps.enrollment_status_core_v_3_2_time) <= c.day
+            AND (ps.enrollment_status_participant_plus_ehr_v_3_2_time is null or DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time)>c.day)
             AND c.day BETWEEN @start_date AND @end_date
             GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
             ;
@@ -2493,18 +2518,18 @@ class MetricsLifecycleCacheDao(BaseDao, MetricsDaoMixin):
         if self.cache_type == MetricsCacheType.METRICS_V2_API:
             enrollment_status_criteria_arr = [
                 ('registered', 'calendar.day>=DATE(sign_up_time) '
-                               'AND (consent_for_study_enrollment_time IS NULL OR '
-                               'DATE(consent_for_study_enrollment_time)>calendar.day)'),
-                ('participant', 'consent_for_study_enrollment_time IS NOT NULL '
-                                'AND calendar.day>=DATE(consent_for_study_enrollment_time) '
-                                'AND (enrollment_status_member_time IS NULL '
-                                'OR calendar.day < DATE(enrollment_status_member_time))'),
-                ('consented', 'enrollment_status_member_time IS NOT NULL '
-                              'AND calendar.day>=DATE(enrollment_status_member_time) '
-                              'AND (enrollment_status_core_stored_sample_time IS NULL '
-                              'OR calendar.day < DATE(enrollment_status_core_stored_sample_time))'),
-                ('core', 'enrollment_status_core_stored_sample_time IS NOT NULL '
-                         'AND calendar.day>=DATE(enrollment_status_core_stored_sample_time)')
+                               'AND (consent_for_study_enrollment_authored IS NULL OR '
+                               'DATE(consent_for_study_enrollment_authored)>calendar.day)'),
+                ('participant', 'consent_for_study_enrollment_authored IS NOT NULL '
+                                'AND calendar.day>=DATE(consent_for_study_enrollment_authored) '
+                                'AND (enrollment_status_core_v_3_2_time IS NULL '
+                                'OR calendar.day < DATE(enrollment_status_core_v_3_2_time))'),
+                ('consented', 'enrollment_status_core_v_3_2_time IS NOT NULL '
+                              'AND calendar.day>=DATE(enrollment_status_core_v_3_2_time) '
+                              'AND (enrollment_status_participant_plus_ehr_v_3_2_time IS NULL '
+                              'OR calendar.day < DATE(enrollment_status_participant_plus_ehr_v_3_2_time))'),
+                ('core', 'enrollment_status_participant_plus_ehr_v_3_2_time IS NOT NULL '
+                         'AND calendar.day>=DATE(enrollment_status_participant_plus_ehr_v_3_2_time)')
             ]
             for item in enrollment_status_criteria_arr:
                 sql = TEMP_TABLE_QUERY.format(participant=f"{bq_project}.{participant_table}",
@@ -2514,85 +2539,80 @@ class MetricsLifecycleCacheDao(BaseDao, MetricsDaoMixin):
                     @date_inserted AS dateInserted,
                     '{enrollment_status}' as enrollmentStatus,
                     '{cache_type}' as type,
-                    ps.hpo_id AS hpoId,
+                    @hpo_id AS hpoId,
                     (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
                     ps.day AS date,
                     SUM(CASE WHEN DATE(ps.sign_up_time) <= ps.day THEN 1 ELSE 0 END) AS registered,
-                    SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_time) <= ps.day THEN 1 ELSE 0 END) AS consentEnrollment,
-                    SUM(CASE WHEN DATE(ps.enrollment_status_member_time) <= ps.day THEN 1 ELSE 0 END) AS consentComplete,
+                    SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_authored) <= ps.day THEN 1 ELSE 0 END) AS consentEnrollment,
+                    SUM(CASE WHEN DATE(ps.enrollment_status_core_v_3_2_time) <= ps.day THEN 1 ELSE 0 END) AS consentComplete,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_the_basics_time) <= ps.day AND
-                        DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                        DATE(ps.questionnaire_on_the_basics_authored) <= ps.day AND
+                        DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                       THEN 1 ELSE 0
                     END) AS ppiBasics,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_overall_health_time) <= ps.day AND
-                        DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                        DATE(ps.questionnaire_on_overall_health_authored) <= ps.day AND
+                        DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                       THEN 1 ELSE 0
                     END) AS ppiOverallHealth,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_lifestyle_time) <= ps.day AND
-                        DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                        DATE(ps.questionnaire_on_lifestyle_authored) <= ps.day AND
+                        DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                       THEN 1 ELSE 0
                     END) AS ppiLifestyle,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_healthcare_access_time) <= ps.day AND
-                        DATE(ps.questionnaire_on_the_basics_time) <= ps.day AND
-                        DATE_DIFF(ps.day, DATE(ps.consent_for_study_enrollment_time), DAY) > 90
+                        DATE(ps.questionnaire_on_healthcare_access_authored) <= ps.day AND
+                        DATE(ps.questionnaire_on_the_basics_authored) <= ps.day AND
+                        DATE_DIFF(ps.day, DATE(ps.consent_for_study_enrollment_authored), DAY) > 90
                       THEN 1 ELSE 0
                     END) AS ppiHealthcareAccess,
                     SUM(CASE
                       WHEN
                         DATE(ps.questionnaire_on_medical_history_time) <= ps.day AND
-                        DATE(ps.questionnaire_on_the_basics_time) <= ps.day AND
-                        DATE_DIFF(ps.day, DATE(ps.consent_for_study_enrollment_time), DAY) > 90
+                        DATE(ps.questionnaire_on_the_basics_authored) <= ps.day AND
+                        DATE_DIFF(ps.day, DATE(ps.consent_for_study_enrollment_authored), DAY) > 90
                       THEN 1 ELSE 0
                     END) AS ppiMedicalHistory,
+                    0 AS ppiMedications,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_medications_time) <= ps.day AND
-                        DATE(ps.consent_for_study_enrollment_time) <= ps.day
-                      THEN 1 ELSE 0
-                    END) AS ppiMedications,
-                    SUM(CASE
-                      WHEN
-                        DATE(ps.questionnaire_on_family_health_time) <= ps.day AND
-                        DATE(ps.questionnaire_on_the_basics_time) <= ps.day AND
-                        DATE_DIFF(ps.day, DATE(ps.consent_for_study_enrollment_time), DAY) > 90
+                        DATE(ps.questionnaire_on_personal_and_family_health_history_authored) <= ps.day AND
+                        DATE(ps.questionnaire_on_the_basics_authored) <= ps.day AND
+                        DATE_DIFF(ps.day, DATE(ps.consent_for_study_enrollment_authored), DAY) > 90
                       THEN 1 ELSE 0
                     END) AS ppiFamilyHealth,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_lifestyle_time) <= ps.day AND
-                        DATE(ps.questionnaire_on_overall_health_time) <= ps.day AND
-                        DATE(ps.questionnaire_on_the_basics_time) <= ps.day AND
-                        DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                        DATE(ps.questionnaire_on_lifestyle_authored) <= ps.day AND
+                        DATE(ps.questionnaire_on_overall_health_authored) <= ps.day AND
+                        DATE(ps.questionnaire_on_the_basics_authored) <= ps.day AND
+                        DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                       THEN 1 ELSE 0
                     END) AS ppiComplete,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_the_basics_time) <= ps.day AND
-                        DATE_DIFF(ps.day, DATE(ps.consent_for_study_enrollment_time), DAY) > 90
+                        DATE(ps.questionnaire_on_the_basics_authored) <= ps.day AND
+                        DATE_DIFF(ps.day, DATE(ps.consent_for_study_enrollment_authored), DAY) > 90
                       THEN 1 ELSE 0
                     END) AS retentionModulesEligible,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_the_basics_time) <= ps.day AND
-                        DATE(ps.questionnaire_on_healthcare_access_time) <= ps.day AND
-                        DATE(ps.questionnaire_on_family_health_time) <= ps.day AND
+                        DATE(ps.questionnaire_on_the_basics_authored) <= ps.day AND
+                        DATE(ps.questionnaire_on_healthcare_access_authored) <= ps.day AND
+                        DATE(ps.questionnaire_on_personal_and_family_health_history_authored) <= ps.day AND
                         DATE(ps.questionnaire_on_medical_history_time) <= ps.day AND
-                        DATE_DIFF(ps.day, DATE(ps.consent_for_study_enrollment_time), DAY) > 90
+                        DATE_DIFF(ps.day, DATE(ps.consent_for_study_enrollment_authored), DAY) > 90
                       THEN 1 ELSE 0
                     END) AS retentionModulesComplete,
                     SUM(CASE
                       WHEN
                         (DATE(ps.clinic_physical_measurements_time) <= ps.day OR
                         DATE(ps.self_reported_physical_measurements_authored) <= ps.day) AND
-                        DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                        DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                       THEN 1 ELSE 0
                     END) AS physicalMeasurement,
                     SUM(CASE
@@ -2606,23 +2626,22 @@ class MetricsLifecycleCacheDao(BaseDao, MetricsDaoMixin):
                     END) AS sampleReceived,
                     0 AS ppiBaselineComplete,
                     0 AS fullParticipant,
-                    SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= ps.day THEN 1 ELSE 0 END) AS coreParticipant,
+                    SUM(CASE WHEN DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) <= ps.day THEN 1 ELSE 0 END) AS coreParticipant,
                     ps.participant_origin AS participantOrigin
                 FROM (
                   SELECT DISTINCT
                     ps.participant_id,
                     ps.hpo_id,
                     ps.sign_up_time,
-                    ps.consent_for_study_enrollment_time,
-                    ps.enrollment_status_member_time,
-                    ps.enrollment_status_core_stored_sample_time,
-                    ps.questionnaire_on_the_basics_time,
-                    ps.questionnaire_on_overall_health_time,
-                    ps.questionnaire_on_healthcare_access_time,
-                    ps.questionnaire_on_lifestyle_time,
+                    ps.consent_for_study_enrollment_authored,
+                    ps.enrollment_status_core_v_3_2_time,
+                    ps.enrollment_status_participant_plus_ehr_v_3_2_time,
+                    ps.questionnaire_on_the_basics_authored,
+                    ps.questionnaire_on_overall_health_authored,
+                    ps.questionnaire_on_healthcare_access_authored,
+                    ps.questionnaire_on_lifestyle_authored,
                     ps.questionnaire_on_medical_history_time,
-                    ps.questionnaire_on_medications_time,
-                    ps.questionnaire_on_family_health_time,
+                    ps.questionnaire_on_personal_and_family_health_history_authored,
                     ps.clinic_physical_measurements_time,
                     ps.self_reported_physical_measurements_authored,
                     ps.sample_status_1sal_time,
@@ -2651,71 +2670,66 @@ class MetricsLifecycleCacheDao(BaseDao, MetricsDaoMixin):
                 @date_inserted AS dateInserted,
                 '' as enrollmentStatus,
                 '{cache_type}' as type,
-                ps.hpo_id AS hpoId,
+                @hpo_id AS hpoId,
                 (SELECT name FROM `{hpo}` WHERE hpo_id=@hpo_id) AS hpoName,
                 day AS date,
                 SUM(CASE WHEN DATE(ps.sign_up_time) <= ps.day THEN 1 ELSE 0 END) AS registered,
-                SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_time) <= ps.day THEN 1 ELSE 0 END) AS consentEnrollment,
-                SUM(CASE WHEN DATE(ps.enrollment_status_member_time) <= ps.day THEN 1 ELSE 0 END) AS consentComplete,
+                SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_authored) <= ps.day THEN 1 ELSE 0 END) AS consentEnrollment,
+                SUM(CASE WHEN DATE(ps.enrollment_status_core_v_3_2_time) <= ps.day THEN 1 ELSE 0 END) AS consentComplete,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_the_basics_time) <= ps.day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                    DATE(ps.questionnaire_on_the_basics_authored) <= ps.day AND
+                    DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                   THEN 1 ELSE 0
                 END) AS ppiBasics,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_overall_health_time) <= ps.day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                    DATE(ps.questionnaire_on_overall_health_authored) <= ps.day AND
+                    DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                   THEN 1 ELSE 0
                 END) AS ppiOverallHealth,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_lifestyle_time) <= ps.day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                    DATE(ps.questionnaire_on_lifestyle_authored) <= ps.day AND
+                    DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                   THEN 1 ELSE 0
                 END) AS ppiLifestyle,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_healthcare_access_time) <= ps.day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                    DATE(ps.questionnaire_on_healthcare_access_authored) <= ps.day AND
+                    DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                   THEN 1 ELSE 0
                 END) AS ppiHealthcareAccess,
                 SUM(CASE
                   WHEN
                     DATE(ps.questionnaire_on_medical_history_time) <= ps.day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                    DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                   THEN 1 ELSE 0
                 END) AS ppiMedicalHistory,
+                0 AS ppiMedications,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_medications_time) <= ps.day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= ps.day
-                  THEN 1 ELSE 0
-                END) AS ppiMedications,
-                SUM(CASE
-                  WHEN
-                    DATE(ps.questionnaire_on_family_health_time) <= ps.day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                    DATE(ps.questionnaire_on_personal_and_family_health_history_authored) <= ps.day AND
+                    DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                   THEN 1 ELSE 0
                 END) AS ppiFamilyHealth,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_lifestyle_time) <= ps.day AND
-                    DATE(ps.questionnaire_on_overall_health_time) <= ps.day AND
-                    DATE(ps.questionnaire_on_the_basics_time) <= ps.day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                    DATE(ps.questionnaire_on_lifestyle_authored) <= ps.day AND
+                    DATE(ps.questionnaire_on_overall_health_authored) <= ps.day AND
+                    DATE(ps.questionnaire_on_the_basics_authored) <= ps.day AND
+                    DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                   THEN 1 ELSE 0
                 END) AS ppiComplete,
                 SUM(CASE
                   WHEN
-                    DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                    DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                   THEN 1 ELSE 0
                 END) AS retentionModulesEligible,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_healthcare_access_time) <= ps.day AND
-                    DATE(ps.questionnaire_on_family_health_time) <= ps.day AND
+                    DATE(ps.questionnaire_on_healthcare_access_authored) <= ps.day AND
+                    DATE(ps.questionnaire_on_personal_and_family_health_history_authored) <= ps.day AND
                     DATE(ps.questionnaire_on_medical_history_time) <= ps.day
                   THEN 1 ELSE 0
                 END) AS retentionModulesComplete,
@@ -2723,7 +2737,7 @@ class MetricsLifecycleCacheDao(BaseDao, MetricsDaoMixin):
                   WHEN
                     (DATE(ps.clinic_physical_measurements_time) <= ps.day OR
                     DATE(ps.self_reported_physical_measurements_authored) <= ps.day) AND
-                    DATE(ps.consent_for_study_enrollment_time) <= ps.day
+                    DATE(ps.consent_for_study_enrollment_authored) <= ps.day
                   THEN 1 ELSE 0
                 END) AS physicalMeasurement,
                 SUM(CASE
@@ -2737,23 +2751,22 @@ class MetricsLifecycleCacheDao(BaseDao, MetricsDaoMixin):
                 END) AS sampleReceived,
                 0 AS ppiBaselineComplete,
                 0 AS fullParticipant,
-                SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= ps.day THEN 1 ELSE 0 END) AS coreParticipant,
+                SUM(CASE WHEN DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) <= ps.day THEN 1 ELSE 0 END) AS coreParticipant,
                 ps.participant_origin AS participantOrigin
             FROM (
               SELECT DISTINCT
                     ps.participant_id,
                     ps.hpo_id,
                     ps.sign_up_time,
-                    ps.consent_for_study_enrollment_time,
-                    ps.enrollment_status_member_time,
-                    ps.enrollment_status_core_stored_sample_time,
-                    ps.questionnaire_on_the_basics_time,
-                    ps.questionnaire_on_overall_health_time,
-                    ps.questionnaire_on_healthcare_access_time,
-                    ps.questionnaire_on_lifestyle_time,
+                    ps.consent_for_study_enrollment_authored,
+                    ps.enrollment_status_core_v_3_2_time,
+                    ps.enrollment_status_participant_plus_ehr_v_3_2_time,
+                    ps.questionnaire_on_the_basics_authored,
+                    ps.questionnaire_on_overall_health_authored,
+                    ps.questionnaire_on_healthcare_access_authored,
+                    ps.questionnaire_on_lifestyle_authored,
                     ps.questionnaire_on_medical_history_time,
-                    ps.questionnaire_on_medications_time,
-                    ps.questionnaire_on_family_health_time,
+                    ps.questionnaire_on_personal_and_family_health_history_authored,
                     ps.clinic_physical_measurements_time,
                     ps.self_reported_physical_measurements_authored,
                     ps.sample_status_1sal_time,
@@ -2912,14 +2925,14 @@ class MetricsLanguageCacheDao(BaseDao, MetricsDaoMixin):
                                       participant_summary=f"{bq_project}.{participant_summary_table}")
 
         enrollment_status_and_criteria_list = [
-            ['registered', ' c.day>=DATE(sign_up_time) AND (enrollment_status_member_time IS NULL '
-                           'OR c.day < DATE(enrollment_status_member_time)) '],
-            ['consented', ' enrollment_status_member_time IS NOT NULL '
-                          'AND day>=DATE(enrollment_status_member_time) '
-                          'AND (enrollment_status_core_stored_sample_time IS NULL '
-                          'OR day < DATE(enrollment_status_core_stored_sample_time)) '],
-            ['core', ' enrollment_status_core_stored_sample_time IS NOT NULL '
-                     'AND day>=DATE(enrollment_status_core_stored_sample_time) ']
+            ['registered', ' c.day>=DATE(sign_up_time) AND (enrollment_status_core_v_3_2_time IS NULL '
+                           'OR c.day < DATE(enrollment_status_core_v_3_2_time)) '],
+            ['consented', ' enrollment_status_core_v_3_2_time IS NOT NULL '
+                          'AND day>=DATE(enrollment_status_core_v_3_2_time) '
+                          'AND (enrollment_status_participant_plus_ehr_v_3_2_time IS NULL '
+                          'OR day < DATE(enrollment_status_participant_plus_ehr_v_3_2_time)) '],
+            ['core', ' enrollment_status_participant_plus_ehr_v_3_2_time IS NOT NULL '
+                     'AND day>=DATE(enrollment_status_participant_plus_ehr_v_3_2_time) ']
         ]
         language_and_criteria_list = [
             ['EN', ' ps.primary_language like \'%en%\' '],
@@ -2940,12 +2953,12 @@ class MetricsLanguageCacheDao(BaseDao, MetricsDaoMixin):
               FROM
               (
                 SELECT DATE(ps.sign_up_time) AS sign_up_time,
-                       DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
-                       DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                       DATE(ps.enrollment_status_core_v_3_2_time) AS enrollment_status_core_v_3_2_time,
+                       DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) AS enrollment_status_participant_plus_ehr_v_3_2_time,
                        count(*) count
                 FROM temp_table ps
                 WHERE {language_criteria}
-                GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_core_v_3_2_time), DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time)
               ) AS results
               WHERE {enrollment_status_criteria}
             ),0) AS languageCount

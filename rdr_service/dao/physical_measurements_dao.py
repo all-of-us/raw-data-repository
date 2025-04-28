@@ -258,6 +258,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         return super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
 
     def insert_with_session(self, session, obj):
+        participant_summary = None
         is_amendment = False
         obj.logPosition = LogPosition()
         obj.final = True
@@ -278,7 +279,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 self._update_amended(obj, extension, url, session)
                 is_amendment = True
                 break
-        participant_summary = self._update_participant_summary(session, obj, is_amendment)
+        if obj.collectType == PhysicalMeasurementsCollectType.SELF_REPORTED:
+            participant_summary = self._update_participant_summary(session, obj, is_amendment, is_self_reported=True)
+        else:
+            participant_summary = self._update_participant_summary(session, obj, is_amendment)
         existing_measurements = (
             session.query(PhysicalMeasurements).filter(PhysicalMeasurements.participantId == obj.participantId).all()
         )
