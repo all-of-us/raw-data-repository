@@ -40,7 +40,7 @@ class ParticipantSummaryApi(BaseApi):
         self.hpro_consent_dao = HealthProConsentDao()
         self.incentives_dao = ParticipantIncentivesDao()
 
-    @auth_required([RDR, CURATION, SUPPORT])
+    @auth_required([RDR, HEALTHPRO, CURATION, SUPPORT])
     def get(self, p_id=None):
         # Make sure participant id is in the correct range of possible values.
         if isinstance(p_id, int) and not _MIN_ID <= p_id <= _MAX_ID:
