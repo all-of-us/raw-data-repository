@@ -210,7 +210,11 @@
     "NPH Opt In",
     "Account Linkage"
   ],
-  "ppsc_intake_consent_event_types": ["Primary Consent", "Adult EHR Authorization"],
+  "ppsc_primary_consent_types": [
+    "Primary Consent",
+    "Pediatric Permission"
+  ],
+  "ppsc_intake_consent_event_types": ["Primary Consent", "Adult EHR Authorization", "Pediatric Permission"],
   "ppsc_intake_survey_completion_event_types": [
     "The Basics",
     "Basics Data",
