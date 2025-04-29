@@ -14,6 +14,7 @@ import os
 import sys
 
 from time import sleep
+from sqlalchemy import text
 from werkzeug.exceptions import NotFound
 
 from rdr_service.model.code import Code

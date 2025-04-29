@@ -7,9 +7,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy import BLOB  # pylint: disable=unused-import
 from sqlalchemy.orm import relationship
-from typing import List
 
 from rdr_service.model.base import Base
 from rdr_service.model.code import Code

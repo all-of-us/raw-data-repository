@@ -123,14 +123,14 @@ class _BQModuleSchema(BQSchema):
             skip_fieldnames_lower = set([x.lower() for x in self._excluded_fields])
             force_boolean_lower = set([x.lower() for x in self._force_boolean_fields])
             for sql in [_survey_question_codes_sql, _existing_question_codes_sql]:
-                results = session.execute(text(sql), {'module_id': self._module, 'system': PPI_SYSTEM})
-                if results:
-                    for code_id, parent_id, topic, code_type, value, display, system, mapped, created, code_book_id, short_value in results:
-                        field_name = value
+                result_list = session.execute(text(sql), {'module_id': self._module, 'system': PPI_SYSTEM})
+                if result_list:
+                    for result in result_list:
+                        field_name = result.value
                         if field_name.lower() in skip_fieldnames_lower:
                             continue
 
-                        bq_field_name, msg = self.make_bq_field_name(field_name, short_value)
+                        bq_field_name, msg = self.make_bq_field_name(field_name, result.short_value)
                         if not bq_field_name:
                             if msg:
                                 logging.warning(msg)

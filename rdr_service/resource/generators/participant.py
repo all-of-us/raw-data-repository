@@ -1250,7 +1250,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # This will reconcile ordered samples and stored samples (when available) to create sample summary records
         # for each sample associated with the order record
         for row in biobank_orders:
-            cursor = ro_session.execute(text(_biobank_ordered_samples_sql), {'p_id': p_id, 'bo_id': row.biobank_order_id})
+            cursor = ro_session.execute(
+                text(_biobank_ordered_samples_sql),
+                {'p_id': p_id, 'bo_id': row.biobank_order_id}
+            )
             bos_results = [r for r in cursor]
             bbo_samples = list()
             stored_count = 0

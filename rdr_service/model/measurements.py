@@ -1,4 +1,3 @@
-from typing import List
 
 from sqlalchemy import BIGINT, Boolean, Column, Float, ForeignKey, Integer, String, Table, Text, UnicodeText
 from sqlalchemy.dialects.mysql import JSON

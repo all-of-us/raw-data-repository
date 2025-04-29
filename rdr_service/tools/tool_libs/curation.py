@@ -1359,7 +1359,9 @@ class CurationExportClass(ToolBase):
                             WHERE TRUE"""))
 
         # Update cdm.src_clean to filter specific survey questions.
-        session.execute(text("UPDATE combined_question_filter SET question_ppi_code = REPLACE(question_ppi_code, '\r', '')"))
+        session.execute(text(
+            "UPDATE combined_question_filter SET question_ppi_code = REPLACE(question_ppi_code, '\r', '')"
+        ))
         session.execute(text("""CREATE INDEX src_cln_p_id ON cdm.src_clean (participant_id);
                            CREATE INDEX src_cln_filter ON cdm.src_clean (filter)"""))
 

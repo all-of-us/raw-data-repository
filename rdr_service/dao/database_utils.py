@@ -92,7 +92,9 @@ class NamedLock:
         Execute the database command to obtain the lock.
         This will wait until either the lock is successfully obtained, or the timeout occurs.
         """
-        lock_result = self._session.execute(text(f"SELECT GET_LOCK('{self._name}', {self._lock_timout_seconds})")).scalar()
+        lock_result = self._session.execute(
+            text(f"SELECT GET_LOCK('{self._name}', {self._lock_timout_seconds})")
+        ).scalar()
 
         if lock_result == 1:
             self.is_locked = True

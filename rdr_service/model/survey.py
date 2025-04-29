@@ -1,7 +1,6 @@
 from protorpc import messages
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
-from typing import List
 
 from rdr_service.model.base import Base
 from rdr_service.model.code import Code

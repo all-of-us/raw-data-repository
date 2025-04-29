@@ -1,4 +1,3 @@
-from typing import List
 
 from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Index, event
 from sqlalchemy.dialects.mysql import TINYINT, JSON

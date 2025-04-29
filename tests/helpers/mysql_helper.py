@@ -197,10 +197,18 @@ def _initialize_database(with_data=True, with_consent_codes=False):
                 database.create_schema()
 
                 # alter table charset like what db migration do
-                connection.execute(text("ALTER TABLE `questionnaire_response_answer` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
-                               "utf8mb4_unicode_ci"))
-                connection.execute(text("ALTER TABLE `participant_summary` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
-                               "utf8mb4_unicode_ci"))
+                connection.execute(
+                    text(
+                        "ALTER TABLE `questionnaire_response_answer` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
+                        "utf8mb4_unicode_ci"
+                    )
+                )
+                connection.execute(
+                    text(
+                        "ALTER TABLE `participant_summary` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
+                        "utf8mb4_unicode_ci"
+                    )
+                )
                 _run_unit_test_migrations(engine)
 
             _track_database_changes()

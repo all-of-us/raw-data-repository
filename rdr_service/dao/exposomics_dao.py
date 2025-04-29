@@ -72,7 +72,7 @@ class ExposomicsM0Dao(BaseDao, ExposomicsBase):
         sample_list = kwargs.get("sample_list")
         current_set_num = kwargs.get("set_num")
         biobank_ids = [self.extract_prefix_from_val(obj.get('biobank_id')) for obj in sample_list]
-        with (self.session() as session):
+        with self.session() as session:
             statement = select(
                 func.concat(get_biobank_id_prefix(), ExposomicsSamples.biobank_id).label('biobank_id'),
                 literal(form_data.get('sample_type')).label('sample_type'),

@@ -10,8 +10,7 @@ from sqlalchemy import (
     String,
     Text
 )
-from sqlalchemy import BLOB  # pylint: disable=unused-import
-from sqlalchemy.orm import relationship, Mapped
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import text
 
 from rdr_service.model.base import Base

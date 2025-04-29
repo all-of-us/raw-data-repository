@@ -1886,10 +1886,10 @@ class MetricsRegionCacheDao(BaseDao):
                 params = {'seven_days_ago': seven_days_ago}
                 session.execute(delete_sql, params)
 
-    def remove_prefix(self, text, prefix):
-        if text.startswith(prefix):
-            return text[len(prefix):]
-        return text
+    def remove_prefix(self, string_val, prefix):
+        if string_val.startswith(prefix):
+            return string_val[len(prefix):]
+        return string_val
 
     def to_state_client_json(self, result_set):
         client_json = []

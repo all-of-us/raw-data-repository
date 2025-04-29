@@ -2,8 +2,6 @@ import argparse
 import csv
 from datetime import datetime, timedelta
 
-from sqlalchemy import text
-
 from rdr_service import clock, config
 from rdr_service.offline.biobank_samples_pipeline import get_withdrawal_report_query
 from rdr_service.participant_enums import DeceasedStatus
