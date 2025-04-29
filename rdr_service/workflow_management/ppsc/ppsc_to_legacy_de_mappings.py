@@ -252,7 +252,18 @@ consent_data_elements = {
     "ehr_authorization_event_authored": {
         "field": ParticipantSummary.consentForElectronicHealthRecordsAuthored,
         "value": "date_string"
-    }
+    },
+    "peds_primary_consent": {
+        "field": ParticipantSummary.consentForStudyEnrollment,
+        "value": {
+            "yes": QuestionnaireStatus.SUBMITTED,
+            "no": QuestionnaireStatus.SUBMITTED_NO_CONSENT
+        }
+    },
+    "peds_primary_consent_event_authored": {
+        "field": ParticipantSummary.consentForStudyEnrollmentAuthored,
+        "value": "date_string"
+    },
 }
 
 profile_updates_data_elements = {

@@ -19,6 +19,7 @@ class PPSCIntakeAPI(BaseApi):
     def __init__(self):
         self.participant_event_activity_dao = PPSCDefaultBaseDao(model_type=ParticipantEventActivity)
         self.intake_activities = config.getSettingJson("ppsc_intake_activities")
+        self.primary_consent_types = config.getSettingJson("ppsc_primary_consent_types")
         self.activity_records = PPSCDefaultBaseDao(model_type=Activity).get_all()
         self.consent_event_dao = PPSCDefaultBaseDao(model_type=ConsentEvent)
         self.profile_updates_event_dao = PPSCDefaultBaseDao(model_type=ProfileUpdatesEvent)
@@ -84,15 +85,26 @@ class PPSCIntakeAPI(BaseApi):
             except ValueError:
                 raise BadRequest("The activity_date_time_value is not valid.")
         else:
-            raise BadRequest("No activity_date_time_value provided.")
+            if req_data['eventType'] in ['Enrollment Status', 'UBR Status'] :
+                pass
+            else:
+                raise BadRequest("No activity_date_time_value provided.")
 
         # Check for Primary Consent
-        if req_data['eventType'] != "Primary Consent":
+        if req_data['eventType'] not in self.primary_consent_types:
             if not self.check_consent(req_data['participantId'].split('P')[1],
-                                              'Primary Consent',
+                                              self.primary_consent_types,
                                               'activity_status',
                                               'yes'):
                 raise BadRequest("No Primary Consent record found.")
+
+        # Check Enrollment Status for timestamps
+        if req_data['eventType'] == "Enrollment Status":
+            data_element_names = [item['dataElementName'].lower() for item in req_data['dataElements']]
+            for name in data_element_names:
+                if '_date_time' not in name:
+                    if not name+'_date_time' in data_element_names:
+                        raise BadRequest(f"Enrollment Status {name} is missing {name+'_date_time'}.")
 
     def handle_event_insert(self, *, req_data: dict) -> dict:
         activity_record = list(filter(lambda x: x.name.lower() == req_data['activity'].lower(),
@@ -152,11 +164,11 @@ class PPSCIntakeAPI(BaseApi):
 
         return participant_event_activity.resource
 
-    def check_consent(self, participant_id, event_type, data_element_name, data_element_value):
+    def check_consent(self, participant_id, event_types, data_element_name, data_element_value):
         with self.dao.session() as session:
             return session.query(ConsentEvent).filter(
                 ConsentEvent.participant_id == participant_id,
-                ConsentEvent.event_type_name == event_type,
+                ConsentEvent.event_type_name.in_(event_types),
                 ConsentEvent.data_element_name == data_element_name,
                 ConsentEvent.data_element_value.ilike(data_element_value)
             ).first()

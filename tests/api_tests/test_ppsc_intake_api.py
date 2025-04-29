@@ -1005,6 +1005,245 @@ class PPSCIntakeAPITest(BaseTestCase):
         response = self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
         self.assertTrue(response is not None)
 
+    def test_intake_enrollment_status_validation(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+
+        payload = {
+            "activity": "Participant Status",
+            "eventType": "Enrollment Status",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "registered",
+                    "dataElementValue": "yes"
+                },
+            ]
+        }
+
+        response = self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
+        self.assertEqual(response.status_code, 400)
+
+    def test_intake_enrollment_status_insert(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
+
+        payload = {
+            "activity": "Participant Status",
+            "eventType": "Enrollment Status",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "registered",
+                    "dataElementValue": "yes"
+                },
+                {
+                    "dataElementName": "registered_date_time",
+                    "dataElementValue": "2024-04-21T18:06:04.356Z"
+                },
+                {
+                    "dataElementName": "participant",
+                    "dataElementValue": "yes"
+                },
+                {
+                    "dataElementName": "participant_date_time",
+                    "dataElementValue": "2024-10-28T19:20:42.000Z"
+                },
+                {
+                    "dataElementName": "participant_ehr_consent",
+                    "dataElementValue": "yes"
+                },
+                {
+                    "dataElementName": "participant_ehr_consent_date_time",
+                    "dataElementValue": "2024-10-28T19:20:42.000Z"
+                },
+                {
+                    "dataElementName": "outdoors",
+                    "dataElementValue": "yes"
+                },
+                {
+                    "dataElementName": "outdoors_date_time",
+                    "dataElementValue": "2024-10-31T19:20:42.000Z"
+                },
+            ]
+        }
+
+        test_time = datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+        participant_event_activities = self.ppsc_participant_activity_dao.get_all()
+        participant_event_activities = self.filter_events_by_type(participant_event_activities, 7)
+
+        self.assertEqual(test_time, participant_event_activities.created)
+        self.assertEqual(test_time, participant_event_activities.modified)
+        self.assertEqual(participant.id, participant_event_activities.participant_id)
+        self.assertEqual(payload, participant_event_activities.resource)
+        self.assertEqual(7, participant_event_activities.activity_id)
+
+        participant_status_events = self.participant_status_event_dao.get_all()
+        self.assertEqual(8, len(participant_status_events))
+        self.assertEqual(test_time, participant_status_events[0].created)
+        self.assertEqual(test_time, participant_status_events[0].modified)
+        self.assertEqual(participant_event_activities.id, participant_status_events[0].event_id)
+        self.assertEqual(participant.id, participant_status_events[0].participant_id)
+        self.assertEqual('Enrollment Status', participant_status_events[0].event_type_name)
+        self.assertEqual('registered', participant_status_events[0].data_element_name)
+        self.assertEqual('yes', participant_status_events[0].data_element_value)
+
+        self.assertEqual('registered_date_time', participant_status_events[1].data_element_name)
+        self.assertEqual('2024-04-21T18:06:04.356Z', participant_status_events[1].data_element_value)
+
+        self.assertEqual('participant', participant_status_events[2].data_element_name)
+        self.assertEqual('yes', participant_status_events[2].data_element_value)
+
+        self.assertEqual('participant_date_time', participant_status_events[3].data_element_name)
+        self.assertEqual('2024-10-28T19:20:42.000Z', participant_status_events[3].data_element_value)
+
+        self.assertEqual('participant_ehr_consent', participant_status_events[4].data_element_name)
+        self.assertEqual('yes', participant_status_events[4].data_element_value)
+
+        self.assertEqual('participant_ehr_consent_date_time', participant_status_events[5].data_element_name)
+        self.assertEqual('2024-10-28T19:20:42.000Z', participant_status_events[5].data_element_value)
+
+        self.assertEqual('outdoors', participant_status_events[6].data_element_name)
+        self.assertEqual('yes', participant_status_events[6].data_element_value)
+
+        self.assertEqual('outdoors_date_time', participant_status_events[7].data_element_name)
+        self.assertEqual('2024-10-31T19:20:42.000Z', participant_status_events[7].data_element_value)
+
+    def test_intake_ubr_status_insert(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
+
+        payload = {
+             "activity": "Participant Status",
+             "eventType": "UBR Status",
+             "participantId": f"P{participant.id}",
+             "dataElements": [
+               {
+                 "dataElementName": "ubr_overall",
+                 "dataElementValue": "UBR"
+               },
+               {
+                 "dataElementName": "ubr_geography",
+                 "dataElementValue": "RBR"
+               },
+               {
+                 "dataElementName": "ubr_healthcare_access_and_utilization",
+                 "dataElementValue": "Unknown"
+               },
+               {
+                 "dataElementName": "ubr_racial_identity",
+                 "dataElementValue": "UBR"
+               },
+               {
+                 "dataElementName": "ubr_gender_identity",
+                 "dataElementValue": "RBR"
+               },
+               {
+                 "dataElementName": "ubr_sex_at_birth",
+                 "dataElementValue": "RBR"
+               },
+             ]
+            }
+
+        test_time = datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+        participant_event_activities = self.ppsc_participant_activity_dao.get_all()
+        participant_event_activities = self.filter_events_by_type(participant_event_activities, 7)
+
+        self.assertEqual(test_time, participant_event_activities.created)
+        self.assertEqual(test_time, participant_event_activities.modified)
+        self.assertEqual(participant.id, participant_event_activities.participant_id)
+        self.assertEqual(payload, participant_event_activities.resource)
+        self.assertEqual(7, participant_event_activities.activity_id)
+
+        participant_status_events = self.participant_status_event_dao.get_all()
+        self.assertEqual(6, len(participant_status_events))
+        self.assertEqual(test_time, participant_status_events[0].created)
+        self.assertEqual(test_time, participant_status_events[0].modified)
+        self.assertEqual(participant_event_activities.id, participant_status_events[0].event_id)
+        self.assertEqual(participant.id, participant_status_events[0].participant_id)
+        self.assertEqual('UBR Status', participant_status_events[0].event_type_name)
+        self.assertEqual('ubr_overall', participant_status_events[0].data_element_name)
+        self.assertEqual('UBR', participant_status_events[0].data_element_value)
+
+        self.assertEqual('ubr_geography', participant_status_events[1].data_element_name)
+        self.assertEqual('RBR', participant_status_events[1].data_element_value)
+
+        self.assertEqual('ubr_healthcare_access_and_utilization', participant_status_events[2].data_element_name)
+        self.assertEqual('Unknown', participant_status_events[2].data_element_value)
+
+        self.assertEqual('ubr_racial_identity', participant_status_events[3].data_element_name)
+        self.assertEqual('UBR', participant_status_events[3].data_element_value)
+
+        self.assertEqual('ubr_gender_identity', participant_status_events[4].data_element_name)
+        self.assertEqual('RBR', participant_status_events[4].data_element_value)
+
+        self.assertEqual('ubr_sex_at_birth', participant_status_events[5].data_element_name)
+        self.assertEqual('RBR', participant_status_events[5].data_element_value)
+
+    def test_intake_retention_status_insert(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
+
+        payload = {
+         "activity": "Participant Status",
+         "eventType": "Retention Status",
+         "participantId": f"P{participant.id}",
+         "dataElements": [
+          {
+           "dataElementName": "activity_date_time",
+           "dataElementValue": "2020-04-17T19:00:00.000Z"
+          },
+          {
+           "dataElementName": "activity_status",
+           "dataElementValue": "eligible"
+          },
+          {
+           "dataElementName": "retention_type",
+           "dataElementValue": "Active"
+          },
+          {
+           "dataElementName": "last_retention_activity_date_time",
+           "dataElementValue": "2020-04-17T19:00:00.000Z"
+          },
+         ]
+        }
+
+        test_time = datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+        participant_event_activities = self.ppsc_participant_activity_dao.get_all()
+        participant_event_activities = self.filter_events_by_type(participant_event_activities, 7)
+
+        self.assertEqual(test_time, participant_event_activities.created)
+        self.assertEqual(test_time, participant_event_activities.modified)
+        self.assertEqual(participant.id, participant_event_activities.participant_id)
+        self.assertEqual(payload, participant_event_activities.resource)
+        self.assertEqual(7, participant_event_activities.activity_id)
+
+        participant_status_events = self.participant_status_event_dao.get_all()
+        self.assertEqual(4, len(participant_status_events))
+        self.assertEqual(test_time, participant_status_events[0].created)
+        self.assertEqual(test_time, participant_status_events[0].modified)
+        self.assertEqual(participant_event_activities.id, participant_status_events[0].event_id)
+        self.assertEqual(participant.id, participant_status_events[0].participant_id)
+        self.assertEqual('Retention Status', participant_status_events[0].event_type_name)
+        self.assertEqual('activity_date_time', participant_status_events[0].data_element_name)
+        self.assertEqual('2020-04-17T19:00:00.000Z', participant_status_events[0].data_element_value)
+
+        self.assertEqual('activity_status', participant_status_events[1].data_element_name)
+        self.assertEqual('eligible', participant_status_events[1].data_element_value)
+
+        self.assertEqual('retention_type', participant_status_events[2].data_element_name)
+        self.assertEqual('Active', participant_status_events[2].data_element_value)
+
+        self.assertEqual('last_retention_activity_date_time', participant_status_events[3].data_element_name)
+        self.assertEqual('2020-04-17T19:00:00.000Z', participant_status_events[3].data_element_value)
 
     def tearDown(self):
         super().tearDown()
