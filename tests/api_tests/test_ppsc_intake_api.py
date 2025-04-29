@@ -53,7 +53,7 @@ class PPSCIntakeAPITest(BaseTestCase):
             "dataElements": [
                 {
                     "dataElementName": "activity_status",
-                    "dataElementValue": "yes"
+                    "dataElementValue": "submitted_yes"
                 },
                 {
                     "dataElementName": "activity_date_time",
