@@ -341,7 +341,7 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Primary Consent' AND data_element_name = 'activity_status' AND rank = 1
            THEN data_element_value END) AS primary_consent,
   MAX(CASE WHEN event_type_name = 'Primary Consent' AND rank = 1
-           THEN event_authored_time END) AS primary_consent_event_authored
+           THEN event_authored_time END) AS primary_consent_event_authored,
   MAX(CASE WHEN event_type_name = 'Pediatric Permission' AND data_element_name = 'activity_status' AND rank = 1
            THEN data_element_value END) AS peds_primary_consent,
   MAX(CASE WHEN event_type_name = 'Pediatric Permission' AND rank = 1
