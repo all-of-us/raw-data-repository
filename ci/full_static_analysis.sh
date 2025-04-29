@@ -26,7 +26,7 @@ ENABLE_FOR_TESTS="\
   --max-line-length=120 \
   --enable=trailing-whitespace,unused-import,unused-variable,undefined-variable"
 ENABLE_FOR_ALL="$ENABLE_FOR_TESTS --enable=bad-whitespace,line-too-long,unused-import,unused-variable"
-PYLINT_OPTS="-r n --disable=all --score=n"
+PYLINT_OPTS="-r n --disable=all --score=n -v --jobs 8"
 echo "`date -u` Linting application files..."
 FILES_NON_TEST=`git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' -e '_test' -e 'lib_fhir'`
 pylint $PYLINT_OPTS $ENABLE_FOR_ALL $FILES_NON_TEST
