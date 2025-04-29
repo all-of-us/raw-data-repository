@@ -321,7 +321,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             {"member_id": member_id, "status": int(status), "flags": flags, "time": now}
             for member_id, status, flags in member_update_params_iterable
         ]
-        return session.execute(query, parameter_sets)
+        return session.connection().execute(query, parameter_sets)
 
     def bulk_update_package_id(self, genomic_set_id, client_id_package_id_pair_iterable):
         """
@@ -1103,8 +1103,9 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
             GenomicSetMember.informingLoopReadyFlagModified.is_(None)
         ).subquery()
         with self.session() as session:
-            records = session.query(
-                GenomicSetMember
+            statement = sqlalchemy.select(
+                GenomicSetMember,
+                BiobankOrder.finalizedTime
             ).join(
                 BiobankStoredSample,
                 BiobankStoredSample.biobankStoredSampleId == GenomicSetMember.collectionTubeId
@@ -1119,11 +1120,11 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 BiobankOrder.is_not_ignored()
             ).order_by(
                 BiobankOrder.finalizedTime
-            )
+            ).distinct()
             if limit:
-                return records.distinct().limit(limit).all()
+                statement = statement.limit(limit)
 
-            return records.all()
+            return session.execute(statement).columns(GenomicSetMember).scalars().all()
 
     def get_ready_loop_by_participant_id(self, participant_id):
         informing_loop_ready = self.base_informing_loop_ready().filter(

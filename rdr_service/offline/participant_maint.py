@@ -37,7 +37,7 @@ def skew_duplicate_last_modified():
                     where last_modified = :ts
                 """
 
-                session.execute(text(sql), {"ts": rec["last_modified"]})
+                session.execute(text(sql), {"ts": rec.last_modified})
                 session.commit()  # Release write locks
 
     logging.info('Skewing duplicate lastModified times complete')

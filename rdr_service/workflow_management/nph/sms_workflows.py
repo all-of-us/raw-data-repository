@@ -95,7 +95,7 @@ class SmsWorkflow:
 
         with exporter.open_cloud_writer(self.file_transfer_def['file_name'],
                                         delimiter=self.file_transfer_def['delimiter']) as writer:
-            writer.write_header(source_data[0].keys())
+            writer.write_header(source_data[0]._asdict().keys())
             writer.write_rows(source_data)
 
     def write_data_to_manifest_table(self, data_to_write):

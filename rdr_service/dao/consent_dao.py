@@ -2,7 +2,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Collection, Dict, List, Optional
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import joinedload, Session
 
 from rdr_service.dao.base_dao import BaseDao
@@ -130,15 +130,21 @@ class ConsentDao(BaseDao):
 
     @classmethod
     def get_next_revalidate_batch(cls, session, limit=500) -> Collection[ConsentFile]:
-        query = (
-            session.query(ConsentFile.participant_id, ConsentFile.type)
-            .filter(
-                ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING
-            )
-            .order_by(ConsentFile.last_checked, ConsentFile.created)
-            .distinct().limit(limit)
-        )
-        return query
+        statement = select(
+            ConsentFile.participant_id,
+            ConsentFile.type,
+            ConsentFile.last_checked,
+            ConsentFile.created
+        ).filter(
+            ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING
+        ).order_by(
+            ConsentFile.last_checked, ConsentFile.created
+        ).distinct().limit(limit)
+
+        return session.execute(statement).columns(
+            ConsentFile.participant_id,
+            ConsentFile.type
+        ).all()
 
     @classmethod
     def _batch_update_consent_files_with_session(cls, session, consent_files: Collection[ConsentFile]):

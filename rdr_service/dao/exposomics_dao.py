@@ -2,7 +2,7 @@ from abc import abstractmethod, ABC
 from typing import List, Dict
 
 from sqlalchemy.sql.expression import literal
-from sqlalchemy import func, orm
+from sqlalchemy import func, orm, select
 
 from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
@@ -72,8 +72,8 @@ class ExposomicsM0Dao(BaseDao, ExposomicsBase):
         sample_list = kwargs.get("sample_list")
         current_set_num = kwargs.get("set_num")
         biobank_ids = [self.extract_prefix_from_val(obj.get('biobank_id')) for obj in sample_list]
-        with self.session() as session:
-            return session.query(
+        with (self.session() as session):
+            statement = select(
                 func.concat(get_biobank_id_prefix(), ExposomicsSamples.biobank_id).label('biobank_id'),
                 literal(form_data.get('sample_type')).label('sample_type'),
                 literal(form_data.get('treatment_type')).label('treatment_type'),
@@ -89,7 +89,8 @@ class ExposomicsM0Dao(BaseDao, ExposomicsBase):
                 literal(form_data.get('study_name')).label('study_name'),
                 literal(form_data.get('study_pi_first_name')).label('study_pi_first_name'),
                 literal(form_data.get('study_pi_last_name')).label('study_pi_last_name'),
-            ).join(
+                ExposomicsSamples.id
+            ).select_from(ExposomicsSamples).join(
                 ParticipantSummary,
                 ParticipantSummary.biobankId == ExposomicsSamples.biobank_id
             ).join(
@@ -109,7 +110,23 @@ class ExposomicsM0Dao(BaseDao, ExposomicsBase):
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
                 Participant.isGhostId.is_(None),
                 Participant.isTestParticipant != 1
-            ).order_by(ExposomicsSamples.id).distinct().all()
+            ).order_by(ExposomicsSamples.id).distinct()
+
+            return session.execute(statement).columns(
+                'biobank_id',
+                'sample_type',
+                'treatment_type',
+                'collection_tube_id',
+                'sample_id',
+                'validation_passed',
+                'ny_flag',
+                'quantity_ul',
+                'total_concentration_ng_ul',
+                'freeze_thaw_count',
+                'study_name',
+                'study_pi_first_name',
+                'study_pi_last_name',
+            ).all()
 
 
 class ExposomicsM1Dao(UpdatableDao, ExposomicsBase):
@@ -156,9 +173,9 @@ class ExposomicsM1Dao(UpdatableDao, ExposomicsBase):
 
     def get_id_from_file_path(self, *, file_path: str):
         with self.session() as session:
-            return session.query(
-                ExposomicsM1.id
-            ).filter(
+            statement = select(ExposomicsM1.id).filter(
                 ExposomicsM1.file_path == file_path
             )
+
+            return session.scalars(statement)
 

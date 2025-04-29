@@ -1,5 +1,5 @@
 from typing import List, Dict
-from sqlalchemy import func, and_, or_, cast, String
+from sqlalchemy import func, and_, or_, cast, select, String
 from sqlalchemy.orm import aliased
 
 from rdr_service import clock
@@ -161,7 +161,36 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
 
             aliquot_sample = aliased(OrderedSample)
 
-            query = session.query(
+            columns = [
+                SmsSample.sample_id,
+                SmsN0.matrix_id,
+                SmsN0.biobank_id,
+                SmsSample.sample_identifier,
+                SmsN0.study,
+                SmsN0.visit,
+                SmsN0.timepoint,
+                SmsN0.collection_site,
+                SmsN0.collection_date_time,
+                SmsN0.sample_type,
+                SmsN0.additive_treatment,
+                SmsN0.quantity_ml,
+                SmsSample.age,
+                SmsSample.sex_at_birth,
+                SmsN0.package_id,
+                SmsN0.storage_unit_id,
+                SmsN0.well_box_position,
+                SmsSample.destination,
+                SmsN0.tracking_number,
+                SmsN0.manufacturer_lot,
+                SmsN0.sample_comments,
+                SmsSample.ethnicity,
+                SmsSample.race,
+                SmsSample.bmi,
+                SmsSample.diet,
+                'urine_color',
+                'urine_clarity'
+            ]
+            statement = select(
                 SmsSample.sample_id,
                 SmsN0.matrix_id,
                 SmsN0.biobank_id,
@@ -189,6 +218,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsSample.diet,
                 func.json_extract(OrderedSample.supplemental_fields, "$.color").label('urine_color'),
                 func.json_extract(OrderedSample.supplemental_fields, "$.clarity").label('urine_clarity'),
+                SmsN0.id
             ).outerjoin(
                 SmsSample,
                 and_(
@@ -226,7 +256,13 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             )
 
             if 'pbrc' in kwargs.get('recipient').lower():
-                query = query.add_columns(
+                columns.extend([
+                    SmsSample.body_weight_kg,
+                    'dlw_dose_batch',
+                    'dlw_dose_date_time',
+                    'dlw_dose_grams'
+                ])
+                statement = statement.add_columns(
                     SmsSample.body_weight_kg,
                     DlwDosage.batch_id.label('dlw_dose_batch'),
                     DlwDosage.dose_time.label('dlw_dose_date_time'),
@@ -249,14 +285,18 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                     )
                 )
             else:
-                query = query.add_columns(
+                columns.extend([
+                    'bowel_movement',
+                    'bowel_movement_quality'
+                ])
+                statement = statement.add_columns(
                     func.json_extract(OrderedSample.supplemental_fields, "$.bowelMovement").label('bowel_movement'),
                     func.json_extract(
                         OrderedSample.supplemental_fields, '$.bowelMovementQuality'
                     ).label('bowel_movement_quality')
                 )
 
-            query = query.filter(
+            statement = statement.filter(
                 SmsBlocklist.id.is_(None),
                 SmsN1Mc1.id.is_(None),
                 sample_well.id.is_(None),
@@ -269,4 +309,4 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 )
             ).distinct().order_by(SmsN0.id)
 
-            return query.all()
+            return session.execute(statement).columns(*columns).all()

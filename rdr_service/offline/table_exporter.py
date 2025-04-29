@@ -64,7 +64,7 @@ class TableExporter(object):
 
             def f(row_proxy):
                 out = [v for v in row_proxy]
-                for i, key in enumerate(row_proxy.keys()):
+                for i, key in enumerate(row_proxy._asdict().keys()):
                     if key != "participant_id":
                         continue
 

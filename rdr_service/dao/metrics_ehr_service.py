@@ -18,7 +18,7 @@ class MetricsEhrService(BaseDao):
         self.ehr_receipt_dao = EhrReceiptDao()
 
     def _get_organization_ids_from_hpo_ids(self, hpo_ids):
-        query = sqlalchemy.select([Organization.organizationId]).where(Organization.hpoId.in_(hpo_ids))
+        query = sqlalchemy.select(Organization.organizationId).where(Organization.hpoId.in_(hpo_ids))
         with self.session() as session:
             result = session.execute(query)
         return list(row[0] for row in result)
