@@ -45,7 +45,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 name=activity
             )
 
-    def send_valid_primary_consent(self, participant, consent_type="Primary Consent"):
+    def send_valid_primary_consent(self, participant, consent_type="Primary Consent", status="yes"):
         payload = {
             "activity": "Consent",
             "eventType": consent_type,
@@ -53,7 +53,7 @@ class PPSCIntakeAPITest(BaseTestCase):
             "dataElements": [
                 {
                     "dataElementName": "activity_status",
-                    "dataElementValue": "submitted_yes"
+                    "dataElementValue": status
                 },
                 {
                     "dataElementName": "activity_date_time",
@@ -1247,7 +1247,7 @@ class PPSCIntakeAPITest(BaseTestCase):
 
     def test_intake_pediatric_permission_allowed(self):
         participant = self.ppsc_data_gen.create_database_participant()
-        self.send_valid_primary_consent(participant, consent_type="Pediatric Permission")
+        self.send_valid_primary_consent(participant, consent_type="Pediatric Permission", status="submitted_yes")
 
         payload = {
             "activity": "Profile Updates",
