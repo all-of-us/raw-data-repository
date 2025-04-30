@@ -45,15 +45,15 @@ class PPSCIntakeAPITest(BaseTestCase):
                 name=activity
             )
 
-    def send_valid_primary_consent(self, participant):
+    def send_valid_primary_consent(self, participant, consent_type="Primary Consent", status="yes"):
         payload = {
             "activity": "Consent",
-            "eventType": "Primary Consent",
+            "eventType": consent_type,
             "participantId": f"P{participant.id}",
             "dataElements": [
                 {
                     "dataElementName": "activity_status",
-                    "dataElementValue": "yes"
+                    "dataElementValue": status
                 },
                 {
                     "dataElementName": "activity_date_time",
@@ -1244,6 +1244,34 @@ class PPSCIntakeAPITest(BaseTestCase):
 
         self.assertEqual('last_retention_activity_date_time', participant_status_events[3].data_element_name)
         self.assertEqual('2020-04-17T19:00:00.000Z', participant_status_events[3].data_element_value)
+
+    def test_intake_pediatric_permission_allowed(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant, consent_type="Pediatric Permission", status="submitted_yes")
+
+        payload = {
+            "activity": "Profile Updates",
+            "eventType": "Profile Data",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "first_name",
+                    "dataElementValue": "Jane"
+                },
+                {
+                    "dataElementName": "last_name",
+                    "dataElementValue": "Eyre"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00Z"
+                },
+            ]
+        }
+
+        test_time = datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
     def tearDown(self):
         super().tearDown()

@@ -95,7 +95,7 @@ class PPSCIntakeAPI(BaseApi):
             if not self.check_consent(req_data['participantId'].split('P')[1],
                                               self.primary_consent_types,
                                               'activity_status',
-                                              'yes'):
+                                              '%yes%'):
                 raise BadRequest("No Primary Consent record found.")
 
         # Check Enrollment Status for timestamps
