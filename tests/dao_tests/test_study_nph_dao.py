@@ -289,8 +289,7 @@ class NphStudyCategoryTest(BaseTestCase):
         self.nph_study_category_dao = NphStudyCategoryDao()
 
     def test_get_before_insert(self):
-        session = MagicMock()
-        self.assertIsNone(self.nph_study_category_dao.get_study_category_sample(1, session)[0])
+        self.assertIsNone(self.nph_study_category_dao.get_study_category_sample(1, self.session)[0])
 
     def _create_study_category(self, study_category_obj: Dict[str, Any]) -> StudyCategory:
         nph_study_category = StudyCategory(**study_category_obj)

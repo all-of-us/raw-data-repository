@@ -141,7 +141,7 @@ class MetricsEhrService(BaseDao):
             common_subquery_where_arg &= ParticipantSummary.organizationId.in_(organization_ids)
 
         base_subquery = (
-            sqlalchemy.select([sqlalchemy.func.count()])
+            sqlalchemy.select(sqlalchemy.func.count())
             .select_from(
                 sqlalchemy.join(
                     Participant, ParticipantSummary, Participant.participantId == ParticipantSummary.participantId
@@ -159,11 +159,9 @@ class MetricsEhrService(BaseDao):
         )
 
         return sqlalchemy.select(
-            [
-                interval_query.c.start_date,
-                subquery_consented_count.label("consented_count"),
-                subquery_received_count.label("received_count"),
-            ]
+            interval_query.c.start_date,
+            subquery_consented_count.label("consented_count"),
+            subquery_received_count.label("received_count")
         ).order_by(interval_query.c.start_date)
 
     def get_organization_metrics_data(self, end_date, organization_ids=None):
@@ -220,10 +218,8 @@ class MetricsEhrService(BaseDao):
         # build query
         receipt_subquery = (
             sqlalchemy.select(
-                [
-                    EhrReceipt.organizationId.label("organization_id"),
-                    sqlalchemy.func.max(EhrReceipt.receiptTime).label("ehr_receipt_time"),
-                ]
+                EhrReceipt.organizationId.label("organization_id"),
+                sqlalchemy.func.max(EhrReceipt.receiptTime).label("ehr_receipt_time")
             )
             .select_from(EhrReceipt)
             .group_by(EhrReceipt.organizationId)
@@ -251,7 +247,7 @@ class MetricsEhrService(BaseDao):
             Participant.participantId == ParticipantSummary.participantId,
         )
 
-        query = sqlalchemy.select(fields).select_from(joined_tables).group_by(Organization.organizationId)
+        query = sqlalchemy.select(*fields).select_from(joined_tables).group_by(Organization.organizationId)
         if organization_ids:
             query = query.where(Organization.organizationId.in_(organization_ids))
         return query
