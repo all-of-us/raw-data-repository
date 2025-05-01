@@ -478,6 +478,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 registered_date=self.fake.date_time_this_year()
             )
         )
+        self.session.commit()
 
         event = ParticipantEventActivity(participant_id=participant.participantId)
         self.session.add(event)
