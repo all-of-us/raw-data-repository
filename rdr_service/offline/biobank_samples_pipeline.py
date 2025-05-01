@@ -514,12 +514,12 @@ def _participant_answer_subquery():
     )
 
 
-_PEDIATRIC_SELECT_CLAUSE = 'pdl.id is not null is_pediatric'
+_PEDIATRIC_SELECT_CLAUSE = 'pue.id is not null is_pediatric'
 _PEDIATRIC_JOIN_CLAUSE = '''
-left join pediatric_data_log pdl
-    on pdl.participant_id = participant.participant_id
-    and pdl.replaced_by_id is null
-    and pdl.data_type = 1  -- is AGE_RANGE data
+left join ppsc.profile_updates_event pue
+    on pue.participant_id = participant.participant_id
+    and event_type_name = 'Account Type' and data_element_name = 'activity_status'
+    and data_element_value = 'pediatric' and pue.ignore_flag = 0
 '''
 
 
