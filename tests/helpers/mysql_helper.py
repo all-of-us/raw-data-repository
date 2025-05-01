@@ -33,6 +33,7 @@ from rdr_service.model import compiler  # pylint: disable=unused-import
 from rdr_service.model.base import Base
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
+from rdr_service.model.ppsc import PPSCBase
 from rdr_service.model.site import Site
 from rdr_service.model.site_enums import ObsoleteStatus
 from rdr_service.participant_enums import OrganizationType, UNSET_HPO_ID
@@ -118,12 +119,17 @@ def get_table_change_listener(table_name):
 def _track_database_changes():
     for module in [member for _, member in inspect.getmembers(model) if isinstance(member, ModuleType)]:
         for _, model_class in inspect.getmembers(module):
-            if inspect.isclass(model_class) and issubclass(model_class, Base) and model_class != Base:
-                table_name = model_class.__tablename__
-                table_changed[table_name] = False
+            if inspect.isclass(model_class):
+                table_name = None
+                if issubclass(model_class, PPSCBase) and model_class != PPSCBase:
+                    table_name = f'ppsc.{model_class.__tablename__}'
+                elif issubclass(model_class, Base) and model_class != Base:
+                    table_name = model_class.__tablename__
 
-                event.listen(model_class, 'before_insert', get_table_change_listener(table_name))
-                event.listen(model_class, 'before_update', get_table_change_listener(table_name))
+                if table_name:
+                    table_changed[table_name] = False
+                    event.listen(model_class, 'before_insert', get_table_change_listener(table_name))
+                    event.listen(model_class, 'before_update', get_table_change_listener(table_name))
 
 
 def clear_table_on_next_reset(table_name):
