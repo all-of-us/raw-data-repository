@@ -23,6 +23,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.ppsc import Participant as PpscParticipant, ParticipantEventActivity, ProfileUpdatesEvent
 from rdr_service.offline import biobank_samples_pipeline
 from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value,\
     SampleCollectionMethod
@@ -431,6 +432,100 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 None,  # order origin
                 'example',  # Participant origin
                 0,  # pediatric flag
+                'Y',  # NY flag
+                'NA',  # sex at birth flag
+            )])
+
+    def test_pediatric_flag(self):
+        # Generate data for a sample to be in the received report
+        participant = self.data_generator.create_database_participant_summary(aian=True)
+        collection_site = self.data_generator.create_database_site(state='NY')
+        order = self.data_generator.create_database_biobank_order(
+            participantId=participant.participantId,
+            collectedSiteId=collection_site.siteId
+        )
+
+        # Setup order identifiers that CE would send for Quest order
+        self.data_generator.create_database_biobank_order_identifier(
+            biobankOrderId=order.biobankOrderId,
+            value='aoeu-1234',  # CE CareTask system doesn't use the KIT numbers for identifiers
+            system=biobank_samples_pipeline._CE_QUEST_SYSTEM
+        )
+        kit_order_identifier = self.data_generator.create_database_biobank_order_identifier(
+            biobankOrderId=order.biobankOrderId,
+            value='KIT-001',
+            system=biobank_samples_pipeline._KIT_ID_SYSTEM
+        )
+
+        ordered_sample = self.data_generator.create_database_biobank_ordered_sample(
+            biobankOrderId=order.biobankOrderId,
+            collected=datetime(2020, 6, 5),
+            processed=datetime(2020, 6, 6),
+            finalized=datetime(2020, 6, 7)
+        )
+        stored_sample = self.data_generator.create_database_biobank_stored_sample(
+            test=ordered_sample.test,
+            biobankId=participant.biobankId,
+            biobankOrderIdentifier=kit_order_identifier.value,
+            confirmed=self._datetime_days_ago(7)
+        )
+
+        # set up data to show participant as pediatric
+        self.session.add(
+            PpscParticipant(
+                id=participant.participantId,
+                biobank_id=self.fake.pyint(),
+                registered_date=self.fake.date_time_this_year()
+            )
+        )
+
+        event = ParticipantEventActivity(participant_id=participant.participantId)
+        self.session.add(event)
+        self.session.flush()
+
+        self.session.add(
+            ProfileUpdatesEvent(
+                participant_id=participant.participantId,
+                event_type_name='Account Type',
+                data_element_name='activity_status',
+                data_element_value='Pediatric',
+                event_id=event.id
+            )
+        )
+        self.session.commit()
+
+        # Mocking the file writer to catch what gets exported and mocking the upload method because
+        # that isn't what this test is meant to cover
+        with mock.patch('rdr_service.offline.sql_exporter.csv.writer') as mock_writer_class,\
+                mock.patch('rdr_service.offline.sql_exporter.SqlExporter.upload_export_file'):
+            biobank_samples_pipeline.write_reconciliation_report(datetime.now())
+
+            mock_write_rows = mock_writer_class.return_value.writerows
+            mock_write_rows.assert_called_once_with([(
+                f'Z{participant.biobankId}',
+                ordered_sample.test,
+                Decimal('1'),  # sent count
+                kit_order_identifier.value,
+                self._format_datetime(ordered_sample.collected),
+                self._format_datetime(ordered_sample.processed),
+                self._format_datetime(ordered_sample.finalized),
+                None, None, None, 'UNKNOWN',  # site info: name, client_number, hpo, hpo_type
+                None, None, None, 'UNKNOWN',  # finalized site info: name, client_number, hpo, hpo_type
+                None,  # finalized username
+                ordered_sample.test,
+                1,  # received count
+                str(stored_sample.biobankStoredSampleId),
+                self._format_datetime(stored_sample.confirmed),  # received time
+                None,  # created family date
+                None,  # elapsed hours
+                'KIT-001',  # kit identifier
+                None,  # fedex tracking number
+                'Y',  # is Native American
+                None, None, None,  # notes info: collected, processed, finalized
+                None, None, None, None, None,  # cancelled_restored info: status_flag, name, name, time, reason
+                None,  # order origin
+                'example',  # Participant origin
+                1,  # pediatric flag
                 'Y',  # NY flag
                 'NA',  # sex at birth flag
             )])
