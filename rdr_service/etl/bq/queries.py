@@ -488,51 +488,51 @@ queries = {
     },
     "src_participant": {
         "query": """
-            SELECT
-              f1.participant_id,
-              f1.latest_date_of_survey,
-              f1.date_of_birth,
-              f1.src_id
-            FROM (
-              SELECT
-                t1.participant_id AS participant_id,
-                t1.latest_date_of_survey AS latest_date_of_survey,
-                MAX(DATE(t2.value_date)) AS date_of_birth,
-                t1.src_id AS src_id
-              FROM (
-                SELECT
-                  src_c.participant_id AS participant_id,
-                  MAX(src_c.date_of_survey) AS latest_date_of_survey,
-                  src_c.src_id AS src_id
-                FROM
-                  `{dataset_id}.src_clean` src_c
-                WHERE
-                  src_c.question_ppi_code = 'PIIBirthInformation_BirthDate'
-                  AND src_c.value_date IS NOT NULL
-                GROUP BY
-                  src_c.participant_id,
-                  src_c.src_id ) t1
-              INNER JOIN
-                `{dataset_id}.src_clean` t2
-              ON
-                t1.participant_id = t2.participant_id
-                AND t1.latest_date_of_survey = t2.date_of_survey
-                AND t2.question_ppi_code = 'PIIBirthInformation_BirthDate'
-              GROUP BY
-                t1.participant_id,
-                t1.latest_date_of_survey,
-                t1.src_id ) f1""",
+            WITH
+  profile_update_events AS (
+  SELECT
+    latest.data_element_name,
+    latest.data_element_value,
+    latest.participant_id,
+    latest.event_authored_time,
+    ROW_NUMBER() OVER (PARTITION BY latest.data_element_name, latest.participant_id ORDER BY latest.event_authored_time DESC) AS row_number
+  FROM
+    `all-of-us-rdr-prod.rdr_operational_datastream.ppsc_profile_updates_event` latest
+  WHERE
+    latest.event_authored_time < {cutoff_date} )
+SELECT DISTINCT
+  sc.participant_id,
+  event_authored_time AS latest_date_of_survey,
+  pse.data_element_value AS date_of_birth,
+  sc.src_id
+FROM
+    `{dataset_id}.src_clean` sc
+JOIN
+  profile_update_events pse ON sc.participant_id = pse.participant_id
+  AND pse.data_element_name = 'piibirthinformation_birthdate' AND pse.row_number = 1""",
         "destination": "src_participant",
         "append": False,
     },
     "src_person_location": {
         "query": """
+ WITH
+  profile_update_events AS (
+  SELECT
+    latest.data_element_name,
+    latest.data_element_value,
+    latest.participant_id,
+    latest.event_authored_time,
+    ROW_NUMBER() OVER (PARTITION BY latest.data_element_name, latest.participant_id ORDER BY latest.event_authored_time DESC) AS row_number
+  FROM
+    `all-of-us-rdr-prod.rdr_operational_datastream.ppsc_profile_updates_event` latest
+  WHERE
+    latest.event_authored_time < {cutoff_date} )
             SELECT
               p.participant_id AS participant_id,
-              MAX(m_address_1.value_string) AS address_1,
-              MAX(m_address_2.value_string) AS address_2,
-              MAX(m_city.value_string) AS city,
-              MAX(m_zip.value_string) AS zip,
+              MAX(m_address_1.data_element_value) AS address_1,
+              MAX(m_address_2.data_element_value) AS address_2,
+              MAX(m_city.data_element_value) AS city,
+              MAX(m_zip.data_element_value) AS zip,
               MAX(m_state.value_ppi_code) AS state_ppi_code,
               MAX(RIGHT(m_state.value_ppi_code, 2)) AS state,
               NULL AS location_id,
@@ -540,39 +540,30 @@ queries = {
             FROM
               `{dataset_id}.src_participant` p
             INNER JOIN
-              `{dataset_id}.src_mapped` m_address_1
+              profile_update_events m_address_1
             ON
               p.participant_id = m_address_1.participant_id
-              AND m_address_1.question_ppi_code = 'PIIAddress_StreetAddress'
+              AND lower(m_address_1.data_element_name) = lower('PIIAddress_StreetAddress')
             LEFT JOIN
-              `{dataset_id}.src_mapped` m_address_2
+              profile_update_events m_address_2
             ON
-              m_address_1.questionnaire_response_id = m_address_2.questionnaire_response_id
-              AND m_address_2.question_ppi_code = 'PIIAddress_StreetAddress2'
+              p.participant_id = m_address_2.participant_id
+              AND lower(m_address_2.data_element_name) = lower('PIIAddress_StreetAddress2')
             LEFT JOIN
-              `{dataset_id}.src_mapped` m_city
+              profile_update_events m_city
             ON
-              m_address_1.questionnaire_response_id = m_city.questionnaire_response_id
-              AND m_city.question_ppi_code = 'StreetAddress_PIICity'
+              p.participant_id = m_city.participant_id
+              AND lower(m_city.data_element_name) = lower('StreetAddress_PIICity')
             LEFT JOIN
-              `{dataset_id}.src_mapped` m_zip
+              profile_update_events m_zip
             ON
-              m_address_1.questionnaire_response_id = m_zip.questionnaire_response_id
-              AND m_zip.question_ppi_code = 'StreetAddress_PIIZIP'
+              p.participant_id = m_zip.participant_id
+              AND lower(m_zip.data_element_name) = lower('StreetAddress_PIIZIP')
             LEFT JOIN
-              `{dataset_id}.src_mapped` m_state
+              profile_update_events m_state
             ON
-              m_address_1.questionnaire_response_id = m_state.questionnaire_response_id
-              AND m_state.question_ppi_code = 'StreetAddress_PIIState'
-            WHERE
-              m_address_1.date_of_survey = (
-              SELECT
-                MAX(date_of_survey)
-              FROM
-                `{dataset_id}.src_mapped` m_address_1_2
-              WHERE
-                m_address_1_2.participant_id = m_address_1.participant_id
-                AND m_address_1_2.question_ppi_code = 'PIIAddress_StreetAddress')
+              p.participant_id = m_state.participant_id
+              AND lower(m_state.data_element_name) = lower('StreetAddress_PIIState')
             GROUP BY
               p.participant_id, p.src_id;""",
         "destination": "src_person_location",
@@ -1499,6 +1490,31 @@ queries = {
               person_id,
               observation_end_date,
               src_id
+        """
+    },
+    "tmp_ppsc_pse": {
+        "destination": "tmp_ppsc_pue",
+        "append": False,
+        "query": """
+            WITH
+              profile_update_events AS (
+              SELECT
+                latest.data_element_name,
+                latest.data_element_value,
+                latest.participant_id,
+                ROW_NUMBER() OVER (PARTITION BY latest.data_element_name, latest.participant_id ORDER BY latest.event_authored_time DESC) AS row_number
+              FROM
+                `all-of-us-rdr-prod.rdr_operational_datastream.ppsc_profile_updates_event` latest
+              WHERE
+                latest.event_authored_time < '2024-12-01' )
+            SELECT
+              *
+            FROM
+              profile_update_events
+            WHERE
+              row_number = 1
+            ORDER BY
+              participant_id
         """
     }
 }
