@@ -225,7 +225,8 @@ def add_additional_arguments(parser):
     parser.add_argument("--destination", help="BQ dataset or GCS path to export to")
     parser.add_argument("--to-bq", help="Export to bq dataset instead of GCS", action="store_true")
     parser.add_argument("--cutoff", help="cutoff date used for the run", required=True)
-    parser.add_argument("--dry-run", help="Print generated queries instead of executing", default=False, action="store_true")
+    parser.add_argument("--dry-run", help="Print generated queries instead of executing", default=False,
+                        action="store_true")
 
 
 def run():
