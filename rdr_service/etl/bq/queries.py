@@ -499,73 +499,79 @@ queries = {
   FROM
     `all-of-us-rdr-prod.rdr_operational_datastream.ppsc_profile_updates_event` latest
   WHERE
-    latest.event_authored_time < {cutoff_date} )
+    latest.event_authored_time < {cutoff} )
 SELECT DISTINCT
   sc.participant_id,
   event_authored_time AS latest_date_of_survey,
-  pse.data_element_value AS date_of_birth,
+  pue.data_element_value AS date_of_birth,
   sc.src_id
 FROM
     `{dataset_id}.src_clean` sc
 JOIN
-  profile_update_events pse ON sc.participant_id = pse.participant_id
-  AND pse.data_element_name = 'piibirthinformation_birthdate' AND pse.row_number = 1""",
+  profile_update_events pue ON sc.participant_id = pue.participant_id
+  AND pue.data_element_name = 'piibirthinformation_birthdate' AND pue.row_number = 1""",
         "destination": "src_participant",
         "append": False,
     },
     "src_person_location": {
         "query": """
- WITH
-  profile_update_events AS (
-  SELECT
-    latest.data_element_name,
-    latest.data_element_value,
-    latest.participant_id,
-    latest.event_authored_time,
-    ROW_NUMBER() OVER (PARTITION BY latest.data_element_name, latest.participant_id ORDER BY latest.event_authored_time DESC) AS row_number
-  FROM
-    `all-of-us-rdr-prod.rdr_operational_datastream.ppsc_profile_updates_event` latest
-  WHERE
-    latest.event_authored_time < {cutoff_date} )
+            WITH
+              profile_update_events AS (
+              SELECT
+                latest.data_element_name,
+                latest.data_element_value,
+                latest.participant_id,
+                latest.event_authored_time,
+                ROW_NUMBER() OVER (PARTITION BY latest.data_element_name, latest.participant_id ORDER BY latest.event_authored_time DESC) AS row_number
+              FROM
+                `all-of-us-rdr-prod.rdr_operational_datastream.ppsc_profile_updates_event` latest
+              WHERE
+                latest.event_authored_time < '{cutoff}' )
             SELECT
               p.participant_id AS participant_id,
               MAX(m_address_1.data_element_value) AS address_1,
               MAX(m_address_2.data_element_value) AS address_2,
               MAX(m_city.data_element_value) AS city,
               MAX(m_zip.data_element_value) AS zip,
-              MAX(m_state.value_ppi_code) AS state_ppi_code,
-              MAX(RIGHT(m_state.value_ppi_code, 2)) AS state,
+              MAX(m_state.data_element_value) AS state_ppi_code,
+              MAX(RIGHT(m_state.data_element_value, 2)) AS state,
               NULL AS location_id,
               p.src_id AS src_id
             FROM
-              `{dataset_id}.src_participant` p
+              `all-of-us-rdr-prod.rdr_cdm_20250430.src_participant` p
             INNER JOIN
               profile_update_events m_address_1
             ON
               p.participant_id = m_address_1.participant_id
-              AND lower(m_address_1.data_element_name) = lower('PIIAddress_StreetAddress')
+              AND LOWER(m_address_1.data_element_name) = LOWER('PIIAddress_StreetAddress')
+              AND m_address_1.row_number = 1
             LEFT JOIN
               profile_update_events m_address_2
             ON
               p.participant_id = m_address_2.participant_id
-              AND lower(m_address_2.data_element_name) = lower('PIIAddress_StreetAddress2')
+              AND LOWER(m_address_2.data_element_name) = LOWER('PIIAddress_StreetAddress2')
+              AND m_address_2.event_authored_time = m_address_1.event_authored_time
             LEFT JOIN
               profile_update_events m_city
             ON
               p.participant_id = m_city.participant_id
-              AND lower(m_city.data_element_name) = lower('StreetAddress_PIICity')
+              AND LOWER(m_city.data_element_name) = LOWER('StreetAddress_PIICity')
+              AND m_city.event_authored_time = m_address_1.event_authored_time
             LEFT JOIN
               profile_update_events m_zip
             ON
               p.participant_id = m_zip.participant_id
-              AND lower(m_zip.data_element_name) = lower('StreetAddress_PIIZIP')
+              AND LOWER(m_zip.data_element_name) = LOWER('StreetAddress_PIIZIP')
+              AND m_zip.event_authored_time = m_address_1.event_authored_time
             LEFT JOIN
               profile_update_events m_state
             ON
               p.participant_id = m_state.participant_id
-              AND lower(m_state.data_element_name) = lower('StreetAddress_PIIState')
+              AND LOWER(m_state.data_element_name) = LOWER('StreetAddress_PIIState')
+              AND m_state.event_authored_time = m_address_1.event_authored_time
             GROUP BY
-              p.participant_id, p.src_id;""",
+              p.participant_id,
+              p.src_id;""",
         "destination": "src_person_location",
         "append": False,
     },
