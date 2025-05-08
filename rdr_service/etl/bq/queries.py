@@ -1497,30 +1497,5 @@ JOIN
               observation_end_date,
               src_id
         """
-    },
-    "tmp_ppsc_pse": {
-        "destination": "tmp_ppsc_pue",
-        "append": False,
-        "query": """
-            WITH
-              profile_update_events AS (
-              SELECT
-                latest.data_element_name,
-                latest.data_element_value,
-                latest.participant_id,
-                ROW_NUMBER() OVER (PARTITION BY latest.data_element_name, latest.participant_id ORDER BY latest.event_authored_time DESC) AS row_number
-              FROM
-                `all-of-us-rdr-prod.rdr_operational_datastream.ppsc_profile_updates_event` latest
-              WHERE
-                latest.event_authored_time < '2024-12-01' )
-            SELECT
-              *
-            FROM
-              profile_update_events
-            WHERE
-              row_number = 1
-            ORDER BY
-              participant_id
-        """
     }
 }
