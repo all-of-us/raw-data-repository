@@ -51,7 +51,7 @@ def upgrade_rdr():
                 AND REFERENCED_COLUMN_NAME = 'participant_id'
         """
     connection = op.get_bind()
-    pid_key_exists = connection.execute(constraint_sql).fetchone()[0]
+    pid_key_exists = connection.execute(sa.text(constraint_sql)).fetchone()[0]
     if pid_key_exists == 1:
         op.drop_constraint('genomic_set_member_ibfk_3', 'genomic_set_member', type_='foreignkey')
     # ### end Alembic commands ###

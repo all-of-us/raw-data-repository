@@ -143,8 +143,7 @@ def run_migrations_online():
 
     engines = {}
     for name in re.split(r",\s*", db_names):
-        url = get_url()
-        url.database = name
+        url = get_url().set(database=name)
         engines[name] = {"engine": engine_from_config({"url": str(url)}, prefix="", poolclass=pool.NullPool)}
 
     for name, rec in list(engines.items()):

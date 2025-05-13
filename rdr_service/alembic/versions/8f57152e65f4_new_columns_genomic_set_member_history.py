@@ -56,7 +56,7 @@ def upgrade_rdr():
                     AND COLUMN_NAME = 'validation_flags'
             """
     connection = op.get_bind()
-    val_flag_exists = connection.execute(val_flag_column_exists_sql).fetchone()[0]
+    val_flag_exists = connection.execute(sa.text(val_flag_column_exists_sql)).fetchone()[0]
     if val_flag_exists == 0:
         op.execute(
             "ALTER TABLE genomic_set_member_history ADD COLUMN validation_flags varchar(80) AFTER validated_time")

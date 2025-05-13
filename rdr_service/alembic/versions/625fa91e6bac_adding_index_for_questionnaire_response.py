@@ -38,7 +38,7 @@ def downgrade(engine_name):
 def upgrade_rdr():
     # Index seems to have been manually created in prod, creating for environments that don't have it
     connection: Connection = op.get_bind()
-    index_exists = connection.scalar("show index from questionnaire_response where key_name = 'idx_created_q_id'")
+    index_exists = connection.scalar(sa.text("show index from questionnaire_response where key_name = 'idx_created_q_id'"))
     if not index_exists:
         op.create_index('idx_created_q_id', 'questionnaire_response', ['questionnaire_id', 'created'], unique=False)
 
