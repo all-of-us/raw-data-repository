@@ -57,7 +57,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -94,7 +94,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -119,7 +119,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -137,7 +137,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -155,7 +155,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -177,7 +177,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                },
                {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                },
             ]
         }
@@ -197,7 +197,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -219,7 +219,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -297,7 +297,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -331,7 +331,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual(participant.id, consent_events[1].participant_id)
         self.assertEqual('Primary Consent', consent_events[1].event_type_name)
         self.assertEqual('activity_date_time', consent_events[1].data_element_name)
-        self.assertEqual("2024-05-20T14:30:00Z", consent_events[1].data_element_value)
+        self.assertEqual("2024-05-20T14:30:00.000Z", consent_events[1].data_element_value)
 
     def test_intake_survey_completion_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()
@@ -347,7 +347,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -370,7 +370,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -404,7 +404,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual(participant.id, survey_events[1].participant_id)
         self.assertEqual('The Basics', survey_events[1].event_type_name)
         self.assertEqual('activity_date_time', survey_events[1].data_element_name)
-        self.assertEqual("2024-05-20T14:30:00Z", survey_events[1].data_element_value)
+        self.assertEqual("2024-05-20T14:30:00.000Z", survey_events[1].data_element_value)
 
     def test_intake_survey_data_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
@@ -436,7 +436,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -463,7 +463,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual('SexAtBirth_Male', survey_events[3].data_element_value)
 
         self.assertEqual('activity_date_time', survey_events[4].data_element_name)
-        self.assertEqual("2024-05-20T14:30:00Z", survey_events[4].data_element_value)
+        self.assertEqual("2024-05-20T14:30:00.000Z", survey_events[4].data_element_value)
 
     def test_intake_profile_updates_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()
@@ -483,7 +483,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -510,7 +510,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -553,7 +553,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual(participant.id, profile_updates_events[2].participant_id)
         self.assertEqual('Profile Data', profile_updates_events[2].event_type_name)
         self.assertEqual('activity_date_time', profile_updates_events[2].data_element_name)
-        self.assertEqual("2024-05-20T14:30:00Z", profile_updates_events[2].data_element_value)
+        self.assertEqual("2024-05-20T14:30:00.000Z", profile_updates_events[2].data_element_value)
 
     def test_intake_withdrawal_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()
@@ -569,7 +569,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -589,7 +589,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -612,7 +612,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -646,7 +646,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual(participant.id, withdrawal_events[1].participant_id)
         self.assertEqual('Withdrawal', withdrawal_events[1].event_type_name)
         self.assertEqual('activity_date_time', withdrawal_events[1].data_element_name)
-        self.assertEqual("2024-05-20T14:30:00Z", withdrawal_events[1].data_element_value)
+        self.assertEqual("2024-05-20T14:30:00.000Z", withdrawal_events[1].data_element_value)
 
     def test_intake_deactivation_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()
@@ -662,7 +662,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -685,7 +685,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -718,7 +718,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual(participant.id, deactivation_events[1].participant_id)
         self.assertEqual('Deactivation', deactivation_events[1].event_type_name)
         self.assertEqual('activity_date_time', deactivation_events[1].data_element_name)
-        self.assertEqual("2024-05-20T14:30:00Z", deactivation_events[1].data_element_value)
+        self.assertEqual("2024-05-20T14:30:00.000Z", deactivation_events[1].data_element_value)
 
     def test_intake_participant_status_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()
@@ -734,7 +734,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -757,7 +757,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -791,7 +791,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual(participant.id, participant_status_events[1].participant_id)
         self.assertEqual('Participant Status', participant_status_events[1].event_type_name)
         self.assertEqual('activity_date_time', participant_status_events[1].data_element_name)
-        self.assertEqual("2024-05-20T14:30:00Z", participant_status_events[1].data_element_value)
+        self.assertEqual("2024-05-20T14:30:00.000Z", participant_status_events[1].data_element_value)
 
     def test_intake_site_attribution_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()
@@ -807,7 +807,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -830,7 +830,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -864,7 +864,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual(participant.id, attribution_events[1].participant_id)
         self.assertEqual('Org Attribution', attribution_events[1].event_type_name)
         self.assertEqual('activity_date_time', attribution_events[1].data_element_name)
-        self.assertEqual("2024-05-20T14:30:00Z", attribution_events[1].data_element_value)
+        self.assertEqual("2024-05-20T14:30:00.000Z", attribution_events[1].data_element_value)
 
     def test_intake_nph_opt_in_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()
@@ -880,7 +880,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -903,7 +903,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -937,7 +937,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual(participant.id, nph_opt_in_events[1].participant_id)
         self.assertEqual('NPH Opt In', nph_opt_in_events[1].event_type_name)
         self.assertEqual('activity_date_time', nph_opt_in_events[1].data_element_name)
-        self.assertEqual("2024-05-20T14:30:00Z", nph_opt_in_events[1].data_element_value)
+        self.assertEqual("2024-05-20T14:30:00.000Z", nph_opt_in_events[1].data_element_value)
 
     def test_intake_account_linkage_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
@@ -998,7 +998,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
@@ -1264,7 +1264,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
                 {
                     "dataElementName": "activity_date_time",
-                    "dataElementValue": "2024-05-20T14:30:00Z"
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
             ]
         }
