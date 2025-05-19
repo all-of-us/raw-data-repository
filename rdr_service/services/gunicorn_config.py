@@ -2,9 +2,13 @@ import multiprocessing
 import os
 import resource
 
+from rdr_service.rdr_thread_worker import RdrThreadWorker
+
+
 _port = 8080 # local dev/testing.
 workers = 1
 threads = 1
+worker_class = RdrThreadWorker
 
 max_requests = 1000
 max_requests_jitter = 50
