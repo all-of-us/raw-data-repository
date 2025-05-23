@@ -151,7 +151,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     os.environ["UNITTEST_FLAG"] = "1"
     configure_unittest_connection_string()
 
-    database = database_factory.get_database(db_name=None)
+    database = database_factory.get_database(db_name='rdr')
     engine = database.get_engine()
 
     with engine.begin():
