@@ -7,7 +7,7 @@ from datetime import datetime
 import logging
 import pytz
 import sqlalchemy.orm.session
-from sqlalchemy import and_, case, insert, or_, text, not_, literal
+from sqlalchemy import and_, case, insert, or_, text, not_, literal, select
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import literal_column
@@ -360,7 +360,7 @@ class CurationExportClass(ToolBase):
         )
 
     def _populate_questionnaire_answers_by_module(self, session, pid_list:List[int], cutoff_date=None):
-        session.execute(text("TRUNCATE TABLE questionnaire_answers_by_module"))
+        session.execute(text("TRUNCATE TABLE cdm.questionnaire_answers_by_module"))
         self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept, QuestionnaireHistory,
                                     QuestionnaireQuestion, QuestionnaireResponseAnswer, CdrExcludedCode])
         column_map = {
@@ -535,17 +535,29 @@ class CurationExportClass(ToolBase):
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.INVALID,
             QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.PROFILE_UPDATE,
 
-            not_(QuestionnaireConcept.codeId.in_(
-                session.query(CdrExcludedCode.codeId).filter(
-                    CdrExcludedCode.codeType == CdrEtlCodeType.MODULE).subquery())),
-            not_(QuestionnaireQuestion.codeId.in_(
-                session.query(CdrExcludedCode.codeId).filter(
-                    CdrExcludedCode.codeType == CdrEtlCodeType.QUESTION).subquery())),
+            not_(
+                QuestionnaireConcept.codeId.in_(
+                    select(CdrExcludedCode.codeId).filter(
+                        CdrExcludedCode.codeType == CdrEtlCodeType.MODULE
+                    )
+                )
+            ),
+            not_(
+                QuestionnaireQuestion.codeId.in_(
+                    select(CdrExcludedCode.codeId).filter(
+                        CdrExcludedCode.codeType == CdrEtlCodeType.QUESTION
+                    )
+                )
+            ),
             or_(
                 QuestionnaireResponseAnswer.valueCodeId.is_(None),
-                not_(QuestionnaireResponseAnswer.valueCodeId.in_(
-                    session.query(CdrExcludedCode.codeId).filter(
-                        CdrExcludedCode.codeType == CdrEtlCodeType.ANSWER).subquery()))
+                not_(
+                    QuestionnaireResponseAnswer.valueCodeId.in_(
+                        select(CdrExcludedCode.codeId).filter(
+                            CdrExcludedCode.codeType == CdrEtlCodeType.ANSWER
+                        )
+                    )
+                )
             ),
             QuestionnaireResponse.participantId.in_(pid_list)
         )
@@ -896,7 +908,7 @@ class CurationExportClass(ToolBase):
         self._initialize_cdm()
 
         # using alembic here to get the database_factory code to set up a connection to the CDM database
-        with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
+        with self.get_session(alembic=True, isolation_level='READ UNCOMMITTED') as session:
             if not self.args.participant_list_file:
                 _logger.debug("Selecting participant IDs")
                 self._select_participant_ids(session, self.args.participant_origin, self.cutoff_date)
@@ -1287,7 +1299,7 @@ class CurationExportClass(ToolBase):
                                 'observ_period'                       AS unit_id,
                                 p.src_id                              AS src_id
                             FROM cdm.temp_obs
-                            JOIN person p on temp_obs.person_id = p.id
+                            JOIN cdm.person p on temp_obs.person_id = p.id
                             GROUP BY
                                 person_id,
                                 observation_end_date
@@ -1351,7 +1363,7 @@ class CurationExportClass(ToolBase):
 
         session.execute(text("Delete from voc.concept WHERE concept_id IN (1585549, 1585565, 1585548)"))
         # Update cdm.src_clean to filter specific surveys.
-        session.execute(text("UPDATE combined_survey_filter SET survey_name = REPLACE(survey_name, '\r', '');"))
+        session.execute(text("UPDATE cdm.combined_survey_filter SET survey_name = REPLACE(survey_name, '\r', '');"))
         session.execute(text("""UPDATE cdm.src_clean
                             INNER JOIN cdm.combined_survey_filter ON
                                 cdm.src_clean.survey_name = cdm.combined_survey_filter.survey_name
@@ -1360,7 +1372,7 @@ class CurationExportClass(ToolBase):
 
         # Update cdm.src_clean to filter specific survey questions.
         session.execute(text(
-            "UPDATE combined_question_filter SET question_ppi_code = REPLACE(question_ppi_code, '\r', '')"
+            "UPDATE cdm.combined_question_filter SET question_ppi_code = REPLACE(question_ppi_code, '\r', '')"
         ))
         session.execute(text("""CREATE INDEX src_cln_p_id ON cdm.src_clean (participant_id);
                            CREATE INDEX src_cln_filter ON cdm.src_clean (filter)"""))
@@ -1473,7 +1485,7 @@ class CurationExportClass(ToolBase):
         session.execute(text("""
                 INSERT INTO cdm.src_person_location
                 SELECT
-                    src_participant.participant_id        AS participant_id,
+                    cdm.src_participant.participant_id        AS participant_id,
                     MAX(m_address_1.value_string)         AS address_1,
                     MAX(m_address_2.value_string)         AS address_2,
                     MAX(m_city.value_string)              AS city,
@@ -1481,10 +1493,10 @@ class CurationExportClass(ToolBase):
                     MAX(m_state.value_ppi_code)           AS state_ppi_code,
                     MAX(RIGHT(m_state.value_ppi_code, 2)) AS state,
                     NULL                                  AS location_id
-                FROM src_participant
+                FROM cdm.src_participant
                   INNER JOIN
                     cdm.src_mapped m_address_1
-                      ON src_participant.participant_id = m_address_1.participant_id
+                      ON cdm.src_participant.participant_id = m_address_1.participant_id
                      AND m_address_1.question_ppi_code = 'PIIAddress_StreetAddress'
                   LEFT JOIN
                     cdm.src_mapped m_address_2
@@ -1507,7 +1519,7 @@ class CurationExportClass(ToolBase):
                      FROM cdm.src_mapped m_address_1_2
                     WHERE m_address_1_2.participant_id = m_address_1.participant_id
                       AND m_address_1_2.question_ppi_code = 'PIIAddress_StreetAddress')
-                GROUP BY src_participant.participant_id;
+                GROUP BY cdm.src_participant.participant_id;
                 """))
 
         session.execute(text("""

@@ -119,8 +119,8 @@ class Database(object):
     def raw_connection(self):
         return self._engine.raw_connection()
 
-    def create_schema(self):
-        Base.metadata.create_all(self._engine)
+    def create_schema(self, connection):
+        Base.metadata.create_all(connection, checkfirst=False)
 
     def create_metrics_schema(self):
         MetricsBase.metadata.create_all(self._engine)

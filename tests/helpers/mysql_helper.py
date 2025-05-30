@@ -151,7 +151,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     os.environ["UNITTEST_FLAG"] = "1"
     configure_unittest_connection_string()
 
-    database = database_factory.get_database(db_name='rdr')
+    database = database_factory.get_database(db_name=None)
     engine = database.get_engine()
 
     with engine.begin():
@@ -194,7 +194,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
                 database.create_cdm_schema()
 
                 connection.execute(text("USE rdr"))
-                database.create_schema()
+                database.create_schema(connection)
 
                 # alter table charset like what db migration do
                 connection.execute(
