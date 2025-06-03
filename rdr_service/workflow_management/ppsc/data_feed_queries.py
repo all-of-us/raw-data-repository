@@ -408,11 +408,11 @@ def insert_awardee_insite_data(
           ),
           profile_pivot AS (
             SELECT participant_id
-              , coalesce(piiname_first,'') AS first_name
+              , COALESCE(piiname_first,'') AS first_name
               , piiname_middle AS middle_name
-              , coalesce(piiname_last,'')  AS last_name
+              , COALESCE(piiname_last,'')  AS last_name
               , streetaddress_piizip AS zip_code
-              , streetaddress_piistate AS state
+              , COALESCE(sm.display, streetaddress_piistate) AS state
               , streetaddress_piicity AS city
               , piiaddress_streetaddress AS street_address
               , piiaddress_streetaddress2 AS street_address2
@@ -442,6 +442,8 @@ def insert_awardee_insite_data(
                       , 'piibirthinformation_birthdate'
                     )
                 )
+            LEFT JOIN `{project}.{src_operational_dataset}.state_mapping` sm
+            ON sm.value = streetaddress_piistate
           ),
           withdrawn_cte AS (
             SELECT participant_id
