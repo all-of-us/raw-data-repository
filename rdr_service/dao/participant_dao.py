@@ -3,6 +3,7 @@ import json
 import logging
 from typing import Collection
 
+import sqlalchemy as sa
 from sqlalchemy.orm import joinedload, Session
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.sql.expression import literal
@@ -569,29 +570,28 @@ class ParticipantDao(UpdatableDao):
     def get_participant_id_mapping(self, is_sql=False):
         with self.session() as session:
             participant_map = (
-                session.query(
+                sa.select(
                     Participant.participantId.label('p_id'),
                     literal('r_id'),
                     Participant.researchId.label('id_value'),
                     Participant.participantOrigin.label('src_id')
                 ).union(
-                    session.query(
+                    sa.select(
                         Participant.participantId.label('p_id'),
                         literal('vibrent_id'),
                         Participant.externalId.label('id_value'),
                         Participant.participantOrigin.label('src_id')
-                    )).filter(
-                    Participant.researchId.isnot(None),
-                    Participant.externalId.isnot(None)
-                ))
+                    )
+                )
+            )
 
             if is_sql:
                 sql = self.literal_sql_from_query(participant_map)
-                sql = sql.replace('param_1', 'id_source')
-                sql = sql.replace('param_2', 'id_source')
+                sql = sql.replace('anon_1', 'id_source')
+                sql = sql.replace('anon_2', 'id_source')
                 return sql
 
-            return participant_map.all()
+            return session.execute(participant_map).all()
 
     def get_pairing_data_for_ids(self, participant_ids: Collection[int]):
         """
