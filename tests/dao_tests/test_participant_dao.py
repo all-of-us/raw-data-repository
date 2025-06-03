@@ -86,7 +86,7 @@ class ParticipantDaoTest(BaseTestCase):
 
     def test_insert_duplicate_participant_id_retry(self):
         p = Participant()
-        with random_ids([1, 2, 3]):  # pid, biobank id, research id
+        with random_ids([1, 2, 3]):
             self.dao.insert(p)
         p2 = Participant()
         time = datetime.datetime(2016, 1, 1)
@@ -677,11 +677,11 @@ class ParticipantDaoTest(BaseTestCase):
                 externalId=self.data_generator.unique_external_id()
             )
 
-        expected_union = "SELECT participant.participant_id AS p_id, 'r_id' AS id_source, " \
+        expected_union = "(SELECT participant.participant_id AS p_id, 'r_id' AS id_source, " \
                          "participant.research_id AS id_value, participant.participant_origin AS src_id "\
                          "\nFROM participant UNION SELECT participant.participant_id AS p_id, 'vibrent_id' " \
                          "AS id_source, participant.external_id AS id_value, participant.participant_origin AS src_id "\
-                         "\nFROM participant"
+                         "\nFROM participant)"
 
         only_sql = self.dao.get_participant_id_mapping(is_sql=True)
         self.assertIn(expected_union, only_sql)

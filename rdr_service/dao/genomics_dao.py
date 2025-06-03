@@ -5708,7 +5708,7 @@ class GenomicRNAReportingDao(GenomicReportingDao):
     def get_reporting_counts(self, from_date):
         with self.session() as session:
             ingested_query = (
-                sqlalchemy.select(
+                session.query(
                     functions.count(distinct(GenomicRRRaw.id)).label('record_count'),
                     functions.count(distinct(self.model_type.id)).label('ingested_count'),
                     (functions.count(distinct(GenomicRRRaw.id)) - functions.count(distinct(
