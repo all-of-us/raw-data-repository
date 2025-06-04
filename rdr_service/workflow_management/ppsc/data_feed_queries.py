@@ -412,7 +412,7 @@ def insert_awardee_insite_data(
               , piiname_middle AS middle_name
               , COALESCE(piiname_last,'')  AS last_name
               , streetaddress_piizip AS zip_code
-              , COALESCE(sm.display, streetaddress_piistate) AS state
+              , COALESCE(sm.state, streetaddress_piistate) AS state
               , streetaddress_piicity AS city
               , piiaddress_streetaddress AS street_address
               , piiaddress_streetaddress2 AS street_address2
@@ -443,7 +443,7 @@ def insert_awardee_insite_data(
                     )
                 )
             LEFT JOIN `{project}.{src_operational_dataset}.state_mapping` sm
-            ON sm.value = streetaddress_piistate
+            ON sm.code_value = streetaddress_piistate
           ),
           withdrawn_cte AS (
             SELECT participant_id
