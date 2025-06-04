@@ -634,7 +634,12 @@ class BaseDao(object):
         :param query: sqlalchemy query object
         :return: string
         """
-        return str(query.statement.compile(
+        if hasattr(query, 'compile'):
+            compile_func = query.compile
+        else:
+            compile_func = query.statement.compile
+
+        return str(compile_func(
             compile_kwargs={"literal_binds": True},
             dialect=mysql.dialect()
         ))
