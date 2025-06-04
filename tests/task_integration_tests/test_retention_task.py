@@ -144,7 +144,7 @@ class TestRetentionTask(BaseTestCase):
         )
 
     def _set_mock_summary(self, summary: ParticipantSummary):
-        self.session_mock.query().get.return_value = summary
+        self.session_mock.get.return_value = summary
 
     def _set_ehr_consent_time(self, consent_time):
         self._ehr_consent_mock.return_value = [DateRange(start=consent_time)]

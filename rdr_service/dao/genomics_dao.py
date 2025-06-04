@@ -2683,7 +2683,7 @@ class GenomicManifestFeedbackDao(UpdatableDao, GenomicDaoMixin):
 
     def get_contamination_remainder_feedback_ids(self):
         with self.session() as session:
-            results = session.query(
+            query = sqlalchemy.select(
                 distinct(GenomicManifestFeedback.id)
             ).join(
                 GenomicFileProcessed,
@@ -2698,7 +2698,8 @@ class GenomicManifestFeedbackDao(UpdatableDao, GenomicDaoMixin):
                 GenomicSetMember.aw2fManifestJobRunID.is_(None),
                 GenomicSetMember.genomicWorkflowState.notin_(self.exclude_states),
                 GenomicManifestFeedback.feedbackManifestFileId.isnot(None),
-            ).all()
+            )
+            results = session.execute(query).scalars().all()
         return results
 
     def get_feedback_records_from_ids(self, ids: list):
