@@ -457,7 +457,7 @@ def insert_awardee_insite_data(
           latest_withdrawn AS (
             SELECT participant_id
             , activity_status AS withdrawal_status
-            , activity_date_time AS withdrawal_time
+            , TIMESTAMP_TRUNC(activity_date_time, SECOND) AS withdrawal_time
             FROM (
               SELECT participant_id
                 , activity_status
@@ -479,7 +479,7 @@ def insert_awardee_insite_data(
           earliest_deactivation AS (
               SELECT participant_id
                 , activity_status AS deactivation_status
-                , activity_date_time AS deactivation_time
+                , TIMESTAMP_TRUNC(activity_date_time, SECOND) AS deactivation_time
               FROM (
                 SELECT participant_id
                   , activity_status
@@ -501,7 +501,7 @@ def insert_awardee_insite_data(
           latest_deceased AS (
             SELECT participant_id
                 , activity_status AS deceased_status
-                , activity_date_time AS deceased_authored
+                , TIMESTAMP_TRUNC(activity_date_time, SECOND) AS deceased_authored
             FROM (
                   SELECT participant_id
                     , activity_status
@@ -535,7 +535,7 @@ def insert_awardee_insite_data(
           ehr_latest_submitted AS (
             SELECT participant_id
                 , activity_status_cleaned AS consent_for_electronic_health_records
-                , activity_date_time AS consent_for_electronic_health_records_authored
+                , TIMESTAMP_TRUNC(activity_date_time, SECOND) AS consent_for_electronic_health_records_authored
             FROM (
               SELECT participant_id
                 , activity_status_cleaned
@@ -575,36 +575,6 @@ def insert_awardee_insite_data(
                 FROM primary_consent_cleaned_values
               )
              WHERE rn = 1
-          ),
-          enrollment_status_cte AS (
-            SELECT participant_id
-                , data_element_name
-                , MAX(CASE WHEN data_element_value IN ('0', '1') THEN data_element_value END) AS data_element_value
-                , MAX(CASE WHEN data_element_value NOT IN ('0', '1') THEN data_element_value END) AS event_authored_time
-            FROM `{project}.{src_operational_dataset}.ppsc_participant_status_event`
-            WHERE LOWER(event_type_name) = 'enrollment status' AND ignore_flag = 0
-              AND LOWER(data_element_name) IN
-                ('registered', 'participant', 'participant_ehr_consent', 'enrolled', 'pmb_eligible', 'core_minus_pm', 'core_participant')
-            GROUP BY 1, 2
-          ),
-          -- Get most recently received payload Enrollment Status event with a value of yes, but without a no after for that field name
-          enrollment_status_recent_yes_ranked AS (
-            SELECT es1.participant_id
-              , es1.data_element_name
-              , ROW_NUMBER() OVER (PARTITION BY es1.participant_id ORDER BY es1.event_authored_time DESC) AS rn
-            FROM enrollment_status_cte es1
-            LEFT JOIN enrollment_status_cte es2
-            ON es1.participant_id = es2.participant_id
-              AND es1.data_element_name = es2.data_element_name
-              AND LOWER(es2.data_element_value) = 'no'
-              AND es1.event_authored_time < es2.event_authored_time
-            WHERE es2.participant_id IS NULL AND LOWER(es1.data_element_value) = '1'
-          ),
-          enrollment_status_recent_yes AS (
-            SELECT participant_id
-              , data_element_name AS enrollment_status
-            FROM enrollment_status_recent_yes_ranked
-            WHERE rn = 1
           ),
           physical_measurement_cte AS (
             SELECT physical_measurements_id
