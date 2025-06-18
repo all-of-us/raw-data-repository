@@ -1295,7 +1295,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         )
         self.assertEqual(
             log_entry.fpk_column,
-            "id"
+            "id",
             "the fpk_column in the requests log entry does not match the expected value",
         )
 
