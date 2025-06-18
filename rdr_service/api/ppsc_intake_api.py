@@ -11,9 +11,21 @@ from rdr_service.dao.ppsc_dao import PPSCDefaultBaseDao, PPSCNphOptEventInDao
 from rdr_service.model.ppsc import (
     ParticipantEventActivity, Activity,
     ConsentEvent, ProfileUpdatesEvent, SurveyCompletionEvent, WithdrawalEvent, DeactivationEvent,
-    AccountLinkageEvent, ParticipantStatusEvent, AttributionEvent
+    AccountLinkageEvent, ParticipantStatusEvent, AttributionEvent, NPHOptInEvent
 )
 
+
+PPSC_INTAKE_ACTIVITIES_MODELS = {
+    "Consent": ConsentEvent(),
+    "Survey Completion": SurveyCompletionEvent(),
+    "Profile Updates": ProfileUpdatesEvent(),
+    "Withdrawal": WithdrawalEvent(),
+    "Deactivation": DeactivationEvent(),
+    "Participant Status": ParticipantStatusEvent(),
+    "Attribution": AttributionEvent(),
+    "NPH Opt In": NPHOptInEvent(),
+    "Account Linkage": AccountLinkageEvent()
+}
 
 class PPSCIntakeAPI(BaseApi):
     def __init__(self):
@@ -35,10 +47,16 @@ class PPSCIntakeAPI(BaseApi):
 
     @auth_required([PPSC, RDR])
     def post(self):
-        log_api_request(log=request.log_record)
+        req_data = self.get_request_json()
+        try:
+            model = PPSC_INTAKE_ACTIVITIES_MODELS[req_data['activity']]
+        except ValueError:
+            raise BadRequest(f'Invalid Intake API Payload: Invalid Activity: {req_data["activity"]}')
+
+        log_api_request(log=request.log_record, model_obj=model)
 
         # Validate
-        self.validate_payload(req_data=self.get_request_json())
+        self.validate_payload(req_data=req_data)
 
         # Route to correct activity and insert events
         inserted_event = self.handle_event_insert(

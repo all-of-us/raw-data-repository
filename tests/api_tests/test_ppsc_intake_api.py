@@ -10,6 +10,7 @@ from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.ppsc import (
     Activity, ParticipantEventActivity, ConsentEvent, SurveyCompletionEvent, ProfileUpdatesEvent,
     WithdrawalEvent, DeactivationEvent, ParticipantStatusEvent, AttributionEvent, AccountLinkageEvent)
+from rdr_service.model.requests_log import RequestsLog
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -1272,6 +1273,31 @@ class PPSCIntakeAPITest(BaseTestCase):
         test_time = datetime(2024, 6, 25, 12, 1)
         with clock.FakeClock(test_time):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+    def test_requests_log_generation(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
+
+        # checking for the log in the Requests Log and verifying the fpk info
+        log_entry = (
+            self.session.query(RequestsLog).order_by(RequestsLog.id.desc()).first()
+        )
+        self.assertIsNotNone(log_entry, "No log entry found in the requests log table")
+        self.assertEqual(
+            log_entry.participantId,
+            100000000,
+            "the participant_id in the requests log entry does not match the expected value",
+        )
+        self.assertEqual(
+            log_entry.fpk_table,
+            "consent_event",
+            "the fpk_table in the requests log entry does not match the expected value",
+        )
+        self.assertEqual(
+            log_entry.fpk_column,
+            "id"
+            "the fpk_column in the requests log entry does not match the expected value",
+        )
 
     def tearDown(self):
         super().tearDown()
