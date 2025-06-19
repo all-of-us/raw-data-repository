@@ -70,6 +70,10 @@ def log_api_request(log: RequestsLog = None, model_obj=None):
                     log.fpk_id = int(v)
                 else:
                     log.fpk_alt_id = str(v).strip()
+    elif request.endpoint == 'ppsc.intake':
+        participant_id = log.resource.get('participantId')
+        if participant_id:
+            log.participantId = int(participant_id.split('P')[1])
 
     if model_obj:
         try:

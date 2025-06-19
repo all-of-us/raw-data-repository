@@ -35,10 +35,16 @@ class PPSCIntakeAPI(BaseApi):
 
     @auth_required([PPSC, RDR])
     def post(self):
-        log_api_request(log=request.log_record)
+        req_data = self.get_request_json()
 
         # Validate
-        self.validate_payload(req_data=self.get_request_json())
+        self.validate_payload(req_data=req_data)
+
+        # get correct [Activity]Event DAO
+        dao_str = f"{req_data['activity'].lower().replace(' ', '_')}_event_dao"
+        activity_event_dao = self.__dict__.get(dao_str)
+        model = activity_event_dao.model_type
+        log_api_request(log=request.log_record, model_obj=model)
 
         # Route to correct activity and insert events
         inserted_event = self.handle_event_insert(
