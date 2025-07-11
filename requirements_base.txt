@@ -20,7 +20,7 @@ faker==4.1.0              # via -r requirements.in
 fhirclient==3.2.0         # via -r requirements.in
 flask-basicauth==0.2.0    # via locust
 flask-restful==0.3.10      # via -r requirements.in
-flask==3.0.0              # via -r requirements.in, flask-basicauth, flask-restful, locust
+flask==3.1.1              # via -r requirements.in, flask-basicauth, flask-restful, locust
 flask-limiter==1.4
 gevent==25.5.1            # via geventhttpclient, locust
 geventhttpclient==2.0.2   # via locust
