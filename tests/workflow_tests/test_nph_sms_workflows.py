@@ -2,6 +2,7 @@ import csv
 import datetime
 import os
 import time
+import logging
 from unittest import mock
 
 from rdr_service import api_util, clock
@@ -181,6 +182,51 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(ingested_records[0].shipment_storage_temperature, "-80C")
         self.assertEqual(ingested_records[0].sample_comments, "Arrived amibent")
         self.assertEqual(ingested_records[0].age, "32")
+
+    def test_duke_n0_ingestion(self):
+
+        # Ingestion Test File - Biobank Duke N0 manifest
+        self.create_cloud_csv("test_duke_n0.csv", "test_duke_n0_2023-4-20.csv")
+
+        ingestion_data = {
+            "job": "FILE_INGESTION",
+            "file_type": "N0",
+            "file_path": f"{self.test_bucket}/test_duke_n0_2023-4-20.csv"
+        }
+        from rdr_service.resource import main as resource_main
+        self.send_post(
+            local_path='NphSmsIngestionTaskApi',
+            request_data=ingestion_data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        n0_dao = SmsN0Dao()
+        ingested_records = n0_dao.get_all()
+        self.assertEqual(1, len(ingested_records))
+
+        # Test Data inserted correctly
+        self.assertEqual(ingested_records[0].lims_sample_id, "00000000000")
+        self.assertEqual(ingested_records[0].matrix_id, "MC8888888888")
+        self.assertEqual(ingested_records[0].biobank_id, "N222222222")
+        self.assertEqual(ingested_records[0].sample_id, "2222222222")
+        self.assertEqual(ingested_records[0].study, None)
+        self.assertEqual(ingested_records[0].visit, None)
+        self.assertEqual(ingested_records[0].timepoint, None)
+        self.assertEqual(ingested_records[0].collection_site, None)
+        self.assertEqual(ingested_records[0].collection_date_time, api_util.parse_date("2023-04-06T03:05:55"))
+        self.assertEqual(ingested_records[0].sample_type, None)
+        self.assertEqual(ingested_records[0].additive_treatment, "EDTA")
+        self.assertEqual(ingested_records[0].quantity_ml, "1")
+        self.assertEqual(ingested_records[0].manufacturer_lot, "256837")
+        self.assertEqual(ingested_records[0].well_box_position, "D8")
+        self.assertEqual(ingested_records[0].storage_unit_id, "SU-##########")
+        self.assertEqual(ingested_records[0].package_id, "PKG-YYMM-######")
+        self.assertEqual(ingested_records[0].tracking_number, "xxxxxxxxxxxx")
+        self.assertEqual(ingested_records[0].shipment_storage_temperature, "-80C")
+        self.assertEqual(ingested_records[0].sample_comments, "Arrived amibent")
+        self.assertEqual(ingested_records[0].age, "32")
+        self.assertEqual(ingested_records[0].lims_parent_sample_id, "12345678")
 
     @staticmethod
     def create_data_n1_mc1_generation(destination='UNC_META'):
