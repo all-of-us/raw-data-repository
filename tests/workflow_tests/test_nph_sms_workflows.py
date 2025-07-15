@@ -418,6 +418,58 @@ class NphSmsWorkflowsTest(BaseTestCase):
             dose_time="2024-04-08T15:11:00Z",
         )
 
+    @staticmethod
+    def create_data_duke_n1_mc1_generation(destination="DUKE"):
+        sms_datagen = NphSmsDataGenerator()
+        nph_datagen = NphDataGenerator()
+        nph_pid, biobank_id = 1_000_000_000, 11_000_000_002
+
+        nph_datagen.create_database_participant(id=nph_pid, biobank_id=biobank_id)
+
+        sms_datagen.create_database_ordered_sample(
+            id=5,
+            nph_sample_id=10004,
+        )
+        sms_datagen.create_database_ordered_sample(
+            nph_sample_id=10005,
+            aliquot_id=4,
+            parent_sample_id=5
+        )
+        sms_datagen.create_database_sms_sample(
+            ethnicity="test",
+            race="test",
+            bmi="28",
+            diet="LMT",
+            sex_at_birth="M",
+            sample_identifier="test",
+            sample_id=4,
+            lims_sample_id="000200",
+            destination=destination,
+            body_weight_kg="123.4",
+        )
+        sms_datagen.create_database_sms_n0(
+            sample_id=4,
+            matrix_id=1111,
+            package_id="test",
+            storage_unit_id="test",
+            file_path=f"{destination}_n0_test.csv",
+            well_box_position="A5",
+            tracking_number="test",
+            sample_comments="test",
+            study="test",
+            visit="1",
+            timepoint="LMT",
+            collection_site="UNC",
+            collection_date_time="2023-04-20T15:54:33",
+            sample_type="Urine",
+            additive_treatment="test-treatment",
+            quantity_ml="120",
+            manufacturer_lot='256837',
+            age="22",
+            biobank_id=f"T{biobank_id}",
+            lims_parent_sample_id="12345678",
+        )
+
     def test_n1_mc1_generation(self):
         self.create_data_n1_mc1_generation()
         sms_datagen = NphSmsDataGenerator()
@@ -548,6 +600,47 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[0].dlw_dose_batch, "12345678")
         self.assertEqual(manifest_records[0].dlw_dose_date_time, "2024-04-08 15:11:00")
         self.assertEqual(manifest_records[0].dlw_dose_grams, "456")
+
+    def test_n1_mc1_duke_generation(self):
+        self.create_data_duke_n1_mc1_generation()
+
+        generation_data = {
+            "job": "FILE_GENERATION",
+            "file_type": "N1_MC1",
+            "recipient": "DUKE",
+            "package_id": "test"
+        }
+        with clock.FakeClock(self.TIME_1):
+            from rdr_service.resource import main as resource_main
+            self.send_post(
+                local_path='NphSmsGenerationTaskApi',
+                request_data=generation_data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+        duke_csv_path = "test-bucket-unc-meta/n1_manifests/DUKE_n1_2023-04-25T15:13:00.000000.txt"
+
+        with open_cloud_file(duke_csv_path, mode='r') as cloud_file:
+            csv_reader = csv.DictReader(cloud_file, delimiter='\t')
+            csv_rows = list(csv_reader)
+
+        self.assertEqual(csv_rows[0]['sample_id'], '4')
+        self.assertEqual(csv_rows[0]['matrix_id'], "1111")
+        self.assertEqual(csv_rows[0]['lims_parent_sample_id', "12345678"])
+
+        n1_dao = SmsN1Mc1Dao()
+        manifest_records = n1_dao.get_all()
+        self.assertEqual(manifest_records[0].file_path, duke_csv_path)
+        self.assertEqual(manifest_records[0].sample_id, "4")
+        self.assertEqual(manifest_records[0].matrix_id, "1111")
+        self.assertEqual(manifest_records[0].bmi, "28")
+        self.assertEqual(manifest_records[0].diet, "LMT")
+        self.assertEqual(manifest_records[0].collection_site, "UNC")
+        self.assertEqual(manifest_records[0].manufacturer_lot, '256837')
+        self.assertEqual(manifest_records[0].collection_date_time, api_util.parse_date("2023-04-20T15:54:33"))
+        self.assertEqual(manifest_records[0].body_weight_kg, "123.4")
+        self.assertEqual(manifest_records[0].lims_parent_sample_id, "12345678")
 
     @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
     def test_n1_mc1_raises_error_on_data_validation_failure(self, mock_send_message_to_webhook):
