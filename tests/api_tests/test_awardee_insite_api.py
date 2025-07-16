@@ -8,7 +8,7 @@ from tests.helpers.unittest_base import BaseTestCase
 from rdr_service import config
 from rdr_service.clock import FakeClock
 from rdr_service.dao.awardee_insite_dao import AwardeeInSiteDao
-from rdr_service.api_util import HEALTHPRO, AWARDEE, RDR
+from rdr_service.api_util import HEALTHPRO, AWARDEE, RDR, PPSC
 from rdr_service.model.awardee_insite import AwardeeInSite
 
 
@@ -138,6 +138,24 @@ class AwardeeInSiteApiTest(BaseTestCase):
     def test_rdr_requires_awardee_parameter(self):
         """RDR must pass awardee parameter to call the API"""
         self.overwrite_test_user_awardee(roles=[RDR])
+        response = self.send_get("AwardeeInSite?awardee=PITT")
+        results = response.get("entry")
+        results_pid = [
+            int(ele["resource"]["participantId"].replace("P", "")) for ele in results
+        ]
+        self.assertTrue(response is not None)
+        self.assertEqual(len(results), len(self.pitt_org_pids))
+        self.assertEqual(results_pid, self.pitt_org_pids)
+
+        # Not passing in an awardee query param to the endpoint
+        response = self.send_get(
+            "AwardeeInSite", expected_status=http.client.BAD_REQUEST
+        )
+        self.assertTrue(response.status_code == 400)
+
+    def test_ppsc_requires_awardee_parameter(self):
+        """PPSC must pass awardee parameter to call the API"""
+        self.overwrite_test_user_awardee(roles=[PPSC])
         response = self.send_get("AwardeeInSite?awardee=PITT")
         results = response.get("entry")
         results_pid = [
