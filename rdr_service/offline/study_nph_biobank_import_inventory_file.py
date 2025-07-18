@@ -84,7 +84,9 @@ def _convert_csv_row_to_stored_sample_object(csv_obj: Dict[str, Union[str, int]]
         "specimen_volume_ul":
             csv_obj.get("SPECIMEN_VOLUME_UL") if csv_obj.get("SPECIMEN_VOLUME_UL") != '' else None,
         "freeze_thaw_count":
-            csv_obj.get("FREEZE_THAW_COUNT") if csv_obj.get("FREEZE_THAW_COUNT") != '' else None
+            csv_obj.get("FREEZE_THAW_COUNT") if csv_obj.get("FREEZE_THAW_COUNT") != '' else None,
+        "lims_parent_sample_id":
+            csv_obj.get("LIMS_PARENT_SAMPLE_ID") if csv_obj.get("LIMS_PARENT_SAMPLE_ID") != '' else None
     }
     return StoredSample(**stored_sample_obj)
 

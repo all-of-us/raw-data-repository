@@ -248,6 +248,14 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                         DlwDosage.ignore_flag == 0,
                     )
                 )
+            elif 'duke' in kwargs.get('recipient').lower():
+                query = query.add_columns(
+                    SmsN0.lims_parent_sample_id,
+                    func.json_extract(OrderedSample.supplemental_fields, "$.bowelMovement").label('bowel_movement'),
+                    func.json_extract(
+                        OrderedSample.supplemental_fields, '$.bowelMovementQuality'
+                    ).label('bowel_movement_quality')
+                )
             else:
                 query = query.add_columns(
                     func.json_extract(OrderedSample.supplemental_fields, "$.bowelMovement").label('bowel_movement'),
