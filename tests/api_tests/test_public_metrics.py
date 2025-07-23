@@ -8,6 +8,7 @@ from rdr_service.concepts import Concept
 from rdr_service.dao.calendar_dao import CalendarDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao
 from rdr_service.researchers_offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -24,7 +25,7 @@ from rdr_service.participant_enums import (
     OrganizationType,
     TEST_HPO_ID,
     TEST_HPO_NAME,
-    make_primary_provider_link_for_name,
+    make_primary_provider_link_for_name, MetricsCacheType,
 )
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.mysql_helper_data import PITT_HPO_ID
@@ -2471,6 +2472,10 @@ class PublicMetricsApiTest(BaseTestCase):
                 [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
                 race_v2_results_unst, race_v2_results_pitt, race_v2_results_az]
 
+    def get_api_mock_data(self, start_date, end_date, hpo_ids=None, participant_origins=None):
+        test_dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        return test_dao.get_active_buckets(start_date, end_date, hpo_ids, participant_origins)
+
     @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
                 test_job_time)
     @mock.patch('google.cloud.bigquery.Client')
@@ -2483,18 +2488,18 @@ class PublicMetricsApiTest(BaseTestCase):
         self.assertEqual(big_query().query.call_count, 72)
 
         qs = "&stratification=ENROLLMENT_STATUS" "&startDate=2018-01-01" "&endDate=2018-01-08"
-
+        big_query().query.side_effect = [self.get_api_mock_data('2018-01-01', '2018-01-08')]
         results = self.send_get("PublicMetrics", query_string=qs)
-        self.assertIn({"date": "2018-01-01", "metrics": {"consented": 0, "core": 0, "registered": 3}}, results)
-        self.assertIn({"date": "2018-01-02", "metrics": {"consented": 1, "core": 0, "registered": 2}}, results)
-        self.assertIn({"date": "2018-01-03", "metrics": {"consented": 0, "core": 1, "registered": 2}}, results)
+        self.assertIn({"date": "2018-01-01", "metrics": {"core": 0, "registered": 1}}, results)
+        self.assertIn({"date": "2018-01-02", "metrics": {"core": 0, "registered": 1}}, results)
+        self.assertIn({"date": "2018-01-03", "metrics": {"core": 1, "registered": 1}}, results)
 
         qs = "&stratification=ENROLLMENT_STATUS" "&startDate=2018-01-01" "&endDate=2018-01-08" "&awardee=AZ_TUCSON"
-
+        big_query().query.side_effect = [self.get_api_mock_data('2018-01-01', '2018-01-08', [4])]
         results = self.send_get("PublicMetrics", query_string=qs)
-        self.assertIn({"date": "2018-01-01", "metrics": {"consented": 0, "core": 0, "registered": 2}}, results)
-        self.assertIn({"date": "2018-01-02", "metrics": {"consented": 1, "core": 0, "registered": 1}}, results)
-        self.assertIn({"date": "2018-01-03", "metrics": {"consented": 0, "core": 1, "registered": 1}}, results)
+        self.assertIn({"date": "2018-01-01", "metrics": {"core": 0, "registered": 0}}, results)
+        self.assertIn({"date": "2018-01-02", "metrics": {"core": 0, "registered": 0}}, results)
+        self.assertIn({"date": "2018-01-03", "metrics": {"core": 1, "registered": 0}}, results)
 
     @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
                 test_job_time)
