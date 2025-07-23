@@ -2490,16 +2490,16 @@ class PublicMetricsApiTest(BaseTestCase):
         qs = "&stratification=ENROLLMENT_STATUS" "&startDate=2018-01-01" "&endDate=2018-01-08"
         big_query().query.side_effect = [self.get_api_mock_data('2018-01-01', '2018-01-08')]
         results = self.send_get("PublicMetrics", query_string=qs)
-        self.assertIn({"date": "2018-01-01", "metrics": {"consented": 0, "core": 0, "registered": 1}}, results)
-        self.assertIn({"date": "2018-01-02", "metrics": {"consented": 1, "core": 0, "registered": 1}}, results)
-        self.assertIn({"date": "2018-01-03", "metrics": {"consented": 0, "core": 1, "registered": 1}}, results)
+        self.assertIn({"date": "2018-01-01", "metrics": {"core": 0, "registered": 1}}, results)
+        self.assertIn({"date": "2018-01-02", "metrics": {"core": 0, "registered": 1}}, results)
+        self.assertIn({"date": "2018-01-03", "metrics": {"core": 1, "registered": 1}}, results)
 
         qs = "&stratification=ENROLLMENT_STATUS" "&startDate=2018-01-01" "&endDate=2018-01-08" "&awardee=AZ_TUCSON"
         big_query().query.side_effect = [self.get_api_mock_data('2018-01-01', '2018-01-08', [4])]
         results = self.send_get("PublicMetrics", query_string=qs)
-        self.assertIn({"date": "2018-01-01", "metrics": {"consented": 0, "core": 0, "registered": 0}}, results)
-        self.assertIn({"date": "2018-01-02", "metrics": {"consented": 1, "core": 0, "registered": 0}}, results)
-        self.assertIn({"date": "2018-01-03", "metrics": {"consented": 0, "core": 1, "registered": 0}}, results)
+        self.assertIn({"date": "2018-01-01", "metrics": {"core": 0, "registered": 0}}, results)
+        self.assertIn({"date": "2018-01-02", "metrics": {"core": 0, "registered": 0}}, results)
+        self.assertIn({"date": "2018-01-03", "metrics": {"core": 1, "registered": 0}}, results)
 
     @mock.patch('rdr_service.dao.participant_counts_over_time_service.ParticipantCountsOverTimeService.JOB_TIME',
                 test_job_time)

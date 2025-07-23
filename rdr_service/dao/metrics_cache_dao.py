@@ -360,7 +360,6 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
                 'metrics': {
                     # research hub still use 3 tiers status
                     'registered': int(record.registeredCount),
-                    'consented': int(record.consentedCount),
                     'core': int(record.coreCount)
                 }
             }
