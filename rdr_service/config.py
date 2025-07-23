@@ -308,6 +308,7 @@ PUBLIC_METRICS_CALENDAR_TABLE = "public_metrics_calendar_table"
 PUBLIC_METRICS_CODE_TABLE = "public_metrics_code_table"
 PUBLIC_METRICS_GENDER_ANSWERS_TABLE = "public_metrics_gender_answers_table"
 PUBLIC_METRICS_RACE_ANSWERS_TABLE = "public_metrics_race_answers_table"
+PUBLIC_METRICS_PARTICIPANT_STATUS_EVENT_TABLE = "public_metrics_participant_status_event_table"
 
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}

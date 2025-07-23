@@ -1,6 +1,7 @@
 import datetime
 import json
 
+from google.cloud import bigquery
 import sqlalchemy
 from sqlalchemy import and_, desc, func, or_, distinct
 from typing import List, Dict
@@ -39,6 +40,8 @@ TEMP_TABLE_QUERY = """
   SELECT ps.participant_id,
     p.sign_up_time,
     p.participant_origin,
+    p.is_test_participant,
+    p.is_ghost_id,
     ps.hpo_id,
     ps.date_of_birth,
     ps.primary_language,
@@ -87,6 +90,8 @@ gender_answers_table = config.getSettingJson(config.PUBLIC_METRICS_GENDER_ANSWER
                                              'rdr_operational_datastream.rdr_participant_gender_answers')
 race_answers_table = config.getSettingJson(config.PUBLIC_METRICS_RACE_ANSWERS_TABLE,
                                            'rdr_operational_datastream.rdr_participant_race_answers')
+participant_status_event_table = config.getSettingJson(config.PUBLIC_METRICS_PARTICIPANT_STATUS_EVENT_TABLE,
+                                           'rdr_operational_datastream.ppsc_participant_status_event')
 
 class MetricsDaoMixin:
     def insert_bulk(self, batch: List[Dict]) -> None:
@@ -145,6 +150,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
         super(MetricsEnrollmentStatusCacheDao, self).__init__(MetricsEnrollmentStatusCache)
         self.version = version
         self.table_name = MetricsEnrollmentStatusCache.__tablename__
+        self.client = bigquery.Client(project=config.GAE_PROJECT)
         try:
             self.cache_type = MetricsCacheType(str(cache_type))
         except TypeError:
@@ -213,9 +219,85 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
 
                 return query.group_by(MetricsEnrollmentStatusCache.date, MetricsEnrollmentStatusCache.hpoName).all()
 
+    def get_enrollment_status_counts(self, start_date=None, end_date=None, hpo_ids=None):
+        bq_project = self.client.project
+        hpo_id_params = ""
+
+        if hpo_ids:
+            hpos = ",".join(str(item) for item in hpo_ids)
+            hpo_id_params = f"AND results.hpo_id IN ({hpos})"
+
+        sql = """
+                SELECT DISTINCT
+                    c.day AS date,
+                    IFNULL((
+                        SELECT SUM(results.enrollment_count)
+                        FROM (
+                            SELECT
+                                DATE(pse.data_element_value) AS registered_date,
+                                p.hpo_id AS hpo_id,
+                                COUNT(DISTINCT pse.participant_id) AS enrollment_count
+                            FROM (
+                                SELECT
+                                    participant_id,
+                                    MIN(data_element_value) AS data_element_value
+                                FROM `{participant_status_event}` pse
+                                WHERE pse.data_element_name = 'registered_date_time'
+                                    AND pse.event_type_name = 'Enrollment Status'
+                                    AND pse.data_element_value IS NOT NULL
+                                    AND pse.ignore_flag = 0
+                                GROUP BY participant_id
+                            ) AS pse
+                            LEFT JOIN `{participant}` p ON p.participant_id = pse.participant_id
+                            WHERE (p.is_test_participant != 1 OR p.is_test_participant IS NULL)
+                                AND (p.is_ghost_id != 1 OR p.is_ghost_id IS NULL)
+                            GROUP BY DATE(pse.data_element_value), p.hpo_id
+                        ) AS results
+                        WHERE registered_date IS NOT NULL AND c.day>=DATE(registered_date)
+                        {hpo_filter}
+                    ),0) AS registeredCount,
+                    IFNULL((
+                        SELECT SUM(results.enrollment_count)
+                        FROM (
+                            SELECT
+                                DATE(pse.data_element_value) AS core_date,
+                                p.hpo_id AS hpo_id,
+                                COUNT(DISTINCT pse.participant_id) AS enrollment_count
+                            FROM `{participant_status_event}` pse
+                            LEFT JOIN `{participant}` p ON p.participant_id = pse.participant_id
+                            WHERE pse.data_element_name = 'core_participant_date_time'
+                                AND pse.event_type_name = 'Enrollment Status'
+                                AND pse.data_element_value IS NOT NULL
+                                AND pse.ignore_flag = 0
+                                AND (p.is_test_participant != 1 OR p.is_test_participant IS NULL)
+                                AND (p.is_ghost_id != 1 OR p.is_ghost_id IS NULL)
+                            GROUP BY DATE(pse.data_element_value), p.hpo_id
+                        ) AS results
+                        WHERE core_date IS NOT NULL AND c.day>=DATE(core_date)
+                        {hpo_filter}
+                    ),0) AS coreCount,
+                FROM `{calendar}` c WHERE c.day BETWEEN @start_date AND @end_date
+                GROUP BY c.day
+                ;
+                """.format(calendar=f"{bq_project}.{calendar_table}", participant=f"{bq_project}.{participant_table}",
+                           participant_status_event=f"{bq_project}.{participant_status_event_table}",
+                           hpo_filter=hpo_id_params)
+
+        params = [
+            bigquery.ScalarQueryParameter("start_date", "DATE", start_date),
+            bigquery.ScalarQueryParameter("end_date", "DATE", end_date),
+        ]
+
+        job_config = bigquery.QueryJobConfig(query_parameters=params)
+        results = self.client.query(sql, job_config)
+        return results
+
     def get_latest_version_from_cache(self, start_date, end_date, hpo_ids=None,
                                       enrollment_statuses=None, participant_origins=None):
-        buckets = self.get_active_buckets(start_date, end_date, hpo_ids, participant_origins)
+        buckets = self.get_enrollment_status_counts(start_date, end_date, hpo_ids)
+        if participant_origins:
+            buckets = self.get_active_buckets(start_date, end_date, hpo_ids, participant_origins)
+
         if buckets is None:
             return []
         operation_funcs = {
@@ -277,7 +359,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
                 'date': record.date.isoformat(),
                 'metrics': {
                     # research hub still use 3 tiers status
-                    'registered': int(record.registeredCount) + int(record.participantCount),
+                    'registered': int(record.registeredCount),
                     'consented': int(record.consentedCount),
                     'core': int(record.coreCount)
                 }
@@ -361,15 +443,28 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
                   SELECT SUM(results.enrollment_count)
                   FROM
                   (
-                    SELECT DATE(ps.sign_up_time) AS sign_up_time,
-                           DATE(ps.consent_for_study_enrollment_authored) AS consent_for_study_enrollment_authored,
-                           ps.participant_origin,
-                           count(*) enrollment_count
-                    FROM temp_table ps
-                    GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_authored), ps.participant_origin
+                    SELECT
+                        DATE(pse.data_element_value) AS registered_date,
+                        ps.participant_origin AS participant_origin,
+                        COUNT(DISTINCT pse.participant_id) AS enrollment_count
+                    FROM (
+                        SELECT
+                            participant_id,
+                            MIN(data_element_value) AS data_element_value
+                        FROM `{participant_status_event}` pse
+                        WHERE pse.data_element_name = 'registered_date_time'
+                            AND pse.event_type_name = 'Enrollment Status'
+                            AND pse.data_element_value IS NOT NULL
+                            AND pse.ignore_flag = 0
+                        GROUP BY participant_id
+                    ) AS pse
+                    LEFT JOIN temp_table ps ON ps.participant_id = pse.participant_id
+                    WHERE (ps.is_test_participant != 1 OR ps.is_test_participant IS NULL)
+                        AND (ps.is_ghost_id != 1 OR ps.is_ghost_id IS NULL)
+                    GROUP BY DATE(pse.data_element_value), ps.participant_origin
                   ) AS results
-                  WHERE c.day>=DATE(sign_up_time) AND (consent_for_study_enrollment_authored IS NULL OR DATE(consent_for_study_enrollment_authored)>c.day)
-                  and results.participant_origin = d.participant_origin
+                  WHERE registered_date IS NOT NULL AND c.day>=DATE(registered_date)
+                  AND results.participant_origin = d.participant_origin
                 ),0) AS registeredCount,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
@@ -403,19 +498,30 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
                   SELECT SUM(results.enrollment_count)
                   FROM
                   (
-                    SELECT DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time) AS enrollment_status_participant_plus_ehr_v_3_2_time,
-                           ps.participant_origin, count(*) enrollment_count
-                    FROM temp_table ps
-                    GROUP BY DATE(ps.enrollment_status_participant_plus_ehr_v_3_2_time), ps.participant_origin
+                    SELECT
+                        DATE(pse.data_element_value) AS core_date,
+                        ps.participant_origin AS participant_origin,
+                        COUNT(DISTINCT pse.participant_id) AS enrollment_count
+                    FROM `{participant_status_event}` pse
+                    LEFT JOIN temp_table ps ON ps.participant_id = pse.participant_id
+                    WHERE pse.data_element_name = 'core_participant_date_time'
+                        AND pse.event_type_name = 'Enrollment Status'
+                        AND pse.data_element_value IS NOT NULL
+                        AND pse.ignore_flag = 0
+                        AND ps.is_test_participant != 1
+                        AND (ps.is_test_participant != 1 OR ps.is_test_participant IS NULL)
+                        AND (ps.is_ghost_id != 1 OR ps.is_ghost_id IS NULL)
+                    GROUP BY DATE(pse.data_element_value), ps.participant_origin
                   ) AS results
-                  WHERE enrollment_status_participant_plus_ehr_v_3_2_time IS NOT NULL AND day>=DATE(enrollment_status_participant_plus_ehr_v_3_2_time)
-                  and results.participant_origin = d.participant_origin
+                  WHERE core_date IS NOT NULL AND day>=DATE(core_date)
+                  AND results.participant_origin = d.participant_origin
                 ),0) AS coreCount,
                 d.participant_origin AS participantOrigin
               FROM `{calendar}` c, participant_origin d
               WHERE c.day BETWEEN @start_date AND @end_date
               ;
-        """.format(calendar=f"{bq_project}.{calendar_table}", hpo=f"{bq_project}.{hpo_table}")
+        """.format(calendar=f"{bq_project}.{calendar_table}", hpo=f"{bq_project}.{hpo_table}",
+                   participant_status_event=f"{bq_project}.{participant_status_event_table}")
 
         return [sql]
 
