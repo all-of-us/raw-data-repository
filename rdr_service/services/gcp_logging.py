@@ -22,8 +22,6 @@ from google.protobuf import json_format as gcp_json_format, any_pb2 as gcp_any_p
 
 from werkzeug.exceptions import HTTPException
 
-# Do not remove this import.
-from rdr_service.services import gcp_request_log_pb2  # pylint: disable=unused-import
 from rdr_service.config import GAE_PROJECT
 
 # https://pypi.org/project/google-cloud-logging/
