@@ -278,6 +278,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
                     ),0) AS coreCount,
                 FROM `{calendar}` c WHERE c.day BETWEEN @start_date AND @end_date
                 GROUP BY c.day
+                ORDER BY c.day ASC
                 ;
                 """.format(calendar=f"{bq_project}.{calendar_table}", participant=f"{bq_project}.{participant_table}",
                            participant_status_event=f"{bq_project}.{participant_status_event_table}",
