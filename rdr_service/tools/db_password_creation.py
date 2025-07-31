@@ -18,13 +18,27 @@ from typing import List
 
 import sys
 
-from python_easy_json import JSONObject
+from rdr_service.main_util import configure_logging, get_parser
+from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, RdrEnvironment
+from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
+    gcp_application_default_creds_exist, gcp_restart_instances, gcp_delete_versions
+
 
 from aou_cloud.services.gcp_cloud_tasks import GCPCloudTask, Queue
 from aou_cloud.tools.config_editor import DS_DB_CONFIG_KEY, ConfigDeployClass, ConfigEditClass
-from services.mixins.rdr_mysql_connection_mixin import RDRMySQLConnectionMixin
-from tools import GCPProcessContext, GCPEnvConfigObject
 
+
+QUEUES_TO_PAUSE = ["default",
+"exposomics",
+"genomic-generate-manifest",
+"genomics",
+"genomics-data-files",
+"message-broker-tasks",
+"metrics-pipeline"	,
+"nph"	,
+"resource-rebuild"	,
+"resource-tasks",
+"biobank-samples-pipeline"]
 
 _logger = logging.getLogger("pdr")
 
@@ -34,7 +48,7 @@ tool_desc = "update database passwords for key operational user ids"
 tool_cat = "Data Tools"
 
 
-class UpdateDatabasePasswordsTool(RDRMySQLConnectionMixin):
+class UpdateDatabasePasswordsTool():
     """
     Automation to reset database passwords for key user accounts
     """
@@ -46,13 +60,13 @@ class UpdateDatabasePasswordsTool(RDRMySQLConnectionMixin):
     config_edit_service: ConfigEditClass = None
     config_deploy_service: ConfigDeployClass = None
 
-    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+    def __init__(self, args):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
         """
-        self.args = args
-        self.gcp_env = gcp_env
+        self.args = 'ds'
+
 
     def _pause_queues_and_wait(self, queues: List[Queue]):
         """
@@ -152,21 +166,15 @@ class UpdateDatabasePasswordsTool(RDRMySQLConnectionMixin):
         :param new_password: New password for the user
         """
         # Capaxcu5MMRdn8sS
-        mysql_conn = self.connect_mysql_instance(self.gcp_env.project, 'rdr', replica=False)
+        mysql_conn = self.connect_mysql_instance(self.args.project, 'rdr', replica=False)
         sql = f"ALTER USER '{user_cfg.user}'@'%' IDENTIFIED BY '{new_password}';"
         cursor = mysql_conn.cursor()
         cursor.execute(sql)
         cursor.close()
         return True
 
-    def run(self):
+    def main(args):
 
-        self.gcp_env.override_project('aou-pdr-data-dev')
-
-        # See if we should change a password for a specific user
-        if self.args.target == 'user':
-            self.change_postgres_user_password(self.args.username)
-            return 0
 
         # Change passwords for all users listed in DB config
         config_service_args = JSONObject({
@@ -175,18 +183,18 @@ class UpdateDatabasePasswordsTool(RDRMySQLConnectionMixin):
             'bucket': os.environ.get('APP_CONFIG_BUCKET', None),
             'from_file': ''
         })
-        self.config_edit_service = ConfigEditClass(config_service_args, self.gcp_env)
-        self.config_deploy_service = ConfigDeployClass(config_service_args, self.gcp_env)
+        config_edit_service = ConfigEditClass(config_service_args, args.project)
+        config_deploy_service = ConfigDeployClass(config_service_args, args.project)
 
         # Read the most recent config from the bucket
-        self.db_config = JSONObject(self.config_deploy_service.get_bucket_config())
+        db_config = JSONObject(self.config_deploy_service.get_bucket_config())
 
-        self.pause_task_queues()
+        pause_task_queues()
 
         _logger.info(f'Updating all db config passwords')
 
-        all_instances = self.db_config.instances
-        for user_cfg in self.db_config.users:
+        all_instances = db_config.instances
+        for user_cfg in db_config.users:
 
             new_password = self.generate_password()
             # Find only primary database instances to change the user password on.
@@ -196,18 +204,12 @@ class UpdateDatabasePasswordsTool(RDRMySQLConnectionMixin):
                 _logger.info(f"Updating user '{user_cfg.user}' on {inst_cfg.connection_name} ({inst_cfg.platform})")
                 _logger.warning(f'   user: {user_cfg.user}, passwords: prev: {user_cfg.password}, new: {new_password}')
 
-                if inst_cfg.platform == 'postgresql':
-                    if self.change_postgres_password(user_cfg, inst_cfg, new_password) is True:
-                        user_cfg.password = new_password
-                    else:
-                        break
-                elif inst_cfg.platform == 'mysql':
-                    if self.change_mysql_password(user_cfg, new_password) is True:
-                        user_cfg.password = new_password
-                    else:
-                        break
+
+                if self.change_mysql_password(user_cfg, new_password) is True:
+                    user_cfg.password = new_password
                 else:
-                    _logger.warning(f'Unknown database instance platform ({inst_cfg.platform}) ')
+                    break
+
 
         # Update config, save it to the config bucket and then push config to firestore.
         updated_config = self.db_config.to_dict()
@@ -217,31 +219,22 @@ class UpdateDatabasePasswordsTool(RDRMySQLConnectionMixin):
 
         self.resume_task_queues()
 
+        gcp_restart_instances(self.gcp_env.project)
+
         return 0
 
 
-def run():
-    # Set global debug value and setup application logging.
-    GCPProcessContext.setup_logging(tool_cmd)
-    parser = GCPProcessContext.get_argparser(tool_cmd, tool_desc)
 
-    # Create a subparser for multiple tool sub commands
-    subparser = parser.add_subparsers(help='change operational or specific user password', dest='target')
 
-    username_parser = argparse.ArgumentParser(add_help=False)
-    username_parser.add_argument('-u', "--username", help="database username on pdr postgres instance",
-                                 type=str, default=None, required=True)
 
-    subparser.add_parser('ops')
-    subparser.add_parser('user', parents=[username_parser])
-    args = parser.parse_args()
 
-    with GCPProcessContext(tool_cmd, args) as gcp_env:
-        process = UpdateDatabasePasswordsTool(args, gcp_env)
-        exit_code = process.run()
-        return exit_code
 
 
 # --- Main Program Call ---
 if __name__ == "__main__":
-    sys.exit(run())
+    configure_logging()
+    parser = get_parser()
+    parser.add_argument("--project", help="RDR environment to update"),
+    parser.add_argument("--user", help="database username to update")
+
+    args = parser.parse_args()
