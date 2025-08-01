@@ -649,17 +649,67 @@ def insert_awardee_insite_data(
             WHERE rn = 1
           ),
           enrollment_status_mapping AS (
-            SELECT 1 AS enrollment_status, "participant" AS status
+            SELECT 1 AS enrollment_status_rank, "registered" AS status
             UNION ALL
-            SELECT 2 AS enrollment_status, "participant_ehr_consent" AS status
+            SELECT 2 AS enrollment_status_rank, "participant" AS status
             UNION ALL
-            SELECT 3 AS enrollment_status, "enrolled" AS status
+            SELECT 3 AS enrollment_status_rank, "participant_ehr_consent" AS status
             UNION ALL
-            SELECT 4 AS enrollment_status, "core_minus_pm" AS status
+            SELECT 4 AS enrollment_status_rank, "enrolled" AS status
             UNION ALL
-            SELECT 5 AS enrollment_status, "core_participant" AS status
+            SELECT 5 AS enrollment_status_rank, "pmb_eligible" AS status
             UNION ALL
-            SELECT 6 AS enrollment_status, "pmb_eligible" AS status
+            SELECT 6 AS enrollment_status_rank, "core_minus_pm" AS status
+            UNION ALL
+            SELECT 7 AS enrollment_status_rank, "core_participant" AS status
+          ),
+          enrollment_status_cte as (
+            SELECT
+            participant_id
+            , data_element_name
+            , data_element_value
+            FROM `{project}.{src_operational_dataset}.ppsc_participant_status_event`
+            WHERE  ignore_flag = 0
+            AND event_type_name = "Enrollment Status"
+            AND LOWER(data_element_name) IN
+             (
+                'registered', 'registered_date_time',
+                'participant', 'participant_date_time',
+                'participant_ehr_consent', 'participant_ehr_consent_date_time',
+                'enrolled', 'enrolled_date_time',
+                'pmb_eligible', 'pmb_eligible_date_time',
+                'core_minus_pm', 'core_minus_pm_date_time',
+                'core_participant', 'core_participant_date_time'
+                )
+          ),
+          enrollment_status_transformed AS (
+            SELECT e1.participant_id
+              , e1.data_element_value AS event_authored
+              , e2.data_element_name AS enrollment_status
+              , e2.data_element_value as data_element_value
+            FROM enrollment_status_cte AS e1 LEFT JOIN enrollment_status_cte AS e2
+            ON e1.participant_id = e2.participant_id AND REGEXP_REPLACE(e1.data_element_name, "_date_time", "")  = e2.data_element_name
+            WHERE e1.data_element_name LIKE "%date_time%" and e2.data_element_value = "yes"
+          ),
+          enrollment_status_drop_dupes AS (
+              SELECT *
+              FROM (
+                SELECT *
+                , ROW_NUMBER() OVER (PARTITION BY participant_id, enrollment_status ORDER BY event_authored DESC) AS rn
+              FROM enrollment_status_transformed
+              )
+            WHERE rn = 1
+          ),
+          latest_enrollement_status AS (
+            SELECT participant_id
+              , enrollment_status
+            FROM (
+              SELECT * except(rn)
+                , ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY map.enrollment_status_rank DESC) AS rn
+              FROM enrollment_status_drop_dupes esdd LEFT JOIN enrollment_status_mapping map
+              ON esdd.enrollment_status = map.status
+              )
+            WHERE rn = 1
           ),
           participant_summary_cte AS (
             SELECT
@@ -668,7 +718,6 @@ def insert_awardee_insite_data(
               , ehr_update_time AS latest_ehr_receipt_time
               , consent_for_electronic_health_records_first_yes_authored
               , consent_for_study_enrollment_authored
-              , map.status AS enrollment_status
               , patient_status
               , s2.google_group AS biospecimen_source_site
               , biospecimen_order_time
@@ -681,8 +730,6 @@ def insert_awardee_insite_data(
             FROM `{project}.{src_operational_dataset}.rdr_participant_summary` ps
             LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` s2
             ON ps.biospecimen_source_site_id = s2.site_id
-            LEFT JOIN enrollment_status_mapping map
-            ON ps.enrollment_status_v_3_2 = map.enrollment_status
             LEFT JOIN `{project}.{src_operational_dataset}.rdr_organization` o
             ON ps.organization_id = o.organization_id
           ),
@@ -714,7 +761,7 @@ def insert_awardee_insite_data(
               , latest_ehr_receipt_time
               , COALESCE(consent_for_study_enrollment, 'no') AS consent_for_study_enrollment
               , consent_for_study_enrollment_authored
-              , enrollment_status
+              , COALESCE(enrollment_status, 'registered') AS enrollment_status
               , CASE
                   WHEN clinic_physical_measurements_id IS NOT NULL THEN 'completed'
                   WHEN cancelled_measurement_id IS NOT NULL THEN 'cancelled'
@@ -787,6 +834,8 @@ def insert_awardee_insite_data(
             LEFT JOIN physical_measurement_clinic_cancelled
             USING (participant_id)
             LEFT JOIN physical_measurement_latest_self_reported
+            USING (participant_id)
+            LEFT JOIN latest_enrollement_status
             USING (participant_id)
           ),
           withdrawn_update AS (
