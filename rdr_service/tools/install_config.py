@@ -32,11 +32,24 @@ def _log_and_write_config_lines(raw_config_lines, output_path):
 
 
 def main(args):
+    #args.instance = 'https://pmi-drc-api-test:us-central1:rdrmaindb:3306'
     client = Client(parse_cli=False, creds_file=args.creds_file, default_instance=args.instance)
+    print (f"args {args}")
+    #if args.renew:
+    #    args.key = 'db_config.json'
+    #    config_path = "Config/%s" % args.key
+    #    logging.info("-------------- Getting Config -------------------")
+    #    config_server = client.request_json(config_path, "GET")
+    #formatted_server_config = _json_to_sorted_string(config_server)
+    #with open(args.config) as config_file:
+     #    config_file = json.load(config_file)
+
     config_path = "Config/%s" % args.key if args.key else "Config"
     try:
         logging.info("-------------- Getting Config -------------------")
-        config_server = client.request_json(config_path, "GET")
+        #config_server = client.request_json('https://pmi-drc-api-test:us-central1:rdrmaindb', "GET")
+        #config_server = client.request_json(path=None, method="GET")
+        config_server = client.request_json(path=config_path, method="GET")
         formatted_server_config = _json_to_sorted_string(config_server)
     except HttpException as e:
         if e.code == http.client.NOT_FOUND:
@@ -102,5 +115,8 @@ if __name__ == "__main__":
     parser.add_argument("--key", type=str, help="Specifies a key for a configuration to update.")
     parser.add_argument(
         "--config_output", help="Path to write current config and/or diff into, in addition to logging."
+    )
+    parser.add_argument(
+        "--renew", help="Update system accounts for rdr database in accordance with DRC policies",action="store_true"
     )
     main(parser.parse_args())

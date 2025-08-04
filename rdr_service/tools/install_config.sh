@@ -51,5 +51,9 @@ if [ "${KEY}" ]
 then
   EXTRA_ARGS+=" --key $KEY"
 fi
+if [ "${RENEW}" ]
+then
+  EXTRA_ARGS+=" --renew"
+fi
 
 (cd ${APP_DIR}; python tools/install_config.py $EXTRA_ARGS)

@@ -1,0 +1,14 @@
+{
+  "backup_db_connection_name": "pmi-drc-api-test:us-central1:rdrbackupdb",
+  "backup_db_connection_string": "mysql+mysqldb://rdr:q2S7PQu6lbpVmH1C@/rdr?unix_socket=/cloudsql/pmi-drc-api-test:us-central1:rdrbackupdb&charset=utf8mb4",
+  "db_connection_name": "pmi-drc-api-test:us-central1:rdrmaindb",
+  "db_connection_pattern": "{driver}://{user}:{password}@/{database_name}?{path_parameter}=/cloudsql/pmi-drc-api-test:us-central1:{db_instance_name}",
+  "db_connection_string": "mysql+mysqldb://rdr:q2S7PQu6lbpVmH1C@/rdr?unix_socket=/cloudsql/pmi-drc-api-test:us-central1:rdrmaindb&charset=utf8mb4",
+  "db_name": "rdr",
+  "db_user": "rdr",
+  "rdr_db_password": "q2S7PQu6lbpVmH1C",
+  "rdrmysql8_password": "RbHazAZfFvAjAZeT",
+  "rdrpostgresql_password": "SlVQmBByhEtVMqxZ",
+  "read_only_db_password": "NS_7t6hlfF7phNhC",
+  "root_db_password": "7KChnGkaIyo2DfxO"
+}
