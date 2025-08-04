@@ -7,6 +7,7 @@
 #
 import argparse
 import json
+import datetime
 import logging
 import os
 import random
@@ -22,7 +23,7 @@ from rdr_service.main_util import configure_logging, get_parser
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, RdrEnvironment
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
     gcp_application_default_creds_exist, gcp_restart_instances, gcp_delete_versions
-
+from rdr_service.services.system_utils import  JSONObject
 
 from aou_cloud.services.gcp_cloud_tasks import GCPCloudTask, Queue
 from aou_cloud.tools.config_editor import DS_DB_CONFIG_KEY, ConfigDeployClass, ConfigEditClass
@@ -56,9 +57,9 @@ class UpdateDatabasePasswordsTool():
     service_account: str = None
     task_service: GCPCloudTask = None
     queues: List[Queue] = None
-
+    gcp_cloud_task = None
     config_edit_service: ConfigEditClass = None
-    config_deploy_service: ConfigDeployClass = None
+    #config_deploy_service: ConfigDeployClass = None
 
     def __init__(self, args):
         """
@@ -67,23 +68,34 @@ class UpdateDatabasePasswordsTool():
         """
         self.args = 'ds'
 
+    #def pause_queue(self, queue: Queue) -> Queue:
+    #    """
+    #    Pause the queue.
+    #    :param queue: Queue object retrieved from self.fetch_queue() or self.fetch_all_queues().
+    #    :return: Updated Queue object
+    #    """
+    #    req = self.service.projects().locations().queues().pause(name=queue.name)
+    #    resp = gcp_api_retry_func(req.execute, retries=10, backoff_amount=0.5)
+    #    queue_resp = Queue(resp, cast_types=True)
+    #    return queue_resp
 
-    def _pause_queues_and_wait(self, queues: List[Queue]):
+    def pause_queues_and_wait(self):
         """
         waits for queues to finish and then pauses
         :return:
         """
         _logger.info('Pausing cloud task queues and waiting for running tasks to complete...')
 
-        for queue in queues:
-            self.task_service.pause_queue(queue)
-
-        start_ts = datetime.now(timezone.utc)
+        for name in QUEUES_TO_PAUSE:
+            queue = self.gcp_cloud_task.fetch_queue(name)
+            self.gcp_cloud_task.pause_queue(queue)
+        start_ts = datetime.datetime.utcnow()
         success = False
-        while (datetime.now(timezone.utc) - start_ts).seconds < 180:
+        while (datetime.datetime.utcnow() - start_ts).seconds < 180:
             is_empty = True
-            for queue in queues:
-                queue_stats = self.task_service.fetch_queue_stats(queue)
+            for name in QUEUES_TO_PAUSE:
+                queue = self.gcp_cloud_task.fetch_queue(name)
+                queue_stats = self.gcp_cloud_task.fetch_queue_stats(queue)
                 if queue_stats.concurrentDispatchesCount != 0:
                     is_empty = False
             if is_empty is True:
@@ -92,26 +104,50 @@ class UpdateDatabasePasswordsTool():
             time.sleep(3.0)
             sys.stdout.write('.')
 
-        if success is True:
-            sys.stdout.write(' Done.')
-        else:
-            _logger.warning('Not all running tasks completed before timeout')
+    #def _pause_queues_and_wait(self, queues: List[Queue]):
+        #"""
+        #waits for queues to finish and then pauses
+        #:return:
+        #"""
+        #_logger.info('Pausing cloud task queues and waiting for running tasks to complete...')
 
-        return success
+        #for queue in queues:
+        #    self.task_service.pause_queue(queue)
 
-    def pause_task_queues(self):
-        """ Pause all running cloud task queues, ignore any that are paused. """
-        self.task_service = GCPCloudTask(self.gcp_env.project)
-        queues = self.task_service.fetch_all_queues()
+        #start_ts = datetime.now(timezone.utc)
+        #success = False
+        #while (datetime.now(timezone.utc) - start_ts).seconds < 180:
+        #    is_empty = True
+        #    for queue in queues:
+        #        queue_stats = self.task_service.fetch_queue_stats(queue)
+        #        if queue_stats.concurrentDispatchesCount != 0:
+        #            is_empty = False
+        #    if is_empty is True:
+        #        success = True
+        #        break
+        #    time.sleep(3.0)
+        #    sys.stdout.write('.')
+
+        #if success is True:
+        #    sys.stdout.write(' Done.')
+        #else:
+        #    _logger.warning('Not all running tasks completed before timeout')
+
+        #return success
+
+    #def pause_task_queues(self):
+        #""" Pause all running cloud task queues, ignore any that are paused. """
+        #self.task_service = GCPCloudTask(self.gcp_env.project)
+        #queues = self.task_service.fetch_all_queues()
         # Only grab the queues that are currently processing tasks
-        self.queues = [q for q in queues if q.state == 'RUNNING']
+        #self.queues = [q for q in queues if q.state == 'RUNNING']
 
-        self._pause_queues_and_wait(queues)
+        #self._pause_queues_and_wait(queues)
 
-    def resume_task_queues(self):
-        """ Resume the cloud tasks queues we paused """
-        for queue in self.queues:
-            self.task_service.resume_queue(queue)
+    #def resume_task_queues(self):
+    #    """ Resume the cloud tasks queues we paused """
+    #    for queue in self.queues:
+    #        self.task_service.resume_queue(queue)
 
     @staticmethod
     def generate_password(length=20, use_uppercase=True, use_digits=True, use_punctuation=True):
@@ -173,7 +209,7 @@ class UpdateDatabasePasswordsTool():
         cursor.close()
         return True
 
-    def main(args):
+    def main(self):
 
 
         # Change passwords for all users listed in DB config
@@ -184,42 +220,42 @@ class UpdateDatabasePasswordsTool():
             'from_file': ''
         })
         config_edit_service = ConfigEditClass(config_service_args, args.project)
-        config_deploy_service = ConfigDeployClass(config_service_args, args.project)
+        #config_deploy_service = ConfigDeployClass(config_service_args, args.project)
 
         # Read the most recent config from the bucket
-        db_config = JSONObject(self.config_deploy_service.get_bucket_config())
+        #db_config = JSONObject(self.config_deploy_service.get_bucket_config())
 
-        pause_task_queues()
+        #pause_task_queues()
 
         _logger.info(f'Updating all db config passwords')
 
-        all_instances = db_config.instances
-        for user_cfg in db_config.users:
+        #all_instances = db_config.instances
+        #for user_cfg in db_config.users:
 
-            new_password = self.generate_password()
-            # Find only primary database instances to change the user password on.
-            instances = list(filter(lambda i: i.pool in user_cfg.instance_pools and not i.is_readonly, all_instances))
-            for inst_cfg in instances:
+        #    new_password = self.generate_password()
+        #    # Find only primary database instances to change the user password on.
+        #    instances = list(filter(lambda i: i.pool in user_cfg.instance_pools and not i.is_readonly, all_instances))
+        #    for inst_cfg in instances:
 
-                _logger.info(f"Updating user '{user_cfg.user}' on {inst_cfg.connection_name} ({inst_cfg.platform})")
-                _logger.warning(f'   user: {user_cfg.user}, passwords: prev: {user_cfg.password}, new: {new_password}')
+        #        _logger.info(f"Updating user '{user_cfg.user}' on {inst_cfg.connection_name} ({inst_cfg.platform})")
+        #        _logger.warning(f'   user: {user_cfg.user}, passwords: prev: {user_cfg.password}, new: {new_password}')
 
 
-                if self.change_mysql_password(user_cfg, new_password) is True:
-                    user_cfg.password = new_password
-                else:
-                    break
+        #        if self.change_mysql_password(user_cfg, new_password) is True:
+        #            user_cfg.password = new_password
+        #        else:
+        #            break
 
 
         # Update config, save it to the config bucket and then push config to firestore.
-        updated_config = self.db_config.to_dict()
-        config_json = json.dumps(updated_config, indent=2)
-        self.config_edit_service.save_config_to_bucket(self.gcp_env.project, DS_DB_CONFIG_KEY, config_json)
-        self.config_deploy_service.write_firestore_config()
+        #updated_config = self.db_config.to_dict()
+        #config_json = json.dumps(updated_config, indent=2)
+        #self.config_edit_service.save_config_to_bucket(self.gcp_env.project, DS_DB_CONFIG_KEY, config_json)
+        #self.config_deploy_service.write_firestore_config()
 
-        self.resume_task_queues()
+        #self.resume_task_queues()
 
-        gcp_restart_instances(self.gcp_env.project)
+        #gcp_restart_instances(self.gcp_env.project)
 
         return 0
 

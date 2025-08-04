@@ -12,12 +12,15 @@ import re
 
 from rdr_service.main_util import configure_logging, get_parser
 from rdr_service.rdr_client.client import Client, HttpException
+from rdr_service.tools.db_password_creation import UpdateDatabasePasswordsTool
 
 BASE_CONFIG_FILE = "config/base_config.json"
 
+RENEW_PW_USERS = ['root', 'alembic','rdr','readonly']
 
 def _log_and_write_config_lines(raw_config_lines, output_path):
     safe_config_lines = []
+    safe_config_lines.append("in renew function for log and write")
     for line in raw_config_lines:
         match = re.search("db_password", line)
         if "db_connection_string" in line or match is not None:
@@ -30,6 +33,25 @@ def _log_and_write_config_lines(raw_config_lines, output_path):
             output_file.write("\n".join(raw_config_lines))
         logging.info("Unredacted config output written to %r.", output_path)
 
+def replace_passwords(raw_config_lines, output_path):
+    safe_config_lines = []
+    safe_config_lines.append("in renew function for log and write")
+
+    if self.project in ENV_LIST:
+        self.environment = " " + self.project.split("-")[-1].upper()
+
+
+    for line in raw_config_lines:
+        match = re.search("db_password", line)
+        if "db_connection_string" in line or match is not None:
+            safe_config_lines.append(line.split(":")[0] + " *******")
+        else:
+            safe_config_lines.append(line)
+    logging.info("\n".join(safe_config_lines))
+    if output_path:
+        with open(output_path, "w") as output_file:
+            output_file.write("\n".join(raw_config_lines))
+        logging.info("Unredacted config output written to %r.", output_path)
 
 def main(args):
     #args.instance = 'https://pmi-drc-api-test:us-central1:rdrmaindb:3306'
@@ -43,6 +65,7 @@ def main(args):
     #formatted_server_config = _json_to_sorted_string(config_server)
     #with open(args.config) as config_file:
      #    config_file = json.load(config_file)
+    print (args)
 
     config_path = "Config/%s" % args.key if args.key else "Config"
     try:
@@ -76,7 +99,21 @@ def main(args):
             logging.info("-------------- Updating Server -------------------")
             method = "POST" if args.key else "PUT"
             client.request_json(config_path, method, combined_config)
-
+    if args.renew:
+        print ("in renew function part of main")
+        config_file = config_server.keys()
+        print (config_file)
+        print("printed json")
+        update_db = UpdateDatabasePasswordsTool(args)
+        new_pw = update_db.generate_password(length=20,use_uppercase=True, use_digits=True,use_punctuation=True)
+        print (f'password is {new_pw}')
+    #    args.key = 'db_config.json'
+    #    config_path = "Config/%s" % args.key
+    #    logging.info("-------------- Getting Config -------------------")
+    #    config_server = client.request_json(config_path, "GET")
+    # formatted_server_config = _json_to_sorted_string(config_server)
+    # with open(args.config) as config_file:
+    #    config_file = json.load(config_file)
 
 def _compare_configs(comparable_file, comparable_server, diff_output_path):
     if comparable_file == comparable_server:
