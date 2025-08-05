@@ -192,8 +192,8 @@ class DeployAppClass(ToolBase):
                 self.deploy_sub_type = 'stable'
                 self.api_url = 'rdr-api-stable.pmi-ops.org'
             elif 'staging' in self.gcp_env.project:
-                    self.deploy_sub_type = 'staging'
-                    self.api_url = 'rdr-api-staging.pmi-ops.org'
+                self.deploy_sub_type = 'staging'
+                self.api_url = 'rdr-api-staging.pmi-ops.org'
             elif 'drc-api-test' in self.gcp_env.project:  # TODO: replace subtype references with environment
                 self.deploy_sub_type = 'test'
         else:

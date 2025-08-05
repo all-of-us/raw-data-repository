@@ -70,7 +70,7 @@ class CheckPPIDataClass(object):
         if len(ppi_data) == 0:
             _logger.error("No participants matched filter criteria. aborting.")
             return
-
+        app_engine_url = None
         if self.gcp_env.project== 'pmi-drc-api-test':
             app_engine_url = 'drc-api-test.pmi-ops.org'
         elif self.gcp_env.project == 'all-of-us-rdr-sandbox':
@@ -82,11 +82,11 @@ class CheckPPIDataClass(object):
         elif self.gcp_env.project == 'all-of-us-rdr-prod':
             app_engine_url = 'rdr-api.pmi-ops.org'
         else:
-            host = f'{self.gcp_env.project}.appspot.com'
+            app_engine_url = f'{self.gcp_env.project}.appspot.com'
         data = {"ppi_data": ppi_data}
 
         headers = gcp_make_auth_header()
-        code, resp = make_api_request(host, '/rdr/v1/CheckPpiData', headers=headers, json_data=data, req_type="POST")
+        code, resp = make_api_request(app_engine_url, '/rdr/v1/CheckPpiData', headers=headers, json_data=data, req_type="POST")
 
         if code != 200:
             _logger.error(f'API request failed. {code}: {resp}')
