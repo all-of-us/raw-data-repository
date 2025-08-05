@@ -91,6 +91,7 @@ class DeployAppClass(ToolBase):
 
     deploy_type = 'prod'
     deploy_sub_type = 'default'
+    api_url = None
     services = GCP_SERVICES
     jira_ready = False
     deploy_version = None
@@ -186,13 +187,18 @@ class DeployAppClass(ToolBase):
                 self.deploy_sub_type = 'ptsc'
             elif 'sandbox' in self.gcp_env.project:
                 self.deploy_sub_type = 'sandbox'
+                self.api_url = 'rdr-api-sandbox.pmi-ops.org'
             elif 'stable' in self.gcp_env.project:
                 self.deploy_sub_type = 'stable'
+                self.api_url = 'rdr-api-stable.pmi-ops.org'
+            elif 'staging' in self.gcp_env.project:
+                    self.deploy_sub_type = 'staging'
+                    self.api_url = 'rdr-api-staging.pmi-ops.org'
             elif 'drc-api-test' in self.gcp_env.project:  # TODO: replace subtype references with environment
                 self.deploy_sub_type = 'test'
         else:
             self.docs_version = 'latest'  # readthedocs version slug for production releases
-
+            self.api_url = 'rdr-api.pmi-ops.org'
         return True
 
     @staticmethod
@@ -210,7 +216,7 @@ class DeployAppClass(ToolBase):
         Create a Jira ticket.
         """
 
-        code, resp = make_api_request(f'{self.gcp_env.project}.appspot.com', api_path='/')
+        code, resp = make_api_request(f'{self.api_url}', api_path='/')
         if code != 200:
             deployed_version = 'unknown'
         else:

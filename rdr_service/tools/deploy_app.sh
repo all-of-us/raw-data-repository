@@ -212,7 +212,20 @@ then
   rm "${tmp_files[@]}"
 fi
 
-test_request=$(curl -s https://${PROJECT}.appspot.com/rdr/v1/ | grep version_id)
+if [ "${PROJECT}" == "pmi-drc-api-test" ]
+    then api_rul =  "drc-api-test.pmi-ops.org"
+elif [ "${PROJECT}" == "all-of-us-rdr-stable" ]
+  then api_url = "rdr-api-stable.pmi-ops.org"
+elif [ "${PROJECT}" == "all-of-us-rdr-sandbox" ]
+    then api_url= "rdr-api-sandbox.pmi-ops.org"
+elif [ "${PROJECT}" == "all-of-us-rdr-staging" ]
+    then api_url_url = "rdr-api-staging.pmi-ops.org" ]
+elif [ "${PROJECT}" == "all-of-us-rdr-prod"]
+    then app_url = "rdr-api.pmi-ops.org"
+else:
+    api_url = f'https://{version_id}-dot-{project_id}.appspot.com/'
+
+test_request=$(curl -s https://${api_url}/rdr/v1/ | grep version_id)
 if [[ -z "$test_request" ]];
 then
   echo "${BOLD}Test request failed to return the expected response, something may be wrong with

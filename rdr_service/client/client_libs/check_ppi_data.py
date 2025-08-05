@@ -71,7 +71,18 @@ class CheckPPIDataClass(object):
             _logger.error("No participants matched filter criteria. aborting.")
             return
 
-        host = f'{self.gcp_env.project}.appspot.com'
+        if self.gcp_env.project== 'pmi-drc-api-test':
+            app_engine_url = 'drc-api-test.pmi-ops.org'
+        elif self.gcp_env.project == 'all-of-us-rdr-sandbox':
+            app_engine_url = 'rdr-api-sandbox.pmi-ops.org'
+        elif self.gcp_env.project == 'all-of-us-rdr-stable':
+            app_engine_url = 'rdr-api-stable.pmi-ops.org'
+        elif self.gcp_env.project == 'all-of-us-rdr-staging':
+            app_engine_url = 'rdr-api-staging.pmi-ops.org'
+        elif self.gcp_env.project == 'all-of-us-rdr-prod':
+            app_engine_url = 'rdr-api.pmi-ops.org'
+        else:
+            host = f'{self.gcp_env.project}.appspot.com'
         data = {"ppi_data": ppi_data}
 
         headers = gcp_make_auth_header()

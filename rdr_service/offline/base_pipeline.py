@@ -55,7 +55,20 @@ class BasePipeline(pipeline):
             if shard_index != -1:
                 app_id = app_id[shard_index + 1 :]
             pipeline_name = self.__class__.__name__
-            base_path = "%s.appspot.com%s" % (app_id, self.base_path)
+
+            if app_id == 'pmi-drc-api-test':
+                base_path = 'drc-api-test.pmi-ops.org%s' % self.base_path
+            elif app_id == 'all-of-us-rdr-sandbox':
+                base_path = 'rdr-api-sandbox.pmi-ops.org%s' % self.base_path
+            elif app_id == 'all-of-us-rdr-stable':
+                base_path = 'rdr-api-stable.pmi-ops.org'
+            elif app_id == 'all-of-us-rdr-staging%s' % self.base_path:
+                base_path = 'rdr-api-staging.pmi-ops.org'
+            elif app_id == 'all-of-us-rdr-prod%s' % self.base_path:
+                base_path = 'rdr-api.pmi-ops.org'
+            else:
+                base_path = "%s.appspot.com%s" % (app_id, self.base_path)
+
             status_link = "http://%s/status?root=%s" % (base_path, self.root_pipeline_id)
 
             suffix = ""
