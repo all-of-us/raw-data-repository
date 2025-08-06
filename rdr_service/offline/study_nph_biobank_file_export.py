@@ -303,7 +303,7 @@ def main():
         )
         participant_biobank_id = _get_nph_participant(participant_id).biobank_id
 
-        sex_at_birth = "Unknown"
+        sex_at_birth = ""
         if rdr_participant_summary.sexId is not None:
             code_obj = _get_code_obj_from_sex_id(rdr_participant_summary.sexId)
             if code_obj is not None:
