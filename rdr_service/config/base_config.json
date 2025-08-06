@@ -40,14 +40,22 @@
     "1CFD9",
     "1PXR2",
     "1UR90",
-    "2ED10"
+    "2ED10",
+    "2ED04",
+    "2ED02",
+    "1ED02",
+    "2SAL0"
   ],
   "dna_sample_test_codes": [
     "1ED10",
     "2ED10",
     "1ED04",
     "1SAL",
-    "1SAL2"
+    "1SAL2",
+    "2ED04",
+    "2ED02",
+    "1ED02",
+    "2SAL0"
   ],
   "native_american_race_codes": [
     "WhatRaceEthnicity_AIAN"
@@ -63,142 +71,94 @@
   ],
   "ehr_status_bigquery_view_participant": [],
   "ehr_status_bigquery_view_organization": [],
-  "gc_name_to_id_mapping": {
-    "baylor_aou_array": "jh",
-    "baylor_aou_wgs": "bcm",
-    "broad": "bi",
-    "northwest": "uw",
-    "rdr": "rdr"
+  "research_workbench_audit_sheet_bucket": ["test_bucket_audit_sheets"],
+  "consent_sync_buckets": {
+    "orgs": {
+      "CAL_PMC_UCD": {"bucket": "aou185", "zip_consents": false},
+      "CAL_PMC_USC": {"bucket": "aou298", "zip_consents": false}
+    },
+    "hpos": {
+      "VA": {"bucket": "aou179", "zip_consents": true, "exclude_types": ["WEAR"]},
+      "VCU": {"bucket": "aou818", "zip_consents": false},
+      "UT_HEALTH": {"bucket": "aou984", "zip_consents": false},
+      "WASH_U": {"bucket": "aou783", "zip_consents": false}
+    }
   },
+  "dna_program_consent_update_code": "ProgramUpdate",
+  "biobank_samples_daily_inventory_file_pattern": "Sample Inventory Report v1",
+  "biobank_samples_monthly_inventory_file_pattern": "Sample Inventory Report 60d",
+  "cope_form_id_map": {
+    "Vibrent_FORM_ID_1413,COPE Survey": "May",
+    "June COPE Survey,Vibrent_FORM_ID_1416": "June",
+    "July COPE Survey,Vibrent_FORM_ID_1424": "July",
+    "October COPE Survey,Vibrent_FORM_ID_1442": "Nov",
+    "December COPE Survey,Vibrent_FORM_ID_1453": "Dec",
+    "February COPE Survey,Vibrent_FORM_ID_1456": "Feb",
+    "cope_vaccine1,Vibrent_FORM_ID_1502": "vaccine1",
+    "cope_vaccine2,Vibrent_FORM_ID_1513": "vaccine2",
+    "cope_vaccine3,Vibrent_FORM_ID_1535": "vaccine3",
+    "cope_vaccine4,Vibrent_FORM_ID_1545": "vaccine4"
+  },
+  "project_api_keys": {
+    "cope_nov": "064D944FD1D8E953EDB755D3565ED098",
+    "cope_feb": "6B8B1A05507D996C7CC090270501BD12",
+    "cope_vaccine1": "F4EC2AD07F9B22EA060A741B50DE4A87",
+    "cope_vaccine2": "110412E7F57DF2C277F39C5CCA12A770",
+    "cope_vaccine3": "0A069926C1747C0756820D0C05CE567C",
+    "cope_vaccine4": "E7A6DDD2C1B9CD436CDF3EEADF22DAA1",
+    "familyhistory_v2": "854AA75BE3E396FFAEB3E8440BC561F8"
+  },
+  "drive_export_folder": "1wPnDWjpURfuyc5msDtQiourLGPHSUHUn",
+  "code_export_service_account": "exporter@all-of-us-rdr-prod.iam.gserviceaccount.com",
+  "a1_limit": [10000],
   "rdr_slack_webhooks": {
     "rdr_genomic_alerts": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX",
-    "rdr_genomic_reports": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+    "rdr_genomic_reports": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX",
+    "rdr_ptsc_health_data_transfer_alerts": "https://hooks.slack.com/services/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",
+    "rdr_cron_alerts": "https://hooks.slack.com/services/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"
   },
-  "genomic_cron_jobs": {
-    "a1_manifest_workflow": 1,
-    "a2_manifest_workflow": 1,
-    "a3_manifest_workflow": 1,
-    "update_report_state_for_consent_removal": 1,
-    "aw0_manifest_workflow": 1,
-    "aw1_manifest_workflow": 1,
-    "aw1c_manifest_workflow": 0,
-    "aw1cf_manifest_workflow": 0,
-    "aw2f_manifest_workflow": 1,
-    "aw2f_remainder_workflow": 1,
-    "aw3_array_manifest_workflow": 1,
-    "aw3_wgs_manifest_workflow": 1,
-    "genomic_aw3_array_investigation_workflow": 1,
-    "genomic_aw3_wgs_investigation_workflow": 1,
-    "array_reconciliation_workflow": 1,
-    "daily_ingestion_summary": 1,
-    "daily_incident_summary": 1,
-    "daily_validation_emails": 1,
-    "feedback_record_reconciliation_workflow": 1,
-    "missing_files_clean_up_workflow": 1,
-    "missing_files_resolve_workflow": 1,
-    "reconcile_gc_data_file_to_table_workflow": 1,
-    "reconcile_pdr_data": 1,
-    "retry_manifest_ingestion_failures": 1,
-    "reconcile_raw_to_aw1_ingested_workflow": 0,
-    "reconcile_raw_to_aw2_ingested_workflow": 1,
-    "members_state_resolved_workflow": 1,
-    "members_update_blocklists": 1,
-    "reconcile_informing_loop_responses": 1,
-    "reconcile_message_broker_results_ready": 0,
-    "reconcile_message_broker_results_viewed": 0,
-    "wgs_reconciliation_workflow": 1,
-    "w1_manifest_workflow": 0,
-    "w2_manifest_workflow": 0,
-    "w3_manifest_workflow": 0,
-    "cvl_w3sr_manifest_workflow": 1
-  },
-  "data_bucket_subfolders_prod": {
-    "prod-genomics-data-baylor": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"],
-    "prod-genomics-data-broad": ["Genotyping_sample_raw_data", "wgs_sample_raw_data"],
-    "prod-genomics-data-northwest": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"]
-  },
-  "a1_limit": [10000],
-  "genomic_daily_validation_emails": {
-    "send_emails": 1,
-    "cc_recipients": ["testone_cc.testy@vumc.edu", "testtwo_cc.testy@vumc.edu"],
-    "recipients": {
-      "bcm": ["testone.testy@bcm.edu", "testtwo.testy@bcm.edu"],
-      "jh": ["testone.testy@jhmi.edu", "testtwo.testy@jhmi.edu"]
-    }
-  },
-  "genomic_cvl_reconcile_emails": {
-    "send_emails": 1,
-    "cc_recipients": ["testone_cc.testy@vumc.edu"],
-    "recipients": {
-      "co": ["testone.testy@co.edu", "testtwo.testy@co.edu"],
-      "bcm": ["testone.testy@bcm.edu", "testtwo.testy@bcm.edu"]
-    }
-  },
-  "genomic_cvl_reconcile_limits": {
-    "pgx_time_limit": 3,
-    "hdr_time_limit": 3,
-    "w3sc_extension": 2
-  },
-  "genomic_set_member_blocklists": {
-    "block_research": [
-      {
-        "attribute": "ai_an",
-        "value": "Y",
-        "reason_string": "aian"
-      },
-      {
-        "attribute": "genomeType",
-        "value": ["test_investigation_one", "test_investigation_two"],
-        "reason_string": "test_sample_swap"
-      }
-    ],
-    "block_results": [
-      {
-        "attribute": "genomeType",
-        "value": ["test_investigation_one", "test_investigation_two"],
-        "reason_string": "test_sample_swap"
-      }
-    ]
-  },
-  "genomic_ingestions": {
-    "aw1_manifest": 1,
-    "aw1f_manifest": 1,
-    "aw2_manifest": 1,
-    "aw4_array_manifest": 1,
-    "aw4_wgs_manifest": 1,
-    "aw5_array_manifest": 1,
-    "aw5_wgs_manifest": 1
-  },
-  "genomic_skip_missing_file_types": {
-    "aou_wgs": ["test.file"]
-  },
-  "ops_data_payload_roles": {
-    "support": {
-      "fields": [
-        "participantId",
-        "firstName",
-        "middleName",
-        "lastName",
-        "phoneNumber",
-        "email",
-        "participantOrigin"
-      ]
-    }
-  },
+"biobank_missing_report_day_interval": 14,
   "pdr_pipeline": {
     "allowed_projects": [
-      "all-of-us-rdr-sandbox"
+      "all-of-us-rdr-stable",
+      "all-of-us-rdr-prod"
     ],
     "excluded_table_list" : [
+      "ppi_validation_errors",
       "log_position",
-      "questionnaire_response_answer"
+      "questionnaire_response_answer",
+      "questionnaire_response_extension",
+      "biobank_aliquot",
+      "biobank_aliquot_dataset",
+      "biobank_aliquot_dataset_item",
+      "biobank_specimen",
+      "biobank_specimen_attribute",
+      "message_broker_record",
+      "api_user",
+      "deceased_report"
     ],
     "secondary_excluded_table_list": [
       "hpo",
       "organization",
       "site"
-    ]
+    ]    
   },
+  "pm_height_codes": ["height", "8302-2"],
+  "pm_weight_codes": ["weight", "29463-7", "pre-pregnancy-weight"],
+  "enable_biobank_report_pediatric_flag": true,
+  "enabled_status_field_list": [
+    "enrollmentStatusV3_2",
+    "enrollmentStatusParticipantV3_2Time",
+    "enrollmentStatusParticipantPlusEhrV3_2Time",
+    "enrollmentStatusEnrolledParticipantV3_2Time",
+    "enrollmentStatusPmbEligibleV3_2Time",
+    "enrollmentStatusCoreMinusPmV3_2Time",
+    "enrollmentStatusCoreV3_2Time",
+    "hasCoreData",
+    "hasCoreDataTime"
+  ],
+  "enable_health_sharing_status_3": true,
+  "enable_participant_mediated_ehr": true,
   "ppsc_intake_activities": [
     "Consent",
     "Survey Completion",
@@ -214,7 +174,7 @@
     "Primary Consent",
     "Pediatric Permission"
   ],
-  "ppsc_intake_consent_event_types": ["Primary Consent", "Adult EHR Authorization", "Pediatric Permission"],
+  "ppsc_intake_consent_event_types": ["Primary Consent", "EHR Authorization", "Cohort 1 Primary Consent Update", "Pediatric Permission", "Pediatric EHR Authorization"],
   "ppsc_intake_survey_completion_event_types": [
     "The Basics",
     "Basics Data",
@@ -236,7 +196,7 @@
   "ppsc_intake_deactivation_event_types": ["Deactivation"],
   "ppsc_intake_participant_status_event_types": [
     "Participant Status",
-    "Test Flag",
+    "Test Account",
     "Death",
     "Enrollment Status",
     "UBR Status",
@@ -246,19 +206,31 @@
   "ppsc_intake_attribution_event_types": ["Org Attribution"],
   "ppsc_intake_account_linkage_event_types": ["Relationship Type"],
   "ppsc_intake_nph_opt_in_event_types": ["NPH Opt In"],
-  "pm_height_codes": ["height", "8302-2"],
-  "pm_weight_codes": ["weight", "29463-7", "pre-pregnancy-weight"],
+  "public_metrics_participant_table": "rdr_operational_datastream.rdr_participant",
+  "public_metrics_participant_summary_table": "rdr_operational_datastream.rdr_participant_summary",
+  "public_metrics_hpo_table": "rdr_operational_datastream.rdr_hpo",
+  "public_metrics_calendar_table": "rdr_operational_datastream.rdr_calendar",
+  "public_metrics_code_table": "rdr_operational_datastream.rdr_code",
+  "public_metrics_gender_answers_table": "rdr_operational_datastream.rdr_participant_gender_answers",
+  "public_metrics_race_answers_table": "rdr_operational_datastream.rdr_participant_race_answers",
   "ppsc_datafeed_biospecimen_types": [
-    "1ed04",
-    "1ed10",
-    "1ed02",
-    "2ed02",
-    "2ed04",
-    "1sal2",
-    "1sal",
-    "2sal0",
-    "3sal1",
-    "1ur10",
-    "1ur90"
-  ]
+    "1ED04",
+    "1ED10",
+    "1ED02",
+    "2ED02",
+    "2ED04",
+    "1SAL2",
+    "1SAL",
+    "2SAL0",
+    "3SAL1",
+    "1UR10",
+    "1UR90"
+  ],
+"load_balanced_url": [
+"drc-api-test.pmi-ops.org",
+"rdr-api-sandbox.pmi-ops.org",
+"rdr-api-stable.pmi-ops.org",
+"rdr-api-staging.pmi-ops.org",
+"rdr-api.pmi-ops.org"
+]
 }

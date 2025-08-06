@@ -15,6 +15,7 @@ from rdr_service.services.gcp_utils import gcp_make_auth_header
 from rdr_service.services.system_utils import make_api_request, run_external_program
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
+from rdr_service.config import GoogleCloudDatastoreConfigProvider
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -32,6 +33,7 @@ class CheckPPIDataClass(object):
         """
         self.args = args
         self.gcp_env = gcp_env
+        self._provider = GoogleCloudDatastoreConfigProvider()
 
     def check_ppi_data(self):
         """
@@ -71,18 +73,15 @@ class CheckPPIDataClass(object):
             _logger.error("No participants matched filter criteria. aborting.")
             return
 
-        if self.gcp_env.project== 'pmi-drc-api-test':
-            app_engine_url = 'drc-api-test.pmi-ops.org'
-        elif self.gcp_env.project == 'all-of-us-rdr-sandbox':
-            app_engine_url = 'rdr-api-sandbox.pmi-ops.org'
-        elif self.gcp_env.project == 'all-of-us-rdr-stable':
-            app_engine_url = 'rdr-api-stable.pmi-ops.org'
-        elif self.gcp_env.project == 'all-of-us-rdr-staging':
-            app_engine_url = 'rdr-api-staging.pmi-ops.org'
-        elif self.gcp_env.project == 'all-of-us-rdr-prod':
-            app_engine_url = 'rdr-api.pmi-ops.org'
-        else:
-            app_engine_url = f'{self.gcp_env.project}.appspot.com'
+            cloud_config = self._provider.load('current_config', project=self.gcp_env.project)
+
+            load_balanced_urls = cloud_config['load_balanced_url']
+            env_split = self.gcp_env.project.split('-')[-1]
+
+            self.api_url = [item for item in load_balanced_urls if env_split in item][0]
+            if
+            else:
+                app_engine_url = f'{self.gcp_env.project}.appspot.com'
         data = {"ppi_data": ppi_data}
 
         headers = gcp_make_auth_header()

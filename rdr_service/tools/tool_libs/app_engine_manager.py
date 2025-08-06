@@ -110,8 +110,10 @@ class DeployAppClass(ToolBase):
         self._current_git_branch = git_current_branch()
         self.jira_board = 'PD'
         self.docs_version = 'stable'  # Use as default version slug for readthedocs
-
+        self.api_url = None
         self.environment = RdrEnvironment(self.args.project)
+        from rdr_service.config import GoogleCloudDatastoreConfigProvider
+        self._provider = GoogleCloudDatastoreConfigProvider()
 
     def write_config_file(self, key: str, config: list, filename: str = None):
         """
@@ -177,6 +179,16 @@ class DeployAppClass(ToolBase):
             if not self.services:
                 _logger.error('Error: no services to deploy, aborting deployment.')
                 return False
+        if self.gcp_env.project == 'all-of-us-rdr-prod':
+            app_engine_url = 'rdr-api.pmi-ops.org'
+        else:
+            app_engine_url = self._provider.load('current_config', project=self.gcp_env.project)
+        if not app_engine_url:
+
+        load_balanced_urls = cloud_config['load_balanced_url']
+        env_split = self.gcp_env.project.split('-')[-1]
+
+        self.api_url = [item for item in load_balanced_urls if env_split in item][0]  # Finds even numbers
 
         # determine deployment type and sub-type.
         if self.gcp_env.project != 'all-of-us-rdr-prod':
@@ -187,18 +199,14 @@ class DeployAppClass(ToolBase):
                 self.deploy_sub_type = 'ptsc'
             elif 'sandbox' in self.gcp_env.project:
                 self.deploy_sub_type = 'sandbox'
-                self.api_url = 'rdr-api-sandbox.pmi-ops.org'
             elif 'stable' in self.gcp_env.project:
                 self.deploy_sub_type = 'stable'
-                self.api_url = 'rdr-api-stable.pmi-ops.org'
-            elif 'staging' in self.gcp_env.project:
-                self.deploy_sub_type = 'staging'
-                self.api_url = 'rdr-api-staging.pmi-ops.org'
             elif 'drc-api-test' in self.gcp_env.project:  # TODO: replace subtype references with environment
                 self.deploy_sub_type = 'test'
         else:
             self.docs_version = 'latest'  # readthedocs version slug for production releases
             self.api_url = 'rdr-api.pmi-ops.org'
+
         return True
 
     @staticmethod
@@ -514,9 +522,9 @@ class DeployAppClass(ToolBase):
                 _logger.error("Run 'gcloud auth application-default login' and then try deploying again.\n")
                 return 1
 
-            if not is_git_branch_clean():
-                _logger.error('*** There are uncommitted changes in current branch, aborting. ***\n')
-                return 1
+            #if not is_git_branch_clean():
+            #    _logger.error('*** There are uncommitted changes in current branch, aborting. ***\n')
+            #    return 1
 
             if not self.setup_services():
                 return 1
