@@ -40,7 +40,7 @@ def replace_passwords(raw_config_lines, output_path):
     #if #self.project in ENV_LIST:
     #    self.environment = " " + self.project.split("-")[-1].upper()
 
-    RENEW_PW_USERS
+
     upd_tool = UpdateDatabasePasswordsTool()
     rdr_pw = upd_tool.generate_password(length=20,use_digits=True,use_uppercase=True, use_punctuation=True)
     root_pw = upd_tool.generate_password(length=20, use_digits=True, use_uppercase=True, use_punctuation=True)
@@ -54,7 +54,7 @@ def replace_passwords(raw_config_lines, output_path):
             updated_config_lines.append(line.split(":")[0] + rdr_pw)
         elif line == "root_db_password":
             updated_config_lines.append(line.split(":")[0] + root_pw)
-        if "db_connection_string" is not None:
+        elif line == "db_connection_string":
             updated_config_lines.append(line.split(":")[0] + " ")
         else:
             updated_config_lines.append(line)
@@ -66,6 +66,7 @@ def replace_passwords(raw_config_lines, output_path):
 
 def main(args):
     #args.instance = 'https://pmi-drc-api-test:us-central1:rdrmaindb:3306'
+    args.creds_file = '/Users/lancelopez/Downloads/all-of-us-rdr-prod-dbc3fa8ed6a9.json'
     client = Client(parse_cli=False, creds_file=args.creds_file, default_instance=args.instance)
 
     config_server = None
@@ -80,6 +81,13 @@ def main(args):
      #    config_file = json.load(config_file)
     print (args)
 
+    args.config_output = '/Users/lancelopez/configout.txt'
+    if args.renew:
+        logging.info("----------------- Current Server Config --------------------")
+        config_server = client.request_json(path='Config/db_config', method="GET")
+        formatted_server_config = _json_to_sorted_string(config_server)
+        replace_passwords(formatted_server_config.split("\n"), args.config_output)
+
     config_path = "Config/%s" % args.key if args.key else "Config"
     try:
         logging.info("-------------- Getting Config -------------------")
@@ -93,10 +101,7 @@ def main(args):
         else:
             raise
 
-    args.config_output = '/Users/lancelopez/configout.txt'
-    if args.renew and config_server:
-        logging.info("----------------- Current Server Config --------------------")
-        replace_passwords(formatted_server_config.split("\n"), args.config_output)
+
     if not args.config:
         logging.info("----------------- Current Server Config --------------------")
         _log_and_write_config_lines(formatted_server_config.split("\n"), args.config_output)

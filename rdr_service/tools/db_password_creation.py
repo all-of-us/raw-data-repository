@@ -23,10 +23,10 @@ from rdr_service.main_util import configure_logging, get_parser
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, RdrEnvironment
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
     gcp_application_default_creds_exist, gcp_restart_instances, gcp_delete_versions
-from rdr_service.services.system_utils import  JSONObject
+from rdr_service.tools.tool_libs.tool_base import ToolBase
 
-from aou_cloud.services.gcp_cloud_tasks import GCPCloudTask, Queue
-from aou_cloud.tools.config_editor import DS_DB_CONFIG_KEY, ConfigDeployClass, ConfigEditClass
+#from aou_cloud.services.gcp_cloud_tasks import GCPCloudTask, Queue
+#from aou_cloud.tools.config_editor import DS_DB_CONFIG_KEY, ConfigDeployClass, ConfigEditClass
 
 
 QUEUES_TO_PAUSE = ["default",
@@ -49,16 +49,16 @@ tool_desc = "update database passwords for key operational user ids"
 tool_cat = "Data Tools"
 
 
-class UpdateDatabasePasswordsTool():
+class UpdateDatabasePasswordsTool(ToolBase):
     """
     Automation to reset database passwords for key user accounts
     """
-    db_config: JSONObject = None
+    #db_config: JSONObject = None
     service_account: str = None
-    task_service: GCPCloudTask = None
-    queues: List[Queue] = None
+    #task_service: GCPCloudTask = None
+    #queues: List[Queue] = None
     gcp_cloud_task = None
-    config_edit_service: ConfigEditClass = None
+    #config_edit_service: ConfigEditClass = None
     #config_deploy_service: ConfigDeployClass = None
 
     def __init__(self, args):
@@ -202,24 +202,26 @@ class UpdateDatabasePasswordsTool():
         :param new_password: New password for the user
         """
         # Capaxcu5MMRdn8sS
-        mysql_conn = self.connect_mysql_instance(self.args.project, 'rdr', replica=False)
-        sql = f"ALTER USER '{user_cfg.user}'@'%' IDENTIFIED BY '{new_password}';"
-        cursor = mysql_conn.cursor()
-        cursor.execute(sql)
-        cursor.close()
+        #mysql_conn = self.connect_mysql_instance(self.args.project, 'rdr', replica=False)
+        with self.get_session() as session:
+            #sql = f"ALTER USER '{user_cfg.user}'@'%' IDENTIFIED BY '{new_password}';"
+            sql = f"select password from users where id = 'rdr';"
+            #cursor = mysql_conn.cursor()
+            #cursor.execute(sql)
+            #cursor.close()
         return True
 
     def main(self):
 
 
         # Change passwords for all users listed in DB config
-        config_service_args = JSONObject({
-            'base-config': False,
-            'key': 'db_config',
-            'bucket': os.environ.get('APP_CONFIG_BUCKET', None),
-            'from_file': ''
-        })
-        config_edit_service = ConfigEditClass(config_service_args, args.project)
+        #config_service_args = JSONObject({
+        #    'base-config': False,
+        #    'key': 'db_config',
+        #    'bucket': os.environ.get('APP_CONFIG_BUCKET', None),
+        #    'from_file': ''
+        #})
+        #config_edit_service = ConfigEditClass(config_service_args, args.project)
         #config_deploy_service = ConfigDeployClass(config_service_args, args.project)
 
         # Read the most recent config from the bucket
