@@ -42,10 +42,19 @@ def replace_passwords(raw_config_lines, output_path):
 
     RENEW_PW_USERS
     upd_tool = UpdateDatabasePasswordsTool()
-    #loop through
+    rdr_pw = upd_tool.generate_password(length=20,use_digits=True,use_uppercase=True, use_punctuation=True)
+    root_pw = upd_tool.generate_password(length=20, use_digits=True, use_uppercase=True, use_punctuation=True)
+    readonly_pw =   upd_tool.generate_password(length=20, use_digits=True, use_uppercase=True, use_punctuation=True)
+
     for line in raw_config_lines:
-        match = re.search("db_password", line)
-        if "db_connection_string" in line or match is not None:
+        #match = re.search("db_password", line)
+        if line == "read_only_db_password":
+            updated_config_lines.append(line.split(":")[0] + readonly_pw)
+        elif line == "rdr_db_password":
+            updated_config_lines.append(line.split(":")[0] + rdr_pw)
+        elif line == "root_db_password":
+            updated_config_lines.append(line.split(":")[0] + root_pw)
+        if "db_connection_string" is not None:
             updated_config_lines.append(line.split(":")[0] + " ")
         else:
             updated_config_lines.append(line)
