@@ -179,16 +179,14 @@ class DeployAppClass(ToolBase):
             if not self.services:
                 _logger.error('Error: no services to deploy, aborting deployment.')
                 return False
+
         if self.gcp_env.project == 'all-of-us-rdr-prod':
-            app_engine_url = 'rdr-api.pmi-ops.org'
+            self.api_url = 'rdr-api.pmi-ops.org'
         else:
-            app_engine_url = self._provider.load('current_config', project=self.gcp_env.project)
-        if not app_engine_url:
-
-        load_balanced_urls = cloud_config['load_balanced_url']
-        env_split = self.gcp_env.project.split('-')[-1]
-
-        self.api_url = [item for item in load_balanced_urls if env_split in item][0]  # Finds even numbers
+            cloud_config = self._provider.load('current_config',project=self.gcp_env.project)
+            load_balanced_urls = cloud_config['load_balanced_url']
+            env_split = self.gcp_env.project.split('-')[-1]
+            self.api_url = [item for item in load_balanced_urls if env_split in item][0]
 
         # determine deployment type and sub-type.
         if self.gcp_env.project != 'all-of-us-rdr-prod':
@@ -205,7 +203,6 @@ class DeployAppClass(ToolBase):
                 self.deploy_sub_type = 'test'
         else:
             self.docs_version = 'latest'  # readthedocs version slug for production releases
-            self.api_url = 'rdr-api.pmi-ops.org'
 
         return True
 
@@ -522,9 +519,9 @@ class DeployAppClass(ToolBase):
                 _logger.error("Run 'gcloud auth application-default login' and then try deploying again.\n")
                 return 1
 
-            #if not is_git_branch_clean():
-            #    _logger.error('*** There are uncommitted changes in current branch, aborting. ***\n')
-            #    return 1
+            if not is_git_branch_clean():
+                _logger.error('*** There are uncommitted changes in current branch, aborting. ***\n')
+                return 1
 
             if not self.setup_services():
                 return 1

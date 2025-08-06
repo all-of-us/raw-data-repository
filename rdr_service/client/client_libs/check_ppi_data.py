@@ -73,15 +73,14 @@ class CheckPPIDataClass(object):
             _logger.error("No participants matched filter criteria. aborting.")
             return
 
+        if self.gcp_env.project == 'all-of-us-rdr-prod':
+            app_engine_url = 'rdr-api.pmi-ops.org'
+        else:
             cloud_config = self._provider.load('current_config', project=self.gcp_env.project)
-
             load_balanced_urls = cloud_config['load_balanced_url']
             env_split = self.gcp_env.project.split('-')[-1]
+            app_engine_url = [item for item in load_balanced_urls if env_split in item][0]
 
-            self.api_url = [item for item in load_balanced_urls if env_split in item][0]
-            if
-            else:
-                app_engine_url = f'{self.gcp_env.project}.appspot.com'
         data = {"ppi_data": ppi_data}
 
         headers = gcp_make_auth_header()
