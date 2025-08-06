@@ -1279,25 +1279,14 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.send_valid_primary_consent(participant)
 
         # checking for the log in the Requests Log and verifying the fpk info
-        log_entry = (
-            self.session.query(RequestsLog).order_by(RequestsLog.id.desc()).first()
-        )
+        log_entry = self.session.query(RequestsLog).order_by(
+            RequestsLog.id.desc()
+        ).first()
         self.assertIsNotNone(log_entry, "No log entry found in the requests log table")
-        self.assertEqual(
-            log_entry.participantId,
-            100000000,
-            "the participant_id in the requests log entry does not match the expected value",
-        )
-        self.assertEqual(
-            log_entry.fpk_table,
-            "consent_event",
-            "the fpk_table in the requests log entry does not match the expected value",
-        )
-        self.assertEqual(
-            log_entry.fpk_column,
-            "id",
-            "the fpk_column in the requests log entry does not match the expected value",
-        )
+        self.assertEqual(log_entry.participantId, 100000000)
+        self.assertEqual(log_entry.fpk_table, "participant_event_activity")
+        self.assertEqual(log_entry.fpk_column, "id")
+        self.assertIsNotNone(log_entry.fpk_id)
 
     def tearDown(self):
         super().tearDown()

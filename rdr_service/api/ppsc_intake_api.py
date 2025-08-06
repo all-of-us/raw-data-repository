@@ -40,17 +40,13 @@ class PPSCIntakeAPI(BaseApi):
         # Validate
         self.validate_payload(req_data=req_data)
 
-        # get correct [Activity]Event DAO
-        dao_str = f"{req_data['activity'].lower().replace(' ', '_')}_event_dao"
-        activity_event_dao = self.__dict__.get(dao_str)
-        model = activity_event_dao.model_type
-        log_api_request(log=request.log_record, model_obj=model)
 
         # Route to correct activity and insert events
         inserted_event = self.handle_event_insert(
             req_data=self.get_request_json(),
         )
-        return self._make_response(obj=inserted_event)
+        log_api_request(log=request.log_record, model_obj=inserted_event)
+        return self._make_response(obj=inserted_event.resource)
 
     def validate_payload(self, *, req_data: dict):
         required_keys = ['activity', 'eventType', 'participantId', 'dataElements']
@@ -112,7 +108,7 @@ class PPSCIntakeAPI(BaseApi):
                     if not name+'_date_time' in data_element_names:
                         raise BadRequest(f"Enrollment Status {name} is missing {name+'_date_time'}.")
 
-    def handle_event_insert(self, *, req_data: dict) -> dict:
+    def handle_event_insert(self, *, req_data: dict):
         activity_record = list(filter(lambda x: x.name.lower() == req_data['activity'].lower(),
                                       self.activity_records))
 
@@ -168,7 +164,7 @@ class PPSCIntakeAPI(BaseApi):
 
         activity_event_dao.insert_bulk(records_to_insert)
 
-        return participant_event_activity.resource
+        return participant_event_activity
 
     def check_consent(self, participant_id, event_types, data_element_name, data_element_value):
         with self.dao.session() as session:
