@@ -149,10 +149,10 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
 
         with self.session() as session:
             most_recent = session.query(
-                SmsSample.sample_id,
+                SmsSample.lims_sample_id,
                 func.max(SmsSample.created).label("created")
             ).group_by(
-                SmsSample.sample_id
+                SmsSample.lims_sample_id
             ).filter(
                 SmsSample.ignore_flag == 0
             ).subquery()
@@ -160,7 +160,6 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             sample_well = aliased(SmsN1Mc1)
 
             aliquot_sample = aliased(OrderedSample)
-
             query = session.query(
                 SmsSample.sample_id,
                 SmsN0.matrix_id,
