@@ -12,15 +12,13 @@ import re
 
 from rdr_service.main_util import configure_logging, get_parser
 from rdr_service.rdr_client.client import Client, HttpException
-from rdr_service.tools.db_password_creation import UpdateDatabasePasswordsTool
+
 
 BASE_CONFIG_FILE = "config/base_config.json"
 
-RENEW_PW_USERS = ['root', 'alembic','rdr','readonly']
 
 def _log_and_write_config_lines(raw_config_lines, output_path):
     safe_config_lines = []
-    safe_config_lines.append("in renew function for log and write")
     for line in raw_config_lines:
         match = re.search("db_password", line)
         if "db_connection_string" in line or match is not None:
@@ -33,74 +31,19 @@ def _log_and_write_config_lines(raw_config_lines, output_path):
             output_file.write("\n".join(raw_config_lines))
         logging.info("Unredacted config output written to %r.", output_path)
 
-def replace_passwords(raw_config_lines, output_path):
-    updated_config_lines = []
-    updated_config_lines.append("in renew function for log and write")
-
-    #if #self.project in ENV_LIST:
-    #    self.environment = " " + self.project.split("-")[-1].upper()
-
-
-    upd_tool = UpdateDatabasePasswordsTool()
-    rdr_pw = upd_tool.generate_password(length=20,use_digits=True,use_uppercase=True, use_punctuation=True)
-    root_pw = upd_tool.generate_password(length=20, use_digits=True, use_uppercase=True, use_punctuation=True)
-    readonly_pw =   upd_tool.generate_password(length=20, use_digits=True, use_uppercase=True, use_punctuation=True)
-
-    for line in raw_config_lines:
-        #match = re.search("db_password", line)
-        if line == "read_only_db_password":
-            updated_config_lines.append(line.split(":")[0] + readonly_pw)
-        elif line == "rdr_db_password":
-            updated_config_lines.append(line.split(":")[0] + rdr_pw)
-        elif line == "root_db_password":
-            updated_config_lines.append(line.split(":")[0] + root_pw)
-        elif line == "db_connection_string":
-            updated_config_lines.append(line.split(":")[0] + " ")
-        else:
-            updated_config_lines.append(line)
-    logging.info("\n".join(updated_config_lines))
-    if output_path:
-        with open(output_path, "w") as output_file:
-            output_file.write("\n".join(raw_config_lines))
-        logging.info("Unredacted config output written to %r.", output_path)
 
 def main(args):
-    #args.instance = 'https://pmi-drc-api-test:us-central1:rdrmaindb:3306'
-    args.creds_file = '/Users/lancelopez/Downloads/all-of-us-rdr-prod-dbc3fa8ed6a9.json'
     client = Client(parse_cli=False, creds_file=args.creds_file, default_instance=args.instance)
-
-    config_server = None
-    print (f"args {args}")
-    #if args.renew:
-    #    args.key = 'db_config.json'
-    #    config_path = "Config/%s" % args.key
-    #    logging.info("-------------- Getting Config -------------------")
-    #    config_server = client.request_json(config_path, "GET")
-    #formatted_server_config = _json_to_sorted_string(config_server)
-    #with open(args.config) as config_file:
-     #    config_file = json.load(config_file)
-    print (args)
-
-    args.config_output = '/Users/lancelopez/configout.txt'
-    if args.renew:
-        logging.info("----------------- Current Server Config --------------------")
-        config_server = client.request_json(path='Config/db_config', method="GET")
-        formatted_server_config = _json_to_sorted_string(config_server)
-        replace_passwords(formatted_server_config.split("\n"), args.config_output)
-
     config_path = "Config/%s" % args.key if args.key else "Config"
     try:
         logging.info("-------------- Getting Config -------------------")
-        #config_server = client.request_json('https://pmi-drc-api-test:us-central1:rdrmaindb', "GET")
-        #config_server = client.request_json(path=None, method="GET")
-        config_server = client.request_json(path=config_path, method="GET")
+        config_server = client.request_json(config_path, "GET")
         formatted_server_config = _json_to_sorted_string(config_server)
     except HttpException as e:
         if e.code == http.client.NOT_FOUND:
             formatted_server_config = ""
         else:
             raise
-
 
     if not args.config:
         logging.info("----------------- Current Server Config --------------------")
@@ -122,13 +65,6 @@ def main(args):
             method = "POST" if args.key else "PUT"
             client.request_json(config_path, method, combined_config)
 
-    #    args.key = 'db_config.json'
-    #    config_path = "Config/%s" % args.key
-    #    logging.info("-------------- Getting Config -------------------")
-    #    config_server = client.request_json(config_path, "GET")
-    # formatted_server_config = _json_to_sorted_string(config_server)
-    # with open(args.config) as config_file:
-    #    config_file = json.load(config_file)
 
 def _compare_configs(comparable_file, comparable_server, diff_output_path):
     if comparable_file == comparable_server:
@@ -167,8 +103,5 @@ if __name__ == "__main__":
     parser.add_argument("--key", type=str, help="Specifies a key for a configuration to update.")
     parser.add_argument(
         "--config_output", help="Path to write current config and/or diff into, in addition to logging."
-    )
-    parser.add_argument(
-        "--renew", help="Update system accounts for rdr database in accordance with DRC policies",action="store_true"
     )
     main(parser.parse_args())
