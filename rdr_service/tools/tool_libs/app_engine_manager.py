@@ -91,6 +91,7 @@ class DeployAppClass(ToolBase):
 
     deploy_type = 'prod'
     deploy_sub_type = 'default'
+    api_url = None
     services = GCP_SERVICES
     jira_ready = False
     deploy_version = None
@@ -109,8 +110,10 @@ class DeployAppClass(ToolBase):
         self._current_git_branch = git_current_branch()
         self.jira_board = 'PD'
         self.docs_version = 'stable'  # Use as default version slug for readthedocs
-
+        self.api_url = None
         self.environment = RdrEnvironment(self.args.project)
+        from rdr_service.config import GoogleCloudDatastoreConfigProvider
+        self._provider = GoogleCloudDatastoreConfigProvider()
 
     def write_config_file(self, key: str, config: list, filename: str = None):
         """
@@ -177,6 +180,14 @@ class DeployAppClass(ToolBase):
                 _logger.error('Error: no services to deploy, aborting deployment.')
                 return False
 
+        if self.gcp_env.project == 'all-of-us-rdr-prod':
+            self.api_url = 'rdr-api.pmi-ops.org'
+        else:
+            cloud_config = self._provider.load('current_config',project=self.gcp_env.project)
+            load_balanced_urls = cloud_config['load_balanced_url']
+            env_split = self.gcp_env.project.split('-')[-1]
+            self.api_url = [item for item in load_balanced_urls if env_split in item][0]
+
         # determine deployment type and sub-type.
         if self.gcp_env.project != 'all-of-us-rdr-prod':
             self.deploy_type = 'nonprod'
@@ -210,7 +221,7 @@ class DeployAppClass(ToolBase):
         Create a Jira ticket.
         """
 
-        code, resp = make_api_request(f'{self.gcp_env.project}.appspot.com', api_path='/')
+        code, resp = make_api_request(f'{self.api_url}', api_path='/')
         if code != 200:
             deployed_version = 'unknown'
         else:
