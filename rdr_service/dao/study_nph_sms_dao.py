@@ -250,10 +250,6 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             elif 'duke' in kwargs.get('recipient').lower():
                 query = query.add_columns(
                     SmsN0.lims_parent_sample_id,
-                    func.json_extract(OrderedSample.supplemental_fields, "$.bowelMovement").label('bowel_movement'),
-                    func.json_extract(
-                        OrderedSample.supplemental_fields, '$.bowelMovementQuality'
-                    ).label('bowel_movement_quality')
                 ).outerjoin(
                     SmsN1Mc1,
                     and_(
