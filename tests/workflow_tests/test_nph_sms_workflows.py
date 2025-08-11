@@ -512,9 +512,6 @@ class NphSmsWorkflowsTest(BaseTestCase):
             csv_reader = csv.DictReader(cloud_file)
             csv_rows = list(csv_reader)
 
-        for row in csv_rows:
-            print(row)
-
         self.assertEqual(csv_rows[0]['sample_id'], '10001')
         self.assertEqual(csv_rows[0]['matrix_id'], "1111")
         self.assertEqual(csv_rows[0]['urine_color'], '"Color 4"')
