@@ -253,7 +253,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             sex_at_birth="M",
             sample_identifier="test",
             sample_id=10001,
-            lims_sample_id="000200",
+            lims_sample_id="000201",
             destination=destination
         )
         sms_datagen.create_database_sms_sample(
@@ -264,7 +264,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             sex_at_birth="M",
             sample_identifier="test",
             sample_id=10002,
-            lims_sample_id="000200",
+            lims_sample_id="000202",
             destination=destination
         )
         sms_datagen.create_database_sms_sample(
@@ -275,7 +275,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             sex_at_birth="M",
             sample_identifier="test",
             sample_id=10003,
-            lims_sample_id="000200",
+            lims_sample_id="000203",
             destination=destination
         )
 
@@ -299,6 +299,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             manufacturer_lot='256837',
             age="22",
             biobank_id="test",
+            lims_sample_id="000201",
         )
         sms_datagen.create_database_sms_n0(
             sample_id=10002,
@@ -320,6 +321,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             manufacturer_lot='256838',
             age="22",
             biobank_id="test",
+            lims_sample_id="000202",
         )
         sms_datagen.create_database_sms_n0(
             sample_id=10003,
@@ -341,6 +343,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             manufacturer_lot='256837',
             age="22",
             biobank_id="test",
+            lims_sample_id="000203",
         )
 
         sms_datagen.create_database_sms_blocklist(
@@ -353,7 +356,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             package_id="test",
             storage_unit_id="test",
             file_path=f"{destination}_n0_test.csv",
-            well_box_position="A4"
+            well_box_position="A4",
         )
 
     @staticmethod
@@ -405,6 +408,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             manufacturer_lot='256837',
             age="22",
             biobank_id=f"T{biobank_id}",
+            lims_sample_id="000200",
         )
 
         sms_datagen.create_database_dlw_dosage(
@@ -467,6 +471,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             manufacturer_lot='256837',
             age="22",
             biobank_id=f"T{biobank_id}",
+            lims_sample_id="000200",
             lims_parent_sample_id="12345678",
         )
 
@@ -482,7 +487,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             sex_at_birth="M",
             sample_identifier="test",
             sample_id=10002,
-            lims_sample_id="000200",
+            lims_sample_id="000202",
             destination="UNC_META"
         )
 
