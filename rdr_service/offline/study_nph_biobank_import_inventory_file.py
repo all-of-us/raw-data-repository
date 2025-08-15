@@ -93,10 +93,26 @@ def _convert_csv_row_to_stored_sample_object(csv_obj: Dict[str, Union[str, int]]
 
 def import_biobank_inventory_into_stored_samples(csv_filepath: str):
     nph_stored_sample_dao = NphStoredSampleDao()
-    for row in read_nph_biobank_inventory_file(csv_filepath):
+    rows = read_nph_biobank_inventory_file(csv_filepath)
+    parent_fields = {}
+
+    for row in rows:
+        parent_id = row.get('LIMS_PARENT_SAMPLE_ID')
+        if row['SAMPLE_ID'] is None and parent_id is not None and parent_id not in parent_fields.keys():
+            row['SAMPLE_ID'] = check_for_parent(rows, parent_id)
+            parent_fields[parent_id] = row['SAMPLE_ID']
+
+        elif row['SAMPLE_ID'] is None and parent_id is not None and parent_id in parent_fields.keys():
+            row['SAMPLE_ID'] = parent_fields[parent_id]
+
         stored_sample = _convert_csv_row_to_stored_sample_object(row)
         nph_stored_sample_dao.insert(stored_sample)
 
+
+def check_for_parent(rows, parent_id):
+    for row in rows:
+        if row['LIMS_ID'] == parent_id:
+            return row['SAMPLE_ID']
 
 def main():
     bucket_name = config.getSetting(config.NPH_SAMPLE_DATA_BIOBANK_NIGHTLY_FILE_DROP)
