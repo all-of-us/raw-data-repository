@@ -112,7 +112,7 @@ def import_biobank_inventory_into_stored_samples(csv_filepath: str):
 
 def check_for_parent(rows, parent_id):
     for row in rows:
-        if row['LIMS_ID'] == parent_id:
+        if row['LIMS_SAMPLE_ID'] == parent_id:
             return row['SAMPLE_ID']
 
 def main():
