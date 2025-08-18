@@ -2,10 +2,6 @@
 
 # Sets up a Cloud SQL instance and sets the 4 passwords that need to be rotated (root, alembic, readonly and rdr
 
-
-CREATE_INSTANCE=
-UPDATE_PASSWORDS=
-CONTINUE_CREATING_INSTANCE=
 USAGE="tools/renew_passwords.sh --account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>]"
 while true; do
   case "$1" in
@@ -45,9 +41,6 @@ function randpw {
 
 INSTANCE_NAME=rdrmaindb
 FAILOVER_INSTANCE_NAME=rdrbackupdb
-# Default to a lightweight config; uses a non-shared CPU, with 1 core and 3.75 GB of memory
-# (consider making this something different in production).
-MACHINE_TYPE=db-n1-standard-1
 
 source tools/auth_setup.sh
 
@@ -59,11 +52,11 @@ then
     BACKUP_INSTANCE_NAME=$INSTANCE_CONNECTION_NAME
 fi
 
-UPDATE_DB_FILE=/tmp/update_db.sql
+UPDATE_DB_FILE=/tmp/update_passwords.sql
 
 function finish {
   cleanup
-  #rm -f ${UPDATE_DB_FILE}
+  rm -f ${UPDATE_DB_FILE}
 }
 trap finish EXIT
 

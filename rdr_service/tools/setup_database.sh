@@ -95,11 +95,13 @@ then
 fi
 
 INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
-BACKUP_INSTANCE_NAME=$(gcloud sql instances describe $FAILOVER_INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
+
 
 if [ ${PROJECT} = 'all-of-us-rdr-sandbox' ]
 then
-    BACKUP_INSTANCE_NAME=$INSTANCE_CONNECTION_NAME
+  BACKUP_INSTANCE_NAME=$INSTANCE_CONNECTION_NAME
+else
+  BACKUP_INSTANCE_NAME=$(gcloud sql instances describe $FAILOVER_INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
 fi
 
 UPDATE_DB_FILE=/tmp/update_db.sql
