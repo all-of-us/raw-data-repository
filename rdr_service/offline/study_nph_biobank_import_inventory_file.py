@@ -100,7 +100,7 @@ def import_biobank_inventory_into_stored_samples(csv_filepath: str):
     for row in rows:
         parent_id = row.get('LIMS_PARENT_SAMPLE_ID')
         if row['SAMPLE_ID'] in nulls and parent_id not in nulls and parent_id not in parent_fields.keys():
-            row['SAMPLE_ID'] = check_for_parent(rows, parent_id)
+            row['SAMPLE_ID'] = check_for_parent(read_nph_biobank_inventory_file(csv_filepath), parent_id)
             parent_fields[parent_id] = row['SAMPLE_ID']
 
         elif row['SAMPLE_ID'] in nulls and parent_id not in nulls and parent_id in parent_fields.keys():

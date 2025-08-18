@@ -168,6 +168,8 @@ class NphBiobankWorkflowsTest(BaseTestCase):
         self.assertEqual(stored_samples[1].sample_id, "00006")
         self.assertEqual(stored_samples[1].specimen_volume_ul, 1000)
         self.assertEqual(stored_samples[1].freeze_thaw_count, 0)
+        self.assertEqual(stored_samples[2].sample_id, "00005")
+        self.assertEqual(stored_samples[3].sample_id, "00006")
 
     def test_no_error_on_timestamp(self):
         sample = self.sms_datagen.create_database_ordered_sample(
