@@ -232,7 +232,7 @@ class DeployAppClass(ToolBase):
             Monique Bristol, Shahwaiz Punjwani, David Konopka, Lance Lopez
             Needed By Date/Event: <target release date>
             Priority: <Low, Medium, High>
-            Configuration/Change Manager: Megan Morris
+            Configuration/Change Manager: Queenie Ho
 
             Anticipated Impact: <None, Low, Medium, High>
             Software Impact: <Software Impact>
