@@ -1,6 +1,5 @@
 # pylint: disable=unused-argument
 # pylint: disable=unused-import
-
 import logging
 import os
 
@@ -9,7 +8,7 @@ from rdr_service.config import GAE_PROJECT
 # from google.appengine.api import mail
 # from google.appengine.ext import db
 
-from rdr_service.config import GoogleCloudDatastoreConfigProvider
+from rdr_service import config
 
 class pipeline(object):
     """ Dummy class to replace Pipeline 2.7 library package """
@@ -55,17 +54,7 @@ class BasePipeline(pipeline):
             if shard_index != -1:
                 app_id = app_id[shard_index + 1 :]
             pipeline_name = self.__class__.__name__
-
-            self._provider = GoogleCloudDatastoreConfigProvider()
-
-            if self.gcp_env.project == 'all-of-us-rdr-prod':
-                base_path = 'rdr-api.pmi-ops.org'
-            else:
-                cloud_config = self._provider.load('current_config', project=app_id)
-                load_balanced_urls = cloud_config['load_balanced_url']
-                env_split = self.gcp_env.project.split('-')[-1]
-                base_path = [item for item in load_balanced_urls if env_split in item][0]
-
+            base_path = "%s.appspot.com%s" % (app_id, self.base_path)
             status_link = "http://%s/status?root=%s" % (base_path, self.root_pipeline_id)
 
             suffix = ""
