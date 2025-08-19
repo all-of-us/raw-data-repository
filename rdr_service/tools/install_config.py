@@ -37,9 +37,6 @@ def main(args):
     config_path = "Config/%s" % args.key if args.key else "Config"
     try:
         logging.info("-------------- Getting Config -------------------")
-        #config_path = 'https://rdr-api-sandbox.pmi-ops.org/rdr/v1/Config/db_config'
-        #Config / db_config
-        #config_path = 'https://all-of-us-rdr-sandbox.appspot.com/rdr/v1/Config/db_config'
         config_server = client.request_json(config_path, "GET")
         formatted_server_config = _json_to_sorted_string(config_server)
     except HttpException as e:
