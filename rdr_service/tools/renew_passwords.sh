@@ -14,7 +14,7 @@ while true; do
     * ) break ;;
   esac
 done
-echo "accout $ACCOUNT"
+
 if [ -z "${ACCOUNT}" ]
 then
   echo "account: $USAGE"
