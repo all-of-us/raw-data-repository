@@ -115,7 +115,6 @@ class Client(object):
             headers["x-pretend-date"] = pretend_date.isoformat()
 
         if authenticated:
-            print ("url is " + url)
             resp, content = self._http.request(url, method, headers=headers, body=body)
         else:
             # On dev_appserver, there is no way to tell if a request is authenticated or not.
