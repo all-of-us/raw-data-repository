@@ -712,6 +712,9 @@ def insert_awardee_insite_data(
               )
             WHERE rn = 1
           ),
+          -- 2 BQ jobs are run daily in curation project."materialize_ehr_uploads_pids_view_into_table" changes the view
+          -- to a table & "copy_rdr_operational_across_regions" moves the dataset from US to uscentral1 so it can be
+          -- queried here
           latest_ehr_receipt_time_cte AS (
             SELECT person_id
             , CAST(FORMAT_TIMESTAMP("%Y-%m-%dT%H:%M:%S", latest_upload_time) AS DATETIME) AS latest_ehr_receipt_time
