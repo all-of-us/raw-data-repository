@@ -347,6 +347,7 @@ def insert_awardee_insite_data(
     project: str, src_operational_dataset: str, destination_dataset: str
 ) -> str:
     """Insert data into `datafeed_input_awardee_insite` table. Also takes care of withdrawn participants"""
+    curation_project = config.getSettingJson(config.CURATION_PROD_PROJECT)[0]
 
     return f"""
         INSERT INTO `{project}.{destination_dataset}.datafeed_input_awardee_insite`
@@ -711,11 +712,18 @@ def insert_awardee_insite_data(
               )
             WHERE rn = 1
           ),
+          -- 2 BQ jobs are run daily in curation project."materialize_ehr_uploads_pids_view_into_table" changes the view
+          -- to a table & "copy_rdr_operational_across_regions" moves the dataset from US to uscentral1 so it can be
+          -- queried here
+          latest_ehr_receipt_time_cte AS (
+            SELECT person_id
+            , CAST(FORMAT_TIMESTAMP("%Y-%m-%dT%H:%M:%S", latest_upload_time) AS DATETIME) AS latest_ehr_receipt_time
+            FROM `{curation_project}.rdr_operational_us_central.ehr_upload_pids`
+          ),
           participant_summary_cte AS (
             SELECT
               participant_id
               , ehr_receipt_time AS first_ehr_receipt_time
-              , ehr_update_time AS latest_ehr_receipt_time
               , consent_for_electronic_health_records_first_yes_authored
               , consent_for_study_enrollment_authored
               , patient_status
@@ -837,6 +845,8 @@ def insert_awardee_insite_data(
             USING (participant_id)
             LEFT JOIN latest_enrollement_status
             USING (participant_id)
+            LEFT JOIN latest_ehr_receipt_time_cte lertc
+            ON participant_cte.participant_id = lertc.person_id
           ),
           withdrawn_update AS (
               SELECT
