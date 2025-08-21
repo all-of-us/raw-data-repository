@@ -15,15 +15,14 @@ import requests
 from flask import request, Response
 
 from google.api.monitored_resource_pb2 import MonitoredResource
-from google.cloud import logging as gcp_logging
 from google.cloud import logging_v2 as gcp_logging_v2
 from google.logging.type import http_request_pb2 as gcp_http_request_pb2
+from google.logging.type import log_severity_pb2 as log_severity
 from google.protobuf import json_format as gcp_json_format, any_pb2 as gcp_any_pb2
 
 from werkzeug.exceptions import HTTPException
 
 # Do not remove this import.
-from rdr_service.services import gcp_request_log_pb2  # pylint: disable=unused-import
 from rdr_service.config import GAE_PROJECT
 
 # https://pypi.org/project/google-cloud-logging/
@@ -38,6 +37,15 @@ GAE_LOGGING_VERSION_ID = os.environ.get('GAE_VERSION', 'devel')
 
 # This is where we save all data that is tied to a specific execution thread.
 _thread_store = threading.local()
+
+_NORMALIZED_SEVERITIES = {
+    logging.CRITICAL: log_severity.CRITICAL,
+    logging.ERROR: log_severity.ERROR,
+    logging.WARNING: log_severity.WARNING,
+    logging.INFO: log_severity.INFO,
+    logging.DEBUG: log_severity.DEBUG,
+    logging.NOTSET: log_severity.DEFAULT,
+}
 
 class LogCompletionStatusEnum(IntEnum):
     """
@@ -101,7 +109,7 @@ def setup_log_line(record: logging.LogRecord, resource=None, method=None):
     event_ts = datetime.utcfromtimestamp(record.created)
     event_ts = event_ts.replace(tzinfo=timezone.utc)
     event_ts = event_ts.isoformat()
-    severity = gcp_logging._helpers._normalize_severity(record.levelno)
+    severity = _NORMALIZED_SEVERITIES.get(record.levelno, record.levelno)
     message = record.msg if record.msg else ''
     if isinstance(message, dict):
         message = json.dumps(message)
@@ -164,7 +172,7 @@ def get_highest_severity_level_from_lines(lines):
         if s:
             return s[0]
 
-    return gcp_logging_v2.gapic.enums.LogSeverity(200)
+    return log_severity.INFO
 
 
 def setup_proto_payload(lines: list, log_status: LogCompletionStatusEnum, **kwargs):
@@ -243,6 +251,17 @@ class GCPStackDriverLogger(object):
     """
     # Used to determine how long a request took.
     __first_log_ts = None
+    sev_code_map = {
+        0: log_severity.DEFAULT,
+        100: log_severity.DEBUG,
+        200: log_severity.INFO,
+        300: log_severity.NOTICE,
+        400: log_severity.WARNING,
+        500: log_severity.ERROR,
+        600: log_severity.CRITICAL,
+        700: log_severity.ALERT,
+        800: log_severity.EMERGENCY,
+    }
 
     def __init__(self, buffer_size=_LOG_BUFFER_SIZE):
 
@@ -385,7 +404,7 @@ class GCPStackDriverLogger(object):
             # Transform the response code to a logging severity level.
             tmp_code = int(round(self._response_status_code / 100, 0) * 100)
             if tmp_code > int(log_entry_pb2_args['severity']):
-                log_entry_pb2_args['severity'] = gcp_logging_v2.gapic.enums.LogSeverity(tmp_code)
+                log_entry_pb2_args['severity'] = self.sev_code_map.get(tmp_code)
 
         if not self._operation_pb2:
             self.log_completion_status = LogCompletionStatusEnum.COMPLETE

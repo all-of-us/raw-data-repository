@@ -429,12 +429,20 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
         attempt_count = 0
 
         def raise_api_error():
+            mock_response = mock.Mock()
+            mock_response.return_value = {
+                "error": {
+                    "code": "00001",
+                    "message": "Test error message"
+                }
+            }
+
             nonlocal attempt_count
             attempt_count += 1
             if attempt_count > 2:
                 return mock.DEFAULT  # return the mock's default return_value
             else:
-                raise HttpError(..., bytes())
+                raise HttpError(mock_response, bytes())
 
         self.mock_spreadsheets_return.get.return_value.execute.side_effect = raise_api_error
 
@@ -450,9 +458,17 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
         attempt_count = 0
 
         def raise_api_error():
+            mock_response = mock.Mock()
+            mock_response.return_value = {
+                "error": {
+                    "code": "00002",
+                    "message": "Test error message"
+                }
+            }
+
             nonlocal attempt_count
             attempt_count += 1
-            raise HttpError(..., bytes())
+            raise HttpError(mock_response, bytes())
 
         self.mock_spreadsheets_return.get.return_value.execute.side_effect = raise_api_error
 

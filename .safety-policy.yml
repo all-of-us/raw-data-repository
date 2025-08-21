@@ -17,12 +17,6 @@ security: # configuration for the `safety check` command
         65213:
             reason: RDR code not run on PowerPC architecture
             expires: '2030-01-01'
-        67599:
-            reason: pip v 24.0 installs a vulnerability
-            expires: '2025-05-14'
-        70612:
-          reason: jinja2 version 3.1.4 has a vulnerability
-          expires: '2025-05-31'
         77740:
           reason: protobuf version 3.20.3 has a vulnerability
           expires: '2026-07-31'

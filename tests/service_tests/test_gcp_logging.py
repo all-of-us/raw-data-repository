@@ -1,4 +1,4 @@
-from google.cloud.logging_v2.gapic import enums
+from google.logging.type import log_severity_pb2 as LogSeverity
 import logging
 import mock
 
@@ -37,7 +37,7 @@ class GCPLoggingTest(BaseTestCase):
             mock_final_log_entry_call = mock_gcp_logging.types.log_entry_pb2.LogEntry
             _, kwargs = mock_final_log_entry_call.call_args
             logged_severity = kwargs.get('severity')
-            self.assertEqual(enums.LogSeverity.ERROR, logged_severity)
+            self.assertEqual(LogSeverity.ERROR, logged_severity)
 
     def test_handle_missing_severity_when_finding_highest(self):
         lines = [
@@ -58,4 +58,4 @@ class GCPLoggingTest(BaseTestCase):
         ]
 
         highest_severity = gcp_logging.get_highest_severity_level_from_lines(lines)
-        self.assertEqual(enums.LogSeverity.INFO, highest_severity)
+        self.assertEqual(LogSeverity.INFO, highest_severity)
