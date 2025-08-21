@@ -155,6 +155,7 @@ GENOMIC_GC_SITE_BUCKET_MAP = 'gc_site_bucket_map'
 CONFIG_BUCKET = "all-of-us-rdr-sequestered-config-test"
 EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT = "ehr_status_bigquery_view_participant"
 EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION = "ehr_status_bigquery_view_organization"
+CURATION_PROD_PROJECT = "curation_prod_project"
 HPO_REPORT_CONFIG_MIXIN_PATH = "hpo_report_config_mixin_path"
 LOCALHOST_DEFAULT_BUCKET_NAME = 'local_bucket'
 BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN = 'biobank_samples_daily_inventory_file_pattern'
