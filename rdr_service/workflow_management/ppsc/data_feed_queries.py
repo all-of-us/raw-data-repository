@@ -347,7 +347,7 @@ def insert_awardee_insite_data(
     project: str, src_operational_dataset: str, destination_dataset: str
 ) -> str:
     """Insert data into `datafeed_input_awardee_insite` table. Also takes care of withdrawn participants"""
-    curation_project = config.getSettingJson(config.CURATION_PROD_PROJECT)
+    curation_project = config.getSettingJson(config.CURATION_PROD_PROJECT)[0]
 
     return f"""
         INSERT INTO `{project}.{destination_dataset}.datafeed_input_awardee_insite`
