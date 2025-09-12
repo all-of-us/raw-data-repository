@@ -3,7 +3,7 @@ from werkzeug.exceptions import NotFound
 from flask import request
 
 from rdr_service.api.base_api import UpdatableApi, BaseApi
-from rdr_service.api_util import dispatch_task, PTC, PTC_AND_HEALTHPRO, HEALTHPRO
+from rdr_service.api_util import dispatch_task, PTC_AND_HEALTHPRO, RDR
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.pediatric_data_log_dao import PediatricDataLogDao
@@ -21,7 +21,7 @@ class ParticipantApi(UpdatableApi):
             raise NotFound(f"Participant with ID {p_id} is not found.")
         return super().get(p_id)
 
-    @app_util.auth_required(PTC)
+    @app_util.auth_required(RDR)
     def post(self):
         response, *_ = super(ParticipantApi, self).post()
 
@@ -31,7 +31,7 @@ class ParticipantApi(UpdatableApi):
 
         return response, *_
 
-    @app_util.auth_required(PTC)
+    @app_util.auth_required(RDR)
     def put(self, p_id):
         response = super(ParticipantApi, self).put(p_id)
         self._check_for_pediatric_update(p_id)
@@ -54,7 +54,7 @@ class ParticipantResearchIdApi(BaseApi):
     def __init__(self):
         super(ParticipantResearchIdApi, self).__init__(ParticipantDao())
 
-    @app_util.auth_required(HEALTHPRO)
+    @app_util.auth_required(RDR)
     def get(self):
         kwargs = {
             'sign_up_after': request.args.get('signUpAfter'),

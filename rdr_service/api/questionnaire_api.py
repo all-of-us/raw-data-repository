@@ -4,7 +4,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from rdr_service import app_util
 from rdr_service.api.base_api import UpdatableApi
 from rdr_service.api.etm_api import EtmApi
-from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO
+from rdr_service.api_util import RDR
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
@@ -14,7 +14,7 @@ class QuestionnaireApi(UpdatableApi):
     def __init__(self):
         super(QuestionnaireApi, self).__init__(QuestionnaireDao())
 
-    @app_util.auth_required(PTC_AND_HEALTHPRO)
+    @app_util.auth_required(RDR)
     def get(self, id_=None):
         if id_:
             return super(QuestionnaireApi, self).get(id_)
@@ -30,7 +30,7 @@ class QuestionnaireApi(UpdatableApi):
                 raise NotFound(f"Could not find questionnaire with concept: {concept}")
             return self._make_response(questionnaire)
 
-    @app_util.auth_required(PTC)
+    @app_util.auth_required(RDR)
     def post(self):
         # Detect if this is an EtM Questionnaire
         request_json = self.get_request_json()
@@ -40,7 +40,7 @@ class QuestionnaireApi(UpdatableApi):
         else:
             return super(QuestionnaireApi, self).post()
 
-    @app_util.auth_required(PTC)
+    @app_util.auth_required(RDR)
     def put(self, id_):
         return super(QuestionnaireApi, self).put(id_)
 
