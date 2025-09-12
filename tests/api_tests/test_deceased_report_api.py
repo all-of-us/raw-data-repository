@@ -3,7 +3,6 @@ from datetime import date, datetime, timedelta
 import pytz
 
 from rdr_service import config
-from rdr_service.api_util import HEALTHPRO, PTC
 from rdr_service.model.api_user import ApiUser
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.participant_summary import ParticipantSummary
