@@ -3,7 +3,6 @@ from datetime import date, datetime, timedelta
 import pytz
 
 from rdr_service import config
-from rdr_service.api_util import HEALTHPRO, PTC
 from rdr_service.model.api_user import ApiUser
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -342,16 +341,6 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         self.overwrite_test_user_roles(['testing'])
         self.post_report(report_json, expected_status=403)
 
-    def test_health_pro_can_create(self):
-        report_json = self.build_deceased_report_json()
-        self.overwrite_test_user_roles([HEALTHPRO])
-        self.post_report(report_json)
-
-    def test_ptsc_can_create(self):
-        report_json = self.build_deceased_report_json()
-        self.overwrite_test_user_roles([PTC])
-        self.post_report(report_json)
-
     def test_report_auto_approve(self):
         # Deceased reports made for unpaired participants don't need second approval.
         # So these reports should be approved upon creation.
@@ -436,19 +425,6 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
 
         participant_summary = self.get_participant_summary_from_db(participant_id=participant_id)
         self.assertEqual(date(2019, 6, 1), participant_summary.dateOfDeath)
-
-    def test_only_healthpro_can_review(self):
-        report = self.create_pending_deceased_report()
-        review_json = self.build_report_review_json()
-
-        self.overwrite_test_user_roles(['testing'])
-        self.post_report_review(review_json, report.id, report.participantId, expected_status=403)
-
-        self.overwrite_test_user_roles([PTC])
-        self.post_report_review(review_json, report.id, report.participantId, expected_status=403)
-
-        self.overwrite_test_user_roles([HEALTHPRO])
-        self.post_report_review(review_json, report.id, report.participantId, expected_status=200)
 
     def test_report_denial(self):
         report = self.create_pending_deceased_report(
@@ -774,23 +750,3 @@ class SearchDeceasedReportApiTest(DeceasedReportTestBase):
             self.unpaired_3_report_id,  # Authored 02/18
             self.unpaired_2_report_id   # Authored 01/05
         ], self.send_get(f'DeceasedReports?org_id=UNSET'))
-
-    def test_searching_api_by_org_and_status(self):
-        self.assertListResponseMatches(
-            [],
-            self.send_get(f'DeceasedReports?org_id=OTHER&status=preliminary'))
-
-        self.assertListResponseMatches([
-            self.unpaired_1_report_id,  # Authored 04/01
-            self.unpaired_3_report_id  # Authored 02/18
-        ], self.send_get(f'DeceasedReports?org_id=UNSET&status=preliminary'))
-
-    def test_searching_api_by_org_and_status(self):
-        self.overwrite_test_user_roles(['TEST'])
-        self.send_get(f'DeceasedReports', expected_status=403)
-
-        self.overwrite_test_user_roles([PTC])
-        self.send_get(f'DeceasedReports', expected_status=403)
-
-        self.overwrite_test_user_roles([HEALTHPRO])
-        self.send_get(f'DeceasedReports', expected_status=200)

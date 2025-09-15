@@ -2,7 +2,7 @@ from flask import request
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.api.base_api import BaseApi, UpdatableApi
-from rdr_service.api_util import HEALTHPRO, PTC_AND_HEALTHPRO
+from rdr_service.api_util import RDR, HEALTHPRO
 from rdr_service.app_util import auth_required, check_auth
 from rdr_service.dao.deceased_report_dao import DeceasedReportDao
 from rdr_service.model.utils import from_client_participant_id
@@ -21,7 +21,7 @@ class DeceasedReportApi(DeceasedReportApiMixin, BaseApi):
     one or more participants.
     """
 
-    @auth_required(PTC_AND_HEALTHPRO)
+    @auth_required(RDR)
     def list(self, participant_id=None):
         search_kwargs = {key: value for key, value in request.args.items()}
 
@@ -39,7 +39,7 @@ class DeceasedReportApi(DeceasedReportApiMixin, BaseApi):
 
         return response
 
-    @auth_required(PTC_AND_HEALTHPRO)
+    @auth_required(RDR)
     def post(self, participant_id=None):
         resource = request.get_json(force=True)
         if 'code' not in resource or\
@@ -52,7 +52,7 @@ class DeceasedReportApi(DeceasedReportApiMixin, BaseApi):
 
 
 class DeceasedReportReviewApi(DeceasedReportApiMixin, UpdatableApi):
-    @auth_required(HEALTHPRO)
+    @auth_required(RDR)
     def post(self, participant_id, report_id):
         participant_id = from_client_participant_id(participant_id)
 

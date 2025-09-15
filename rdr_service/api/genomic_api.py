@@ -8,7 +8,7 @@ from werkzeug.exceptions import NotFound, BadRequest, Forbidden
 
 from rdr_service import clock, config
 from rdr_service.api.base_api import BaseApi, log_api_request, UpdatableApi
-from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
+from rdr_service.api_util import RDR
 from rdr_service.app_util import auth_required, restrict_to_gae_project, get_validated_user_info
 from rdr_service.config import GENOMIC_CLIENT_IDS
 from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicSetMemberDao, GenomicOutreachDao, GenomicOutreachDaoV2, \
@@ -140,7 +140,7 @@ class GenomicPiiApi(BaseApi):
     def __init__(self):
         super(GenomicPiiApi, self).__init__(GenomicPiiDao())
 
-    @auth_required([GEM, RDR])
+    @auth_required(RDR)
     def get(self, mode=None, pii_id=None):
         if mode not in ('GP', 'RHP'):
             raise BadRequest("GenomicPII Mode required to be \"GP\" or \"RHP\".")
@@ -172,7 +172,7 @@ class GenomicOutreachApi(BaseApi):
         self.report_state_dao = GenomicMemberReportStateDao()
         self.participant_origin: List[str] = GenomicOrigin.set_participant_origin(lookup_type='GenomicOutreach')
 
-    @auth_required([GEM] + RDR_AND_PTC)
+    @auth_required(RDR)
     def get(self, mode=None):
         self._check_mode(mode)
         if mode.lower() == "gem":
@@ -180,7 +180,7 @@ class GenomicOutreachApi(BaseApi):
 
         return BadRequest
 
-    @auth_required(RDR_AND_PTC)
+    @auth_required(RDR)
     @restrict_to_gae_project(PTC_ALLOWED_ENVIRONMENTS)
     def post(self, p_id, mode=None):
         """
@@ -290,7 +290,7 @@ class GenomicOutreachApiV2(UpdatableApi):
         self.validate_outreach_params()
         self.participant_origin: List[str] = GenomicOrigin.set_participant_origin(lookup_type='GenomicOutreach')
 
-    @auth_required(RDR_AND_PTC)
+    @auth_required(RDR)
     def get(self):
         self._check_global_args(
             request.args.get('module'),
@@ -298,7 +298,7 @@ class GenomicOutreachApiV2(UpdatableApi):
         )
         return self.get_outreach()
 
-    @auth_required(RDR_AND_PTC)
+    @auth_required(RDR)
     @restrict_to_gae_project(PTC_ALLOWED_ENVIRONMENTS)
     def post(self):
         participant_id, request_data = self.validate_post_data()
@@ -308,7 +308,7 @@ class GenomicOutreachApiV2(UpdatableApi):
             self.participant_origin[0]
         )
 
-    @auth_required(RDR_AND_PTC)
+    @auth_required(RDR)
     @restrict_to_gae_project(PTC_ALLOWED_ENVIRONMENTS)
     def put(self):
         participant_id, request_data = self.validate_post_data()
@@ -490,7 +490,7 @@ class GenomicSchedulingApi(BaseApi):
         self.validate_scheduling_params()
         self.participant_origin: List[str] = GenomicOrigin.set_participant_origin(lookup_type='GenomicScheduling')
 
-    @auth_required(RDR_AND_PTC)
+    @auth_required(RDR)
     def get(self):
         self._check_global_args(
             request.args.get('module')

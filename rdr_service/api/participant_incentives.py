@@ -3,7 +3,7 @@ from flask import request
 
 from rdr_service.app_util import auth_required
 from rdr_service.api.base_api import UpdatableApi, log_api_request
-from rdr_service.api_util import RDR_AND_HEALTHPRO
+from rdr_service.api_util import RDR
 from rdr_service.dao.participant_incentives_dao import ParticipantIncentivesDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.site_dao import SiteDao
@@ -16,7 +16,7 @@ class ParticipantIncentivesApi(UpdatableApi):
         self.site_dao = SiteDao()
         self.site_id = None
 
-    @auth_required(RDR_AND_HEALTHPRO)
+    @auth_required(RDR)
     def post(self, p_id):
         participant = self.ps_dao.get_by_participant_id(p_id)
 
@@ -36,7 +36,7 @@ class ParticipantIncentivesApi(UpdatableApi):
         log_api_request(log=request.log_record)
         return self._make_response(obj)
 
-    @auth_required(RDR_AND_HEALTHPRO)
+    @auth_required(RDR)
     def put(self, p_id):
         participant = self.ps_dao.get_by_participant_id(p_id)
 
