@@ -816,6 +816,42 @@ class PPSCIntakeAPITest(BaseTestCase):
         response = self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
         self.assertEqual(response.status_code, 400)
 
+    def test_morehouse_attribution_payload_is_updated(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
+
+        payload = {
+            "activity": "Attribution",
+            "eventType": "Org Attribution",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "SEEC_MOREHOUSE"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2025-05-20T12:38:00.000Z"
+                },
+            ]
+        }
+
+        test_time = datetime(2025, 5, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+        participant_event_activities = self.ppsc_participant_activity_dao.get_all()
+        original_org = payload.get("dataElements")[0].get("dataElementValue")
+        # Verify that sent data stored in the participant_even_activities as is
+        self.assertEqual(original_org, participant_event_activities[1].resource["dataElements"][0]["dataElementValue"])
+
+        attribution_events = self.attribution_event_dao.get_all()
+        self.assertEqual('Org Attribution', attribution_events[0].event_type_name)
+        # Verify value is transformed
+        self.assertEqual('DREF_MOREHOUSE', attribution_events[0].data_element_value)
+
+
+
     def test_intake_attribution_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
         self.send_valid_primary_consent(participant)

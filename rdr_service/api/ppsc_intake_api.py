@@ -140,6 +140,15 @@ class PPSCIntakeAPI(BaseApi):
 
         # Iterate through data elements, add to bulk insert
         for data_element in req_data['dataElements']:
+
+            # DA-4970: Transforming SEEC_MOREHOUSE to DREF_MOREHOUSE
+            if (
+                req_data['activity'].lower() == 'attribution' and
+                data_element.get('dataElementName').lower() == 'activity_status' and
+                data_element.get('dataElementValue').lower() == 'seec_morehouse'
+            ):
+                data_element['dataElementValue'] = 'DREF_MOREHOUSE'
+
             now = clock.CLOCK.now()  # event_listener doesn't work with bulk inserts
             event_dict = {
                 'event_id': participant_event_activity.id,
