@@ -2,7 +2,7 @@ from werkzeug.exceptions import BadRequest
 
 from rdr_service import app_util
 from rdr_service.api.base_api import BaseApi
-from rdr_service.api_util import RDR_AND_HEALTHPRO
+from rdr_service.api_util import RDR
 from rdr_service.dao.onsite_verification_dao import OnsiteVerificationDao
 
 
@@ -10,11 +10,11 @@ class OnsiteVerificationApi(BaseApi):
     def __init__(self):
         super().__init__(OnsiteVerificationDao())
 
-    @app_util.auth_required(RDR_AND_HEALTHPRO)
+    @app_util.auth_required(RDR)
     def post(self):
         return super(OnsiteVerificationApi, self).post()
 
-    @app_util.auth_required(RDR_AND_HEALTHPRO)
+    @app_util.auth_required(RDR)
     def get(self, p_id=None):
         if p_id is None:
             raise BadRequest("Request must include participant id")
