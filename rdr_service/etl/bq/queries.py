@@ -96,7 +96,7 @@ queries = {
                 MIN(stcm1.source_concept_id) AS race_source_concept_id,
                 MIN(COALESCE(vc1.concept_id, 0)) AS race_target_concept_id
             FROM `{dataset_id}.src_mapped` src_m
-                INNER JOIN `{dataset_id}.source_to_concept_map` stcm1 ON src_m.value_ppi_code = stcm1.source_code
+                INNER JOIN `etl_filters.source_to_concept_map` stcm1 ON src_m.value_ppi_code = stcm1.source_code
                 AND stcm1.priority = 1 -- priority 1
                 AND stcm1.source_vocabulary_id = 'ppi-race'
                 LEFT JOIN `{dataset_id}.concept` vc1 ON stcm1.target_concept_id = vc1.concept_id
@@ -114,7 +114,7 @@ queries = {
                 MIN(stcm1.source_concept_id) AS race_source_concept_id,
                 MIN(COALESCE(vc1.concept_id, 0)) AS race_target_concept_id
             FROM `{dataset_id}.src_mapped` src_m
-                INNER JOIN `{dataset_id}.source_to_concept_map` stcm1 ON src_m.value_ppi_code = stcm1.source_code
+                INNER JOIN `etl_filters.source_to_concept_map` stcm1 ON src_m.value_ppi_code = stcm1.source_code
                 AND stcm1.priority = 2 -- priority 2
                 AND stcm1.source_vocabulary_id = 'ppi-race'
                 LEFT JOIN `{dataset_id}.concept` vc1 ON stcm1.target_concept_id = vc1.concept_id
@@ -140,7 +140,7 @@ queries = {
             FROM
               `{dataset_id}.src_mapped` src_m
             INNER JOIN
-              `{dataset_id}.source_to_concept_map` stcm1
+              `etl_filters.source_to_concept_map` stcm1
             ON
               src_m.value_ppi_code = stcm1.source_code
               AND stcm1.priority = 1              -- priority 1
@@ -170,7 +170,7 @@ queries = {
             FROM
               `{dataset_id}.src_mapped` src_m
             INNER JOIN
-              `{dataset_id}.source_to_concept_map` stcm1
+              `etl_filters.source_to_concept_map` stcm1
             ON
               src_m.value_ppi_code = stcm1.source_code
               AND stcm1.priority = 2              -- priority 2
@@ -283,22 +283,23 @@ queries = {
     "note": {
         "query": """
             SELECT
-              NULL AS note_id,
+              meas.id as note_id,
+              -- NULL AS note_id, -- note_id cant be null EAS
               meas.participant_id AS person_id,
               DATE(meas.measurement_time) AS note_date,
               CAST(meas.measurement_time AS TIMESTAMP) AS note_datetime,
               44814645 AS note_type_concept_id,
               -- 44814645 - 'Note'
               0 AS note_class_concept_id,
-              NULL AS note_title,
+              'Additional notes' AS note_title,
               COALESCE(meas.value_string, '') AS note_text,
               0 AS encoding_concept_id,
               4180186 AS language_concept_id,
               -- 4180186 - 'English language'
-              NULL AS provider_id,
-              NULL AS visit_detail_id,
-              meas.code_value AS note_source_value,
+              CAST(NULL AS INTEGER) AS provider_id,
               meas.physical_measurements_id AS visit_occurrence_id,
+              CAST(NULL AS INTEGER) AS visit_detail_id,
+              meas.code_value AS note_source_value,
               'note' AS unit_id,
               meas.src_id AS src_id
             FROM
@@ -365,7 +366,7 @@ queries = {
             FROM
               `{dataset_id}.src_mapped` src_m
             INNER JOIN
-              `{dataset_id}.source_to_concept_map` stcm1
+              `etl_filters.source_to_concept_map` stcm1
             ON
               src_m.value_ppi_code = stcm1.source_code
               AND stcm1.priority = 1              -- priority 1
@@ -419,7 +420,7 @@ queries = {
                ON  src_c.participant_id = src_p.participant_id
             LEFT JOIN `{dataset_id}.concept` vc1
                ON  src_c.question_ppi_code = vc1.concept_code
-               AND vc1.vocabulary_id = 'PPI'
+               AND vc1.vocabulary_id in ('PPI', 'AoU_Custom')
             LEFT JOIN `{dataset_id}.concept_relationship` vcr1
                ON  vc1.concept_id = vcr1.concept_id_1
                AND vcr1.relationship_id = 'Maps to'
@@ -430,7 +431,7 @@ queries = {
                AND vc2.invalid_reason IS NULL
             LEFT JOIN `{dataset_id}.concept` vc3
                ON  src_c.value_ppi_code = vc3.concept_code
-               AND vc3.vocabulary_id = 'PPI'
+               AND vc3.vocabulary_id in ('PPI', 'AoU_Custom')
             LEFT JOIN `{dataset_id}.concept_relationship` vcr2
                ON  vc3.concept_id = vcr2.concept_id_1
                AND vcr2.relationship_id = 'Maps to value'
@@ -488,90 +489,93 @@ queries = {
     },
     "src_participant": {
         "query": """
-            WITH
-  profile_update_events AS (
-  SELECT
-    latest.data_element_name,
-    latest.data_element_value,
-    latest.participant_id,
-    latest.event_authored_time,
-    ROW_NUMBER() OVER (PARTITION BY latest.data_element_name, latest.participant_id ORDER BY latest.event_authored_time DESC) AS row_number
-  FROM
-    `all-of-us-rdr-prod.rdr_operational_datastream.ppsc_profile_updates_event` latest
-  WHERE
-    latest.event_authored_time < {cutoff} )
-SELECT DISTINCT
-  sc.participant_id,
-  event_authored_time AS latest_date_of_survey,
-  pue.data_element_value AS date_of_birth,
-  sc.src_id
-FROM
-    `{dataset_id}.src_clean` sc
-JOIN
-  profile_update_events pue ON sc.participant_id = pue.participant_id
-  AND pue.data_element_name = 'piibirthinformation_birthdate' AND pue.row_number = 1""",
+            SELECT
+              f1.participant_id,
+              f1.latest_date_of_survey,
+              f1.date_of_birth,
+              f1.src_id
+            FROM (
+              SELECT
+                t1.participant_id AS participant_id,
+                t1.latest_date_of_survey AS latest_date_of_survey,
+                MAX(DATE(t2.value_date)) AS date_of_birth,
+                t1.src_id AS src_id
+              FROM (
+                SELECT
+                  src_c.participant_id AS participant_id,
+                  MAX(src_c.date_of_survey) AS latest_date_of_survey,
+                  src_c.src_id AS src_id
+                FROM
+                  `{dataset_id}.src_clean` src_c
+                WHERE
+                  src_c.question_ppi_code = 'PIIBirthInformation_BirthDate'
+                  AND src_c.value_date IS NOT NULL
+                GROUP BY
+                  src_c.participant_id,
+                  src_c.src_id ) t1
+              INNER JOIN
+                `{dataset_id}.src_clean` t2
+              ON
+                t1.participant_id = t2.participant_id
+                AND t1.latest_date_of_survey = t2.date_of_survey
+                AND t2.question_ppi_code = 'PIIBirthInformation_BirthDate'
+              GROUP BY
+                t1.participant_id,
+                t1.latest_date_of_survey,
+                t1.src_id ) f1""",
         "destination": "src_participant",
         "append": False,
     },
     "src_person_location": {
         "query": """
-            WITH
-              profile_update_events AS (
-              SELECT
-                latest.data_element_name,
-                latest.data_element_value,
-                latest.participant_id,
-                latest.event_authored_time,
-                ROW_NUMBER() OVER (PARTITION BY latest.data_element_name, latest.participant_id ORDER BY latest.event_authored_time DESC) AS row_number
-              FROM
-                `all-of-us-rdr-prod.rdr_operational_datastream.ppsc_profile_updates_event` latest
-              WHERE
-                latest.event_authored_time < '{cutoff}' )
             SELECT
               p.participant_id AS participant_id,
-              MAX(m_address_1.data_element_value) AS address_1,
-              MAX(m_address_2.data_element_value) AS address_2,
-              MAX(m_city.data_element_value) AS city,
-              MAX(m_zip.data_element_value) AS zip,
-              MAX(m_state.data_element_value) AS state_ppi_code,
-              MAX(RIGHT(m_state.data_element_value, 2)) AS state,
+              MAX(m_address_1.value_string) AS address_1,
+              MAX(m_address_2.value_string) AS address_2,
+              MAX(m_city.value_string) AS city,
+              MAX(m_zip.value_string) AS zip,
+              MAX(m_state.value_ppi_code) AS state_ppi_code,
+              MAX(RIGHT(m_state.value_ppi_code, 2)) AS state,
               NULL AS location_id,
               p.src_id AS src_id
             FROM
-              `all-of-us-rdr-prod.rdr_cdm_20250430.src_participant` p
+              `{dataset_id}.src_participant` p
             INNER JOIN
-              profile_update_events m_address_1
+              `{dataset_id}.src_mapped` m_address_1
             ON
               p.participant_id = m_address_1.participant_id
-              AND LOWER(m_address_1.data_element_name) = LOWER('PIIAddress_StreetAddress')
-              AND m_address_1.row_number = 1
+              AND m_address_1.question_ppi_code = 'PIIAddress_StreetAddress'
             LEFT JOIN
-              profile_update_events m_address_2
+              `{dataset_id}.src_mapped` m_address_2
             ON
-              p.participant_id = m_address_2.participant_id
-              AND LOWER(m_address_2.data_element_name) = LOWER('PIIAddress_StreetAddress2')
-              AND m_address_2.event_authored_time = m_address_1.event_authored_time
+              m_address_1.questionnaire_response_id = m_address_2.questionnaire_response_id
+              AND m_address_2.question_ppi_code = 'PIIAddress_StreetAddress2'
             LEFT JOIN
-              profile_update_events m_city
+              `{dataset_id}.src_mapped` m_city
             ON
-              p.participant_id = m_city.participant_id
-              AND LOWER(m_city.data_element_name) = LOWER('StreetAddress_PIICity')
-              AND m_city.event_authored_time = m_address_1.event_authored_time
+              m_address_1.questionnaire_response_id = m_city.questionnaire_response_id
+              AND m_city.question_ppi_code = 'StreetAddress_PIICity'
             LEFT JOIN
-              profile_update_events m_zip
+              `{dataset_id}.src_mapped` m_zip
             ON
-              p.participant_id = m_zip.participant_id
-              AND LOWER(m_zip.data_element_name) = LOWER('StreetAddress_PIIZIP')
-              AND m_zip.event_authored_time = m_address_1.event_authored_time
+              m_address_1.questionnaire_response_id = m_zip.questionnaire_response_id
+              AND m_zip.question_ppi_code = 'StreetAddress_PIIZIP'
             LEFT JOIN
-              profile_update_events m_state
+              `{dataset_id}.src_mapped` m_state
             ON
-              p.participant_id = m_state.participant_id
-              AND LOWER(m_state.data_element_name) = LOWER('StreetAddress_PIIState')
-              AND m_state.event_authored_time = m_address_1.event_authored_time
+              m_address_1.questionnaire_response_id = m_state.questionnaire_response_id
+              AND m_state.question_ppi_code = 'StreetAddress_PIIState'
+            WHERE
+              m_address_1.date_of_survey = (
+              SELECT
+                MAX(date_of_survey)
+              FROM
+                `{dataset_id}.src_mapped` m_address_1_2
+              WHERE
+                m_address_1_2.participant_id = m_address_1.participant_id
+                AND m_address_1_2.question_ppi_code = 'PIIAddress_StreetAddress')
             GROUP BY
-              p.participant_id,
-              p.src_id;""",
+              p.participant_id, p.src_id;""",
         "destination": "src_person_location",
         "append": False,
     },
@@ -823,7 +827,7 @@ JOIN
               SELECT
                 TRIM(question_ppi_code)
               FROM
-                `{dataset_id}.combined_question_filter`)""",
+                `etl_filters.combined_question_filter`)""",
         "destination": None,
         "append": False,
     },
@@ -838,7 +842,7 @@ JOIN
               SELECT
                 TRIM(survey_name)
               FROM
-                `{dataset_id}.combined_survey_filter`)""",
+                `etl_filters.combined_survey_filter`)""",
         "destination": None,
         "append": False,
     },
@@ -1025,7 +1029,7 @@ JOIN
                             -- Code for PTSC WEAR consent
                             ELSE COALESCE(voc_c.concept_id, 0)
                         END survey_concept_id,
-                        NULL survey_start_date,
+                        CAST(NULL AS DATE) survey_start_date,
                         CAST(NULL AS TIMESTAMP) survey_start_datetime,
                         DATE(tsc.authored) survey_end_date,
                         CAST(tsc.authored AS TIMESTAMP) survey_end_datetime,
@@ -1034,7 +1038,7 @@ JOIN
                             tsc.non_participant_author = 'CATI' THEN     42530794
                             ELSE                                        0
                         END assisted_concept_id,
-                        0 respondent_type_concept_id,
+                        CAST(0 AS INT64) respondent_type_concept_id,
                         0 timing_concept_id,
                         CASE WHEN
                             tsc.non_participant_author = 'CATI' THEN     42530794
@@ -1044,7 +1048,7 @@ JOIN
                             tsc.non_participant_author = 'CATI' THEN     'Telephone'
                             ELSE                                        'No matching concept'
                         END assisted_source_value,
-                        NULL respondent_type_source_value,
+                        CAST(NULL AS STRING) respondent_type_source_value,
                         '' timing_source_value,
                         CASE WHEN
                             tsc.non_participant_author = 'CATI' THEN     'Telephone'
@@ -1052,12 +1056,12 @@ JOIN
                         END collection_method_source_value,
                         tsc.value survey_source_value,
                         tsc.code_id survey_source_concept_id,
-                        tsc.questionnaire_response_id survey_source_identifier,
+                        CAST(tsc.questionnaire_response_id AS STRING) survey_source_identifier,
                         0 validated_survey_concept_id,
-                        CAST(NULL AS INT64) validated_survey_source_value,
-                        NULL survey_version_number,
-                        '' visit_occurrence_id,
-                        '' response_visit_occurrence_id,
+                        CAST(NULL AS STRING) validated_survey_source_value,
+                        CAST(NULL AS STRING) survey_version_number,
+                        CAST(NULL AS INT64) visit_occurrence_id,
+                        CAST(NULL AS INT64) response_visit_occurrence_id,
                         CASE WHEN
                             p.src_id = 'careevolution' THEN 'ce'
                             ELSE p.src_id
@@ -1065,7 +1069,7 @@ JOIN
                 FROM `{dataset_id}.tmp_survey_conduct` tsc
                 LEFT JOIN `{dataset_id}.concept` voc_c
                     ON voc_c.concept_code = tsc.value AND voc_c.vocabulary_id = 'PPI'
-                    AND voc_c.domain_id = 'observation' AND voc_c.concept_class_id = 'module'
+                    AND voc_c.domain_id = 'Observation' AND voc_c.concept_class_id = 'Module'
                 JOIN `{dataset_id}.person` p ON tsc.participant_id = p.person_id
                 WHERE tsc.questionnaire_response_id in (
                     SELECT DISTINCT sc.questionnaire_response_id
@@ -1335,13 +1339,10 @@ JOIN
 "cope_survey_semantic_version_map": {
         "destination": "cope_survey_semantic_version_map",
         "append": False,
-        "query": """
-        SELECT * FROM
-              EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
+        "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
               "SELECT participant_id, questionnaire_response_id, semantic_version, cope_month, CASE WHEN src_id """
-              """= 'careevolution' THEN 'ce' ELSE src_id END src_id FROM ( ( """
-              """SELECT 1 as sort_col, 'participant_id', 'questionnaire_response_id', 'semantic_version', """
-              """ 'cope_month', 'src_id' ) UNION ALL ( SELECT 2 as sort_col, participant_id,"""
+              """= 'careevolution' THEN 'ce' ELSE src_id END src_id FROM ( """
+              """( SELECT 1 as sort_col, participant_id,"""
               """questionnaire_response_id, semantic_version, cope_month,src_id FROM ( SELECT qr.participant_id, """
               """questionnaire_response_id, semantic_version, CASE when qh.external_id in ('Vibrent_FORM_ID_1413',"""
               """'COPE Survey') then 'may' when qh.external_id in ('June COPE Survey','Vibrent_FORM_ID_1416') then """
@@ -1366,6 +1367,7 @@ JOIN
         "destination": "procedure_occurrence",
         "append": False,
         "query": """
+                             SELECT ROW_NUMBER() OVER() AS procedure_occurrence_id, poid.* FROM (
                             SELECT
                                 src_m1.participant_id                       AS person_id,
                                 COALESCE(vc.concept_id, 0)                  AS procedure_concept_id,
@@ -1383,7 +1385,7 @@ JOIN
                                 'procedure'                                 AS unit_id,
                                 src_m1.src_id                               AS src_id
                             FROM `{dataset_id}.src_mapped` src_m1
-                            INNER JOIN `{dataset_id}.source_to_concept_map` stcm
+                            INNER JOIN `etl_filters.source_to_concept_map` stcm
                                 ON src_m1.value_ppi_code = stcm.source_code
                                 AND stcm.source_vocabulary_id = 'ppi-proc'
                             INNER JOIN `{dataset_id}.src_mapped` src_m2
@@ -1393,7 +1395,7 @@ JOIN
                             LEFT JOIN `{dataset_id}.concept` vc
                                 ON stcm.target_concept_id = vc.concept_id
                                 AND vc.standard_concept = 'S'
-                                AND vc.invalid_reason IS NULL"""
+                                AND vc.invalid_reason IS NULL) poid"""
     },
     "temp_obs_target": {
         "destination": "temp_obs_target",
