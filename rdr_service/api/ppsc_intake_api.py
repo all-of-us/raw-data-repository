@@ -6,6 +6,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RDR, PPSC
 from rdr_service.app_util import auth_required
+from rdr_service.ppsc_transform_org_map import TRANSFORM_ORG_MAP
 from rdr_service import config, clock
 from rdr_service.dao.ppsc_dao import PPSCDefaultBaseDao, PPSCNphOptEventInDao
 from rdr_service.model.ppsc import (
@@ -39,7 +40,6 @@ class PPSCIntakeAPI(BaseApi):
 
         # Validate
         self.validate_payload(req_data=req_data)
-
 
         # Route to correct activity and insert events
         inserted_event = self.handle_event_insert(
@@ -145,9 +145,9 @@ class PPSCIntakeAPI(BaseApi):
             if (
                 req_data['activity'].lower() == 'attribution' and
                 data_element.get('dataElementName').lower() == 'activity_status' and
-                data_element.get('dataElementValue').lower() == 'seec_morehouse'
+                data_element.get('dataElementValue').upper() in TRANSFORM_ORG_MAP
             ):
-                data_element['dataElementValue'] = 'DREF_MOREHOUSE'
+                data_element['dataElementValue'] = TRANSFORM_ORG_MAP[data_element.get('dataElementValue').upper()]
 
             now = clock.CLOCK.now()  # event_listener doesn't work with bulk inserts
             event_dict = {
