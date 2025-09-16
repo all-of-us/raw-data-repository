@@ -22,7 +22,9 @@ _JIRA_PROJECT_ID = "PD"
 
 
 def _connect_to_jira(jira_username, jira_password):
-    return jira.JIRA(_JIRA_INSTANCE_URL, basic_auth=(jira_username, jira_password))
+    options = jira.JIRA.DEFAULT_OPTIONS
+    options.update({"rest_api_version": "3"})
+    return jira.JIRA(_JIRA_INSTANCE_URL, options=options, basic_auth=(jira_username, jira_password))
 
 
 def main(args):
