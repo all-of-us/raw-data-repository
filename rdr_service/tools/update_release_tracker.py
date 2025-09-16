@@ -15,7 +15,7 @@ import jira
 
 from rdr_service.main_util import configure_logging, get_parser
 
-_JIRA_INSTANCE_URL = "https://precisionmedicineinitiative.atlassian.net/"
+_JIRA_INSTANCE_URL = "https://precisionmedicineinitiative.atlassian.net/rest/api/3/search/jql"
 # Release tickets are moved from our usual project, DA, to the PD project
 # for change approval, so for stable/prod releases look for tickets there.
 _JIRA_PROJECT_ID = "PD"
