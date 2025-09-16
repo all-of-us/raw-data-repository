@@ -75,7 +75,9 @@ class PPSCSiteAPI(BaseApi):
             raise BadRequest(f'Payload for Site is invalid: Required keys - {response_string}')
 
     def handle_site_updates(self, *, site_data: dict) -> Site:
-        # site data
+        if site_data.get("org_id").upper() == "SEEC_MOREHOUSE":
+            site_data["org_id"] = "DREF_MOREHOUSE"
+
         site_record = self.dao.upsert(self.dao.model_type(**site_data))
 
         # event tracking
