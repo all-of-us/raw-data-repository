@@ -41,7 +41,7 @@ h2. deployed to %(project)s, listing changes since %(prev)s
 %(history)s
 """
 
-_JIRA_INSTANCE_URL = "https://precisionmedicineinitiative.atlassian.net/rest/api/3/search/jql"
+_JIRA_INSTANCE_URL = "https://precisionmedicineinitiative.atlassian.net/"
 _JIRA_PROJECT_ID = "PD"
 _JIRA_NAME_VARNAME = "JIRA_API_USER_NAME"
 _JIRA_PASSWORD_VARNAME = "JIRA_API_USER_PASSWORD"
@@ -101,10 +101,15 @@ def _find_current_commit_tag():
 
 def _connect_to_jira():
     """Opens a JIRA API connection based on username/pw from env vars."""
+    options = jira.JIRA.DEFAULT_OPTIONS
+    options.update({"rest_api_version": "3"})
+
     for varname in (_JIRA_PASSWORD_VARNAME, _JIRA_NAME_VARNAME):
         if varname not in os.environ:
             raise RuntimeError("No environment variable value for %r." % varname)
-    return jira.JIRA(_JIRA_INSTANCE_URL, basic_auth=(os.getenv(_JIRA_NAME_VARNAME), os.getenv(_JIRA_PASSWORD_VARNAME)))
+    return jira.JIRA(_JIRA_INSTANCE_URL,
+                     options=options,
+                     basic_auth=(os.getenv(_JIRA_NAME_VARNAME), os.getenv(_JIRA_PASSWORD_VARNAME)))
 
 
 def _strip_cherry_pick(version_id):

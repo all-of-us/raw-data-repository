@@ -15,14 +15,16 @@ import jira
 
 from rdr_service.main_util import configure_logging, get_parser
 
-_JIRA_INSTANCE_URL = "https://precisionmedicineinitiative.atlassian.net/rest/api/3/search/jql"
+_JIRA_INSTANCE_URL = "https://precisionmedicineinitiative.atlassian.net/"
 # Release tickets are moved from our usual project, DA, to the PD project
 # for change approval, so for stable/prod releases look for tickets there.
 _JIRA_PROJECT_ID = "PD"
 
 
 def _connect_to_jira(jira_username, jira_password):
-    return jira.JIRA(_JIRA_INSTANCE_URL, basic_auth=(jira_username, jira_password))
+    options = jira.JIRA.DEFAULT_OPTIONS
+    options.update({"rest_api_version": "3"})
+    return jira.JIRA(_JIRA_INSTANCE_URL, options=options, basic_auth=(jira_username, jira_password))
 
 
 def main(args):

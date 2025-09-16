@@ -9,7 +9,7 @@ from rdr_service.services.system_utils import run_external_program
 from rdr_service import config
 
 _REPO_BASE_URL = "https://github.com/all-of-us/raw-data-repository"
-_JIRA_INSTANCE_URL = "https://precisionmedicineinitiative.atlassian.net/rest/api/3/search/jql"
+_JIRA_INSTANCE_URL = "https://precisionmedicineinitiative.atlassian.net/"
 _JIRA_BOARD_ID = "PD"
 
 
@@ -66,6 +66,8 @@ class JiraTicketHandler:
         Opens a JIRA API connection based on username/pw
         Will use env vars if localhost, or use cloud config file if not
         """
+        options = jira.JIRA.DEFAULT_OPTIONS
+        options.update({"rest_api_version": "3"})
 
         if not self._jira_connection:
             if config.GAE_PROJECT == "localhost":
@@ -79,6 +81,7 @@ class JiraTicketHandler:
             # https://jira.readthedocs.io/examples.html#username-api-token
             self._jira_connection = jira.JIRA(
                 _JIRA_INSTANCE_URL,
+                options=options,
                 basic_auth=(
                     self._jira_user,
                     self._jira_api_token
