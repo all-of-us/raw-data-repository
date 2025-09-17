@@ -67,7 +67,6 @@ class JiraTicketHandler:
         Will use env vars if localhost, or use cloud config file if not
         """
         options = jira.JIRA.DEFAULT_OPTIONS
-        options.update({"rest_api_version": "3"})
 
         if not self._jira_connection:
             if config.GAE_PROJECT == "localhost":
