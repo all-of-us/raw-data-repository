@@ -102,7 +102,6 @@ def _find_current_commit_tag():
 def _connect_to_jira():
     """Opens a JIRA API connection based on username/pw from env vars."""
     options = jira.JIRA.DEFAULT_OPTIONS
-    options.update({"rest_api_version": "3"})
 
     for varname in (_JIRA_PASSWORD_VARNAME, _JIRA_NAME_VARNAME):
         if varname not in os.environ:
