@@ -279,9 +279,9 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 is_amendment = True
                 break
         if obj.collectType == PhysicalMeasurementsCollectType.SELF_REPORTED:
-            self._update_participant_summary(session, obj, is_amendment, is_self_reported=True)
+            participant_summary = self._update_participant_summary(session, obj, is_amendment, is_self_reported=True)
         else:
-            self._update_participant_summary(session, obj, is_amendment)
+            participant_summary = self._update_participant_summary(session, obj, is_amendment)
         existing_measurements = (
             session.query(PhysicalMeasurements).filter(PhysicalMeasurements.participantId == obj.participantId).all()
         )
@@ -300,7 +300,11 @@ class PhysicalMeasurementsDao(UpdatableDao):
         PhysicalMeasurementsDao.set_measurement_ids(obj)
 
         inserted_obj = super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
-
+        if not is_amendment:  # Amendments aren't expected to have site ID extensions.
+            if participant_summary.biospecimenCollectedSiteId is None:
+                ParticipantDao().add_missing_hpo_from_site(
+                    session, inserted_obj.participantId, inserted_obj.finalizedSiteId
+                )
         # Commit before recalculating the enrollment status-related details so DB queries to retrieve measurements
         # data during the calculation will return what was just inserted
         session.commit()

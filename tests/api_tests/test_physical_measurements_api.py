@@ -9,6 +9,7 @@ from rdr_service.clock import FakeClock
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.measurements import Measurement
+from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.measurements import PhysicalMeasurements
@@ -339,15 +340,14 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.assertEqual(1, len(sync_response_2["entry"]))
         self.assertNotEqual(sync_response["entry"][0], sync_response_2["entry"][0])
 
-    def test_no_auto_pairing(self):
+    def test_auto_pair_called(self):
         pid_numeric = from_client_participant_id(self.participant_id)
         participant_dao = ParticipantDao()
         self.send_consent(self.participant_id)
         self.send_consent(self.participant_id_2)
         self.assertEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
         self._insert_measurements(datetime.datetime.utcnow().isoformat())
-        # should not pair participant
-        self.assertEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
+        self.assertNotEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
 
     def get_composition_resource_from_fhir_doc(self, data):
         """
@@ -653,7 +653,15 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
                 count += 1
         self.assertEqual(count, 4)
 
-    def test_pairing_doesnt_update(self):
+    def test_pairing_update(self):
+        """
+        There's a bug when PM updates pairing and then the enrollment status is recalculated.
+        Merging the participant summary seems to be resetting the paired organization back to what
+        it was.
+
+        This checks that when pairing gets changed, the organization doesn't revert back.
+        """
+
         # Create a participant summary that has no pairing
         summary = self.data_generator.create_database_participant_summary()
 
@@ -662,11 +670,16 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
             f'Participant/P{summary.participantId}/PhysicalMeasurements',
             load_measurement_json(summary.participantId)
         )
+
+        # The participant's organization should be set to PITT on the summary and participant tables
+        # (PITT is the org used in the PM json)
+        pitt_org = self.session.query(Organization).filter(Organization.externalId == 'PITT_BANNER_HEALTH').one()
+
         self.session.refresh(summary)
-        self.assertEqual(None, summary.organizationId)
+        self.assertEqual(pitt_org.organizationId, summary.organizationId)
 
         participant = self.session.query(Participant).filter(Participant.participantId == summary.participantId).one()
-        self.assertEqual(None, participant.organizationId)
+        self.assertEqual(pitt_org.organizationId, participant.organizationId)
 
     def test_ppsc_roles(self):
         self.overwrite_test_user_roles([PPSC])
