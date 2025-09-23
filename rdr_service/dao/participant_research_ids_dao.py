@@ -1,13 +1,13 @@
 from typing import List
 
 from rdr_service.model.participant import Participant
-from rdr_service.dao.base_dao import BaseDao
+from rdr_service.dao.base_dao import UpsertableDao
 from rdr_service.model.participant_research_ids import ParticipantResearchIds
 
 _MIN_RESEARCH_ID = 1000000
 _MAX_RESEARCH_ID = 9999999
 
-class ParticipantResearchIdsDao(BaseDao):
+class ParticipantResearchIdsDao(UpsertableDao):
     def __init__(self):
         super().__init__(ParticipantResearchIds)
 
@@ -16,7 +16,7 @@ class ParticipantResearchIdsDao(BaseDao):
                                    max_id: int = _MAX_RESEARCH_ID) -> None:
         """Attempts to insert an entity with randomly assigned ID(s) repeatedly until success
     or a maximum number of attempts are performed."""
-        self._insert_with_random_id(obj, fields, min_id=min_id, max_id=max_id)
+        self._insert_with_random_id(obj, fields, min_id=min_id, max_id=max_id, insert_fun=self.upsert_with_session)
 
     def get_new_participants(self, participant_count: int = 500) -> List[Participant]:
         with self.session() as session:

@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, ForeignKey, String, event
+from sqlalchemy import Column, Integer, ForeignKey, BigInteger, event
+from sqlalchemy.sql import func
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import UTCDateTime
 
@@ -9,10 +10,10 @@ class ParticipantResearchIds(Base):
     participant_id = Column(
         "participant_id", Integer, ForeignKey("participant.participant_id"), primary_key=True, autoincrement=False
     )
-    created = Column(UTCDateTime, nullable=False)
-    modified = Column(UTCDateTime, nullable=False)
+    created = Column(UTCDateTime, nullable=False, server_default=func.now())
+    modified = Column(UTCDateTime, nullable=False, server_default=func.now())
     research_id = Column("research_id", Integer, unique=True)
-    external_id = Column("external_id", String)
+    external_id = Column("external_id", BigInteger)
     controlled_tier_id = Column('controlled_tier_id', Integer, unique=True)
     registered_tier_id = Column('registered_tier_id', Integer, unique=True)
     controlled_tier_plus_id = Column('controlled_tier_plus_id', Integer, unique=True)
