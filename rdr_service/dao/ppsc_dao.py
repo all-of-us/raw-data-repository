@@ -142,7 +142,9 @@ class PPSCNphOptEventInDao(BaseDao):
                 ParticipantStatusEvent,
                 and_(
                     ParticipantStatusEvent.participant_id == ProfileUpdatesEvent.participant_id,
-                    ParticipantStatusEvent.event_type_name.ilike('%Test Account%')
+                    ParticipantStatusEvent.event_type_name.ilike('%Test Account%'),
+                    ParticipantStatusEvent.data_element_name == "activity_status",
+                    ParticipantStatusEvent.data_element_value == "test"
                 )
             ).outerjoin(
                 ParticipantMapping,

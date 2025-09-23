@@ -13,6 +13,7 @@ import re
 from rdr_service.main_util import configure_logging, get_parser
 from rdr_service.rdr_client.client import Client, HttpException
 
+
 BASE_CONFIG_FILE = "config/base_config.json"
 
 

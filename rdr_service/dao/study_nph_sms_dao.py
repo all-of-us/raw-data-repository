@@ -149,10 +149,10 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
 
         with self.session() as session:
             most_recent = session.query(
-                SmsSample.sample_id,
+                SmsSample.lims_sample_id,
                 func.max(SmsSample.created).label("created")
             ).group_by(
-                SmsSample.sample_id
+                SmsSample.lims_sample_id
             ).filter(
                 SmsSample.ignore_flag == 0
             ).subquery()
@@ -186,9 +186,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsSample.ethnicity,
                 SmsSample.race,
                 SmsSample.bmi,
-                SmsSample.diet,
-                'urine_color',
-                'urine_clarity'
+                SmsSample.diet
             ]
             statement = select(
                 SmsSample.sample_id,
@@ -215,30 +213,18 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsSample.ethnicity,
                 SmsSample.race,
                 SmsSample.bmi,
-                SmsSample.diet,
-                func.json_extract(OrderedSample.supplemental_fields, "$.color").label('urine_color'),
-                func.json_extract(OrderedSample.supplemental_fields, "$.clarity").label('urine_clarity'),
-                SmsN0.id
+                SmsSample.diet
             ).outerjoin(
                 SmsSample,
                 and_(
-                    SmsN0.sample_id == SmsSample.sample_id,
+                    SmsN0.lims_sample_id == SmsSample.lims_sample_id,
                     SmsSample.ignore_flag == 0
                 )
-            ).outerjoin(
-                OrderedSample,
-                SmsSample.sample_id == OrderedSample.nph_sample_id
             ).outerjoin(
                 SmsBlocklist,
                 and_(
                     SmsSample.sample_id == SmsBlocklist.identifier_value,
                     SmsBlocklist.identifier_type == "sample_id"
-                )
-            ).outerjoin(
-                SmsN1Mc1,
-                and_(
-                    SmsN0.sample_id == SmsN1Mc1.sample_id,
-                    SmsN1Mc1.ignore_flag == 0
                 )
             ).outerjoin(
                 sample_well,
@@ -250,19 +236,23 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             ).outerjoin(
                 most_recent,
                 and_(
-                    SmsSample.sample_id == most_recent.c.sample_id,
+                    SmsSample.lims_sample_id == most_recent.c.lims_sample_id,
                     SmsSample.created == most_recent.c.created
                 )
             )
 
             if 'pbrc' in kwargs.get('recipient').lower():
                 columns.extend([
+                    'urine_color',
+                    'urine_clarity',
                     SmsSample.body_weight_kg,
                     'dlw_dose_batch',
                     'dlw_dose_date_time',
                     'dlw_dose_grams'
                 ])
                 statement = statement.add_columns(
+                    func.json_extract(OrderedSample.supplemental_fields, "$.color").label('urine_color'),
+                    func.json_extract(OrderedSample.supplemental_fields, "$.clarity").label('urine_clarity'),
                     SmsSample.body_weight_kg,
                     DlwDosage.batch_id.label('dlw_dose_batch'),
                     DlwDosage.dose_time.label('dlw_dose_date_time'),
@@ -283,17 +273,49 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                         DlwDosage.visit_period == func.regexp_substr(SmsN0.visit, "[0-9]+"),
                         DlwDosage.ignore_flag == 0,
                     )
+                ).outerjoin(
+                    OrderedSample,
+                    SmsSample.sample_id == OrderedSample.nph_sample_id
+                ).outerjoin(
+                    SmsN1Mc1,
+                    and_(
+                        SmsN0.sample_id == SmsN1Mc1.sample_id,
+                        SmsN1Mc1.ignore_flag == 0
+                    )
+                )
+            elif 'duke' in kwargs.get('recipient').lower():
+                query = query.add_columns(
+                    SmsN0.lims_parent_sample_id,
+                ).outerjoin(
+                    SmsN1Mc1,
+                    and_(
+                        SmsN0.lims_sample_id == SmsN1Mc1.sample_id,
+                        SmsN1Mc1.ignore_flag == 0
+                    )
                 )
             else:
                 columns.extend([
+                    'urine_color',
+                    'urine_clarity',
                     'bowel_movement',
                     'bowel_movement_quality'
                 ])
                 statement = statement.add_columns(
+                    func.json_extract(OrderedSample.supplemental_fields, "$.color").label('urine_color'),
+                    func.json_extract(OrderedSample.supplemental_fields, "$.clarity").label('urine_clarity'),
                     func.json_extract(OrderedSample.supplemental_fields, "$.bowelMovement").label('bowel_movement'),
                     func.json_extract(
                         OrderedSample.supplemental_fields, '$.bowelMovementQuality'
                     ).label('bowel_movement_quality')
+                ).outerjoin(
+                    OrderedSample,
+                    SmsSample.sample_id == OrderedSample.nph_sample_id
+                ).outerjoin(
+                    SmsN1Mc1,
+                    and_(
+                        SmsN0.sample_id == SmsN1Mc1.sample_id,
+                        SmsN1Mc1.ignore_flag == 0
+                    )
                 )
 
             statement = statement.filter(

@@ -3855,7 +3855,6 @@ class GenomicQueriesDao(BaseDao):
                     GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                     GenomicGCValidationMetrics.ignoreFlag != 1,
                     ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                    ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                     or_(
                         idat_red_path.file_type.is_(None),
                         idat_red_md5_path.file_type.is_(None),
@@ -3954,7 +3953,6 @@ class GenomicQueriesDao(BaseDao):
                     GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                     GenomicGCValidationMetrics.ignoreFlag != 1,
                     ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                    ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                     or_(
                         hard_filtered_vcf_gz.file_type.is_(None),
                         hard_filtered_vcf_gz_tbi.file_type.is_(None),
@@ -4243,7 +4241,6 @@ class GenomicShortReadDao(BaseDao):
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicGCValidationMetrics.ignoreFlag != 1,
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 GenomicAW3Raw.id.is_(None)
             )
             return aw3_rows.distinct().all()
@@ -4430,7 +4427,6 @@ class GenomicShortReadDao(BaseDao):
                         GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                         GenomicGCValidationMetrics.ignoreFlag != 1,
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                        ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicGCValidationMetrics.pipelineId == pipeline_id
                     ),
                     GenomicGCValidationMetrics.aw3ReadyFlag == 1

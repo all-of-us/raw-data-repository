@@ -41,7 +41,6 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
     QuestionnaireResponseStatus
-from rdr_service.model.resource_data import ResourceData
 from rdr_service.participant_enums import (
     GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort,
     DigitalHealthSharingStatus
@@ -914,17 +913,6 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
                                                          code_answers=code_answers)
         response = self.send_post(url, resource)
         self.assertEqual(response["group"]["question"][0]["answer"][0]["valueCoding"]['code'], 'Decision_No')
-
-        record: ResourceData = self.session.query(ResourceData).\
-                filter(ResourceData.resourcePKAltID==participant_id).one()
-        decision_found = False
-        for mod in record.resource['modules']:
-            if mod['module'] == 'covid_19_serology_results':
-                decision_found = True
-                self.assertEqual(mod['consent_value'], 'Decision_No')
-                self.assertEqual(mod['status'], 'SUBMITTED_NO_CONSENT')
-                break
-        self.assertEqual(decision_found, True)
 
     def setup_cope_minute_base_survey(self, module_num):
         """

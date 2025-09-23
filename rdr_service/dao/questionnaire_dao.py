@@ -1,5 +1,6 @@
 import json
 
+import sqlalchemy.orm
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed
 
@@ -28,10 +29,9 @@ class QuestionnaireDao(UpdatableDao):
 
     def get_with_children(self, questionnaire_id):
         with self.session() as session:
-            query = session.query(Questionnaire).options(
+            return session.get(Questionnaire, questionnaire_id, options=[
                 subqueryload(Questionnaire.concepts), subqueryload(Questionnaire.questions)
-            )
-            return query.get(questionnaire_id)
+            ])
 
     def has_dup_semantic_version(self, session, questionnaire_id, semantic_version):
         record = session.query(QuestionnaireHistory)\

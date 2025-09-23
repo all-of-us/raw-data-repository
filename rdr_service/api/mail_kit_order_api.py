@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, Conflict, MethodNotAllowed
 
 from rdr_service.api.base_api import UpdatableApi
-from rdr_service.api_util import PTC_AND_HEALTHPRO, PTC_AND_PPSC, DV_FHIR_URL, DV_ORDER_URL
+from rdr_service.api_util import PTC_AND_HEALTHPRO, PTC_AND_PPSC, PPSC, DV_FHIR_URL, DV_ORDER_URL
 from rdr_service.app_util import ObjDict, auth_required, get_oauth_id, get_account_origin_id
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
@@ -169,7 +169,7 @@ class MailKitOrderApi(UpdatableApi):
             return tuple(created_response)
         return response
 
-    @auth_required(PTC_AND_HEALTHPRO)
+    @auth_required([PTC_AND_HEALTHPRO, PPSC])
     def get(self, p_id=None, order_id=None):  # pylint: disable=unused-argument
 
         if not p_id:

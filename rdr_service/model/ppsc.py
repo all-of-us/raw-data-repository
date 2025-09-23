@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, event
 from sqlalchemy.dialects.mysql import TINYINT, JSON
 
 from rdr_service.model.base import model_insert_listener, model_update_listener, PPSCBase
-from rdr_service.model.utils import UTCDateTime
+from rdr_service.model.utils import UTCDateTime, UTCDateTime6
 
 
 class Participant(PPSCBase):
@@ -80,7 +80,7 @@ class EnrollmentEvent(PPSCBase):
     modified = Column(UTCDateTime)
     ignore_flag = Column(TINYINT, default=0)
     ignore_reason = Column(String(512))
-    event_authored_time = Column(UTCDateTime)
+    event_authored_time = Column(UTCDateTime6)
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_id = Column(BigInteger, ForeignKey("enrollment_event_type.id"))
@@ -99,7 +99,7 @@ class ConsentEvent(PPSCBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
+    event_authored_time = Column(UTCDateTime6, index=True)
     data_element_name = Column(String(512), index=True)
     data_element_value = Column(String(512), index=True)
     ignore_flag = Column(TINYINT, default=0)
@@ -121,7 +121,7 @@ class ProfileUpdatesEvent(PPSCBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
+    event_authored_time = Column(UTCDateTime6, index=True)
     data_element_name = Column(String(512), index=True)
     data_element_value = Column(String(512), index=True)
     ignore_flag = Column(TINYINT, default=0)
@@ -143,7 +143,7 @@ class SurveyCompletionEvent(PPSCBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
+    event_authored_time = Column(UTCDateTime6, index=True)
     data_element_name = Column(String(512), index=True)
     data_element_value = Column(String(512), index=True)
     ignore_flag = Column(TINYINT, default=0)
@@ -165,7 +165,7 @@ class WithdrawalEvent(PPSCBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
+    event_authored_time = Column(UTCDateTime6, index=True)
     data_element_name = Column(String(512), index=True)
     data_element_value = Column(String(512), index=True)
     ignore_flag = Column(TINYINT, default=0)
@@ -187,7 +187,7 @@ class DeactivationEvent(PPSCBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
+    event_authored_time = Column(UTCDateTime6, index=True)
     data_element_name = Column(String(512), index=True)
     data_element_value = Column(String(512), index=True)
     ignore_flag = Column(TINYINT, default=0)
@@ -209,7 +209,7 @@ class ParticipantStatusEvent(PPSCBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
+    event_authored_time = Column(UTCDateTime6, index=True)
     data_element_name = Column(String(512), index=True)
     data_element_value = Column(String(512), index=True)
     ignore_flag = Column(TINYINT, default=0)
@@ -231,7 +231,7 @@ class AttributionEvent(PPSCBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
+    event_authored_time = Column(UTCDateTime6, index=True)
     data_element_name = Column(String(512), index=True)
     data_element_value = Column(String(512), index=True)
     ignore_flag = Column(TINYINT, default=0)
@@ -253,7 +253,7 @@ class NPHOptInEvent(PPSCBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
+    event_authored_time = Column(UTCDateTime6, index=True)
     data_element_name = Column(String(512), index=True)
     data_element_value = Column(String(512), index=True)
     ignore_flag = Column(TINYINT, default=0)
@@ -275,7 +275,7 @@ class AccountLinkageEvent(PPSCBase):
     participant_id = Column(BigInteger, ForeignKey("participant.id"))
     event_id = Column(BigInteger, ForeignKey("participant_event_activity.id"))
     event_type_name = Column(String(128), index=True)
-    event_authored_time = Column(UTCDateTime, index=True)
+    event_authored_time = Column(UTCDateTime6, index=True)
     data_element_name = Column(String(512), index=True)
     data_element_value = Column(String(512), index=True)
     ignore_flag = Column(TINYINT, default=0)

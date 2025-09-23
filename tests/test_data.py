@@ -55,6 +55,8 @@ def load_measurement_json(participant_id, now=None, alternate=False):
     if alternate:
         if alternate == "ppsc":
             payload = "measurements-as-fhir-ppsc-remote.json"
+        elif alternate == "self-report":
+            payload = "measurements-as-fhir-ppsc-self-reported.json"
         else:
             payload = "alternate-measurements-as-fhir.json"
     else:

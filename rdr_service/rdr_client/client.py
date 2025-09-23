@@ -6,7 +6,8 @@ import logging
 import pprint
 
 import httplib2
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2 import service_account
+import google_auth_httplib2
 
 SCOPE = "https://www.googleapis.com/auth/userinfo.email"
 DEFAULT_INSTANCE = "https://pmi-drc-api-test.appspot.com"
@@ -71,8 +72,12 @@ class Client(object):
 
     def _get_authorized_http(self):
         if self.creds_file:
-            credentials = ServiceAccountCredentials.from_json_keyfile_name(self.creds_file, [SCOPE])
-            return credentials.authorize(httplib2.Http())
+            credentials = service_account.Credentials.from_service_account_file(
+                filename=self.creds_file,
+                scopes=[SCOPE]
+            )
+            auth_ret = google_auth_httplib2.AuthorizedHttp(credentials=credentials, http=httplib2.Http())
+            return auth_ret
         else:
             return httplib2.Http()
 

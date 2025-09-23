@@ -508,7 +508,6 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             subquery = (
                 session.query(distinct(WorkbenchWorkspaceUser.workspaceId))
                     .filter(WorkbenchWorkspaceUser.isCreator == 1)
-                    .subquery()
             )
 
             count_query = (

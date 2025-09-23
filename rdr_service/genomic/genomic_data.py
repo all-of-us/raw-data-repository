@@ -410,9 +410,14 @@ class GenomicQueryClass:
             LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
                     AND m.genomic_workflow_state <> :ignore_param
             LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id
+            LEFT JOIN ppsc.participant_status_event pse on pse.participant_id = p.participant_id
+                    AND pse.event_type_name = "Test Account"
+                    AND pse.data_element_name = "activity_status"
+                    AND pse.data_element_value = "test"
         WHERE TRUE
             AND ss.test in ('1ED04', '1ED10', '1SAL2')
             AND m.id IS NULL
+            AND pse.id IS NULL
         """)
 
     # BEGIN Data Quality Pipeline Report Queries

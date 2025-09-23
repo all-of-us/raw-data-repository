@@ -6,6 +6,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RDR, PPSC
 from rdr_service.app_util import auth_required
+from rdr_service.ppsc_transform_org_map import TRANSFORM_ORG_MAP
 from rdr_service import config, clock
 from rdr_service.dao.ppsc_dao import PPSCDefaultBaseDao, PPSCNphOptEventInDao
 from rdr_service.model.ppsc import (
@@ -19,6 +20,7 @@ class PPSCIntakeAPI(BaseApi):
     def __init__(self):
         self.participant_event_activity_dao = PPSCDefaultBaseDao(model_type=ParticipantEventActivity)
         self.intake_activities = config.getSettingJson("ppsc_intake_activities")
+        self.primary_consent_types = config.getSettingJson("ppsc_primary_consent_types")
         self.activity_records = PPSCDefaultBaseDao(model_type=Activity).get_all()
         self.consent_event_dao = PPSCDefaultBaseDao(model_type=ConsentEvent)
         self.profile_updates_event_dao = PPSCDefaultBaseDao(model_type=ProfileUpdatesEvent)
@@ -34,16 +36,17 @@ class PPSCIntakeAPI(BaseApi):
 
     @auth_required([PPSC, RDR])
     def post(self):
-        log_api_request(log=request.log_record)
+        req_data = self.get_request_json()
 
         # Validate
-        self.validate_payload(req_data=self.get_request_json())
+        self.validate_payload(req_data=req_data)
 
         # Route to correct activity and insert events
         inserted_event = self.handle_event_insert(
             req_data=self.get_request_json(),
         )
-        return self._make_response(obj=inserted_event)
+        log_api_request(log=request.log_record, model_obj=inserted_event)
+        return self._make_response(obj=inserted_event.resource)
 
     def validate_payload(self, *, req_data: dict):
         required_keys = ['activity', 'eventType', 'participantId', 'dataElements']
@@ -84,9 +87,28 @@ class PPSCIntakeAPI(BaseApi):
             except ValueError:
                 raise BadRequest("The activity_date_time_value is not valid.")
         else:
-            raise BadRequest("No activity_date_time_value provided.")
+            if req_data['eventType'] in ['Enrollment Status', 'UBR Status'] :
+                pass
+            else:
+                raise BadRequest("No activity_date_time_value provided.")
 
-    def handle_event_insert(self, *, req_data: dict) -> dict:
+        # Check for Primary Consent
+        if req_data['eventType'] not in self.primary_consent_types:
+            if not self.check_consent(req_data['participantId'].split('P')[1],
+                                              self.primary_consent_types,
+                                              'activity_status',
+                                              '%yes%'):
+                raise BadRequest("No Primary Consent record found.")
+
+        # Check Enrollment Status for timestamps
+        if req_data['eventType'] == "Enrollment Status":
+            data_element_names = [item['dataElementName'].lower() for item in req_data['dataElements']]
+            for name in data_element_names:
+                if '_date_time' not in name:
+                    if not name+'_date_time' in data_element_names:
+                        raise BadRequest(f"Enrollment Status {name} is missing {name+'_date_time'}.")
+
+    def handle_event_insert(self, *, req_data: dict):
         activity_record = list(filter(lambda x: x.name.lower() == req_data['activity'].lower(),
                                       self.activity_records))
 
@@ -118,6 +140,15 @@ class PPSCIntakeAPI(BaseApi):
 
         # Iterate through data elements, add to bulk insert
         for data_element in req_data['dataElements']:
+
+            # DA-4970: Transforming SEEC_MOREHOUSE to DREF_MOREHOUSE
+            if (
+                req_data['activity'].lower() == 'attribution' and
+                data_element.get('dataElementName').lower() == 'activity_status' and
+                data_element.get('dataElementValue').upper() in TRANSFORM_ORG_MAP
+            ):
+                data_element['dataElementValue'] = TRANSFORM_ORG_MAP[data_element.get('dataElementValue').upper()]
+
             now = clock.CLOCK.now()  # event_listener doesn't work with bulk inserts
             event_dict = {
                 'event_id': participant_event_activity.id,
@@ -142,4 +173,13 @@ class PPSCIntakeAPI(BaseApi):
 
         activity_event_dao.insert_bulk(records_to_insert)
 
-        return participant_event_activity.resource
+        return participant_event_activity
+
+    def check_consent(self, participant_id, event_types, data_element_name, data_element_value):
+        with self.dao.session() as session:
+            return session.query(ConsentEvent).filter(
+                ConsentEvent.participant_id == participant_id,
+                ConsentEvent.event_type_name.in_(event_types),
+                ConsentEvent.data_element_name == data_element_name,
+                ConsentEvent.data_element_value.ilike(data_element_value)
+            ).first()

@@ -4,7 +4,7 @@ from werkzeug.exceptions import BadRequest, InternalServerError
 from rdr_service.query import Query, Results
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.app_util import auth_required, get_validated_user_info
-from rdr_service.api_util import AWARDEE, RDR
+from rdr_service.api_util import AWARDEE, RDR, PPSC
 from rdr_service.dao.awardee_insite_dao import AwardeeInSiteDao
 
 
@@ -16,7 +16,7 @@ class AwardeeInSiteApi(BaseApi):
         super().__init__(AwardeeInSiteDao())
         self.awardee = None
 
-    @auth_required([RDR] + [AWARDEE])
+    @auth_required([RDR] + [AWARDEE] + [PPSC])
     def get(self, id_=None, participant_id=None):
         log_api_request(log=request.log_record)
 
@@ -29,8 +29,8 @@ class AwardeeInSiteApi(BaseApi):
             except KeyError:
                 raise InternalServerError("Config error for awardee")
 
-        # In case RDR needs to call the API, they can pass an awardee query param with a awardee name to get the data
-        if RDR in user_info["roles"]:
+        # RDR & PPSC can pass an awardee query param with an awardee name to get the data
+        if RDR in user_info["roles"] or PPSC in user_info["roles"]:
             self.awardee = request.args.get("awardee")
             if not self.awardee:
                 raise BadRequest(

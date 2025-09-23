@@ -2,9 +2,13 @@ import multiprocessing
 import os
 import resource
 
+from rdr_service.rdr_thread_worker import RdrThreadWorker
+
+
 _port = 8080 # local dev/testing.
 workers = 1
 threads = 1
+worker_class = RdrThreadWorker
 
 max_requests = 1000
 max_requests_jitter = 50
@@ -47,12 +51,8 @@ def post_request(worker, request, environment, response):  # pylint: disable=unu
         worker.log.info(f"Restarting worker found to be using {memory_used_megabytes} megabytes (pid: {os.getpid()})")
 
         # This will safely start shutting down a worker: letting it continue with the request it is
-        # currently processing, but closing it off from further requests (as was seen with thread workers when we
-        # set alive to False).
-        # WARNING: As of now the parameters sig and frame aren't used by the thread worker (our current default). If
-        # we change to another worker type, or if Gunicorn updates the handle_quit code to do something with them,
-        # then we may need to pass something in.
-        worker.handle_abort(None, None)
+        # currently processing, but closing it off from further requests.
+        worker.handle_exit(None, None)
 
 # The below function is useful for debugging settings.
 # Leaving in but disabled in case future modifications need to be tested.

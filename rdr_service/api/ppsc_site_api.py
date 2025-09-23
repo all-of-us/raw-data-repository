@@ -9,7 +9,7 @@ from rdr_service.app_util import auth_required
 from rdr_service.dao.ppsc_dao import SiteDao, PPSCDefaultBaseDao
 from rdr_service.model.ppsc import PartnerActivity, Site, PartnerEventActivity
 from rdr_service.ppsc.ppsc_legacy_data_sync import SiteDataSync
-
+from rdr_service.ppsc_transform_org_map import TRANSFORM_ORG_MAP
 
 # pylint: disable=broad-except
 class PPSCSiteAPI(BaseApi):
@@ -75,7 +75,10 @@ class PPSCSiteAPI(BaseApi):
             raise BadRequest(f'Payload for Site is invalid: Required keys - {response_string}')
 
     def handle_site_updates(self, *, site_data: dict) -> Site:
-        # site data
+        org_id = site_data.get("org_id")
+        if org_id and org_id.upper() in TRANSFORM_ORG_MAP:
+            site_data["org_id"] = TRANSFORM_ORG_MAP[site_data.get("org_id")]
+
         site_record = self.dao.upsert(self.dao.model_type(**site_data))
 
         # event tracking

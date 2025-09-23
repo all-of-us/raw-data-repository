@@ -12,7 +12,7 @@ from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.measurements import Measurement, PhysicalMeasurements
 from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus, \
-    PhysicalMeasurementsCollectType, OriginMeasurementUnit
+    PhysicalMeasurementsCollectType, OriginMeasurementUnit, SelfReportedPhysicalMeasurementsStatus
 from rdr_service.query import FieldFilter, Operator, Query
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -487,3 +487,39 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
 
         self.assertNotEqual(measurement.finalizedSiteId, updated_measurement.finalizedSiteId)
         self.assertEqual(2, updated_measurement.finalizedSiteId)
+
+    def test_insert_self_reported(self):
+        self._make_summary()
+        summary = ParticipantSummaryDao().get(self.participant.participantId)
+        self.assertIsNone(summary.clinicPhysicalMeasurementsStatus)
+        with FakeClock(TIME_2):
+            measurements = self.dao.insert(self._make_physical_measurements(collectType=PhysicalMeasurementsCollectType.SELF_REPORTED))
+
+        expected_measurements = PhysicalMeasurements(
+            physicalMeasurementsId=1,
+            participantId=self.participant.participantId,
+            created=TIME_2,
+            finalized=TIME_1,
+            final=True,
+            logPositionId=1,
+            createdSiteId=1,
+            finalizedSiteId=2,
+            collectType=PhysicalMeasurementsCollectType.SELF_REPORTED,
+            originMeasurementUnit=OriginMeasurementUnit.UNSET,
+            origin='hpro',
+            satisfiesHeightRequirements=False,
+            satisfiesWeightRequirements=False
+        )
+
+        doc = json.loads(self._with_id(self.measurement_json, "1"))
+        expected_measurements = self.dao.store_record_fhir_doc(expected_measurements, doc)
+        self.assertEqual(expected_measurements.asdict(), measurements.asdict())
+        measurements = self.dao.get(measurements.physicalMeasurementsId)
+
+        expected_measurements = self.dao.store_record_fhir_doc(expected_measurements, self.measurement_json)
+        self.assertEqual(self.dao._measurements_as_dict(expected_measurements), self.dao._measurements_as_dict(measurements))
+        # Completing self reported physical measurements changes the participant summary status
+        summary = ParticipantSummaryDao().get(self.participant.participantId)
+        self.assertEqual(SelfReportedPhysicalMeasurementsStatus.COMPLETED, summary.selfReportedPhysicalMeasurementsStatus)
+        self.assertEqual(TIME_1, summary.selfReportedPhysicalMeasurementsAuthored)
+        self.assertEqual(TIME_2, summary.lastModified)

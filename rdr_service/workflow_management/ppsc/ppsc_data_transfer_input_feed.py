@@ -54,7 +54,7 @@ class InputFeed(PPSCBigQueryDatafeedBase):
     def make_datafeed_job(self, job_def):
         return self.bq_client.query(job_def)
 
-    def get_datafeed_definition(self, datafeed):
+    def get_datafeed_definition(self, datafeed, start_date=None, end_date=None, batch_size=None):
         src = config.getSettingJson(config.PPSC_DATAFEED_SRC_DATASET)[0]
         destination = config.getSettingJson(config.PPSC_DATAFEED_DEST_DATASET)[0]
 
@@ -80,7 +80,8 @@ class InputFeed(PPSCBigQueryDatafeedBase):
 
         elif datafeed == "ehr":
             job_def['staging_data'] = data_feed_queries.insert_ehr_receipt(self.project, src, destination)
-            job_def['streaming_data'] = data_feed_queries.get_ppsc_ehr_to_stream(self.project, destination)
+            job_def['streaming_data'] = data_feed_queries.get_ppsc_ehr_to_stream(self.project, destination, start_date,
+                                                                                 end_date, batch_size)
             job_def['output_model'] = PPSCEHR
             return job_def
 
@@ -88,11 +89,11 @@ class InputFeed(PPSCBigQueryDatafeedBase):
             # Raise error
             raise BadRequest(f"Invalid Datafeed: {datafeed}")
 
-    def run_datafeed(self, datafeed):
+    def run_datafeed(self, datafeed, start_date=None, end_date=None, batch_size=None):
         """
         Loads datafeed results in batches and commits updates to database per batch.
         """
-        job_def = self.get_datafeed_definition(datafeed)
+        job_def = self.get_datafeed_definition(datafeed, start_date, end_date, batch_size)
 
         # Stage the Data
         job = self.make_datafeed_job(job_def['staging_data'])
@@ -178,8 +179,7 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
             temp_table_name = "temp_ranked_events_survey_completion"
             source_data_sql = get_survey_completion_activity_to_stream(project=self.project,
                                                                         source_dataset=src,
-                                                                        temp_table_name=temp_table_name,
-                                                                        sent_table_name=sent_table_name)
+                                                                        temp_table_name=temp_table_name)
             destination_model = ParticipantSummary
             de_mapping = survey_completion_data_elements
 

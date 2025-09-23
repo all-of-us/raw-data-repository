@@ -131,11 +131,15 @@ class CurationBQ(ToolBase):
             self.export()
         else:
             _logger.error("One of --load-data, --run-etl, or --export must be set")
+        return None
 
     def run_query(self, sql: str, job_config: Union[None, google.cloud.bigquery.QueryJobConfig]):
-        query_job = self.client.query(sql, job_config=job_config)
-        result = query_job.result()  # wait for query to finish
-        _logger.debug(f"Rows in result: {result.total_rows}")
+        if self.args.dry_run:
+            _logger.info(sql)
+        else:
+            query_job = self.client.query(sql, job_config=job_config)
+            result = query_job.result()  # wait for query to finish
+            _logger.debug(f"Rows in result: {result.total_rows}")
 
     def import_table(self, table_name: str, schema: str):
         job_config = bigquery.QueryJobConfig(destination=f"{self.dataset_id}.{table_name}")
@@ -221,6 +225,8 @@ def add_additional_arguments(parser):
     parser.add_argument("--destination", help="BQ dataset or GCS path to export to")
     parser.add_argument("--to-bq", help="Export to bq dataset instead of GCS", action="store_true")
     parser.add_argument("--cutoff", help="cutoff date used for the run", required=True)
+    parser.add_argument("--dry-run", help="Print generated queries instead of executing", default=False,
+                        action="store_true")
 
 
 def run():

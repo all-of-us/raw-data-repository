@@ -15,7 +15,6 @@ def calculate_participant_metrics():
 
     # call metrics functions
     service = ParticipantCountsOverTimeService()
-    service.init_tmp_table()
     # calculate data in last 30 days
     service.refresh_metrics_cache_data(stage_one_start_date, stage_one_end_date, MetricsCronJobStage.STAGE_ONE)
     logging.info('calculate participant metrics stage one is done.')

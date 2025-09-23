@@ -1,7 +1,9 @@
+import os
 from datetime import datetime
 
 from rdr_service.code_constants import PPI_SYSTEM, WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES, \
     WITHDRAWAL_CEREMONY_NO
+from rdr_service.data_gen.generators.ppsc import PPSCDataGenerator
 from rdr_service.model.api_user import ApiUser
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankOrderHistory, \
@@ -46,6 +48,7 @@ from rdr_service.participant_enums import PatientStatusFlag, QuestionnaireRespon
 
 class DataGenerator:
     def __init__(self, session, faker):
+        self.ppsc_data_gen = PPSCDataGenerator()
         self.session = session
         self.faker = faker
         self._next_unique_participant_id = 900000000
@@ -327,12 +330,16 @@ class DataGenerator:
             'hpoId': UNSET_HPO_ID,
             'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
             'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
-            'participantOrigin': 'example',
+            'participantOrigin': 'ppsc',
             'version': 1,
             'lastModified': datetime.now(),
             'signUpTime': datetime.now(),
             'isTestParticipant': False
         }
+
+        if os.environ.get('UNITTEST_FLAG') == '1':
+            defaults.update(participantOrigin='example')
+
         defaults.update(kwargs)
 
         if 'biobankId' not in defaults:
@@ -1069,12 +1076,18 @@ class DataGenerator:
             withdrawalStatus=WithdrawalStatus.NO_USE,
             withdrawalReasonJustification=withdrawal_reason_justification
         )
-        if summary_kwargs or is_native_american:
-            self.create_database_participant_summary(
-                participant=participant,
-                aian=is_native_american,
-                **(summary_kwargs or {})
-            )
+        self.create_database_participant_summary(
+            participant=participant,
+            biobankId=participant.biobankId,
+            siteId=participant.siteId,
+            organizationId=participant.organizationId,
+            aian=is_native_american,
+            participantOrigin=participant.participantOrigin,
+            withdrawalAuthored=withdrawal_time,
+            withdrawalStatus=WithdrawalStatus.NO_USE,
+            withdrawalReasonJustification=withdrawal_reason_justification,
+            **(summary_kwargs or {})
+        )
 
         # Withdrawal report only includes participants that have stored samples
         self.create_database_biobank_stored_sample(biobankId=participant.biobankId, test='test')
@@ -1100,6 +1113,15 @@ class DataGenerator:
             questionnaireVersion=questionnaire.version,
             answers=answers,
             participantId=participant.participantId
+        )
+
+        # Create a withdrawal event that satisfies the parameters for the test participant
+        ppsc_participant = self.ppsc_data_gen.create_database_participant(id=participant.participantId,
+                                                                          biobank_id=participant.biobankId)
+        self.ppsc_data_gen.create_database_withdrawal_event(
+            data_element_name='aian_ceremony_status',
+            data_element_value=requests_ceremony,
+            participant_id=ppsc_participant.id
         )
 
         return participant

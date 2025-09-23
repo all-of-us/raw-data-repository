@@ -206,7 +206,7 @@ INSERT INTO `test.rdr_operational_datastream.datafeed_input_ehr` (
 SELECT DISTINCT
     p.id,
     0 as ignore_flag,
-    participant_ehr.last_seen,
+    participant_ehr.file_timestamp,
     CURRENT_TIMESTAMP() AS created,
     CURRENT_TIMESTAMP() AS modified
 FROM `test.rdr_operational_datastream.ppsc_participant` p
@@ -219,7 +219,7 @@ WHERE TRUE
         SELECT 1
         FROM `test.rdr_operational_datastream.datafeed_input_ehr` t
         WHERE t.participant_id = p.id
-            AND t.event_date_time = participant_ehr.last_seen
+            AND t.event_date_time = participant_ehr.file_timestamp
             AND t.ignore_flag = 0
     )
 ;
@@ -237,6 +237,9 @@ where TRUE
             AND t.event_date_time = s.event_date_time
             AND t.ignore_flag = 0
     )
+  AND event_date_time >= '2025-03-28'
+  AND event_date_time <= '2025-04-01'
+LIMIT 800
 ;"""
 
 health_data_sharing_expected_sql = """
@@ -338,7 +341,11 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Primary Consent' AND data_element_name = 'activity_status' AND rank = 1
            THEN data_element_value END) AS primary_consent,
   MAX(CASE WHEN event_type_name = 'Primary Consent' AND rank = 1
-           THEN event_authored_time END) AS primary_consent_event_authored
+           THEN event_authored_time END) AS primary_consent_event_authored,
+  MAX(CASE WHEN event_type_name = 'Pediatric Permission' AND data_element_name = 'activity_status' AND rank = 1
+           THEN data_element_value END) AS peds_primary_consent,
+  MAX(CASE WHEN event_type_name = 'Pediatric Permission' AND rank = 1
+           THEN event_authored_time END) AS peds_primary_consent_event_authored
 FROM ranked_events
 WHERE rank = 1
 GROUP BY participant_id, event_id, event_type_name
@@ -630,11 +637,21 @@ WITH ranked_events AS (
   and data_element_name IN ("activity_status", '​activity_status', "gender_genderidentity","biologicalsexatbirth_sexatbirth","thebasics_sexualorientation","race_whatraceethnicity","educationlevel_highestgrade","income_annualincome")
   and se.ignore_flag = 0
 )
+, aian_flag AS (
+  SELECT
+    participant_id,
+    MAX(CASE
+      WHEN data_element_name = 'race_whatraceethnicity'
+           AND data_element_value = 'WhatRaceEthnicity_AIAN'
+      THEN 1 ELSE 0 END) AS is_aian
+  FROM `test.rdr_operational_datastream.ppsc_survey_completion_event`
+  WHERE ignore_flag = 0
+  GROUP BY participant_id
+)
 SELECT
-  participant_id,
-  event_id,
-  event_type_name,
-
+  ranked_events.participant_id,
+  ranked_events.event_id,
+  ranked_events.event_type_name,
   -- Basics Data
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'gender_genderidentity' THEN data_element_value END) AS gender_identity,
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'biologicalsexatbirth_sexatbirth' THEN data_element_value END) AS sex,
@@ -642,7 +659,7 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'race_whatraceethnicity' THEN data_element_value END) AS race,
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'educationlevel_highestgrade' THEN data_element_value END) AS education,
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'income_annualincome' THEN data_element_value END) AS income,
-  MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'race_whatraceethnicity' THEN data_element_value END) AS aian,
+  MAX(CASE WHEN aian_flag.is_aian = 1 THEN "yes" ELSE "no" END) AS aian,
 
   -- Overall Health
   MAX(CASE WHEN event_type_name = 'Overall Health' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_overall_health,
@@ -685,8 +702,9 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Pediatric Environmental Health' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_environmental_exposures_authored
 
 FROM ranked_events
+LEFT JOIN aian_flag ON ranked_events.participant_id = aian_flag.participant_id
 WHERE rank = 1
-GROUP BY participant_id, event_id, event_type_name
+GROUP BY ranked_events.participant_id, ranked_events.event_id, ranked_events.event_type_name
     """
 
 attribution_activity_expected_sql = f"""
