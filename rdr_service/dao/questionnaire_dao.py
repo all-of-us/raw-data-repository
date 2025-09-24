@@ -1,6 +1,5 @@
 import json
 
-import sqlalchemy.orm
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed
 

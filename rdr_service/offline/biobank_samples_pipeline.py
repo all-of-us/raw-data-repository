@@ -25,6 +25,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
+from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.site import Site
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
