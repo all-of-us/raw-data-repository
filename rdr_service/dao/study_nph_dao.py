@@ -1,19 +1,21 @@
 import logging
 import json
 
-from datetime import datetime
+from datetime import datetime, date
 from types import SimpleNamespace as Namespace
-from typing import Tuple, Dict, List, Any, Optional, Union
+from typing import Tuple, Dict, List, Any, Optional
 
 from protorpc import messages
 from werkzeug.exceptions import BadRequest, NotFound
 
+from google.cloud import bigquery
+
 from sqlalchemy.orm import Query, aliased
-from sqlalchemy import exc, func, case, and_, literal
+from sqlalchemy import exc, func, and_, literal
 from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service import config
-from rdr_service.ancillary_study_resources.nph.enums import StoredSampleStatus, VisitPeriod, ModuleTypes
+from rdr_service.ancillary_study_resources.nph.enums import VisitPeriod, ModuleTypes
 from rdr_service.model.study_nph import (
     StudyCategory, Participant, Site, Order, OrderedSample,
     Activity, ParticipantEventActivity, EnrollmentEventType,
@@ -23,8 +25,8 @@ from rdr_service.model.study_nph import (
     DlwDosage, EligibleParticipants
 )
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
-from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID
-from rdr_service.query import FieldFilter, Operator, Results
+from rdr_service.config import NPH_MIN_BIOBANK_ID, NPH_MAX_BIOBANK_ID, GAE_PROJECT
+from rdr_service.query import Results
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -1045,11 +1047,11 @@ class NphIntakeDao(BaseDao):
 
 
 class NphBiospecimenDao(BaseDao):
+    SNAPSHOT_TABLE = f"{GAE_PROJECT}.operational_datastream.biospecimens_snapshots"
+
     def __init__(self):
         super().__init__(Order, order_by_ending=["participant_id"])
-
-    def get_id(self, obj):
-        return obj.id
+        self.bq = bigquery.Client()
 
     def from_client_json(self):
         pass
@@ -1057,262 +1059,85 @@ class NphBiospecimenDao(BaseDao):
     def to_client_json(self, payload):
         return payload
 
-    def _initialize_query(self, session, query_def):
-        return self.get_orders_samples_subquery(query_def=query_def)
+    def get_by_participant(self, nph_participant_id: int) -> List[Dict[str, Any]]:
+        """
+        Returns a single participant's biospecimens array
+        """
+        sql = f"""
+            SELECT nph_participant_id, biospecimens
+            FROM `{self.SNAPSHOT_TABLE}`
+            WHERE run_date = (SELECT MAX(run_date) FROM `{self.SNAPSHOT_TABLE}`)
+              AND nph_participant_id = @pid
+        """
+        cfg = bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("pid", "INT64", nph_participant_id)]
+        )
+        rows = list(self.bq.query(sql, job_config=cfg).result())
+        return [
+            {
+                "nph_participant_id": r["nph_participant_id"],
+                "biospecimens": r["biospecimens"] or [],
+            }
+            for r in rows
+        ]
 
-    def make_query_filter(self, field_name, value):
-        if field_name == 'last_modified':
-            return FieldFilter(
-                'modified',
-                Operator.GREATER_THAN_OR_EQUALS,
-                value
+    def get_all(self, count: int = 100, token: Optional[str] = None) -> Results:
+        """
+        Returns Results(items, next_token, more_available, total=None).
+        Pagination is locked to a single snapshot partition via run_date.
+        """
+        # Get the run_date for this paging session
+        if token:
+            cursor, run_date_str = self._parse_pagination_data(
+                self._unpack_page_token(token),
+                ["participant_id", "run_date"],
             )
-        if field_name == 'nph_paired_site':
-            return FieldFilter(
-                'Site.external_id',
-                Operator.EQUALS,
-                value
-            )
-        if field_name == 'nph_paired_org':
-            return FieldFilter(
-                'Site.organization_external_id',
-                Operator.EQUALS,
-                value
-            )
-        if field_name == 'nph_paired_awardee':
-            return FieldFilter(
-                'Site.awardee_external_id',
-                Operator.EQUALS,
-                value
-            )
-        return super().make_query_filter(field_name, value)
-
-    def query(self, query_definition):
-        if query_definition.invalid_filters and not query_definition.field_filters:
-            raise BadRequest("No valid fields were provided")
-        if not self.order_by_ending:
-            raise BadRequest(f"Can't query on type {self.model_type} -- no order by ending specified")
-        with self.session() as session:
-            total = None
-            query, field_names = self._make_query(session, query_definition)
-            items = query.with_session(session).all()
-            if query_definition.include_total:
-                total = self._count_query(session, query_definition)
-            if not items:
-                return Results([], total=total)
-        if len(items) > query_definition.max_results:
-            page = items[0: query_definition.max_results]
-            token = self._make_pagination_token(
-                item_dict={'participant_id': items[query_definition.max_results - 1].orders_samples_pid},
-                field_names=['participant_id']
-            )
-            return Results(page, token, more_available=True, total=total)
+            run_date = date.fromisoformat(run_date_str)  # keep paging on same partition
         else:
-            token = (
-                self._make_pagination_token(
-                    items[-1].asdict(),
-                    field_names) if query_definition.always_return_token else None
+            run_date = self._get_latest_run_date()
+            cursor = None
+
+        # Capping to 1000 to prevent accidentally huge page pulls.
+        limit = max(1, min(int(count), 1000))
+
+        sql = f"""
+                SELECT nph_participant_id, biospecimens
+                    FROM `{self.SNAPSHOT_TABLE}`
+                WHERE run_date = @run_date
+                    AND (@cursor IS NULL OR nph_participant_id > @cursor)
+                ORDER BY nph_participant_id
+                LIMIT @limit_and_1
+                """
+        cfg = bigquery.QueryJobConfig(query_parameters=[
+            bigquery.ScalarQueryParameter("run_date", "DATE", run_date),
+            bigquery.ScalarQueryParameter("cursor", "INT64", cursor),
+            bigquery.ScalarQueryParameter("limit_and_1", "INT64", limit + 1),
+        ])
+        rows = list(self.bq.query(sql, job_config=cfg).result())
+
+        more = len(rows) > limit
+        page_rows = rows[:limit]
+
+        items = [
+            {"nph_participant_id": row["nph_participant_id"], "biospecimens": row["biospecimens"] or []}
+            for row in page_rows
+        ]
+
+        # Token contains participant_id cursor and the locked run_date
+        next_token = None
+        if items and more:
+            last_id = items[-1]["nph_participant_id"]
+            raw = self._make_pagination_token(
+                item_dict={"participant_id": last_id, "run_date": str(run_date)},
+                field_names=["participant_id", "run_date"],
             )
-            return Results(items, token, more_available=False, total=total)
+            next_token = raw.decode("ascii") if isinstance(raw, (bytes, bytearray)) else raw
 
-    def _set_filters(self, query, filters, model_type=None):
-        model_filter_map = {'Order': Order, 'Site': Site}
-        for field_filter in filters:
-            updated_model_list: List = field_filter.field_name.split('.')
-            model_type, field_name = (model_type or self.model_type), field_filter.field_name
-            if len(updated_model_list) > 1:
-                model_type, field_name = model_filter_map.get(updated_model_list[0]), updated_model_list[-1]
-            try:
-                filter_attribute = getattr(model_type, field_name)
-            except AttributeError:
-                raise BadRequest(f"No field named {field_filter.field_name} found on {model_type}.")
-            query = self._add_filter(query, field_filter, filter_attribute)
-        return query
+        return Results(items, next_token, more_available=more, total=None)
 
-    @classmethod
-    def update_biospeciman_stored_samples(
-        cls,
-        order_samples: dict,
-        order_biobank_samples: dict
-    ) -> Union[Optional[str], Any]:
-        if not order_samples:
-            return []
-        order_samples = order_samples.get('orders_sample_json')
-        for sample in order_samples:
-            sample['biobankStatus'] = []
-            if not order_biobank_samples:
-                continue
-            stored_samples = list(filter(lambda x: x.get('orderSampleID') == sample.get('sampleID'),
-                                         order_biobank_samples.get('orders_sample_biobank_json')))
-
-            sample['biobankStatus'] = [
-                {
-                    "limsID": stored_sample.get('limsID'),
-                    "biobankModified": stored_sample.get('biobankModified'),
-                    "status": str(StoredSampleStatus.lookup_by_number(stored_sample.get('status'))),
-                    "freezeThawCount": stored_sample.get('freezeThawCount'),
-                    "specimenVolumeUl": stored_sample.get('specimenVolumeUl'),
-                    "limsParentSampleID": stored_sample.get('limsParentSampleID')
-                } for stored_sample in stored_samples
-            ]
-        return order_samples
-
-    def get_stored_samples_subquery(
-        self, *, nph_participant_id=None, **kwargs
-    ):
-        stored_sample_alias = aliased(StoredSample)
-        with self.session() as session:
-            stored_samples_subquery = session.query(
-                Participant.id.label('stored_sample_pid'),
-                func.json_object(
-                    'orders_sample_biobank_json',
-                    func.json_arrayagg(
-                        func.json_object(
-                            'limsID', StoredSample.lims_id,
-                            'biobankModified', StoredSample.biobank_modified,
-                            'status', StoredSample.status,
-                            'orderSampleID', StoredSample.sample_id,
-                            'freezeThawCount', StoredSample.freeze_thaw_count,
-                            'specimenVolumeUl', StoredSample.specimen_volume_ul,
-                            'limsParentSampleID', StoredSample.lims_parent_sample_id
-                        )
-                    ), type_=JSON
-                ).label('orders_sample_biobank_status')
-            ).join(
-                StoredSample,
-                StoredSample.biobank_id == Participant.biobank_id
-            ).outerjoin(
-                stored_sample_alias,
-                and_(
-                    StoredSample.biobank_id == stored_sample_alias.biobank_id,
-                    stored_sample_alias.lims_id == StoredSample.lims_id,
-                    stored_sample_alias.status == StoredSample.status,
-                    StoredSample.id < stored_sample_alias.id
-                )
-            ).filter(
-                stored_sample_alias.id.is_(None)
-            ).group_by(Participant.id)
-
-            if nph_participant_id:
-                return stored_samples_subquery.filter(Participant.id == nph_participant_id)
-
-            if query_def := kwargs.get('query_def'):
-                if applicable_filters := [
-                    filter_obj for filter_obj
-                    in query_def.field_filters
-                    if filter_obj.field_name in ['modified']
-                ]:
-                    stored_samples_subquery = self._set_filters(
-                        query=stored_samples_subquery,
-                        filters=applicable_filters,
-                        model_type=StoredSample
-                    )
-
-            return stored_samples_subquery.subquery()
-
-    def get_orders_samples_subquery(self, *, nph_participant_id=None, **kwargs):
-        parent_study_category = aliased(StudyCategory)
-        parent_study_category_module = aliased(StudyCategory)
-        parent_ordered_sample = aliased(OrderedSample)
-        stored_samples_subquery = self.get_stored_samples_subquery(**kwargs)
-        with self.session() as session:
-            sample_orders = session.query(
-                Order.participant_id.label('orders_samples_pid'),
-                func.json_object(
-                    'orders_sample_json',
-                    func.json_arrayagg(
-                        func.json_object(
-                            'orderID', Order.nph_order_id,
-                            'visitID', parent_study_category.name,
-                            'studyID', parent_study_category_module.name,
-                            'timepointID', StudyCategory.name,
-                            'clientID', Order.client_id,
-                            'specimenCode', case(
-                                [
-                                    (OrderedSample.identifier.isnot(None), OrderedSample.identifier),
-                                ],
-                                else_=OrderedSample.test
-                            ),
-                            'volume', OrderedSample.volume,
-                            'volumeUOM', OrderedSample.volumeUnits,
-                            'orderedSampleStatus', case(
-                                [
-                                    (Order.status == 'cancelled', 'Cancelled'),
-                                    (OrderedSample.status.ilike('cancelled'), 'Cancelled'),
-                                ],
-                                else_='Active'
-                            ),
-                            'collectionDateUTC', case(
-                                [
-                                    (OrderedSample.parent_sample_id.isnot(None), parent_ordered_sample.collected),
-                                ],
-                                else_=OrderedSample.collected
-                            ),
-                            'processingDateUTC', case(
-                                [
-                                    (OrderedSample.test.startswith("ST"), OrderedSample.supplemental_fields["freezed"]),
-                                    (OrderedSample.parent_sample_id.isnot(None), OrderedSample.collected),
-                                ],
-                                else_=None
-                            ),
-                            'finalizedDateUTC', case(
-                                [
-                                    (OrderedSample.finalized.isnot(None), OrderedSample.finalized),
-                                ],
-                                else_=None
-                            ),
-                            'sampleID', case(
-                                [
-                                    (OrderedSample.aliquot_id.isnot(None), OrderedSample.aliquot_id),
-                                ],
-                                else_=OrderedSample.nph_sample_id
-                            ),
-                            'kitID', case(
-                                [
-                                    (OrderedSample.identifier.ilike("ST%"), Order.nph_order_id),
-                                    (OrderedSample.test.ilike("ST%"), Order.nph_order_id),
-                                ],
-                                else_=None
-                            ),
-                        )
-                    ), type_=JSON
-                ).label('orders_sample_status'),
-                stored_samples_subquery.c.orders_sample_biobank_status
-            ).join(
-                OrderedSample,
-                OrderedSample.order_id == Order.id
-            ).join(
-                StudyCategory,
-                StudyCategory.id == Order.category_id
-            ).join(
-                PairingEvent,
-                PairingEvent.participant_id == Order.participant_id
-            ).join(
-                Site,
-                Site.id == PairingEvent.site_id
-            ).outerjoin(
-                parent_study_category,
-                parent_study_category.id == StudyCategory.parent_id
-            ).outerjoin(
-                parent_study_category_module,
-                parent_study_category_module.id == parent_study_category.parent_id
-            ).outerjoin(
-                parent_ordered_sample,
-                parent_ordered_sample.id == OrderedSample.parent_sample_id
-            ).outerjoin(
-                stored_samples_subquery,
-                stored_samples_subquery.c.stored_sample_pid == Order.participant_id
-            ).group_by(Order.participant_id)
-
-            if nph_participant_id:
-                sample_orders = sample_orders.filter(
-                    Order.participant_id == nph_participant_id
-                )
-                return sample_orders.all()
-
-            if query_def := kwargs.get('query_def'):
-                if query_def.field_filters:
-                    return sample_orders
+    def _get_latest_run_date(self) -> date:
+        sql = f"SELECT MAX(run_date) AS d FROM `{self.SNAPSHOT_TABLE}`"
+        return list(self.bq.query(sql).result())[0]["d"]  # BigQuery returns a Python date
 
 
 class NphSampleUpdateDao(BaseDao):
