@@ -32,18 +32,16 @@ class ParticipantResearchIdsDao(UpsertableDao):
             return to_insert
 
     def insert_new_participants(self, participant_objects: List[Participant]) -> None:
-            insert_objects = []
-            for p in participant_objects:
-                p_to_insert = ParticipantResearchIds(participant_id=p.participantId,
-                                               research_id=p.researchId,
-                                               external_id=p.externalId)
-                insert_objects.append(p_to_insert)
-            with self.session() as session:
-                session.bulk_save_objects(insert_objects)
+        insert_objects = []
+        for participant in participant_objects:
+            p_to_insert = ParticipantResearchIds(participant_id=participant.participantId,
+                                                 research_id=participant.researchId,
+                                                 external_id=participant.externalId)
+            insert_objects.append(p_to_insert)
+        with self.session() as session:
+            session.bulk_save_objects(insert_objects)
 
-            for p in participant_objects:
-                research_ids = ParticipantResearchIds(participant_id=p.participantId)
-                self.insert_random_research_ids(research_ids, ['controlled_tier_id', 'registered_tier_id', 'controlled_tier_plus_id'])
-
-
-
+        for participant in participant_objects:
+            research_ids = ParticipantResearchIds(participant_id=participant.participantId)
+            self.insert_random_research_ids(research_ids,
+                                            ['controlled_tier_id', 'registered_tier_id', 'controlled_tier_plus_id'])
