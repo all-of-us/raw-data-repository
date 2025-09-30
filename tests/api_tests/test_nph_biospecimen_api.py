@@ -90,3 +90,6 @@ class NphBiospecimenAPITest(BaseTestCase):
         self.assertFalse(response_2["more_available"])
         self.assertIsNone(response_2["pagination_token"])
 
+    def tearDown(self):
+        self.tearDown()
+        self.clear_table_after_test("nph.participant")
