@@ -217,16 +217,14 @@ def get_withdrawal_report_query(start_date: datetime):
             coalesce(Site.googleGroup, 'UNSET').label('paired_site'),
             ParticipantSummary.withdrawalReasonJustification.label('withdrawal_reason_justification'),
             case(
-                [
-                    (ParticipantSummary.deceasedStatus == 1, 'PENDING'),
-                    (ParticipantSummary.deceasedStatus == 2, 'APPROVED'),
-                ],
+                (ParticipantSummary.deceasedStatus == 1, 'PENDING'),
+                (ParticipantSummary.deceasedStatus == 2, 'APPROVED'),
                 else_='UNSET'
             ).label('deceased_status'),
         ])
         .select_from(ParticipantSummary)
         .outerjoin(ceremony_answer_subquery,
-                   ceremony_answer_subquery.c.participantId == ParticipantSummary.participantId)
+                   ceremony_answer_subquery.c.participant_id == ParticipantSummary.participantId)
         .join(BiobankStoredSample, BiobankStoredSample.biobankId == ParticipantSummary.biobankId)
         .outerjoin(HPO, HPO.hpoId == ParticipantSummary.hpoId)
         .outerjoin(Organization, Organization.organizationId == ParticipantSummary.organizationId)
@@ -503,8 +501,10 @@ _NATIVE_AMERICAN_SQL = """
 
 def _participant_answer_subquery():
     return (
-        Query([ppsc.WithdrawalEvent.participant_id, ppsc.WithdrawalEvent.data_element_value])
-        .select_from(ppsc.WithdrawalEvent)
+        Query([
+            ppsc.WithdrawalEvent.participant_id.label('participant_id'),
+            ppsc.WithdrawalEvent.data_element_value.label('data_element_value')
+        ]).select_from(ppsc.WithdrawalEvent)
         .join(ParticipantSummary, ppsc.WithdrawalEvent.participant_id == ParticipantSummary.participantId)
         .filter(
             ppsc.WithdrawalEvent.data_element_name == 'aian_ceremony_status'

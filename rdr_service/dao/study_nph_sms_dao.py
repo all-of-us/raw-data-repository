@@ -213,7 +213,8 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsSample.ethnicity,
                 SmsSample.race,
                 SmsSample.bmi,
-                SmsSample.diet
+                SmsSample.diet,
+                SmsN0.id
             ).outerjoin(
                 SmsSample,
                 and_(
@@ -284,7 +285,10 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                     )
                 )
             elif 'duke' in kwargs.get('recipient').lower():
-                query = query.add_columns(
+                columns.extend([
+                    'lims_parent_sample_id'
+                ])
+                statement = statement.add_columns(
                     SmsN0.lims_parent_sample_id,
                 ).outerjoin(
                     SmsN1Mc1,
