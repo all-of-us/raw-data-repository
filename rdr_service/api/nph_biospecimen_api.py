@@ -28,7 +28,7 @@ class NphBiospecimenAPI(BaseApi):
         result = self.dao.get_all(count=count, token=token)
         return {
             "items": result.items,
-            "next_token": result.token,
+            "pagination_token": result.pagination_token,
             "more_available": result.more_available,
             "total": result.total,
         }

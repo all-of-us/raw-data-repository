@@ -1075,10 +1075,10 @@ class NphBiospecimenDao(BaseDao):
         rows = list(self.bq.query(sql, job_config=cfg).result())
         return [
             {
-                "nph_participant_id": r["nph_participant_id"],
-                "biospecimens": r["biospecimens"] or [],
+                "nph_participant_id": row["nph_participant_id"],
+                "biospecimens": row["biospecimens"] or [],
             }
-            for r in rows
+            for row in rows
         ]
 
     def get_all(self, count: int = 100, token: Optional[str] = None) -> Results:
