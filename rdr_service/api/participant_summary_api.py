@@ -281,7 +281,7 @@ class ParticipantSummaryCheckLoginApi(BaseApi):
     def __init__(self):
         super(ParticipantSummaryCheckLoginApi, self).__init__(ParticipantSummaryDao())
 
-    @auth_required(RDR_AND_PTC)
+    @auth_required(RDR)
     def post(self):
         """
         Return status of IN_USE / NOT_IN_USE if participant found / not found
