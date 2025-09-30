@@ -247,7 +247,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                         SmsN1Mc1.ignore_flag == 0
                     )
                 )
-            elif 'duke' in kwargs.get('recipient').lower():
+            elif 'duke' == kwargs.get('recipient').lower():
                 query = query.add_columns(
                     SmsN0.lims_parent_sample_id,
                 ).outerjoin(
