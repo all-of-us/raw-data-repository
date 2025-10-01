@@ -1047,7 +1047,7 @@ class NphIntakeDao(BaseDao):
 
 
 class NphBiospecimenDao(BaseDao):
-    SNAPSHOT_TABLE = f"{GAE_PROJECT}.operational_datastream.biospecimens_snapshots"
+    SNAPSHOT_TABLE = f"{GAE_PROJECT}.rdr_operational_datastream.biospecimens_snapshots"
 
     def __init__(self):
         super().__init__(Order, order_by_ending=["participant_id"])
