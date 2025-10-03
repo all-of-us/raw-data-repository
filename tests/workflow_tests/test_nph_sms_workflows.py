@@ -424,7 +424,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         )
 
     @staticmethod
-    def create_data_duke_n1_mc1_generation(destination="DUKE"):
+    def create_data_duke_n1_mc1_generation(destination="DUKE_SUPP"):
         sms_datagen = NphSmsDataGenerator()
         nph_datagen = NphDataGenerator()
         nph_pid, biobank_id, research_id = 1_000_000_001, 11_000_000_003, 10001
