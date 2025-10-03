@@ -922,13 +922,22 @@ def insert_awardee_insite_data(
                 , CURRENT_TIMESTAMP() AS created
                 , *
             FROM withdrawn_update
+          ),
+          latest_datafeed_records AS (
+              SELECT * EXCEPT(rn)
+              FROM (
+                SELECT *
+                , ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY created DESC) AS rn
+                FROM `{project}.{destination_dataset}.datafeed_input_awardee_insite`
+              )
+              WHERE rn = 1
           )
 
         SELECT *
         FROM final_result_with_surrogate_key fr
         WHERE NOT EXISTS (
             SELECT 1
-            FROM `{project}.{destination_dataset}.datafeed_input_awardee_insite` staging_data
+            FROM latest_datafeed_records staging_data
             WHERE staging_data.participant_id = fr.participant_id  -- to detect new pids
                 AND staging_data.surrogate_key = fr.surrogate_key  -- to detect updated records
         );
