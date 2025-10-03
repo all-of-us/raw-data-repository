@@ -613,7 +613,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         generation_data = {
             "job": "FILE_GENERATION",
             "file_type": "N1_MC1",
-            "recipient": "DUKE",
+            "recipient": "DUKE_SUPP",
             "package_id": "test"
         }
         with clock.FakeClock(self.TIME_1):
@@ -625,7 +625,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        duke_csv_path = "test-bucket-unc-meta/n1_manifests/DUKE_n1_2023-04-25T15:13:00.000000.csv"
+        duke_csv_path = "test-bucket-unc-meta/n1_manifests/DUKE_SUPP_n1_2023-04-25T15:13:00.000000.csv"
 
         with open_cloud_file(duke_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file, delimiter=',')
