@@ -237,9 +237,9 @@ NPH_SMS_BUCKETS = {
     "stable": {
         "UNC_META": "stable-nph-sample-data-mcac-unc-meta",
         "NCSU": "stable-nph-sample-data-mcac-ncsu",
-        "DUKE_NPH": "prod-nph-sample-data-mcac-duke",
-        "DUKE_SUPP": "prod-nph-sample-data-mcac-duke",
-        "DUKE_URINE": "prod-nph-sample-data-mcac-duke",
+        "DUKE_NPH": "stable-nph-sample-data-mcac-duke",
+        "DUKE_SUPP": "stable-nph-sample-data-mcac-duke",
+        "DUKE_URINE": "stable-nph-sample-data-mcac-duke",
         "UNC_CLINICAL": "stable-nph-sample-data-mcac-unc-clinical",
         "PBRC": "stable-nph-sample-data-tandam-pbrc",
         "UCSD": "stable-nph-sample-data-mmc-ucsd"
