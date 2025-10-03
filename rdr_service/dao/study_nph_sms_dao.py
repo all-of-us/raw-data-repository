@@ -187,12 +187,6 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 SmsSample.bmi,
                 SmsSample.diet,
             ).outerjoin(
-                SmsSample,
-                and_(
-                    SmsN0.lims_sample_id == SmsSample.lims_sample_id,
-                    SmsSample.ignore_flag == 0
-                )
-            ).outerjoin(
                 SmsBlocklist,
                 and_(
                     SmsSample.sample_id == SmsBlocklist.identifier_value,
@@ -221,6 +215,12 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                     DlwDosage.batch_id.label('dlw_dose_batch'),
                     DlwDosage.dose_time.label('dlw_dose_date_time'),
                     DlwDosage.dose.label('dlw_dose_grams')
+                ).outerjoin(
+                    SmsSample,
+                    and_(
+                        SmsN0.lims_sample_id == SmsSample.lims_sample_id,
+                        SmsSample.ignore_flag == 0
+                    )
                 ).outerjoin(
                     aliquot_sample,
                     SmsSample.sample_id == aliquot_sample.aliquot_id
@@ -251,6 +251,12 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 query = query.add_columns(
                     SmsN0.lims_parent_sample_id,
                 ).outerjoin(
+                    SmsSample,
+                    and_(
+                        SmsN0.lims_parent_sample_id == SmsSample.lims_sample_id,
+                        SmsSample.ignore_flag == 0
+                    )
+                ).outerjoin(
                     SmsN1Mc1,
                     and_(
                         SmsN0.lims_sample_id == SmsN1Mc1.sample_id,
@@ -265,6 +271,12 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                     func.json_extract(
                         OrderedSample.supplemental_fields, '$.bowelMovementQuality'
                     ).label('bowel_movement_quality')
+                ).outerjoin(
+                    SmsSample,
+                    and_(
+                        SmsN0.lims_sample_id == SmsSample.lims_sample_id,
+                        SmsSample.ignore_flag == 0
+                    )
                 ).outerjoin(
                     OrderedSample,
                     SmsSample.sample_id == OrderedSample.nph_sample_id
