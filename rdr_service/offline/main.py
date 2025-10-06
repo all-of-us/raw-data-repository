@@ -64,6 +64,7 @@ from rdr_service.offline.study_nph_biobank_file_export import main as study_nph_
 from rdr_service.offline.study_nph_biobank_import_inventory_file import main as study_nph_biobank_inventory_import_job
 from rdr_service.workflow_management.nph.sms_pipeline import n1_generation
 from rdr_service.offline.etm_duplicate_detector import run_etm_duplicate_detector
+from rdr_service.offline.create_research_ids import create_participant_research_ids
 
 
 def _alert_on_exceptions(func):
@@ -1578,6 +1579,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + 'detect_etm_response_duplicates',
         endpoint="detect_etm_response_duplicates",
         view_func=detect_etm_response_duplicates,
+        methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'CreateParticipantResearchIds',
+        endpoint="create_participant_research_ids",
+        view_func=create_participant_research_ids,
         methods=["GET"]
     )
 
