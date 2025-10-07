@@ -31,6 +31,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.clear_table_after_test("nph.sms_sample")
         self.clear_table_after_test("nph.sms_n0")
         self.clear_table_after_test("nph.sms_n1_mc1")
+        self.clear_table_after_test("nph.participant")
 
     def create_cloud_csv(self, test_data_filename, file_name, bucket=None, prefix=None):
 

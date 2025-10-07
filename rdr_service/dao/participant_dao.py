@@ -519,7 +519,7 @@ class ParticipantDao(UpdatableDao):
             self.switch_to_test_account(None, participant, commit_update=False)
         return participant
 
-    def add_missing_hpo_from_site(self, session, participant_id, site_id):
+    def add_missing_hpo_from_site(self, session, participant_id, site_id, pairing=True):
         if site_id is None:
             raise BadRequest("No site ID given for auto-pairing participant.")
         site = SiteDao().get_with_session(session, site_id)
@@ -532,13 +532,15 @@ class ParticipantDao(UpdatableDao):
 
         if participant.siteId == site.siteId:
             return
-        participant.hpoId = site.hpoId
-        participant.organizationId = site.organizationId
-        participant.siteId = site.siteId
+
         participant.providerLink = make_primary_provider_link_for_id(site.hpoId)
         if participant.participantSummary is None:
             raise RuntimeError(f"No ParticipantSummary available for P{participant_id}.")
-        participant.participantSummary.hpoId = site.hpoId
+        if pairing:
+            participant.hpoId = site.hpoId
+            participant.organizationId = site.organizationId
+            participant.siteId = site.siteId
+            participant.participantSummary.hpoId = site.hpoId
         participant.lastModified = clock.CLOCK.now()
         # Update the version and add history row
         self._do_update(session, participant, participant)
