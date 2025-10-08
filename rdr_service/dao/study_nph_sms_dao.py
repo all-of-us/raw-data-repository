@@ -189,8 +189,8 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             ).outerjoin(
                 SmsSample,
                 and_(
-                    SmsSample.lims_sample_id == SmsN0.lims_parent_sample_id if (
-                        'duke_supp' in kwargs.get('recipient').lower()) else SmsN0.lims_sample_id,
+                    SmsSample.lims_sample_id == (SmsN0.lims_parent_sample_id if (
+                        'duke_supp' in kwargs.get('recipient').lower()) else SmsN0.lims_sample_id),
                     SmsSample.ignore_flag == 0
                 )
             ).outerjoin(
