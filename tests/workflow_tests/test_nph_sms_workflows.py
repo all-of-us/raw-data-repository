@@ -472,8 +472,8 @@ class NphSmsWorkflowsTest(BaseTestCase):
             manufacturer_lot='256837',
             age="22",
             biobank_id=f"T{biobank_id}",
-            lims_sample_id="000200",
-            lims_parent_sample_id="12345678",
+            lims_sample_id="12345678",
+            lims_parent_sample_id="000200",
         )
 
     def test_n1_mc1_generation(self):
@@ -633,7 +633,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
         self.assertEqual(csv_rows[0]['sample_id'], '4')
         self.assertEqual(csv_rows[0]['matrix_id'], "1111")
-        self.assertEqual(csv_rows[0]['lims_parent_sample_id'], "12345678")
+        self.assertEqual(csv_rows[0]['lims_parent_sample_id'], "000200")
 
         n1_dao = SmsN1Mc1Dao()
         manifest_records = n1_dao.get_all()
@@ -645,7 +645,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[0].collection_site, "UNC")
         self.assertEqual(manifest_records[0].manufacturer_lot, '256837')
         self.assertEqual(manifest_records[0].collection_date_time, api_util.parse_date("2023-04-20T15:54:33"))
-        self.assertEqual(manifest_records[0].lims_parent_sample_id, "12345678")
+        self.assertEqual(manifest_records[0].lims_parent_sample_id, "000200")
 
     @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
     def test_n1_mc1_raises_error_on_data_validation_failure(self, mock_send_message_to_webhook):
