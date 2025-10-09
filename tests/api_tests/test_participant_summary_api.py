@@ -52,7 +52,7 @@ TIME_6 = datetime.datetime(2015, 1, 1)
 # Kludge to fix failing tests where participants aged out of expected 35-44 ageRange as of 2023-10-09
 # Needs a better permanent solution that won't require future updates to this value, but should probably be done as
 # a broader refactor of the impacted test cases, to consolidate the code that needs changing
-TEST_AGE_BUCKET_DOB_DATE_OBJ = datetime.date(1990, 10, 9)
+TEST_AGE_BUCKET_DOB_DATE_OBJ = datetime.date(1980, 10, 9)
 
 participant_summary_default_values = {
     "ageAtConsentMonths": 0,
@@ -441,7 +441,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1988, 10, 9),
+            "dateOfBirth": datetime.date(1978, 10, 9),
             "CABoRSignature": "signature.pdf",
         }
         self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
@@ -679,7 +679,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.data_generator.create_database_participant_summary(
                 firstName=f"Testy_{num}",
                 lastName=f"Tester_{num}",
-                dateOfBirth=datetime.date(1988, 10, 9),
+                dateOfBirth=datetime.date(1978, 10, 9),
                 aian=1 if num < 2 else 0
             )
 
@@ -748,7 +748,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "recontactMethod": "email_code",
                 "education": "highschool",
                 "income": "lotsofmoney",
-                "dateOfBirth": datetime.date(1988, 10, 9),
+                "dateOfBirth": datetime.date(1978, 10, 9),
                 "CABoRSignature": "signature.pdf",
             }
 
@@ -816,7 +816,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "language": "en",
                 "education": "highschool",
                 "income": "lotsofmoney",
-                "dateOfBirth": datetime.date(1988, 10, 9),
+                "dateOfBirth": datetime.date(1978, 10, 9),
                 "CABoRSignature": "signature.pdf",
             }
 
@@ -838,7 +838,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertEqual(response["language"], "en")
             self.assertEqual(response["education"], "highschool")
             self.assertEqual(response["income"], "lotsofmoney")
-            self.assertEqual(response["dateOfBirth"], "1988-10-09")
+            self.assertEqual(response["dateOfBirth"], "1978-10-09")
 
     def test_no_justification_fails(self):
         with FakeClock(TIME_1):
@@ -870,7 +870,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "recontactMethod": "email_code",
                 "education": "highschool",
                 "income": "lotsofmoney",
-                "dateOfBirth": datetime.date(1988, 10, 9),
+                "dateOfBirth": datetime.date(1978, 10, 9),
                 "CABoRSignature": "signature.pdf",
             }
 
@@ -990,7 +990,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                     "language": PMI_SKIP_CODE,
                     "education": PMI_SKIP_CODE,
                     "income": PMI_SKIP_CODE,
-                    "dateOfBirth": datetime.date(1988, 10, 9),
+                    "dateOfBirth": datetime.date(1978, 10, 9),
                     "CABoRSignature": "signature.pdf",
                 }
             self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
@@ -1172,7 +1172,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1988, 10, 9),
+            "dateOfBirth": datetime.date(1978, 10, 9),
             "CABoRSignature": "signature.pdf",
         }
         self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
@@ -1220,7 +1220,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "language": PMI_SKIP_CODE,
                 "education": PMI_SKIP_CODE,
                 "income": PMI_SKIP_CODE,
-                "dateOfBirth": datetime.date(1988, 10, 9),
+                "dateOfBirth": datetime.date(1978, 10, 9),
                 "CABoRSignature": "signature.pdf",
             }
             self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
@@ -1280,7 +1280,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "language": PMI_SKIP_CODE,
                 "education": PMI_SKIP_CODE,
                 "income": PMI_SKIP_CODE,
-                "dateOfBirth": datetime.date(1988, 10, 9),
+                "dateOfBirth": datetime.date(1978, 10, 9),
                 "CABoRSignature": "signature.pdf",
             }
             self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
@@ -1905,7 +1905,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "en",
             "highschool",
             "lotsofmoney",
-            datetime.date(1988, 10, 9),
+            datetime.date(1978, 10, 9),
             "signature.pdf",
         )
 
@@ -1935,7 +1935,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "en",
             "highschool",
             "lotsofmoney",
-            datetime.date(1988, 10, 9),
+            datetime.date(1978, 10, 9),
             "signature.pdf",
         )
 
@@ -1989,7 +1989,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "en",
             "highschool",
             "lotsofmoney",
-            datetime.date(1988, 10, 9),
+            datetime.date(1978, 10, 9),
             "signature.pdf",
         )
 
@@ -2015,7 +2015,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             None,
             None,
             None,
-            datetime.date(1988, 10, 8),
+            datetime.date(1978, 10, 8),
             None,
         )
         BaseTestCase.switch_auth_user("example@example.com", 'example')
@@ -2041,7 +2041,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             None,
             None,
             None,
-            datetime.date(1988, 10, 10),
+            datetime.date(1978, 10, 10),
             None,
         )
         # Send a questionnaire response for the consent questionnaire for participants 2 and 3
@@ -2511,7 +2511,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1988, 10, 9),
+            "dateOfBirth": datetime.date(1978, 10, 9),
             "CABoRSignature": "signature.pdf",
         }
         self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
@@ -2544,7 +2544,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             "language": PMI_SKIP_CODE,
             "education": PMI_SKIP_CODE,
             "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1988, 10, 9),
+            "dateOfBirth": datetime.date(1978, 10, 9),
             "CABoRSignature": "signature.pdf",
         }
         self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
@@ -3611,7 +3611,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
     def test_age_at_consent(self):
         participant_summary = self.data_generator.create_database_participant_summary(
             consentForStudyEnrollmentFirstYesAuthored=datetime.datetime(2021, 7, 17),
-            dateOfBirth=datetime.date(1988, 10, 9),
+            dateOfBirth=datetime.date(1978, 10, 9),
         )
         response = self.send_get(f"Participant/P{participant_summary.participantId}/Summary")
         self.assertEqual(513, response['ageAtConsentMonths'])
