@@ -52,7 +52,7 @@ TIME_6 = datetime.datetime(2015, 1, 1)
 # Kludge to fix failing tests where participants aged out of expected 35-44 ageRange as of 2023-10-09
 # Needs a better permanent solution that won't require future updates to this value, but should probably be done as
 # a broader refactor of the impacted test cases, to consolidate the code that needs changing
-TEST_AGE_BUCKET_DOB_DATE_OBJ = datetime.date(1980, 10, 8)
+TEST_AGE_BUCKET_DOB_DATE_OBJ = datetime.date(1980, 10, 9)
 
 participant_summary_default_values = {
     "ageAtConsentMonths": 0,
@@ -1352,7 +1352,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         expected = self.create_expected_response(participant, answers)
 
         self.assertJsonResponseMatches(expected, actual)
-        response = self.send_get("ParticipantSummary")
+        with FakeClock(TIME_2):
+            response = self.send_get("ParticipantSummary")
         self.assertBundle([_make_entry(actual)], response)
 
     def test_get_summary_with_skip_code_for_race(self):
@@ -1401,7 +1402,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         expected = self.create_expected_response(participant, answers)
 
         self.assertJsonResponseMatches(expected, actual)
-        response = self.send_get("ParticipantSummary")
+        with FakeClock(TIME_2):
+            response = self.send_get("ParticipantSummary")
         self.assertBundle([_make_entry(actual)], response)
 
     def test_get_summary_with_primary_language(self):
@@ -1450,7 +1452,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         expected = self.create_expected_response(participant, answers, consent_language="es")
 
         self.assertJsonResponseMatches(expected, actual)
-        response = self.send_get("ParticipantSummary")
+        with FakeClock(TIME_2):
+            response = self.send_get("ParticipantSummary")
         self.assertBundle([_make_entry(actual)], response)
 
     def test_get_summary_with_patient_status(self):
@@ -1517,7 +1520,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
 
         self.assertJsonResponseMatches(expected, actual)
-        response = self.send_get("ParticipantSummary")
+        with FakeClock(TIME_2):
+            response = self.send_get("ParticipantSummary")
         self.assertBundle([_make_entry(actual)], response)
 
     def testQuery_oneParticipant(self):
@@ -1563,7 +1567,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         expected = self.create_expected_response(participant, answers)
 
         self.assertJsonResponseMatches(expected, actual)
-        response = self.send_get("ParticipantSummary")
+        with FakeClock(TIME_2):
+            response = self.send_get("ParticipantSummary")
         self.assertBundle([_make_entry(actual)], response)
 
     def testQuery_oneParticipantStringConsent(self):
@@ -1609,7 +1614,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         expected = self.create_expected_response(participant, answers)
 
         self.assertJsonResponseMatches(expected, actual)
-        response = self.send_get("ParticipantSummary")
+        with FakeClock(TIME_2):
+            response = self.send_get("ParticipantSummary")
         self.assertBundle([_make_entry(actual)], response)
 
     def _send_next(self, next_link):
@@ -2482,7 +2488,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         expected = self.create_expected_response(participant, answers)
 
         self.assertJsonResponseMatches(expected, actual)
-        response = self.send_get("ParticipantSummary")
+        with FakeClock(TIME_2):
+            response = self.send_get("ParticipantSummary")
         self.assertBundle([_make_entry(actual)], response)
         self.assertEqual(actual["genderIdentity"], "PMI_Skip")
 
