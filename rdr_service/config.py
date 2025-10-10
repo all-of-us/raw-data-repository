@@ -227,7 +227,9 @@ NPH_SMS_BUCKETS = {
     "prod": {
         "UNC_META": "prod-nph-sample-data-mcac-unc-meta",
         "NCSU": "prod-nph-sample-data-mcac-ncsu",
-        "DUKE": "prod-nph-sample-data-mcac-duke",
+        "DUKE_NPH": "prod-nph-sample-data-mcac-duke",
+        "DUKE_SUPP": "prod-nph-sample-data-mcac-duke",
+        "DUKE_URINE": "prod-nph-sample-data-mcac-duke",
         "UNC_CLINICAL": "prod-nph-sample-data-mcac-unc-clinical",
         "PBRC": "prod-nph-sample-data-tandam-pbrc",
         "UCSD": "prod-nph-sample-data-mmc-ucsd"
@@ -235,7 +237,9 @@ NPH_SMS_BUCKETS = {
     "stable": {
         "UNC_META": "stable-nph-sample-data-mcac-unc-meta",
         "NCSU": "stable-nph-sample-data-mcac-ncsu",
-        "DUKE": "stable-nph-sample-data-mcac-duke",
+        "DUKE_NPH": "stable-nph-sample-data-mcac-duke",
+        "DUKE_SUPP": "stable-nph-sample-data-mcac-duke",
+        "DUKE_URINE": "stable-nph-sample-data-mcac-duke",
         "UNC_CLINICAL": "stable-nph-sample-data-mcac-unc-clinical",
         "PBRC": "stable-nph-sample-data-tandam-pbrc",
         "UCSD": "stable-nph-sample-data-mmc-ucsd"
