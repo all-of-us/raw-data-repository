@@ -52,7 +52,7 @@ TIME_6 = datetime.datetime(2015, 1, 1)
 # Kludge to fix failing tests where participants aged out of expected 35-44 ageRange as of 2023-10-09
 # Needs a better permanent solution that won't require future updates to this value, but should probably be done as
 # a broader refactor of the impacted test cases, to consolidate the code that needs changing
-TEST_AGE_BUCKET_DOB_DATE_OBJ = datetime.date(1980, 10, 9)
+TEST_AGE_BUCKET_DOB_DATE_OBJ = datetime.date(1990, 10, 9)
 
 participant_summary_default_values = {
     "ageAtConsentMonths": 0,
