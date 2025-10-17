@@ -2,14 +2,17 @@
 import logging
 import traceback
 
-from flask import Flask, got_request_exception
+from flask import Flask, got_request_exception, request
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
+from rdr_service.config import GAE_PROJECT
 from rdr_service.researchers_offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.services.flask import RESEARCHERS_OFFLINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
     flask_restful_log_exception_error
+from rdr_service.workflow_management.researchers_offline.workbench_data_transfer_input_feed import (
+    WorkbenchWorkspacesFeed)
 
 
 @app_util.auth_required_scheduler
@@ -28,6 +31,14 @@ def participant_counts_over_time():
     calculate_participant_metrics()
     return '{"success": "true"}'
 
+@app_util.auth_required_scheduler
+def workbench_workspaces_input_feed():
+    logging.info('Starting workbench workspaces datafeed...')
+    datafeed = request.get_json().get("datafeed")
+    input_feed = WorkbenchWorkspacesFeed(project=GAE_PROJECT)
+    input_feed.run_datafeed(datafeed)
+    return '{ "success": "true" }'
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     researchers_offline = Flask(__name__)
@@ -40,11 +51,19 @@ def _build_pipeline_app():
         methods=["GET", "POST"],
     )
 
+    # Cloud Scheduler - Scheduler jobs
     researchers_offline.add_url_rule(
         RESEARCHERS_OFFLINE_PREFIX + "ParticipantCountsOverTime",
         endpoint="participant_counts_over_time",
         view_func=participant_counts_over_time,
         methods=["GET"],
+    )
+
+    researchers_offline.add_url_rule(
+        RESEARCHERS_OFFLINE_PREFIX + "WorkbenchWorkspacesInputFeed",
+        endpoint="workbench_workspaces_input_feed",
+        view_func=workbench_workspaces_input_feed,
+        methods=["GET", "POST"]
     )
 
     researchers_offline.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
