@@ -33,20 +33,35 @@ class WorkbenchWorkspacesFeed(PPSCBigQueryDatafeedBase):
 
     def get_datafeed_definition(self) -> dict:
         # src = config.getSettingJson(config.WORKBENCH_DATAFEED_SRC_DATASET)[0]
-        destination = "rdr_workbench_multi_region"  # "rdr_workbench"  # config.getSettingJson(config.WORKBENCH_DATAFEED_DEST_DATASET)[0]
+        multi_region_destination = "rdr_workbench_multi_region"  # config.getSettingJson(config.WORKBENCH_DATAFEED_MULTI_REGION__DATASET)[0]
+        single_region_destination = "rdr_workbench"  # config.getSettingJson(config.WORKBENCH_DATAFEED_SINGLE_REGION_DATASET)[0]
+        mapping_table = "workspace_source_id_mapping"
+        data_transfer_table = "workbench_data_transfer_external"
         last_job_run_date = "2025-01-01"
 
         job_def = {
+            # Query to test initial job set up
             # "testing_sql": data_feed_queries.test_insert_workbench_workspaces_staging_data(
             #     self.project, destination, last_job_run_date
             # ),
             # Query to get data from Workbench
             "staging_data_sql": data_feed_queries.insert_workbench_workspaces_staging_data(
-                self.project, destination, last_job_run_date
+                self.project, multi_region_destination, last_job_run_date
+            ),
+            "export_multi_region_data_sql": data_feed_queries.export_workbench_workspaces_staging_data_multi_region(
+                self.project, multi_region_destination
+            ),
+            # Query to place Workbench data in the correct region
+            "staging_single_region_data_sql": data_feed_queries.insert_workbench_workspaces_staging_data_multi_region(
+                self.project, single_region_destination
+            ),
+            # Query to insert new source_id mappings
+            "create_mapping_sql": data_feed_queries.create_workspace_source_id_mapping(
+                self.project, single_region_destination, mapping_table, data_transfer_table
             ),
             # Query to stream new data to SQL
             "streaming_data_sql": data_feed_queries.get_workbench_workspaces_data_to_stream(
-                self.project, destination, last_job_run_date
+                self.project, single_region_destination, mapping_table, data_transfer_table
             ),
             "destination_model": WorkbenchWorkspaceSnapshot,
         }
@@ -69,8 +84,11 @@ class WorkbenchWorkspacesFeed(PPSCBigQueryDatafeedBase):
 
         datafeed_def = self.get_datafeed_definition()
         # streaming_data_rows = self.make_datafeed_job(datafeed_def["testing_sql"])
-        self.make_datafeed_job(datafeed_def["staging_data_sql"])  # Stage data rows
-        streaming_data_rows = self.make_datafeed_job(datafeed_def["streaming_data_sql"])
+        self.make_datafeed_job(datafeed_def["staging_data_sql"])  # Stage data rows in multi region table
+        self.make_datafeed_job(datafeed_def["export_multi_region_data_sql"])  # Export data to Cloud Storage
+        self.make_datafeed_job(datafeed_def["staging_single_region_data_sql"])  # Stage data rows in single region table
+        self.make_datafeed_job(datafeed_def["create_mapping_sql"])  # Insert new source_id mappings
+        streaming_data_rows = self.make_datafeed_job(datafeed_def["streaming_data_sql"])  # Stream data rows to MySQL
 
         dao = WorkbenchWorkspaceDao()
         if streaming_data_rows:
@@ -80,6 +98,7 @@ class WorkbenchWorkspacesFeed(PPSCBigQueryDatafeedBase):
                 #     dao.snake_to_camel_case(key): val for key, val in workspaces_dict.items()
                 # }
         #         # insert_bulk
+                x = "test"
         else:
             logging.warning(f"No Staged Rows for {datafeed} Data Feed")
 
@@ -89,6 +108,7 @@ class WorkbenchWorkspacesFeed(PPSCBigQueryDatafeedBase):
             logging.info(f"{datafeed} Data Feed Staged")
             # Insert into Cloud SQL Table
             rows = [dict(row) for row in streaming_data_rows]
+            x = "test"
             # with dao.session() as session:
             #     session.bulk_insert_mappings(job_def['output_model'], rows)
 
