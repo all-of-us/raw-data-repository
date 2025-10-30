@@ -1038,7 +1038,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
                 ORDER BY
                     genomic_set_member.id"""
 
-            return query
+        return query
 
     def get_member_from_raw_aw1_record(self, record):
         bid = record.biobank_id

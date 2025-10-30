@@ -1,0 +1,140 @@
+indexes:
+- kind: _AE_Pipeline_Record
+  properties:
+  - name: is_root_pipeline
+  - name: start_time
+    direction: desc
+- kind: _AE_Pipeline_Record
+  properties:
+  - name: class_path
+  - name: start_time
+    direction: desc
+
+- kind: MetricsVersion
+  properties:
+  - name: complete
+  - name: data_version
+  - name: date
+    direction: desc
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: lastNameSearch
+  - name: dateOfBirth
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: lastNameSearch
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: firstNameSearch
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: lastNameSearch
+  - name: dateOfBirth
+  - name: firstNameSearch
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: middleNameSearch
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: dateOfBirth
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: ageRange
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: genderIdentity
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: lastNameSearch
+  - name: dateOfBirth
+  - name: genderIdentity
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: ethnicity
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: zipCode
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: lastNameSearch
+  - name: dateOfBirth
+  - name: zipCode
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: membershipTier
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: consentForStudyEnrollment
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: numCompletedBaselinePPIModules
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: numBaselineSamplesArrived
+  - name: sortKey
+
+- kind: PhysicalMeasurements
+  ancestor: yes
+  properties:
+  - name: last_modified
+
+- kind: MetricsBucket
+  ancestor: yes
+  properties:
+  - name: date
+  - name: hpoId
+
+- kind: ConfigurationHistory
+  ancestor: yes
+  properties:
+  - name: date
+    direction: desc
+
