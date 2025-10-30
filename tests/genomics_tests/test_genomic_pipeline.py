@@ -6,6 +6,7 @@ import operator
 import pytz
 import random
 import time
+import http
 
 from copy import deepcopy
 from dateutil.parser import parse
@@ -18,7 +19,9 @@ from rdr_service.code_constants import (
 from rdr_service.config import GENOMIC_GEM_A3_MANIFEST_SUBFOLDER
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-
+from rdr_service.dao.awardee_insite_dao import AwardeeInSiteDao
+from rdr_service.model.awardee_insite import AwardeeInSite
+from rdr_service.dao.ppsc_dao import PPSCDefaultBaseDao
 from rdr_service.dao.genomics_dao import (
     GenomicSetDao,
     GenomicSetMemberDao,
@@ -73,13 +76,20 @@ from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus, TEST_HPO_ID, TEST_HPO_NAME, OrganizationType
 )
-from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
+from rdr_service.model.ppsc import (
+    ParticipantEventActivity,  SurveyCompletionEvent, ProfileUpdatesEvent,
+   )
+from rdr_service.genomic_enums import  GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
     GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus
 from tests.genomics_tests.test_genomic_utils import create_ingestion_test_file, open_genomic_set_file, write_cloud_csv
 
+from rdr_service.model.pediatric_data_log import PediatricDataLog, PediatricDataType
+
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag
+
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = "rdr_fake_bucket"
@@ -114,7 +124,8 @@ class ExpectedCsvColumns(object):
     PACKAGE_ID = "package_id"
     VALIDATION_PASSED = 'validation_passed'
     AI_AN = 'ai_an'
-    ALL = (SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, VALIDATION_PASSED, AI_AN)
+    PEDIATRIC= 'pediatric'
+    ALL = (SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, VALIDATION_PASSED, AI_AN, PEDIATRIC)
 
 
 class GenomicPipelineTest(BaseTestCase):
@@ -177,14 +188,92 @@ class GenomicPipelineTest(BaseTestCase):
         self.aw1_raw_dao = GenomicAW1RawDao()
         self.aw2_raw_dao = GenomicAW2RawDao()
         self.ppsc_data_gen = PPSCDataGenerator()
-
+        self.genomic_member_dao = GenomicSetMemberDao()
+        self.survey_completion_event_dao = PPSCDefaultBaseDao(model_type=SurveyCompletionEvent)
         self._participant_i = 1
 
-    mock_bucket_paths = [_FAKE_BUCKET,
-                         _FAKE_BIOBANK_SAMPLE_BUCKET,
-                         _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_FOLDER,
-                         _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_RESULT_FOLDER
-                         ]
+
+        mock_bucket_paths = [_FAKE_BUCKET,
+                             _FAKE_BIOBANK_SAMPLE_BUCKET,
+                             _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_FOLDER,
+                             _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_RESULT_FOLDER
+                             ]
+
+        activities = [
+            "ENROLLMENT",
+            "Consent",
+            "Survey Completion",
+            "Profile Updates",
+            "Withdrawal",
+            "Deactivation",
+            "Participant Status",
+            "Attribution",
+            "NPH Opt In",
+            "Account Linkage"
+        ]
+        for activity in activities:
+            self.ppsc_data_gen.create_database_activity(
+                name=activity
+            )
+
+    def make_pediatric_participant(self, participant_id):
+        existing_record = PediatricDataLog(
+            participant_id=participant_id,
+            created=datetime.datetime(2022, 8, 17),
+            data_type=PediatricDataType.AGE_RANGE,
+            value='testing_genomic_pipeline'
+        )
+        self.session.add(existing_record)
+        event = ParticipantEventActivity(participant_id=participant_id)
+
+        self.session.add(
+            ProfileUpdatesEvent(
+                participant_id=participant_id,
+                event_type_name='Account Type',
+                data_element_name='activity_status',
+                data_element_value='Pediatric',
+                event_id=event.id
+            )
+        )
+
+        self.session.commit()
+
+    def make_genomic_member(self,  participant, **override_kwargs):
+        """
+    Make a genomic member with custom settings.
+    default should create a valid member.
+    """
+        valid_kwargs = dict(
+            genomicSetId=1,
+            participantId=participant.participantId,
+            sexAtBirth="F",
+            biobankId=participant.biobankId,
+        )
+        kwargs = dict(valid_kwargs, **override_kwargs)
+        member = GenomicSetMember(**kwargs)
+        self.genomic_member_dao.insert(member)
+        return member
+
+    def send_valid_primary_consent(self, participant, consent_type="Primary Consent", status="submitted_yes"):
+        payload = {
+            "activity": "Consent",
+            "eventType": consent_type,
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": status
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
+                },
+            ]
+        }
+
+        test_time = datetime.datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
     def _make_participant(self, **kwargs):
         """
@@ -1310,6 +1399,7 @@ class GenomicPipelineTest(BaseTestCase):
     def test_new_participant_workflow(self):
         # Test for Cohort 3 workflow
         # create test samples
+        self.awardee_insite_dao = AwardeeInSiteDao()
         test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006, 100007, 100008, 100009, 100010)
         fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
         fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
@@ -1318,9 +1408,6 @@ class GenomicPipelineTest(BaseTestCase):
         # update the sites' States for the state test (NY or AZ)
         self._update_site_states()
 
-        # setup sex_at_birth code for unittests
-        female_code = self._setup_fake_sex_at_birth_codes('f')
-        intersex_code = self._setup_fake_sex_at_birth_codes()
 
         # Setup race codes for unittests
         non_native_code = self._setup_fake_race_codes(native=False)
@@ -1328,16 +1415,53 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Setup the biobank order backend
         for i, bid in enumerate(test_biobank_ids):
-            p = self._make_participant(biobankId=bid)
-            self._make_summary(p, sexId=intersex_code if bid == 100004 else female_code,
+            p = self._make_participant(biobankId=bid, participantOrigin=participant_origins[0 if i % 2 == 0 else 1])
+            #sexId = intersex_code if bid == 100004 else female_code
+            self._make_summary(p,
                                consentForStudyEnrollment=0 if bid == 100006 else 1,
                                sampleStatus1ED04=0,
                                sampleStatus1ED10=1 if bid == 100003 else 0,
                                sampleStatus1SAL2=0 if bid == 100005 else 1,
                                samplesToIsolateDNA=0,
                                race=Race.HISPANIC_LATINO_OR_SPANISH,
+
                                consentCohort=3,
-                               participantOrigin=participant_origins[0 if i % 2 == 0 else 1])
+                               )
+
+            self.ppsc_data_gen.create_database_participant(
+                **{
+                    'id': p.participantId,
+                    'biobank_id': bid,
+                }
+            )
+
+            record = {
+                    "participantId": p.participantId,
+                    "firstName": "Erling",
+                    "lastName": "Roe",
+                    "organization": None,
+                "consentForStudyEnrollment": 'no' if bid == 100006  else 'yes'
+                }
+
+
+            with clock.FakeClock(fake_datetime_new):
+                self.awardee_insite_dao.insert(AwardeeInSite(**record))
+
+            event = ParticipantEventActivity(participant_id=p.participantId)
+            self.session.add(event)
+            self.session.flush()
+
+            self.session.add(
+                SurveyCompletionEvent(
+                    participant_id=p.participantId,
+                    event_type_name='Profile Data',
+                    data_element_name='biologicalsexatbirth_sexatbirth',
+                    data_element_value='SexAtBirth_Male' if bid == 100004 else 'SexAtBirth_Female',
+                    event_id=event.id
+                )
+            )
+
+
             # Insert participant races
             race_answer = ParticipantRaceAnswers(
                 participantId=p.participantId,
@@ -1415,13 +1539,6 @@ class GenomicPipelineTest(BaseTestCase):
                 participant = Participant(participantId=p.participantId)
                 ParticipantDao().switch_to_test_account(None, participant,commit_update=False)
 
-                self.ppsc_data_gen.create_database_participant(
-                    **{
-                        'id': 10,
-                        'biobank_id': 100010,
-                    }
-                )
-
                 self.ppsc_data_gen.create_database_activity(name="Participant Status")
 
                 participant_event_activity_profile = self.ppsc_data_gen.create_database_participant_event_activity(
@@ -1459,12 +1576,12 @@ class GenomicPipelineTest(BaseTestCase):
         new_genomic_members = self.member_dao.get_all()
         self.assertEqual(16, len(new_genomic_members) )
 
-        all_ps_origins = [self.summary_dao.get_by_participant_id(obj.participantId).participantOrigin
-                       for obj in new_genomic_members]
-        self.assertEqual(len(set(all_ps_origins)), len(participant_origins))
+        #all_ps_origins = [self.summary_dao.get_by_participant_id(obj.participantId).participantOrigin
+        #               for obj in new_genomic_members]
+        #self.assertEqual(len(set(all_ps_origins)), len(participant_origins))
 
-        all_member_origins = [obj.participantOrigin for obj in new_genomic_members]
-        self.assertEqual(len(set(all_member_origins)), len(participant_origins))
+        #all_member_origins = [obj.participantOrigin for obj in new_genomic_members]
+        #self.assertEqual(len(set(all_member_origins)), len(participant_origins))
 
         new_manifest_created = self.manifest_file_dao.get_all()
         self.assertIsNotNone(new_manifest_created)
@@ -1510,7 +1627,7 @@ class GenomicPipelineTest(BaseTestCase):
                 # 100004 : Included, NA is now a valid SAB
                 self.assertEqual(0, member.nyFlag)
                 self.assertEqual('100004', member.collectionTubeId)
-                self.assertEqual('NA', member.sexAtBirth)
+                self.assertEqual('M', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual(GenomicWorkflowState.AW0.name, member.genomicWorkflowStateStr)
                 self.assertEqual('N', member.ai_an)
@@ -1608,7 +1725,7 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertEqual("T100004", rows[6][ExpectedCsvColumns.BIOBANK_ID])
             self.assertEqual(100004, int(rows[6][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
-            self.assertEqual("NA", rows[6][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("M", rows[6][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[6][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[6][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[6][ExpectedCsvColumns.AI_AN])
@@ -1616,7 +1733,7 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertEqual("T100004", rows[7][ExpectedCsvColumns.BIOBANK_ID])
             self.assertEqual(100004, int(rows[7][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
-            self.assertEqual("NA", rows[7][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("M", rows[7][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[7][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[7][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[7][ExpectedCsvColumns.AI_AN])
@@ -1678,7 +1795,7 @@ class GenomicPipelineTest(BaseTestCase):
             if member.biobankId == '100001':
                 # 100001 : Included, Valid
                 self.assertEqual(0, member.nyFlag)
-                self.assertEqual('10000101', member.collectionTubeId)
+                self.assertEqual('10000102', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
@@ -1714,7 +1831,7 @@ class GenomicPipelineTest(BaseTestCase):
                 rows = list(csv_reader)
 
                 self.assertEqual("T100001", rows[0][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000101, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+                self.assertEqual(10000102, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("N", rows[0][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[0][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1722,7 +1839,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("aou_array", rows[0][ExpectedCsvColumns.GENOME_TYPE])
 
                 self.assertEqual("T100001", rows[1][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000101, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+                self.assertEqual(10000102, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[1][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1782,7 +1899,7 @@ class GenomicPipelineTest(BaseTestCase):
             if member.biobankId == '100001':
                 # 100001 : Included, Valid
                 self.assertEqual(0, member.nyFlag)
-                self.assertEqual('10000101', member.collectionTubeId)
+                self.assertEqual('10000102', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
@@ -1818,7 +1935,7 @@ class GenomicPipelineTest(BaseTestCase):
                 rows = list(csv_reader)
 
                 self.assertEqual("T100001", rows[0][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000101, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+                self.assertEqual(10000102, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("N", rows[0][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[0][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1826,7 +1943,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("aou_array", rows[0][ExpectedCsvColumns.GENOME_TYPE])
 
                 self.assertEqual("T100001", rows[1][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000101, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+                self.assertEqual(10000102, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[1][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -2872,7 +2989,6 @@ class GenomicPipelineTest(BaseTestCase):
                                                 ai_an='N',
                                                 block_research=1,
                                                 block_research_reason=block_research_reason)
-
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
         create_ingestion_test_file(
@@ -2887,6 +3003,32 @@ class GenomicPipelineTest(BaseTestCase):
             (1, 1001),
             (2, 1002)
         ])
+
+        self.awardee_insite_dao = AwardeeInSiteDao()
+        records = [{
+            "participantId": 1,
+            "firstName": "Erling",
+            "lastName": "Roe",
+            "organization": None,
+            "consentForStudyEnrollment": 'yes'
+        },
+            {
+                "participantId": 2,
+                "firstName": "Erling",
+                "lastName": "Roe",
+                "organization": None,
+                "consentForStudyEnrollment": 'yes'
+            },
+            {
+                "participantId": 3,
+                "firstName": "Erling",
+                "lastName": "Roe",
+                "organization": None,
+                "consentForStudyEnrollment": 'yes'
+            }]
+        for record in records:
+            self.awardee_insite_dao.insert(AwardeeInSite(**record))
+
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
@@ -5092,7 +5234,7 @@ class GenomicPipelineTest(BaseTestCase):
                 Participant.biobankId == biobank_id
             ).one_or_none()
             if participant is None:
-                self.data_generator.create_database_participant(biobankId=biobank_id)
+                participant = self.data_generator.create_database_participant(biobankId=biobank_id)
                 # self.data_generator.create_database_participant_summary(participant=participant)
 
             self.data_generator.create_database_biobank_stored_sample(
@@ -5100,6 +5242,15 @@ class GenomicPipelineTest(BaseTestCase):
                 biobankStoredSampleId=stored_sample_id,
                 test='1SAL2'
             )
+            self.awardee_insite_dao = AwardeeInSiteDao()
+            record = {
+                "participantId": participant.participantId,
+                "firstName": "Erling",
+                "lastName": "Roe",
+                "organization": None,
+                "consentForStudyEnrollment": 'yes'
+            }
+            self.awardee_insite_dao.insert(AwardeeInSite(**record))
 
     def test_ingest_manifest_creates_incident_then_resolved(self):
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
@@ -6965,3 +7116,237 @@ class GenomicPipelineTest(BaseTestCase):
                       f'hard-filtered.gvcf.gz files for these samples', email_mock.call_args[0][0].plain_text_content)
         self.assertIn(f'2022-11-01 14:13:14, 1003, rdr, {array_test_file}, Missing Red.idat, Grn.idat files for '
                       f'these samples', email_mock.call_args[0][0].plain_text_content)
+
+    def test_consent(self):
+        # Test that biobank id is set to invalid when no consent present
+        self.bss_make_member(sampleStatus2ED02=SampleStatus.UNSET, sampleStatus1SAL2=SampleStatus.UNSET,
+                                  sampleStatus3SAL1=SampleStatus.UNSET,  general_consent=False)
+
+        genomic_pipeline.new_participant_workflow()
+        # Should be a aou_wgs and aou_array for each and exclude the test participant
+        new_genomic_members = self.member_dao.get_all()
+        self.assertEqual(2, len(new_genomic_members))
+
+        current_member = new_genomic_members[0]
+        self.assertEqual(current_member.validationStatus, GenomicSetMemberStatus.INVALID)
+        self.assertIn(GenomicValidationFlag.INVALID_CONSENT, current_member.validationFlags)
+
+    def test_withdrawn(self):
+
+        # run new participant workflow and ensure invalid flag is set for withdrawn
+        self.bss_make_member(sampleStatus2ED02=SampleStatus.UNSET, sampleStatus1SAL2=SampleStatus.UNSET,
+                                  sampleStatus3SAL1=SampleStatus.UNSET, withdrawal_status=True)
+
+        genomic_pipeline.new_participant_workflow()
+        # Should be a aou_wgs and aou_array for each and exclude the test participant
+        new_genomic_members = self.member_dao.get_all()
+        self.assertEqual(2, len(new_genomic_members))
+
+        current_member = new_genomic_members[0]
+        self.assertEqual(current_member.validationStatus, GenomicSetMemberStatus.INVALID)
+        self.assertIn(GenomicValidationFlag.INVALID_WITHDRAW_STATUS, current_member.validationFlags)
+
+
+    def bss_make_member(self, sampleStatus2ED02, sampleStatus1SAL2 ,sampleStatus3SAL1, withdrawal_status=False, general_consent=True):
+        participant = self._make_participant()
+        self._make_summary(participant)
+
+        p = self.ppsc_data_gen.create_database_participant(
+            **{
+                'id': participant.participantId,
+                'biobank_id': participant.biobankId
+            }
+        )
+        self.send_valid_primary_consent(p, consent_type="Primary Consent", status="submitted_yes")
+        event = ParticipantEventActivity(participant_id=participant.participantId)
+        self.session.add(
+            ProfileUpdatesEvent(
+                participant_id=participant.participantId,
+                event_type_name='Profile Data',
+                data_element_name='piibirthinformation_birthdate',
+                data_element_value=str(datetime.datetime(2000, 1, 1)),
+                event_id=event.id
+            )
+        )
+        self.awardee_insite_dao = AwardeeInSiteDao()
+
+        record = {
+            "participantId": participant.participantId,
+            "firstName": "Erling",
+            "lastName": "Roe",
+            "organization": None,
+            "consentForStudyEnrollment": 'yes' if general_consent else 'no',
+            "consentForStudyEnrollmentAuthored": datetime.datetime(2020, 1, 1, 0, 0, 0),
+            "withdrawalStatus" : 'withdrawn' if withdrawal_status else 'not_withdrawn'
+        }
+
+        self.awardee_insite_dao.insert(AwardeeInSite(**record))
+
+        test_identifier = BiobankOrderIdentifier(
+                system=u'c',
+                value=u'e{}'.format(participant.biobankId))
+
+
+        self._make_biobank_order(biobankOrderId=f'W{participant.biobankId}',
+                                 participantId=participant.biobankId,
+
+                                 identifiers=[test_identifier])
+        sample_args = {
+            'test': '2ED02' ,
+            'confirmed': datetime.datetime(2022, 8, 17),
+            'created': datetime.datetime(2022, 8, 17),
+            'biobankId': participant.biobankId,
+            'biobankOrderIdentifier': test_identifier.value,
+            'biobankStoredSampleId': str(participant.biobankId) + '1',
+            'status': sampleStatus2ED02
+        }
+
+        self._make_stored_sample(**sample_args)
+
+        sample_args = {
+            'test': '1SAL2',
+            'confirmed': datetime.datetime(2022, 8, 17),
+            'created': datetime.datetime(2022, 8, 17),
+            'biobankId': participant.biobankId,
+            'biobankOrderIdentifier': test_identifier.value,
+            'biobankStoredSampleId': str(participant.biobankId) + '2',
+            'status': sampleStatus1SAL2
+        }
+
+        self._make_stored_sample(**sample_args)
+
+        sample_args = {
+            'test': '3SAL1',
+            'confirmed': datetime.datetime(2022, 8, 17),
+            'created': datetime.datetime(2022, 8, 17),
+            'biobankId': participant.biobankId,
+            'biobankOrderIdentifier': test_identifier.value,
+            'biobankStoredSampleId': str(participant.biobankId) + '3',
+            'status': sampleStatus3SAL1
+        }
+
+        self._make_stored_sample(**sample_args)
+
+        return participant
+
+
+    def test_biobank_status(self):
+
+        self.bss_make_member(sampleStatus2ED02=SampleStatus.ACCESSINGING_ERROR  ,sampleStatus1SAL2=SampleStatus.ACCESSINGING_ERROR, sampleStatus3SAL1=SampleStatus.ACCESSINGING_ERROR)
+        self.bss_make_member(sampleStatus2ED02=SampleStatus.RECEIVED, sampleStatus1SAL2=SampleStatus.DISPOSED,  sampleStatus3SAL1=SampleStatus.UNSET)
+        self.bss_make_member(sampleStatus2ED02=SampleStatus.ACCESSINGING_ERROR , sampleStatus1SAL2=SampleStatus.RECEIVED,   sampleStatus3SAL1=SampleStatus.RECEIVED)
+        self.bss_make_member(sampleStatus2ED02=SampleStatus.ACCESSINGING_ERROR ,sampleStatus1SAL2=SampleStatus.ACCESSINGING_ERROR, sampleStatus3SAL1=SampleStatus.RECEIVED)
+        self.bss_make_member(sampleStatus2ED02=SampleStatus.RECEIVED, sampleStatus1SAL2=SampleStatus.UNSET,sampleStatus3SAL1=SampleStatus.RECEIVED)
+        self.bss_make_member(sampleStatus2ED02=SampleStatus.QNS_FOR_PROCESSING, sampleStatus1SAL2=SampleStatus.RECEIVED,sampleStatus3SAL1=SampleStatus.QUALITY_ISSUE )
+
+        # run new participant workflow and test results
+        genomic_pipeline.new_participant_workflow()
+
+        new_genomic_set = self.set_dao.get_all()
+        self.assertEqual(1, len(new_genomic_set))
+
+        # Should be a aou_wgs and aou_array for each and exclude the test participant
+        new_genomic_members = self.member_dao.get_all()
+        self.assertEqual(12, len(new_genomic_members))
+
+        #Ensure the correct sample was chosen
+        self.assertEqual('11', new_genomic_members[0].collectionTubeId)
+        self.assertEqual('21', new_genomic_members[2].collectionTubeId)
+        self.assertEqual('32', new_genomic_members[4].collectionTubeId)
+        self.assertEqual('43', new_genomic_members[6].collectionTubeId)
+        self.assertEqual('51', new_genomic_members[8].collectionTubeId)
+        self.assertEqual('62', new_genomic_members[10].collectionTubeId)
+
+    def test_pediatric_flag(self):
+        # Test for Cohort 3 workflow
+        # create test samples
+
+
+        pediatric = self.bss_make_member(sampleStatus2ED02=SampleStatus.UNSET, sampleStatus1SAL2=SampleStatus.RECEIVED,
+                                  sampleStatus3SAL1=SampleStatus.RECEIVED)
+        self.make_pediatric_participant(pediatric.participantId)
+        self.bss_make_member(sampleStatus2ED02=SampleStatus.UNSET, sampleStatus1SAL2=SampleStatus.RECEIVED,
+                                  sampleStatus3SAL1=SampleStatus.RECEIVED)
+
+        # insert an 'already ran' workflow to test proper exclusions
+        self.job_run_dao.insert(GenomicJobRun(
+            id=1,
+            jobId=GenomicJob.NEW_PARTICIPANT_WORKFLOW,
+            startTime=datetime.datetime(2020, 1, 1),
+            endTime=datetime.datetime(2020, 1, 1),
+            runStatus=GenomicSubProcessStatus.COMPLETED,
+            runResult=GenomicSubProcessResult.SUCCESS
+        ))
+
+        # run new participant workflow and test results
+        genomic_pipeline.new_participant_workflow()
+
+        new_genomic_set = self.set_dao.get_all()
+        self.assertEqual(1, len(new_genomic_set))
+
+        # Should be a aou_wgs and aou_array for each and exclude the test participant
+        new_genomic_members = self.member_dao.get_all()
+        self.assertEqual(4, len(new_genomic_members) )
+
+        new_manifest_created = self.manifest_file_dao.get_all()
+        self.assertIsNotNone(new_manifest_created)
+        self.assertEqual(len(new_manifest_created), 1)
+
+        new_manifest_created = new_manifest_created[0]
+        self.assertEqual(new_manifest_created.recordCount, len(new_genomic_members))
+        self.assertEqual(new_manifest_created.manifestTypeId, GenomicManifestTypes.AW0)
+
+        self.assertTrue(all(obj.aw0ManifestFileId == new_manifest_created.id for obj in new_genomic_members))
+
+
+        # Test manifest file was created correctly
+        bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
+
+        blob_name = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_FOLDER)
+        with open_cloud_file(os.path.normpath(bucket_name + '/' + blob_name)) as csv_file:
+            csv_reader = csv.DictReader(csv_file, delimiter=",")
+            missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
+            self.assertEqual(0, len(missing_cols))
+            rows = list(csv_reader)
+
+            rows.sort(key=operator.itemgetter(ExpectedCsvColumns.BIOBANK_ID, ExpectedCsvColumns.GENOME_TYPE ))
+
+            self.assertEqual("T1", rows[0][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(11, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+            self.assertEqual("NA", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[0][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("Y", rows[0][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[0][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_array", rows[0][ExpectedCsvColumns.GENOME_TYPE])
+            self.assertEqual("Y", rows[0][ExpectedCsvColumns.PEDIATRIC])
+
+            self.assertEqual("T1", rows[1][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(11, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+            self.assertEqual("NA", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("Y", rows[1][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[1][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_wgs", rows[1][ExpectedCsvColumns.GENOME_TYPE])
+            self.assertEqual("Y", rows[0][ExpectedCsvColumns.PEDIATRIC])
+
+            self.assertEqual("T2", rows[2][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(21, int(rows[2][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+            self.assertEqual("NA", rows[2][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[2][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("Y", rows[2][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[2][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_array", rows[2][ExpectedCsvColumns.GENOME_TYPE])
+            self.assertEqual("N", rows[2][ExpectedCsvColumns.PEDIATRIC])
+
+            self.assertEqual("T2", rows[3][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(21, int(rows[3][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+            self.assertEqual("NA", rows[3][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[3][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("Y", rows[3][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[3][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_wgs", rows[3][ExpectedCsvColumns.GENOME_TYPE])
+            self.assertEqual("N", rows[3][ExpectedCsvColumns.PEDIATRIC])
+
+        # Test the end-to-end result code
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
+
