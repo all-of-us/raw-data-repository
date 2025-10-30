@@ -2,7 +2,7 @@ import collections
 import logging
 import os
 from typing import Optional
-
+from sqlalchemy.sql import text
 import pytz
 import sqlalchemy
 
@@ -53,6 +53,7 @@ from rdr_service.model.genomics import (
     GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, GenomicRRRaw, GenomicR1Raw, GenomicLRRaw,
     GenomicL1Raw, GenomicAW4Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, GenomicL3Raw, GenomicP3Raw, GenomicP2Raw,
     GenomicA1Raw)
+from rdr_service.model.ppsc import ProfileUpdatesEvent
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -71,7 +72,8 @@ from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_pre
     message_broker_report_viewed_event_state_mappings
 from rdr_service.genomic.genomic_mappings import informing_loop_event_mappings
 from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes
-
+from rdr_service.model.pediatric_data_log import PediatricDataLog
+from rdr_service.model.awardee_insite import AwardeeInSite
 
 class GenomicDaoMixin:
 
@@ -184,10 +186,14 @@ class GenomicSetDao(UpdatableDao, GenomicDaoMixin):
     :rtype: collections.Iterable
     """
         query = self._get_validation_data_query_for_genomic_set_id(genomic_set_id)
-        cursor = session.execute(query)
+        #return session.execute(query, {"genomic_set_id_param": genomic_set_id})
+        cursor = session.execute(query, {"genomic_set_id": genomic_set_id})
+
+
         Row = collections.namedtuple("Row", list(cursor.keys()))
         for row in cursor:
             yield Row(*row)
+
 
     @staticmethod
     def _get_validation_data_query_for_genomic_set_id(genomic_set_id):
@@ -1000,38 +1006,41 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         self,
         genomic_workflow_state,
         biobank_prefix=None,
-        genomic_set_id=None,
-        is_sql=False
+        genomic_set_id=None
     ):
         with self.session() as session:
-            participants = session.query(
-                GenomicSetMember.collectionTubeId,
-                functions.concat(biobank_prefix, GenomicSetMember.biobankId).label('biobank_id'),
-                GenomicSetMember.sexAtBirth,
-                GenomicSetMember.genomeType,
-                func.IF(GenomicSetMember.nyFlag == 1,
-                        sqlalchemy.sql.expression.literal("Y"),
-                        sqlalchemy.sql.expression.literal("N")).label('ny_flag'),
-                func.IF(GenomicSetMember.validationStatus == 1,
-                        sqlalchemy.sql.expression.literal("Y"),
-                        sqlalchemy.sql.expression.literal("N")).label('validation_passed'),
-                GenomicSetMember.ai_an
-            ).filter(
-                GenomicSetMember.genomicWorkflowState == genomic_workflow_state
-            )
+            query = f"""with ranked_pediatric_events as  (
+                    select genomic_set_member.participant_id,
+                    data_element_name,
+                    data_element_value,
+                    ROW_NUMBER() OVER (PARTITION BY pue.participant_id,
+                    data_element_name
+                    ORDER BY event_authored_time DESC) AS rn
+                    FROM genomic_set_member
+                    join ppsc.profile_updates_event pue on pue.participant_id = genomic_set_member.participant_id
+                        WHERE event_type_name = 'Account Type'
+                        AND data_element_name = 'activity_status'
+                        AND pue.ignore_flag = 0 )
 
-            if genomic_set_id:
-                participants = participants.filter(
-                    GenomicSetMember.genomicSetId == genomic_set_id
-                )
+                    SELECT
+	                genomic_set_member.collection_tube_id,
+	                concat('{biobank_prefix}', genomic_set_member.biobank_id) AS biobank_id,
+	                genomic_set_member.sex_at_birth,
+	                genomic_set_member.genome_type,
+	                IF(genomic_set_member.ny_flag = 1, 'Y', 'N') AS ny_flag,
+	                IF(genomic_set_member.validation_status = 1, 'Y', 'N') AS validation_passed,
+	                genomic_set_member.ai_an,
+	                case when rpe.data_element_value = 'Pediatric' then 'Y' else 'N' end as pediatric
+                    FROM
+	                genomic_set_member
+	                left join ranked_pediatric_events rpe on rpe.participant_id = genomic_set_member.participant_id and rpe.rn = 1
+                    WHERE
+	                    genomic_set_member.genomic_workflow_state = 32
+                        AND genomic_set_member.genomic_set_id = {genomic_set_id}
+                    ORDER BY
+                        genomic_set_member.id"""
 
-            participants = participants.order_by(GenomicSetMember.id)
-
-            if is_sql:
-                sql = self.literal_sql_from_query(participants)
-                return sql
-
-            return participants.all()
+            return query
 
     def get_member_from_raw_aw1_record(self, record):
         bid = record.biobank_id
@@ -1055,6 +1064,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
 
     @classmethod
     def base_informing_loop_ready(cls):
+        #TODO - Remove unused code or use PPSC tables instead of Participant Summary
         return (
             sqlalchemy.orm.Query(
                 GenomicSetMember
@@ -1906,6 +1916,7 @@ class GenomicPiiDao(BaseDao):
         :param participant_id:
         :param biobank_id:
         :return: query results for PID
+        #TODO - Remove unused code or use PPSC tables instead of Participant Summary
         """
         mode = mode.lower()
         informing_loop_ready = GenomicSetMemberDao.base_informing_loop_ready().filter(
@@ -2044,6 +2055,7 @@ class GenomicOutreachDao(BaseDao):
         Returns GEM report status for pid
         :param pid:
         :return:
+        #TODO - Remove unused code or use PPSC tables instead of Participant Summary
         """
         with self.session() as session:
             return (
@@ -2070,6 +2082,7 @@ class GenomicOutreachDao(BaseDao):
         :param start_date:
         :param end_date:
         :return: lists of PIDs and report states
+         #TODO - Remove unused code or use PPSC tables instead of Participant Summary
         """
         as_of_ts = clock.CLOCK.now()
         if end_date is None:
@@ -2229,6 +2242,7 @@ class GenomicOutreachDaoV2(BaseDao):
         end_date=None,
         participant_origin: List[str] = None
     ):
+        # TODO - Remove unused code or use PPSC tables instead of Participant Summary
         if not participant_origin:
             return []
 
@@ -3280,6 +3294,7 @@ class GenomicAppointmentEventDao(BaseDao, GenomicDaoMixin):
         pass
 
     def get_appointments_gror_changed(self):
+        # TODO - Remove unused code or use PPSC tables instead of Participant Summary
         with self.session() as session:
             return session.query(
                 GenomicAppointmentEvent
@@ -3770,6 +3785,7 @@ class GenomicQueriesDao(BaseDao):
         pass
 
     def get_missing_data_files_for_aw3(self, genome_type):
+        #NEED TO CHANGE
         idat_red_path = aliased(GenomicGcDataFile)
         idat_green_path = aliased(GenomicGcDataFile)
         idat_red_md5_path = aliased(GenomicGcDataFile)
@@ -4129,6 +4145,7 @@ class GenomicShortReadDao(BaseDao):
     def get_aw3_array_records(self, **kwargs):
         # should be only array genome but query also
         # used for array investigation workflow
+        #NEED TO CHANGE
         genome_type = kwargs.get('genome_type', config.GENOME_TYPE_ARRAY)
 
         idat_red_path = aliased(GenomicGcDataFile)
@@ -4139,7 +4156,7 @@ class GenomicShortReadDao(BaseDao):
         vcf_tbi_path = aliased(GenomicGcDataFile)
         vcf_md5_path = aliased(GenomicGcDataFile)
 
-        with self.session() as session:
+        with (self.session() as session):
             aw3_rows = session.query(
                 GenomicGCValidationMetrics.chipwellbarcode,
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
@@ -4180,14 +4197,14 @@ class GenomicShortReadDao(BaseDao):
                 ).label('pediatric'),
                 GenomicSetMember.sexConcordanceException,
             ).join(
-                ParticipantSummary,
-                ParticipantSummary.participantId == GenomicSetMember.participantId
+                Participant,
+                Participant.participantId == GenomicSetMember.participantId
+            ).join(
+                AwardeeInSite,
+                AwardeeInSite.participantId == GenomicSetMember.participantId
             ).join(
                 GenomicGCValidationMetrics,
                 GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
-            ).join(
-                Participant,
-                Participant.participantId == ParticipantSummary.participantId
             ).outerjoin(
                 GenomicAW2Raw,
                 GenomicAW2Raw.sample_id == GenomicSetMember.sampleId
@@ -4254,7 +4271,7 @@ class GenomicShortReadDao(BaseDao):
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicGCValidationMetrics.ignoreFlag != 1,
-                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                AwardeeInSite.withdrawalStatus.ilike('not_withdrawn'),
                 GenomicAW3Raw.id.is_(None)
             )
             return aw3_rows.distinct().all()
@@ -4352,14 +4369,14 @@ class GenomicShortReadDao(BaseDao):
                 ).label('sequencer'),
                 GenomicSetMember.sexConcordanceException
             ).join(
-                ParticipantSummary,
-                ParticipantSummary.participantId == GenomicSetMember.participantId
+                Participant,
+                Participant.participantId == GenomicSetMember.participantId
             ).join(
                 GenomicGCValidationMetrics,
                 GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
             ).join(
-                Participant,
-                Participant.participantId == ParticipantSummary.participantId
+                AwardeeInSite,
+                Participant.participantId ==AwardeeInSite.participantId
             ).outerjoin(
                 GenomicAW2Raw,
                 GenomicAW2Raw.sample_id == GenomicSetMember.sampleId
@@ -4446,7 +4463,7 @@ class GenomicShortReadDao(BaseDao):
                         GenomicSetMember.ignoreFlag != 1,
                         GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                         GenomicGCValidationMetrics.ignoreFlag != 1,
-                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                        AwardeeInSite.withdrawalStatus == 'not_withdrawn',
                         GenomicGCValidationMetrics.pipelineId == pipeline_id
                     ),
                     GenomicGCValidationMetrics.aw3ReadyFlag == 1
@@ -4479,6 +4496,7 @@ class GenomicCVLDao(BaseDao):
         return site_id_map[site_id]
 
     def get_w3sr_records(self, **kwargs):
+        #TODO Remove unused code or switch to PPSC tables
         gc_site_id = self.transform_cvl_site_id(kwargs.get('site_id'))
         sample_ids = kwargs.get('sample_ids')
 
@@ -4537,6 +4555,7 @@ class GenomicCVLDao(BaseDao):
         :param module: Module to retrieve genomic set members for, either 'pgx' or 'hdr'
         :param cvl_id: CVL id that the data will go to ('co', 'uw', 'bcm')
         :param sample_ids: Sample IDs that the data will filter on if defined
+        #TODO Remove unused code or switch to PPSC tables
         """
 
         gc_site_id = self.transform_cvl_site_id(cvl_id)
@@ -4687,6 +4706,7 @@ class GenomicCVLDao(BaseDao):
             return query.distinct().all()
 
     def get_data_ready_for_w2w_manifest(self, cvl_id: str, sample_ids=None):
+        # TODO Remove unused code or switch to PPSC tables
         gc_site_id = self.transform_cvl_site_id(cvl_id)
 
         with self.session() as session:
@@ -5094,6 +5114,7 @@ class GenomicLongReadDao(GenomicSubDao):
             ).one()
 
     def get_new_pipeline_members(self, *, biobank_ids: List[str], **kwargs) -> List:
+        # TODO Switch to PPSC tables
         with self.session() as session:
             return session.query(
                 GenomicSetMember.id.label('genomic_set_member_id'),
@@ -5315,6 +5336,7 @@ class GenomicPRDao(GenomicSubDao):
         ).subquery()
 
     def get_new_pipeline_members(self, *, biobank_ids: List[str], **kwargs) -> List:
+        # TODO Remove unused code or switch to PPSC tables
         with self.session() as session:
             return session.query(
                 GenomicSetMember.id.label('genomic_set_member_id'),
@@ -5461,6 +5483,7 @@ class GenomicRNADao(GenomicSubDao):
         ).subquery()
 
     def get_new_pipeline_members(self, *, biobank_ids: List[str], **kwargs) -> List:
+        # TODO Remove unused code or switch to PPSC tables
         with self.session() as session:
             return session.query(
                 GenomicSetMember.id.label('genomic_set_member_id'),
