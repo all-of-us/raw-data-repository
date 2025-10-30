@@ -65,7 +65,6 @@ from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, 
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.participant import Participant
-from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map, \
     cvl_result_reconciliation_modules, message_broker_report_ready_event_state_mappings, \
