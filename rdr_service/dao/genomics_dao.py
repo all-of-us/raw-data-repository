@@ -2,7 +2,7 @@ import collections
 import logging
 import os
 from typing import Optional
-from sqlalchemy.sql import text
+
 import pytz
 import sqlalchemy
 
@@ -53,7 +53,6 @@ from rdr_service.model.genomics import (
     GenomicProteomics, GenomicRNA, GenomicPRRaw, GenomicP1Raw, GenomicRRRaw, GenomicR1Raw, GenomicLRRaw,
     GenomicL1Raw, GenomicAW4Raw, GenomicL2ONTRaw, GenomicL2PBCCSRaw, GenomicL3Raw, GenomicP3Raw, GenomicP2Raw,
     GenomicA1Raw)
-from rdr_service.model.ppsc import ProfileUpdatesEvent
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -65,14 +64,14 @@ from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, 
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map, \
     cvl_result_reconciliation_modules, message_broker_report_ready_event_state_mappings, \
     message_broker_report_viewed_event_state_mappings
 from rdr_service.genomic.genomic_mappings import informing_loop_event_mappings
 from rdr_service.genomic.genomic_mappings import wgs_file_types_attributes, array_file_types_attributes
-from rdr_service.model.pediatric_data_log import PediatricDataLog
-from rdr_service.model.awardee_insite import AwardeeInSite
+
 
 class GenomicDaoMixin:
 
@@ -1007,37 +1006,37 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoMixin):
         biobank_prefix=None,
         genomic_set_id=None
     ):
-        with self.session() as session:
-            query = f"""with ranked_pediatric_events as  (
-                    select genomic_set_member.participant_id,
-                    data_element_name,
-                    data_element_value,
-                    ROW_NUMBER() OVER (PARTITION BY pue.participant_id,
-                    data_element_name
-                    ORDER BY event_authored_time DESC) AS rn
-                    FROM genomic_set_member
-                    join ppsc.profile_updates_event pue on pue.participant_id = genomic_set_member.participant_id
-                        WHERE event_type_name = 'Account Type'
-                        AND data_element_name = 'activity_status'
-                        AND pue.ignore_flag = 0 )
 
-                    SELECT
-	                genomic_set_member.collection_tube_id,
-	                concat('{biobank_prefix}', genomic_set_member.biobank_id) AS biobank_id,
-	                genomic_set_member.sex_at_birth,
-	                genomic_set_member.genome_type,
-	                IF(genomic_set_member.ny_flag = 1, 'Y', 'N') AS ny_flag,
-	                IF(genomic_set_member.validation_status = 1, 'Y', 'N') AS validation_passed,
-	                genomic_set_member.ai_an,
-	                case when rpe.data_element_value = 'Pediatric' then 'Y' else 'N' end as pediatric
-                    FROM
-	                genomic_set_member
-	                left join ranked_pediatric_events rpe on rpe.participant_id = genomic_set_member.participant_id and rpe.rn = 1
-                    WHERE
-	                    genomic_set_member.genomic_workflow_state = 32
-                        AND genomic_set_member.genomic_set_id = {genomic_set_id}
-                    ORDER BY
-                        genomic_set_member.id"""
+        query = f"""with ranked_pediatric_events as  (
+                select genomic_set_member.participant_id,
+                data_element_name,
+                data_element_value,
+                ROW_NUMBER() OVER (PARTITION BY pue.participant_id,
+                data_element_name
+                ORDER BY event_authored_time DESC) AS rn
+                FROM genomic_set_member
+                join ppsc.profile_updates_event pue on pue.participant_id = genomic_set_member.participant_id
+                    WHERE event_type_name = 'Account Type'
+                    AND data_element_name = 'activity_status'
+                    AND pue.ignore_flag = 0 )
+
+                SELECT
+                genomic_set_member.collection_tube_id,
+                concat('{biobank_prefix}', genomic_set_member.biobank_id) AS biobank_id,
+                genomic_set_member.sex_at_birth,
+                genomic_set_member.genome_type,
+                IF(genomic_set_member.ny_flag = 1, 'Y', 'N') AS ny_flag,
+                IF(genomic_set_member.validation_status = 1, 'Y', 'N') AS validation_passed,
+                genomic_set_member.ai_an,
+                case when rpe.data_element_value = 'Pediatric' then 'Y' else 'N' end as pediatric
+                FROM
+                genomic_set_member
+                left join ranked_pediatric_events rpe on rpe.participant_id = genomic_set_member.participant_id and rpe.rn = 1
+                WHERE
+                    genomic_set_member.genomic_workflow_state = {genomic_workflow_state}
+                    AND genomic_set_member.genomic_set_id = {genomic_set_id}
+                ORDER BY
+                    genomic_set_member.id"""
 
             return query
 

@@ -2938,10 +2938,10 @@ class GenomicBiobankSamplesCoupler:
     @staticmethod
     def _determine_best_sample(sample_one, sample_two):
 
-
-
-        # Return the sample by the priority of the code: 2ED02, then 1ED02,2ED04,1ED04,1ED10,1SAL2,1SAL,SAL0 and 3SAL1 last
-        test_codes_by_preference = ['2ED02','1ED02','2ED04','1ED04','1ED10','1SAL2','1SAL','SAL0','3SAL1']  # most desirable first
+        # Return the sample by the priority of the code: 2ED02, then 1ED02,
+        # 2ED04,1ED04,1ED10,1SAL2,1SAL,SAL0 and 3SAL1 last
+        test_codes_by_preference = ['2ED02','1ED02','2ED04','1ED04','1ED10',
+                                    '1SAL2','1SAL','SAL0','3SAL1']  # most desirable first
 
         #use any status less than 13
         if sample_one is None:
