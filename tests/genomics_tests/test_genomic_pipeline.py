@@ -1576,13 +1576,6 @@ class GenomicPipelineTest(BaseTestCase):
         new_genomic_members = self.member_dao.get_all()
         self.assertEqual(16, len(new_genomic_members) )
 
-        #all_ps_origins = [self.summary_dao.get_by_participant_id(obj.participantId).participantOrigin
-        #               for obj in new_genomic_members]
-        #self.assertEqual(len(set(all_ps_origins)), len(participant_origins))
-
-        #all_member_origins = [obj.participantOrigin for obj in new_genomic_members]
-        #self.assertEqual(len(set(all_member_origins)), len(participant_origins))
-
         new_manifest_created = self.manifest_file_dao.get_all()
         self.assertIsNotNone(new_manifest_created)
         self.assertEqual(len(new_manifest_created), 1)
@@ -7297,7 +7290,6 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(new_manifest_created.manifestTypeId, GenomicManifestTypes.AW0)
 
         self.assertTrue(all(obj.aw0ManifestFileId == new_manifest_created.id for obj in new_genomic_members))
-
 
         # Test manifest file was created correctly
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)

@@ -7,6 +7,7 @@ from rdr_service.genomic_enums import GenomicSubProcessResult, GenomicWorkflowSt
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import GenomicGCValidationMetrics, GenomicSetMember, GenomicFileProcessed
 from rdr_service.model.participant_summary import ParticipantSummary
+
 from rdr_service.participant_enums import QuestionnaireStatus
 
 
@@ -143,7 +144,7 @@ class GenomicQueryClass:
                       SELECT ra.participant_id
                       FROM participant_race_answers ra
                           JOIN code cr ON cr.code_id = ra.code_id
-                              AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
+                              AND SUBSTRING_INDEX(cr.value, '_', -1) = 'AIAN'
                     ) native ON native.participant_id = p.participant_id
                     LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
                     LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id
@@ -285,7 +286,7 @@ class GenomicQueryClass:
                   SELECT ra.participant_id
                   FROM participant_race_answers ra
                       JOIN code cr ON cr.code_id = ra.code_id
-                          AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
+                          AND SUBSTRING_INDEX(cr.value, '_', -1) = 'AIAN'
                 ) native ON native.participant_id = p.participant_id
                 LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
                         AND m.genomic_workflow_state <> 33
@@ -356,10 +357,10 @@ class GenomicQueryClass:
         return """
                with ranked_sex_events as
                         (select p.participant_id,
-                                RANK() OVER (PARTITION BY ssce.participant_id, ssce.event_type_name, ssce.data_element_name ORDER BY ssce.event_authored_time DESC, ssce.event_id DESC ) as sex_rank, ssce.data_element_value
-
-                         from biobank_stored_sample ss
-                                  JOIN participant p ON ss.biobank_id = p.biobank_id
+                                RANK() OVER (PARTITION BY ssce.participant_id, ssce.event_type_name, ssce.data_element_name
+                                ORDER BY ssce.event_authored_time DESC, ssce.event_id DESC ) as sex_rank, ssce.data_element_value
+                            from rdr.biobank_stored_sample ss
+                                  JOIN rdr.participant p ON ss.biobank_id = p.biobank_id
                                   Join ppsc.survey_completion_event ssce on p.participant_id = ssce.participant_id
                              And ssce.data_element_name = 'biologicalsexatbirth_sexatbirth' and ssce.ignore_flag = 0
                                   LEFT JOIN genomic_set_member m ON m.participant_id = p.participant_id
@@ -372,14 +373,14 @@ class GenomicQueryClass:
                         (select p.participant_id,
                                 RANK() OVER (PARTITION BY aice.participant_id, aice.event_type_name, aice.data_element_name ORDER BY aice.event_authored_time DESC, aice.event_id DESC ) as aian_rank, aice.data_element_value
 
-                         from biobank_stored_sample ss
-                                  JOIN participant p ON ss.biobank_id = p.biobank_id
+                         from rdr.biobank_stored_sample ss
+                                  JOIN rdr.participant p ON ss.biobank_id = p.biobank_id
                                   Join ppsc.survey_completion_event aice on p.participant_id = aice.participant_id
                           and event_type_name IN ('Basics Data', 'Basics Data Peds 0to6')
                                             AND aice.data_element_name IN ('race_whatraceethnicity', 'race_whatraceethnicity_ped')
                                             AND aice.ignore_flag = 0
 
-                                  LEFT JOIN genomic_set_member m ON m.participant_id = p.participant_id
+                                  LEFT JOIN rdr.genomic_set_member m ON m.participant_id = p.participant_id
                              AND m.genomic_workflow_state <> 33
                          where
                              ss.test in ('2ED02', '1ED02', '2ED04', '1ED04', '1ED10', '1SAL2', '1SAL', '2SAL0', '3SAL1')
@@ -396,31 +397,26 @@ class GenomicQueryClass:
                                    ELSE 0
                                    END as valid_withdrawal_status,
                                 null as  valid_suspension_status,
-
-                               CASE
+                                CASE
                                    WHEN ai.consent_for_study_enrollment = :general_consent_param THEN 1
                                    ELSE 0
                                    END as general_consent_given,
-
-
-
                                CASE
                                    WHEN rse.data_element_value = 'SexAtBirth_Male' THEN 'M'
                                    WHEN rse.data_element_value = 'SexAtBirth_Female' THEN 'F'
                                    ELSE 'NA'
                                    END as sab,
-
-                               CASE
+                                CASE
                                    WHEN ra.data_element_value = 'WhatRaceEthnicity_AIAN' then 1
                                    else 0
                                    END AS is_ai_an,
                                p.participant_origin,
                                ss.status,
                                ss.test
-               FROM biobank_stored_sample ss
-                        JOIN participant p ON ss.biobank_id = p.biobank_id
-                        JOIN biobank_order_identifier oi ON ss.biobank_order_identifier = oi.value
-                        JOIN biobank_order o ON oi.biobank_order_id = o.biobank_order_id
+               FROM rdr.biobank_stored_sample ss
+                        JOIN rdr.participant p ON ss.biobank_id = p.biobank_id
+                        JOIN rdr.biobank_order_identifier oi ON ss.biobank_order_identifier = oi.value
+                        JOIN rdr.biobank_order o ON oi.biobank_order_id = o.biobank_order_id
 
                         JOIN ppsc.awardee_insite ai on ai.participant_id = p.participant_id
 
@@ -428,8 +424,8 @@ class GenomicQueryClass:
                    AND m.genomic_workflow_state <> :ignore_param
                         LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id
                         LEFT JOIN ppsc.participant_status_event pse on pse.participant_id = p.participant_id
-                   AND pse.event_type_name = "Test Account"
-                   AND pse.data_element_name = "activity_status"
+                   AND pse.event_type_name = 'Test Account'
+                   AND pse.data_element_name = 'activity_status'
                    AND pse.data_element_value = "test"
 
                         left join ranked_aian_events ra on ra.participant_id = p.participant_id and ra.aian_rank = 1
@@ -445,21 +441,24 @@ class GenomicQueryClass:
     def dq_report_runs_summary(from_date):
 
         query_sql = """
-                    SELECT job_id
-                         , SUM(IF(run_result = :unset, run_count, 0)) AS 'UNSET'
+            SELECT job_id
+                , SUM(IF(run_result = :unset, run_count, 0)) AS 'UNSET'
                 , SUM(IF(run_result = :success, run_count, 0)) AS 'SUCCESS'
                 , SUM(IF(run_result = :error, run_count, 0)) AS 'ERROR'
                 , SUM(IF(run_result = :no_files, run_count, 0)) AS 'NO_FILES'
                 , SUM(IF(run_result = :invalid_name, run_count, 0)) AS 'INVALID_FILE_NAME'
                 , SUM(IF(run_result = :invalid_structure, run_count, 0)) AS 'INVALID_FILE_STRUCTURE'
-                    FROM (SELECT count(id) run_count
-                               , job_id
-                               , run_result
-                          FROM genomic_job_run
-                          WHERE start_time > :from_date
-                          group by job_id, run_result) sub
-                    group by job_id \
-                    """
+            FROM
+                (
+                    SELECT count(id) run_count
+                        , job_id
+                        , run_result
+                    FROM genomic_job_run
+                    WHERE start_time > :from_date
+                    group by job_id, run_result
+                ) sub
+            group by job_id
+        """
 
         query_params = {
             "unset": GenomicSubProcessResult.UNSET.number,

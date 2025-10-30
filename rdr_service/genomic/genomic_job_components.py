@@ -8,6 +8,7 @@ import json
 import logging
 import re
 from typing import List, OrderedDict
+import datetime
 
 import pytz
 from collections import deque, namedtuple
@@ -68,9 +69,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file,
 )
-from rdr_service.genomic.validation import (
-    GENOMIC_VALID_AGE,
-)
+
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.config import (
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
@@ -90,6 +89,11 @@ from rdr_service.config import (
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
 
+
+GENOMIC_VALID_CONSENT_CUTOFF = datetime.datetime(2018, 4, 24)
+
+#NO LONGER USED FOR COHORT 3 PARTICANTS
+GENOMIC_VALID_AGE = 18
 
 class GenomicFileIngester:
     """
@@ -2541,10 +2545,9 @@ class GenomicBiobankSamplesCoupler:
         'none_intersex': 'NA'
     }
     _VALIDATION_FLAGS = (GenomicValidationFlag.INVALID_WITHDRAW_STATUS,
-                         GenomicValidationFlag.INVALID_SUSPENSION_STATUS,
-                         GenomicValidationFlag.INVALID_CONSENT,
-                         GenomicValidationFlag.INVALID_AGE,
-                         GenomicValidationFlag.INVALID_SEX_AT_BIRTH)
+
+                         GenomicValidationFlag.INVALID_CONSENT
+                       )
 
     _ARRAY_GENOME_TYPE = "aou_array"
     _WGS_GENOME_TYPE = "aou_wgs"
@@ -2562,9 +2565,9 @@ class GenomicBiobankSamplesCoupler:
                                                          "valid_withdrawal_status",
                                                          "valid_suspension_status",
                                                          "gen_consents",
-                                                         "valid_ages",
+
                                                          "sabs",
-                                                         "gror",
+
                                                          "is_ai_an",
                                                          "origins"])
 
@@ -2586,7 +2589,6 @@ class GenomicBiobankSamplesCoupler:
         in participant summary.
         Validation is handled in the query that retrieves the newly consented
         participants' samples to process.
-        :param: from_date : the date from which to lookup new biobank_ids
         :return: result
         """
         samples = self._get_new_biobank_samples()
@@ -2752,10 +2754,9 @@ class GenomicBiobankSamplesCoupler:
                 logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
                 validation_criteria = (
                     samples_meta.valid_withdrawal_status[i],
-                    samples_meta.valid_suspension_status[i],
+
                     samples_meta.gen_consents[i],
-                    samples_meta.valid_ages[i],
-                    samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
+
                 )
                 valid_flags = self._calculate_validation_flags(validation_criteria)
                 logging.info(f'Creating genomic set members for PID: {samples_meta.pids[i]}')
@@ -2898,23 +2899,19 @@ class GenomicBiobankSamplesCoupler:
 
     def _get_new_biobank_samples(self):
         """
-        Retrieves BiobankStoredSample objects with `rdr_created`
-        after the last run of the new participant workflow job.
-        The query filters out participants that do not match the
-        genomic validation requirements.
-        :param: from_date
+        Retrieves Participant data for participants who have not yet entered the genomic pipeline.
+        The query filters out participants that do have a stored sample
+        of the correct test type
         :return: list of tuples (bid, pid, biobank_identifier.value, collected_site_id)
         """
 
         _new_samples_sql = self.query.new_biobank_samples()
 
         params = {
-            "sample_status_param": SampleStatus.RECEIVED.__int__(),
-            "dob_param": GENOMIC_VALID_AGE,
-            "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
+
+            "general_consent_param": 'yes',
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
-            "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
-            "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
+            "withdrawal_param": 'not_withdrawn',
             "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
         }
 
@@ -2940,30 +2937,33 @@ class GenomicBiobankSamplesCoupler:
 
     @staticmethod
     def _determine_best_sample(sample_one, sample_two):
+
+
+
+        # Return the sample by the priority of the code: 2ED02, then 1ED02,2ED04,1ED04,1ED10,1SAL2,1SAL,SAL0 and 3SAL1 last
+        test_codes_by_preference = ['2ED02','1ED02','2ED04','1ED04','1ED10','1SAL2','1SAL','SAL0','3SAL1']  # most desirable first
+
+        #use any status less than 13
         if sample_one is None:
             return sample_two
         if sample_two is None:
             return sample_one
 
-        # Return the usable sample (status less than NOT_RECEIVED) if one is usable and the other isn't
-        if sample_one.status < int(SampleStatus.SAMPLE_NOT_RECEIVED) <= sample_two.status:
-            return sample_one
-        elif sample_two.status < int(SampleStatus.SAMPLE_NOT_RECEIVED) <= sample_two.status:
-            return sample_two
-        elif sample_one.status >= int(SampleStatus.SAMPLE_NOT_RECEIVED) \
-            and sample_two.status >= int(SampleStatus.SAMPLE_NOT_RECEIVED):
-            return None
-
-        # Both are usable
-        # Return the sample by the priority of the code: 1ED04, then 1ED10, and 1SAL2 last
-        test_codes_by_preference = ['1ED04', '1ED10', '1SAL2']  # most desirable first
         samples_by_code = {}
         for sample in [sample_one, sample_two]:
             samples_by_code[sample.test] = sample
 
+        # First find a good sample
         for test_code in test_codes_by_preference:
-            if samples_by_code.get(test_code):
-                return samples_by_code[test_code]
+            good_sample = samples_by_code.get(test_code)
+            if good_sample and good_sample.status < int(SampleStatus.SAMPLE_NOT_RECEIVED):
+                return good_sample
+
+        #If none found, return first test
+        for test_code in test_codes_by_preference:
+            any_sample = samples_by_code.get(test_code)
+            if any_sample:
+                return any_sample
 
         logging.error(f'Should have been able to select between '
                       f'{sample_one.biobank_stored_sample_id} and {sample_two.biobank_stored_sample_id}')
@@ -3017,6 +3017,7 @@ class GenomicBiobankSamplesCoupler:
         """
         Retrieves participants based on filters that have
         been denoted to use in the long read pilot program
+        #TODO Remove unused code or switch to PPSC tables - Longread Workflow
         """
         with self.member_dao.session() as session:
             gsm_alias = aliased(GenomicSetMember)

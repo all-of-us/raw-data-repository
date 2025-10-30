@@ -4156,7 +4156,7 @@ class GenomicShortReadDao(BaseDao):
         vcf_tbi_path = aliased(GenomicGcDataFile)
         vcf_md5_path = aliased(GenomicGcDataFile)
 
-        with (self.session() as session):
+        with self.session() as session:
             aw3_rows = session.query(
                 GenomicGCValidationMetrics.chipwellbarcode,
                 func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
@@ -4197,14 +4197,14 @@ class GenomicShortReadDao(BaseDao):
                 ).label('pediatric'),
                 GenomicSetMember.sexConcordanceException,
             ).join(
-                Participant,
-                Participant.participantId == GenomicSetMember.participantId
-            ).join(
-                AwardeeInSite,
-                AwardeeInSite.participantId == GenomicSetMember.participantId
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
             ).join(
                 GenomicGCValidationMetrics,
                 GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).join(
+                Participant,
+                Participant.participantId == ParticipantSummary.participantId
             ).outerjoin(
                 GenomicAW2Raw,
                 GenomicAW2Raw.sample_id == GenomicSetMember.sampleId
@@ -4271,9 +4271,129 @@ class GenomicShortReadDao(BaseDao):
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicGCValidationMetrics.ignoreFlag != 1,
-                AwardeeInSite.withdrawalStatus.ilike('not_withdrawn'),
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 GenomicAW3Raw.id.is_(None)
             )
+
+            # TODO: Replace above code when moving to PPSC tables for AW3 Steps
+            # with (self.session() as session):
+            #     aw3_rows = session.query(
+            #         GenomicGCValidationMetrics.chipwellbarcode,
+            #         func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
+            #         GenomicSetMember.sampleId,
+            #         func.concat(get_biobank_id_prefix(),
+            #                     GenomicSetMember.biobankId, '_',
+            #                     GenomicSetMember.sampleId),
+            #         GenomicSetMember.sexAtBirth,
+            #         GenomicSetMember.gcSiteId,
+            #         sqlalchemy.func.concat('gs://', idat_red_path.file_path).label('idatRedPath'),
+            #         sqlalchemy.func.concat('gs://', idat_red_md5_path.file_path).label('idatRedMd5Path'),
+            #         sqlalchemy.func.concat('gs://', idat_green_path.file_path).label('idatGreenPath'),
+            #         sqlalchemy.func.concat('gs://', idat_green_md5_path.file_path).label('idatGreenMd5Path'),
+            #         sqlalchemy.func.concat('gs://', vcf_path.file_path).label('vcfPath'),
+            #         sqlalchemy.func.concat('gs://', vcf_tbi_path.file_path).label('vcfTbiPath'),
+            #         sqlalchemy.func.concat('gs://', vcf_md5_path.file_path).label('vcfMd5Path'),
+            #         GenomicGCValidationMetrics.callRate,
+            #         GenomicGCValidationMetrics.sexConcordance,
+            #         GenomicGCValidationMetrics.contamination,
+            #         GenomicGCValidationMetrics.processingStatus,
+            #         Participant.researchId,
+            #         GenomicSetMember.gcManifestSampleSource,
+            #         GenomicGCValidationMetrics.pipelineId,
+            #         func.IF(
+            #             GenomicSetMember.ai_an == 'Y',
+            #             sqlalchemy.sql.expression.literal("True"),
+            #             sqlalchemy.sql.expression.literal("False")),
+            #         func.IF(
+            #             GenomicSetMember.blockResearch == 1,
+            #             sqlalchemy.sql.expression.literal("True"),
+            #             sqlalchemy.sql.expression.literal("False")),
+            #         GenomicSetMember.blockResearchReason,
+            #         sqlalchemy.case(
+            #             [
+            #                 (GenomicAW2Raw.pediatric.is_(None), 'N')
+            #             ],
+            #             else_=GenomicAW2Raw.pediatric
+            #         ).label('pediatric'),
+            #         GenomicSetMember.sexConcordanceException,
+            #     ).join(
+            #         Participant,
+            #         Participant.participantId == GenomicSetMember.participantId
+            #     ).join(
+            #         AwardeeInSite,
+            #         AwardeeInSite.participantId == GenomicSetMember.participantId
+            #     ).join(
+            #         GenomicGCValidationMetrics,
+            #         GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            #     ).outerjoin(
+            #         GenomicAW2Raw,
+            #         GenomicAW2Raw.sample_id == GenomicSetMember.sampleId
+            #     ).join(
+            #         idat_red_path,
+            #         and_(
+            #             idat_red_path.file_type == 'Red.idat',
+            #             idat_red_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+            #             idat_red_path.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         idat_green_path,
+            #         and_(
+            #             idat_green_path.file_type == 'Grn.idat',
+            #             idat_green_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+            #             idat_green_path.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         idat_red_md5_path,
+            #         and_(
+            #             idat_red_md5_path.file_type == 'Red.idat.md5sum',
+            #             idat_red_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+            #             idat_red_md5_path.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         idat_green_md5_path,
+            #         and_(
+            #             idat_green_md5_path.file_type == 'Grn.idat.md5sum',
+            #             idat_green_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+            #             idat_green_md5_path.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         vcf_path,
+            #         and_(
+            #             vcf_path.file_type == 'vcf.gz',
+            #             vcf_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+            #             vcf_path.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         vcf_tbi_path,
+            #         and_(
+            #             vcf_tbi_path.file_type == 'vcf.gz.tbi',
+            #             vcf_tbi_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+            #             vcf_tbi_path.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         vcf_md5_path,
+            #         and_(
+            #             vcf_md5_path.file_type == 'vcf.gz.md5sum',
+            #             vcf_md5_path.identifier_value == GenomicGCValidationMetrics.chipwellbarcode,
+            #             vcf_md5_path.ignore_flag != 1
+            #         )
+            #     ).outerjoin(
+            #         GenomicAW3Raw,
+            #         and_(
+            #             GenomicAW3Raw.sample_id == GenomicSetMember.sampleId,
+            #             GenomicAW3Raw.genome_type == genome_type,
+            #             GenomicAW3Raw.ignore_flag != 1,
+            #         )
+            #     ).filter(
+            #         GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+            #         GenomicSetMember.genomeType == genome_type,
+            #         GenomicSetMember.aw3ManifestJobRunID.is_(None),
+            #         GenomicSetMember.ignoreFlag != 1,
+            #         GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+            #         GenomicGCValidationMetrics.ignoreFlag != 1,
+            #         AwardeeInSite.withdrawalStatus.ilike('not_withdrawn'),
+            #         GenomicAW3Raw.id.is_(None)
+            #     )
             return aw3_rows.distinct().all()
 
     def get_aw3_wgs_records(self, **kwargs) -> sqlalchemy.orm.query.Query:
@@ -4303,7 +4423,6 @@ class GenomicShortReadDao(BaseDao):
         array_check = aliased(GenomicSetMember)
 
         with self.session() as session:
-
             current_processed_count: sqlalchemy.orm.Query = session.query(
                 GenomicAW3Raw.sample_id,
                 func.count(GenomicAW3Raw.sample_id).label('processed_count')
@@ -4369,14 +4488,14 @@ class GenomicShortReadDao(BaseDao):
                 ).label('sequencer'),
                 GenomicSetMember.sexConcordanceException
             ).join(
-                Participant,
-                Participant.participantId == GenomicSetMember.participantId
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
             ).join(
                 GenomicGCValidationMetrics,
                 GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
             ).join(
-                AwardeeInSite,
-                Participant.participantId ==AwardeeInSite.participantId
+                Participant,
+                Participant.participantId == ParticipantSummary.participantId
             ).outerjoin(
                 GenomicAW2Raw,
                 GenomicAW2Raw.sample_id == GenomicSetMember.sampleId
@@ -4463,12 +4582,180 @@ class GenomicShortReadDao(BaseDao):
                         GenomicSetMember.ignoreFlag != 1,
                         GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                         GenomicGCValidationMetrics.ignoreFlag != 1,
-                        AwardeeInSite.withdrawalStatus == 'not_withdrawn',
+                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         GenomicGCValidationMetrics.pipelineId == pipeline_id
                     ),
                     GenomicGCValidationMetrics.aw3ReadyFlag == 1
                 )
             )
+            # #TODO: Replace code with above when moving AW3 Steps to PPSC tables
+            # with self.session() as session:
+            #
+            #     current_processed_count: sqlalchemy.orm.Query = session.query(
+            #         GenomicAW3Raw.sample_id,
+            #         func.count(GenomicAW3Raw.sample_id).label('processed_count')
+            #     ).filter(
+            #         and_(
+            #             GenomicAW3Raw.genome_type == genome_type,
+            #             GenomicAW3Raw.ignore_flag != 1,
+            #             GenomicAW3Raw.pipeline_id == pipeline_id,
+            #         )
+            #     ).group_by(GenomicAW3Raw.sample_id).subquery()
+            #
+            #     aw3_rows = session.query(
+            #         func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
+            #         GenomicSetMember.sampleId,
+            #         sqlalchemy.func.concat(get_biobank_id_prefix(),
+            #                                GenomicSetMember.biobankId, '_',
+            #                                GenomicSetMember.sampleId),
+            #         GenomicSetMember.sexAtBirth,
+            #         GenomicSetMember.gcSiteId,
+            #         sqlalchemy.func.concat('gs://', hard_filtered_vcf_gz.file_path).label('hfVcfPath'),
+            #         sqlalchemy.func.concat('gs://', hard_filtered_vcf_gz_tbi.file_path).label('hfVcfTbiPath'),
+            #         sqlalchemy.func.concat('gs://', hard_filtered_vcf_gz_md5_sum.file_path).label('hfVcfMd5Path'),
+            #         sqlalchemy.func.concat('gs://', cram.file_path).label('cramPath'),
+            #         sqlalchemy.func.concat('gs://', cram_md5_sum.file_path).label('cramMd5Path'),
+            #         sqlalchemy.func.concat('gs://', cram_crai.file_path).label('craiPath'),
+            #         sqlalchemy.func.concat('gs://', hard_filtered_gvcf_gz.file_path).label('gvcfPath'),
+            #         sqlalchemy.func.concat('gs://', hard_filtered_gvcf_gz_md5_sum.file_path).label('gvcfMd5Path'),
+            #         GenomicGCValidationMetrics.contamination,
+            #         GenomicGCValidationMetrics.sexConcordance,
+            #         GenomicGCValidationMetrics.processingStatus,
+            #         GenomicGCValidationMetrics.meanCoverage,
+            #         Participant.researchId,
+            #         GenomicSetMember.gcManifestSampleSource,
+            #         GenomicGCValidationMetrics.mappedReadsPct,
+            #         GenomicGCValidationMetrics.sexPloidy,
+            #         sqlalchemy.func.IF(
+            #             GenomicSetMember.ai_an == 'Y',
+            #             sqlalchemy.sql.expression.literal("True"),
+            #             sqlalchemy.sql.expression.literal("False")),
+            #         sqlalchemy.func.IF(
+            #             GenomicSetMember.blockResearch == 1,
+            #             sqlalchemy.sql.expression.literal("True"),
+            #             sqlalchemy.sql.expression.literal("False")),
+            #         GenomicSetMember.blockResearchReason,
+            #         GenomicGCValidationMetrics.pipelineId,
+            #         sqlalchemy.case(
+            #             [
+            #                 (current_processed_count.c.processed_count.is_(None), 1)
+            #             ],
+            #             else_=current_processed_count.c.processed_count + 1
+            #         ).label('processingCount'),
+            #         sqlalchemy.case(
+            #             [
+            #                 (GenomicAW2Raw.pediatric.is_(None), 'N')
+            #             ],
+            #             else_=GenomicAW2Raw.pediatric
+            #         ).label('pediatric'),
+            #         sqlalchemy.case(
+            #             [
+            #                 (GenomicAW2Raw.sequencer.is_(None), 'N')
+            #             ],
+            #             else_=GenomicAW2Raw.sequencer
+            #         ).label('sequencer'),
+            #         GenomicSetMember.sexConcordanceException
+            #     ).join(
+            #         Participant,
+            #         Participant.participantId == GenomicSetMember.participantId
+            #     ).join(
+            #         GenomicGCValidationMetrics,
+            #         GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            #     ).join(
+            #         AwardeeInSite,
+            #         Participant.participantId ==AwardeeInSite.participantId
+            #     ).outerjoin(
+            #         GenomicAW2Raw,
+            #         GenomicAW2Raw.sample_id == GenomicSetMember.sampleId
+            #     ).join(
+            #         array_check,
+            #         and_(
+            #             array_check.biobankId == GenomicSetMember.biobankId,
+            #             array_check.aw3ManifestJobRunID.isnot(None),
+            #             array_check.genomeType == config.GENOME_TYPE_ARRAY
+            #         )
+            #     ).join(
+            #         hard_filtered_vcf_gz,
+            #         and_(
+            #             hard_filtered_vcf_gz.file_type == 'hard-filtered.vcf.gz',
+            #             hard_filtered_vcf_gz.identifier_value == GenomicSetMember.sampleId,
+            #             invoke_file_path_filter(file_type_attr=hard_filtered_vcf_gz.file_path),
+            #             hard_filtered_vcf_gz.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         hard_filtered_vcf_gz_tbi,
+            #         and_(
+            #             hard_filtered_vcf_gz_tbi.file_type == 'hard-filtered.vcf.gz.tbi',
+            #             hard_filtered_vcf_gz_tbi.identifier_value == GenomicSetMember.sampleId,
+            #             invoke_file_path_filter(file_type_attr=hard_filtered_vcf_gz_tbi.file_path),
+            #             hard_filtered_vcf_gz_tbi.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         hard_filtered_vcf_gz_md5_sum,
+            #         and_(
+            #             hard_filtered_vcf_gz_md5_sum.file_type == 'hard-filtered.vcf.gz.md5sum',
+            #             hard_filtered_vcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
+            #             invoke_file_path_filter(file_type_attr=hard_filtered_vcf_gz_md5_sum.file_path),
+            #             hard_filtered_vcf_gz_md5_sum.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         cram,
+            #         and_(
+            #             cram.file_type == 'cram',
+            #             cram.identifier_value == GenomicSetMember.sampleId,
+            #             invoke_file_path_filter(file_type_attr=cram.file_path),
+            #             cram.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         cram_md5_sum,
+            #         and_(
+            #             cram_md5_sum.file_type == 'cram.md5sum',
+            #             cram_md5_sum.identifier_value == GenomicSetMember.sampleId,
+            #             invoke_file_path_filter(file_type_attr=cram_md5_sum.file_path),
+            #             cram_md5_sum.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         cram_crai,
+            #         and_(
+            #             cram_crai.file_type == 'cram.crai',
+            #             cram_crai.identifier_value == GenomicSetMember.sampleId,
+            #             invoke_file_path_filter(file_type_attr=cram_crai.file_path),
+            #             cram_crai.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         hard_filtered_gvcf_gz,
+            #         and_(
+            #             hard_filtered_gvcf_gz.file_type == 'hard-filtered.gvcf.gz',
+            #             hard_filtered_gvcf_gz.identifier_value == GenomicSetMember.sampleId,
+            #             invoke_file_path_filter(file_type_attr=hard_filtered_gvcf_gz.file_path),
+            #             hard_filtered_gvcf_gz.ignore_flag != 1
+            #         )
+            #     ).join(
+            #         hard_filtered_gvcf_gz_md5_sum,
+            #         and_(
+            #             hard_filtered_gvcf_gz_md5_sum.file_type == 'hard-filtered.gvcf.gz.md5sum',
+            #             hard_filtered_gvcf_gz_md5_sum.identifier_value == GenomicSetMember.sampleId,
+            #             invoke_file_path_filter(file_type_attr=hard_filtered_gvcf_gz_md5_sum.file_path),
+            #             hard_filtered_gvcf_gz_md5_sum.ignore_flag != 1
+            #         )
+            #     ).outerjoin(
+            #         current_processed_count,
+            #         current_processed_count.c.sample_id == GenomicSetMember.sampleId
+            #     ).filter(
+            #         or_(
+            #             and_(
+            #                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+            #                 GenomicSetMember.genomeType == genome_type,
+            #                 GenomicGCValidationMetrics.aw3ManifestJobRunID.is_(None),
+            #                 GenomicSetMember.ignoreFlag != 1,
+            #                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+            #                 GenomicGCValidationMetrics.ignoreFlag != 1,
+            #                 AwardeeInSite.withdrawalStatus == 'not_withdrawn',
+            #                 GenomicGCValidationMetrics.pipelineId == pipeline_id
+            #             ),
+            #             GenomicGCValidationMetrics.aw3ReadyFlag == 1
+            #         )
+            #     )
             return aw3_rows.distinct().all()
 
 

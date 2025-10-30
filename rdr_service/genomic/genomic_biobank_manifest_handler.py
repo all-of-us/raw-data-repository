@@ -157,7 +157,7 @@ def create_and_upload_genomic_biobank_manifest_file(
         wf_state,
         prefix or BIOBANK_ID_PREFIX,
         genomic_set_id,
-        is_sql=True
+
     )
 
     exporter.run_export(result_filename, export_sql)
