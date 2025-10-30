@@ -192,13 +192,6 @@ class GenomicPipelineTest(BaseTestCase):
         self.survey_completion_event_dao = PPSCDefaultBaseDao(model_type=SurveyCompletionEvent)
         self._participant_i = 1
 
-
-        mock_bucket_paths = [_FAKE_BUCKET,
-                             _FAKE_BIOBANK_SAMPLE_BUCKET,
-                             _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_FOLDER,
-                             _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_RESULT_FOLDER
-                             ]
-
         activities = [
             "ENROLLMENT",
             "Consent",
