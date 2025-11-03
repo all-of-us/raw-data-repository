@@ -1310,6 +1310,28 @@ class PPSCIntakeAPITest(BaseTestCase):
         with clock.FakeClock(test_time):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
+    def test_intake_test_account_allowed(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        payload = {
+            "activity": "Participant Status",
+            "eventType": "Test Flag",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "test"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
+                },
+            ]
+        }
+
+        test_time = datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
     def test_requests_log_generation(self):
         participant = self.ppsc_data_gen.create_database_participant()
         self.send_valid_primary_consent(participant)
