@@ -25,7 +25,6 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
-from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.site import Site
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
@@ -204,7 +203,7 @@ def get_withdrawal_report_query(start_date: datetime):
     return (
         Query([
             func.concat(get_biobank_id_prefix(), ParticipantSummary.biobankId).label('biobank_id'),
-            func.date_format(Participant.withdrawalTime, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
+            func.date_format(ParticipantSummary.withdrawalAuthored, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
             case((ParticipantSummary.aian, 'Y'), else_='N').label('is_native_american'),
             case(
                 (ceremony_answer_subquery.c.data_element_value == 'yes', 'Y'),

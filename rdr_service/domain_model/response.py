@@ -17,7 +17,7 @@ class ParticipantResponses:
     def in_authored_order(self) -> List['Response']:
         if not self._responses_in_order:
             self._responses_in_order = sorted(
-                [response for response in self.responses.values() if response.authored_datetime],
+                self.responses.values(),
                 key=lambda response: response.authored_datetime or False
             )
 
