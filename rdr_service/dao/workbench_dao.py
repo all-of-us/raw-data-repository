@@ -1,13 +1,14 @@
 import json
-
-from werkzeug.exceptions import BadRequest
-from dateutil.parser import parse
 import pytz
+
+from datetime import datetime
+from dateutil.parser import parse
+from google.cloud import bigquery
+from werkzeug.exceptions import BadRequest
 from sqlalchemy import desc, or_, and_, func, distinct, case
 from sqlalchemy.orm import subqueryload, aliased
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
-from datetime import datetime
 from rdr_service.dao.metadata_dao import MetadataDao, WORKBENCH_LAST_SYNC_KEY
 from rdr_service.model.workbench_workspace import (
     WorkbenchWorkspaceApproved,
@@ -33,6 +34,10 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchResearcherAccessTierShortName, WorkbenchResearcherEthnicCategory, WorkbenchResearcherSexualOrientationV2, \
     WorkbenchResearcherGenderIdentity, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2, \
     WorkbenchResearcherEducationV2, WorkbenchWorkspaceAianResearchType
+
+WORKSPACE_ENUM_FIELDS = ['status', 'sex_at_birth', 'gender_identity', 'sexual_orientation', 'geography',
+                         'disability_status', 'access_to_care', 'education_level', 'income_level', 'aian_research_type',
+                         'access_tier', 'workspace_users', 'creator', 'resource']
 
 
 class WorkbenchWorkspaceDao(UpdatableDao):
@@ -261,6 +266,31 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
         return workspaces
 
+    def bq_row_to_dict(self, row: bigquery.Row, current_timestamp: str) -> dict:
+        row_dict = {}
+
+        for key in row.keys():
+            if key not in WORKSPACE_ENUM_FIELDS:
+                camel_key = self.snake_to_camel(key)
+                row_dict[camel_key] = row[key]
+
+        row_dict['created'] = current_timestamp
+        row_dict['modified'] = current_timestamp
+        row_dict['status'] = WorkbenchWorkspaceStatus(row.get('status', 'UNSET'))
+        row_dict['sexAtBirth'] = WorkbenchWorkspaceSexAtBirth(row.get('sex_at_birth', 'UNSET'))
+        row_dict['genderIdentity'] = WorkbenchWorkspaceGenderIdentity(row.get('gender_identity', 'UNSET'))
+        row_dict['sexualOrientation'] = WorkbenchWorkspaceSexualOrientation(row.get('sexual_orientation', 'UNSET'))
+        row_dict['geography'] = WorkbenchWorkspaceGeography(row.get('geography', 'UNSET'))
+        row_dict['disabilityStatus'] = WorkbenchWorkspaceDisabilityStatus(row.get('disability_status', 'UNSET'))
+        row_dict['accessToCare'] = WorkbenchWorkspaceAccessToCare(row.get('access_to_care', 'UNSET'))
+        row_dict['educationLevel'] = WorkbenchWorkspaceEducationLevel(row.get('education_level', 'UNSET'))
+        row_dict['incomeLevel'] = WorkbenchWorkspaceIncomeLevel(row.get('income_level', 'UNSET'))
+        row_dict['aianResearchType'] = WorkbenchWorkspaceAianResearchType(row.get('aian_research_type', 'UNSET'))
+        row_dict['accessTier'] = WorkbenchWorkspaceAccessTier(row.get('access_Tier', 'UNSET'))
+        row_dict['workbenchWorkspaceUser'] = self._get_users(row.get('workspace_users'), row.get('creator'))
+        row_dict['resource'] = "No resource payload. Data from VWB 2.0"
+        return row_dict
+
     def _get_users(self, workspace_users_json, creator_json):
         creator_user_id = creator_json.get('userId') if creator_json else None
         if workspace_users_json is None:
@@ -271,7 +301,10 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         for user in workspace_users_json:
             researcher = researcher_history_dao.get_researcher_history_by_user_source_id(user.get('userId'))
             if not researcher:
-                raise BadRequest('Researcher not found for user ID: {}'.format(user.get('userId')))
+                if user.get('userId') == 211:
+                    continue
+                else:
+                    raise BadRequest('Researcher not found for user ID: {}'.format(user.get('userId')))
             user_obj = WorkbenchWorkspaceUserHistory(
                 created=now,
                 modified=now,

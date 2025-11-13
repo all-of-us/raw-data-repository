@@ -185,6 +185,9 @@ HHEAR_BUCKET_NAME = 'hhear_bucket_name'
 PPSC_DATAFEED_BIOSPECIMEN_TYPES = 'ppsc_datafeed_biospecimen_types'
 PPSC_DATAFEED_SRC_DATASET = 'ppsc_datafeed_src_dataset'
 PPSC_DATAFEED_DEST_DATASET = 'ppsc_datafeed_dest_dataset'
+VWB_DATAFEED_DATASET = 'vwb_datafeed_dataset'
+VWB_WORKSPACES_SRC_TABLE = 'vwb_workspaces_src_table'
+VWB_WORKSPACES_ID_MAPPING_TABLE = 'vwb_workspaces_id_mapping_table'
 
 CVL_SITES_DATA_BUCKETS = {
     "bcm": "prod-genomics-data-baylor",
