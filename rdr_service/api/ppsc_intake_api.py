@@ -108,6 +108,17 @@ class PPSCIntakeAPI(BaseApi):
                     if not name+'_date_time' in data_element_names:
                         raise BadRequest(f"Enrollment Status {name} is missing {name+'_date_time'}.")
 
+        # Check profile data for date of birth
+        if req_data['eventType'] == 'Profile Data':
+            dob_present = False
+            for item in req_data['dataElements']:
+                if item['dataElementName'].lower() == 'piibirthinformation_birthdate':
+                    dob_present = True
+                    if item.get('dataElementValue', None) is None:
+                        raise BadRequest("Invalid Date of Birth")
+            if not dob_present:
+                raise BadRequest("Profile Data payload missing Date of Birth")
+
     def handle_event_insert(self, *, req_data: dict):
         activity_record = list(filter(lambda x: x.name.lower() == req_data['activity'].lower(),
                                       self.activity_records))

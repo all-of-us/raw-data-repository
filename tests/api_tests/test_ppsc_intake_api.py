@@ -513,6 +513,10 @@ class PPSCIntakeAPITest(BaseTestCase):
                     "dataElementName": "activity_date_time",
                     "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
+                {
+                    "dataElementName": "piibirthinformation_birthdate",
+                    "dataElementValue": "2000-01-01"
+                }
             ]
         }
 
@@ -530,7 +534,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual(4, participant_event_activities.activity_id)
 
         profile_updates_events = self.profile_updates_event_dao.get_all()
-        self.assertEqual(3, len(profile_updates_events))
+        self.assertEqual(4, len(profile_updates_events))
 
         self.assertEqual(test_time, profile_updates_events[0].created)
         self.assertEqual(test_time, profile_updates_events[0].modified)
@@ -555,6 +559,14 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual('Profile Data', profile_updates_events[2].event_type_name)
         self.assertEqual('activity_date_time', profile_updates_events[2].data_element_name)
         self.assertEqual("2024-05-20T14:30:00.000Z", profile_updates_events[2].data_element_value)
+
+        self.assertEqual(test_time, profile_updates_events[3].created)
+        self.assertEqual(test_time, profile_updates_events[3].modified)
+        self.assertEqual(participant_event_activities.id, profile_updates_events[3].event_id)
+        self.assertEqual(participant.id, profile_updates_events[3].participant_id)
+        self.assertEqual('Profile Data', profile_updates_events[3].event_type_name)
+        self.assertEqual('piibirthinformation_birthdate', profile_updates_events[3].data_element_name)
+        self.assertEqual("2000-01-01", profile_updates_events[3].data_element_value)
 
     def test_intake_withdrawal_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()
@@ -1303,6 +1315,10 @@ class PPSCIntakeAPITest(BaseTestCase):
                     "dataElementName": "activity_date_time",
                     "dataElementValue": "2024-05-20T14:30:00.000Z"
                 },
+                {
+                    "dataElementName": "piibirthinformation_birthdate",
+                    "dataElementValue": "2020-01-01"
+                }
             ]
         }
 
@@ -1358,4 +1374,32 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.clear_table_after_test("ppsc.deactivation_event")
         self.clear_table_after_test("ppsc.participant_status_event")
         self.clear_table_after_test("ppsc.attribution_event")
+
+    def test_intake_date_of_birth_validation(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(participant)
+
+        payload = {
+            "activity": "Profile Updates",
+            "eventType": "Profile Data",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "first_name",
+                    "dataElementValue": "Jane"
+                },
+                {
+                    "dataElementName": "last_name",
+                    "dataElementValue": "Eyre"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
+                }
+            ]
+        }
+
+        test_time = datetime(2024, 6, 25, 12, 1)
+        with clock.FakeClock(test_time):
+            self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
 
