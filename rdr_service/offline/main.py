@@ -518,12 +518,14 @@ def genomic_new_participant_workflow():
 
 
 @app_util.auth_required_cron
+@check_genomic_cron_job('c2_aw0_manifest_workflow')
 def genomic_c2_participant_workflow():
     genomic_pipeline.c2_participant_workflow()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
+@check_genomic_cron_job('c1_aw0_manifest_workflow')
 def genomic_c1_participant_workflow():
     genomic_pipeline.c1_participant_workflow()
     return '{"success": "true"}'
