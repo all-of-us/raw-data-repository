@@ -448,7 +448,6 @@ class BiobankOrderApiTest(BaseTestCase):
                     "disposalDate": TIME_2.isoformat()
                 },
                 "childPlanService": "feed",
-                "initialTreatment": "pill",
                 "containerTypeID": "tubular",
             }
         ]
