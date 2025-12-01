@@ -1298,7 +1298,7 @@ class BiobankOrderApiTest(BaseTestCase):
             self.put_specimen(payload)
 
         payload['aliquots'][0]['initialTreatment'] = 'eleven'
-        del(payload['aliquots'][1]['initialTreatment'])
+        del payload['aliquots'][1]['initialTreatment']
         with clock.FakeClock(second_timestamp):
             self.put_specimen(payload)
 
