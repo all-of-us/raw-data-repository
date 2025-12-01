@@ -13,7 +13,7 @@ from rdr_service.dao.object_preloader import LoadingStrategy, ObjectPreloader
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.sample_summary_dao import SampleSummaryDao
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot,\
-    BiobankAliquotDataset, BiobankAliquotDatasetItem
+    BiobankAliquotDataset, BiobankAliquotDatasetItem, BiobankAliquotTreatment
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample, SampleStatus
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable
@@ -557,9 +557,14 @@ class BiobankAliquotDao(BiobankDaoBase):
     def read_aliquot_data(self, aliquot, resource, specimen_rlims_id, session):
         for client_field, model_field in [('sampleType', None),
                                           ('childPlanService', None),
-                                          ('initialTreatment', None),
                                           ('containerTypeID', 'containerTypeId')]:
             self.map_optional_json_field_to_object(resource, aliquot, client_field, model_field)
+
+        if 'initialTreatment' in resource:
+            treatment = BiobankAliquotTreatment()
+            treatment.aliquot_rlims_id = aliquot.rlimsId
+            treatment.name = resource['initialTreatment']
+            session.add(treatment)
 
         if 'status' in resource:
             self.read_client_status(resource['status'], aliquot)

@@ -5,6 +5,7 @@ from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
+from rdr_service.clock import CLOCK
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
@@ -427,6 +428,15 @@ class BiobankAliquotDatasetItem(Base, BiobankSpecimenBase):
     paramId = Column("param_id", String(80))
     displayValue = Column("display_value", String(80))
     displayUnits = Column("display_units", String(80))
+
+
+class BiobankAliquotTreatment(Base):
+    __tablename__ = 'biobank_aliquot_treatment'
+
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    name = Column(String(100))
+    rdr_received_timestamp = Column(UTCDateTime, default=CLOCK.now)
+    aliquot_rlims_id = Column(String(80), index=True)
 
 
 def before_item_delete(_, __, dataset_item: BiobankAliquotDatasetItem):

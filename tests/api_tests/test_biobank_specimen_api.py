@@ -9,7 +9,9 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model import config_utils
 from rdr_service.model.participant import Participant
-from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrderedSample, BiobankOrder, BiobankAliquot
+from rdr_service.model.biobank_order import (
+    BiobankOrderIdentifier, BiobankOrderedSample, BiobankOrder, BiobankAliquot, BiobankAliquotTreatment
+)
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import from_client_biobank_id
 from rdr_service.participant_enums import SampleStatus
@@ -1268,3 +1270,65 @@ class BiobankOrderApiTest(BaseTestCase):
                 f"sampleStatus1PS4ATime",
             ),
         )
+
+    def test_subsequent_treatment(self):
+        """
+        The biobank_aliquot_treatment table should hold each "initialTreatment" value we receive
+        and the date it was received.
+        """
+
+        first_timestamp = datetime.datetime(2025, 11, 1)
+        second_timestamp = datetime.datetime(2025, 11, 3)
+        third_timestamp = datetime.datetime(2025, 11, 14)
+
+        payload = self.get_minimal_specimen_json()
+        aliquot_one_id = '192837465'
+        aliquot_two_id = '918273645'
+        payload['aliquots'] = [
+            {
+                "rlimsID": aliquot_one_id,
+                "initialTreatment": 'one'
+            },
+            {
+                "rlimsID": aliquot_two_id,
+                "initialTreatment": 'two'
+            }
+        ]
+        with clock.FakeClock(first_timestamp):
+            self.put_specimen(payload)
+
+        payload['aliquots'][0]['initialTreatment'] = 'eleven'
+        del(payload['aliquots'][1]['initialTreatment'])
+        with clock.FakeClock(second_timestamp):
+            self.put_specimen(payload)
+
+        with clock.FakeClock(third_timestamp):
+            self.send_put(f'Biobank/specimens/sabrina/aliquots/{aliquot_two_id}', {
+                'initialTreatment': 'twelve'
+            })
+
+        treatment_data = self.session.query(
+            BiobankAliquotTreatment
+        ).order_by(
+            BiobankAliquotTreatment.aliquot_rlims_id,
+            BiobankAliquotTreatment.rdr_received_timestamp
+        ).all()
+        self.assertEqual(4, len(treatment_data))
+
+        # First aliquot starts with 'one' and is updated to 'eleven'
+        self.assertEqual(aliquot_one_id, treatment_data[0].aliquot_rlims_id)
+        self.assertEqual('one', treatment_data[0].name)
+        self.assertEqual(first_timestamp, treatment_data[0].rdr_received_timestamp)
+
+        self.assertEqual(aliquot_one_id, treatment_data[1].aliquot_rlims_id)
+        self.assertEqual('eleven', treatment_data[1].name)
+        self.assertEqual(second_timestamp, treatment_data[1].rdr_received_timestamp)
+
+        # Second aliquot starts with 'two' and is updated (separately) to 'twelve'
+        self.assertEqual(aliquot_two_id, treatment_data[2].aliquot_rlims_id)
+        self.assertEqual('two', treatment_data[2].name)
+        self.assertEqual(first_timestamp, treatment_data[2].rdr_received_timestamp)
+
+        self.assertEqual(aliquot_two_id, treatment_data[3].aliquot_rlims_id)
+        self.assertEqual('twelve', treatment_data[3].name)
+        self.assertEqual(third_timestamp, treatment_data[3].rdr_received_timestamp)
