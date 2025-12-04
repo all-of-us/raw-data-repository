@@ -539,7 +539,7 @@ def insert_awardee_insite_data(
                 , MAX(event_authored_time) AS activity_date_time
                 , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
               FROM `{project}.{src_operational_dataset}.ppsc_consent_event`
-              WHERE event_type_name ='EHR Authorization' AND ignore_flag = 0
+              WHERE event_type_name IN ('EHR Authorization', 'Pediatric EHR Authorization') AND ignore_flag = 0
               GROUP BY 1, 2
           ),
           ehr_transformed_values AS (
