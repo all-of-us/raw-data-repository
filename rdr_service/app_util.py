@@ -2,8 +2,6 @@ import calendar
 import datetime
 import email.utils
 import flask
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 import logging
 from requests.exceptions import RequestException
 from time import sleep
@@ -415,18 +413,6 @@ def datetime_as_naive_utc(value):
 
 def is_care_evo_and_not_prod():
     return GAE_PROJECT != "all-of-us-rdr-prod" and get_account_origin_id() == "careevolution"
-
-
-def install_rate_limiting(app):
-    cache_location = config.getSettingJson('cache_storage_location', default='memory://')
-    default_rate_limit = config.getSettingJson('default_rate_limit', default='15/second')
-    Limiter(
-        app,
-        key_func=lambda: get_oauth_id() or get_remote_address(),
-        default_limits=[default_rate_limit],
-        storage_uri=cache_location,
-        in_memory_fallback_enabled=True  # Use local memory if cache not found (throws an error otherwise)
-    )
 
 
 class BatchManager:
