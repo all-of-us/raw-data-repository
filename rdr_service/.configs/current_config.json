@@ -1,5 +1,4 @@
 {
-  "default_rate_limit": "100/second",
   "baseline_ppi_questionnaire_fields": [
     "questionnaireOnTheBasics",
     "questionnaireOnOverallHealth",

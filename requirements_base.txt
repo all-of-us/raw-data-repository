@@ -21,7 +21,6 @@ fhirclient==3.2.0         # via -r requirements.in
 flask-basicauth==0.2.0    # via locust
 flask-restful==0.3.10      # via -r requirements.in
 flask==3.1.1              # via -r requirements.in, flask-basicauth, flask-restful, locust
-flask-limiter==1.4
 gevent==25.5.1            # via geventhttpclient, locust
 geventhttpclient==2.0.2   # via locust
 google-api-core[grpc]==1.17.0  # via google-api-python-client, google-cloud-bigquery, google-cloud-core, google-cloud-datastore, google-cloud-firestore, google-cloud-logging, google-cloud-tasks
@@ -85,7 +84,6 @@ python-http-client==3.2.7  # via sendgrid
 pytz==2020.1              # via babel, flask-restful, google-api-core, google-cloud-firestore
 pyyaml==6.0             # via google-python-cloud-debugger
 pyzmq==25.1.0             # via locust
-redis==4.5.4              # via flask-limiter
 requests-oauthlib==1.3.0  # via jira
 requests-toolbelt==1.0.0  # via jira
 requests[security]==2.32.4  # via -r requirements.in, fhirclient, google-api-core, googlemaps, jira, locust, requests-oauthlib, requests-toolbelt, sphinx
