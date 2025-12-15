@@ -318,6 +318,10 @@ PUBLIC_METRICS_GENDER_ANSWERS_TABLE = "public_metrics_gender_answers_table"
 PUBLIC_METRICS_RACE_ANSWERS_TABLE = "public_metrics_race_answers_table"
 PUBLIC_METRICS_PARTICIPANT_STATUS_EVENT_TABLE = "public_metrics_participant_status_event_table"
 
+AWS_ACCESS_KEY_ID = "aws_access_key_id"
+AWS_SECRET_ACCESS_KEY = "aws_secret_access_key"
+AWS_REGION_NAME = "aws_region_name"
+
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
 
