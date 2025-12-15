@@ -16,11 +16,12 @@ class GCSFileCopierToS3:
         self.gcs_client = storage.Client()
         self.gcs_bucket = self.gcs_client.bucket(self.gcs_bucket_name)
 
+        ppsc_creds = config.getSettingJson(config.PPSC_AWS_CREDS)
         self.s3_client = boto3.client(
             "s3",
-            aws_access_key_id=config.getSettingJson(config.AWS_ACCESS_KEY_ID)[0],
-            aws_secret_access_key=config.getSettingJson(config.AWS_SECRET_ACCESS_KEY)[0],
-            region_name=config.getSettingJson(config.AWS_REGION_NAME)[0]
+            aws_access_key_id=ppsc_creds.get("aws_access_key_id"),
+            aws_secret_access_key=ppsc_creds.get("aws_secret_access_key"),
+            region_name=ppsc_creds.get("aws_region_name")
         )
 
     @staticmethod
@@ -60,4 +61,8 @@ class GCSFileCopierToS3:
 
     def run(self, directories: dict[str]) -> None:
         for gcs_dir, ppsc_dir in directories.items():
-            self.process_directory(gcs_dir, ppsc_dir)
+            try:
+                self.process_directory(gcs_dir, ppsc_dir)
+            except FileNotFoundError as e:
+                logging.error(f"Error processing {gcs_dir}: {e}")
+
