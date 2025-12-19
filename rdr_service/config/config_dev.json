@@ -229,7 +229,11 @@
     "Pediatric Basics 0to6",
     "Pediatric Overall Health 0to6",
     "Pediatric Environmental Health 0to6",
-    "Basics Data Peds 0to6"
+    "Basics Data Peds 0to6",
+    "Social Factors Update",
+    "Health and Wellness Update",
+    "Mental Health and Well Being Update",
+    "Personal and Family Health History Update"
   ],
   "ppsc_intake_profile_updates_event_types": ["Profile Data"],
   "ppsc_intake_withdrawal_event_types": ["Withdrawal"],
