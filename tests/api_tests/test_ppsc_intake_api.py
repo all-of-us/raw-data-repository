@@ -376,9 +376,26 @@ class PPSCIntakeAPITest(BaseTestCase):
             ]
         }
 
+        payload2 = {
+            "activity": "Survey Completion",
+            "eventType": "Social Factors Update",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "submitted_complete"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
+                },
+            ]
+        }
+
         test_time = datetime(2024, 6, 25, 12, 1)
         with clock.FakeClock(test_time):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+            self.send_post('Intake', request_data=payload2, expected_status=http.client.OK)
 
         participant_event_activities = self.ppsc_participant_activity_dao.get_all()
         participant_event_activities = self.filter_events_by_type(participant_event_activities, 3)
@@ -390,7 +407,7 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual(3, participant_event_activities.activity_id)
 
         survey_events = self.survey_completion_event_dao.get_all()
-        self.assertEqual(2, len(survey_events))
+        self.assertEqual(4, len(survey_events))
         self.assertEqual(test_time, survey_events[0].created)
         self.assertEqual(test_time, survey_events[0].modified)
         self.assertEqual(participant_event_activities.id, survey_events[0].event_id)
@@ -406,6 +423,21 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual('The Basics', survey_events[1].event_type_name)
         self.assertEqual('activity_date_time', survey_events[1].data_element_name)
         self.assertEqual("2024-05-20T14:30:00.000Z", survey_events[1].data_element_value)
+
+        self.assertEqual(test_time, survey_events[2].created)
+        self.assertEqual(test_time, survey_events[2].modified)
+        self.assertEqual(participant.id, survey_events[2].participant_id)
+        self.assertEqual('Social Factors Update', survey_events[2].event_type_name)
+        self.assertEqual('activity_status', survey_events[2].data_element_name)
+        self.assertEqual('submitted_complete', survey_events[2].data_element_value)
+
+        self.assertEqual(test_time, survey_events[3].created)
+        self.assertEqual(test_time, survey_events[3].modified)
+        self.assertEqual(participant.id, survey_events[3].participant_id)
+        self.assertEqual('Social Factors Update', survey_events[3].event_type_name)
+        self.assertEqual('activity_date_time', survey_events[3].data_element_name)
+        self.assertEqual("2024-05-20T14:30:00.000Z", survey_events[3].data_element_value)
+
 
     def test_intake_survey_data_insert(self):
         participant = self.ppsc_data_gen.create_database_participant()
