@@ -21,7 +21,7 @@ tool_cmd = 'sample-availability'
 tool_desc = 'Generates dataset of sample availability'
 
 
-SampleCollectionCutoffDate = datetime(2025, 11, 15)
+SampleCollectionCutoffDate = datetime(2025, 1, 1)
 
 
 @dataclass
@@ -47,6 +47,7 @@ class AliquotData:
     sample_type: SampleType
     collection_timestamp: datetime
     ds_dna_mass: float = None
+    total_dna_mass: float = None
 
     def meets_quantity_reqs(self) -> bool:
         if self.sample_type in [SampleType.saliva, SampleType.blood]:
@@ -126,7 +127,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
 
         with self.get_session() as session:
             aliquot_list = self.retrieve_potential_aliquot_list(session)
-            self.calculate_ds_dna_mass(session, aliquot_list)
+            self.calculate_dna_mass(session, aliquot_list)
 
             eligible_participant_id_list = sorted(self.retrieve_eligible_participant_ids(session))
 
@@ -244,7 +245,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 BiobankAliquot.status == 'In Circulation',
                 BiobankAliquot.location == 'Mayo_MN'
             )
-        ).limit(50000)
+        )
         query_results = query.all()
 
         aliquots = []
@@ -284,7 +285,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
         return None
 
     @classmethod
-    def calculate_ds_dna_mass(cls, session: Session, aliquot_list: List[AliquotData]):
+    def calculate_dna_mass(cls, session: Session, aliquot_list: List[AliquotData]):
         # only need to find mass values for blood and saliva aliquots
         dna_aliquots = [
             aliquot for aliquot in aliquot_list
@@ -326,16 +327,24 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 BiobankAliquotDatasetItem.dataset_id.in_(latest_dataset_map.values())
             ).all()
 
-            conc_values: Dict[int, BiobankAliquotDatasetItem] = {}
+            ds_conc_values: Dict[int, BiobankAliquotDatasetItem] = {}
+            total_conc_values: Dict[int, BiobankAliquotDatasetItem] = {}
             for dataset_item in dataset_item_list:
                 aliquot_id = dataset_to_aliquot_map[dataset_item.dataset_id]
                 if dataset_item.paramId == 'dsDNA Conc':
-                    conc_values[aliquot_id] = dataset_item
+                    ds_conc_values[aliquot_id] = dataset_item
+                elif dataset_item.paramId == 'Total DNA Conc':
+                    total_conc_values[aliquot_id] = dataset_item
 
-            for aliquot_id in conc_values:
+            for aliquot_id in ds_conc_values:
                 aliquot = aliquot_map[aliquot_id]
-                conc_value = float(conc_values[aliquot_id].displayValue)
+                conc_value = float(ds_conc_values[aliquot_id].displayValue)
                 aliquot.ds_dna_mass = aliquot.volume * conc_value
+
+            for aliquot_id in total_conc_values:
+                aliquot = aliquot_map[aliquot_id]
+                conc_value = float(total_conc_values[aliquot_id].displayValue)
+                aliquot.total_dna_mass = aliquot.volume * conc_value
 
             current_count += len(aliquot_subset)
             print(datetime.now(), f'completed {current_count} of {total_count}')
