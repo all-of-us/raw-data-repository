@@ -188,6 +188,7 @@ PPSC_DATAFEED_DEST_DATASET = 'ppsc_datafeed_dest_dataset'
 VWB_DATAFEED_DATASET = 'vwb_datafeed_dataset'
 VWB_WORKSPACES_SRC_TABLE = 'vwb_workspaces_src_table'
 VWB_WORKSPACES_ID_MAPPING_TABLE = 'vwb_workspaces_id_mapping_table'
+WB_RESEARCHERS_SRC_TABLE = 'wb_researchers_src_table'
 
 CVL_SITES_DATA_BUCKETS = {
     "bcm": "prod-genomics-data-baylor",

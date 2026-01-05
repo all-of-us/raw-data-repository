@@ -39,6 +39,8 @@ WORKSPACE_ENUM_FIELDS = ['status', 'sex_at_birth', 'gender_identity', 'sexual_or
                          'disability_status', 'access_to_care', 'education_level', 'income_level', 'aian_research_type',
                          'access_tier', 'workspace_users', 'creator', 'resource']
 
+RESEARCHER_ENUM_FIELDS = ['ethnicity', 'education', 'disability', 'user_id', 'verified_institutional_affiliation',
+                          'demographicSurveyV2', 'gender', 'race', 'sex_at_birth', 'degree', 'access_tier_short_names']
 
 class WorkbenchWorkspaceDao(UpdatableDao):
     def __init__(self):
@@ -1028,8 +1030,31 @@ class WorkbenchResearcherDao(UpdatableDao):
                 survey["sexualOrientations"] = sexual_orientations
                 item["demographicSurveyV2"] = survey
 
+    def bq_row_to_dict(self, row: bigquery.Row, current_timestamp: str) -> dict:
+        row_dict = self._build_survey_parameters(row.get("demographicSurveyV2"))
 
+        for key in row.keys():
+            if key not in RESEARCHER_ENUM_FIELDS:
+                camel_key = self.snake_to_camel(key)
+                row_dict[camel_key] = row[key]
 
+        row_dict['workbenchInstitutionalAffiliations'] = (
+            self._get_affiliations(row.get('affiliations'), row.get('verified_institutional_affiliation'))
+        )
+        row_dict['userSourceId'] = row['user_id']
+        row_dict['created'] = current_timestamp
+        row_dict['modified'] = current_timestamp
+        row_dict['ethnicity'] = WorkbenchResearcherEthnicity(row.get('ethnicity', 'UNSET'))
+        row_dict['education'] = WorkbenchResearcherEducation(row.get('education', 'UNSET'))
+        row_dict['disability'] = WorkbenchResearcherDisability(row.get('disability', 'UNSET'))
+        row_dict['resource'] = "No resource payload. Data from VWB 2.0"
+        row_dict['gender'] = [WorkbenchResearcherGender.to_dict().get(x) for x in row.get('gender')]
+        row_dict['race'] = [WorkbenchResearcherRace.to_dict().get(x) for x in row.get('race')]
+        row_dict['sexAtBirth'] = [WorkbenchResearcherSexAtBirthV2.to_dict().get(x) for x in row.get('sex_at_birth')]
+        row_dict['degree'] = [WorkbenchResearcherDegree.to_dict().get(x) for x in row.get('degree')]
+        row_dict['accessTierShortNames'] = [WorkbenchResearcherAccessTierShortName.to_dict().get(x) for x in
+                                               row.get('access_tier_short_names')]
+        return row_dict
 
     def get_redcap_audit_researchers(
         self,
@@ -1249,18 +1274,21 @@ class WorkbenchResearcherDao(UpdatableDao):
             survey_params = {
                 'dsv2CompletionTime': parse(survey.get('completionTime')) if survey.get(
                     'completionTime') is not None else None,
-                'dsv2EthnicCategories': survey.get('ethnicCategories'),
+                'dsv2EthnicCategories': [WorkbenchResearcherEthnicCategory.to_dict().get(x) for x in
+                                         survey.get('ethnicCategories')],
                 'dsv2EthnicityAiAnOther': survey.get('ethnicityAiAnOtherText'),
                 'dsv2EthnicityAsianOther': survey.get('ethnicityAsianOtherText'),
-                'dsv2EthnicityBlackOther': survey.get('ethnicityAsianOtherText'),
+                'dsv2EthnicityBlackOther': survey.get('ethnicityBlackOtherText'),
                 'dsv2EthnicityHispanicOther': survey.get('ethnicityHispanicOtherText'),
                 'dsv2EthnicityMeNaOther': survey.get('ethnicityMeNaOtherText'),
                 'dsv2EthnicityNhPiOther': survey.get('ethnicityNhPiOtherText'),
                 'dsv2EthnicityWhiteOther': survey.get('ethnicityWhiteOtherText'),
                 'dsv2EthnicityOther': survey.get('ethnicityOtherText'),
-                'dsv2GenderIdentities': survey.get('genderIdentities'),
+                'dsv2GenderIdentities': [WorkbenchResearcherGenderIdentity.to_dict().get(x) for x in
+                                         survey.get('genderIdentities')],
                 'dsv2GenderOther': survey.get('genderOtherText'),
-                'dsv2SexualOrientations': survey.get('sexualOrientations'),
+                'dsv2SexualOrientations': [WorkbenchResearcherSexualOrientationV2.to_dict().get(x) for x in
+                                           survey.get('sexualOrientations')],
                 'dsv2OrientationOther': survey.get('orientationOtherText'),
                 'dsv2SexAtBirth': WorkbenchResearcherSexAtBirthV2(survey.get('sexAtBirth', 'UNSET')),
                 'dsv2SexAtBirthOther': survey.get('sexAtBirthOtherText'),
@@ -1284,6 +1312,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 'dsv2EthnicCategories': [],
                 'dsv2EthnicityAiAnOther': None,
                 'dsv2EthnicityAsianOther': None,
+                'dsv2EthnicityBlackOther': None,
                 'dsv2EthnicityHispanicOther': None,
                 'dsv2EthnicityMeNaOther': None,
                 'dsv2EthnicityNhPiOther': None,
