@@ -1031,7 +1031,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 item["demographicSurveyV2"] = survey
 
     def bq_row_to_dict(self, row: bigquery.Row, current_timestamp: str) -> dict:
-        row_dict = self._build_survey_parameters(row.get("demographicSurveyV2"))
+        row_dict = self._build_survey_parameters(row.get("demographicSurveyV2"), bq_request=True)
 
         for key in row.keys():
             if key not in RESEARCHER_ENUM_FIELDS:
@@ -1269,13 +1269,13 @@ class WorkbenchResearcherDao(UpdatableDao):
         return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId.in_(user_id_list)).all()
 
     @staticmethod
-    def _build_survey_parameters(survey):
+    def _build_survey_parameters(survey, bq_request=False):
         if survey:
             survey_params = {
                 'dsv2CompletionTime': parse(survey.get('completionTime')) if survey.get(
                     'completionTime') is not None else None,
-                'dsv2EthnicCategories': [WorkbenchResearcherEthnicCategory.to_dict().get(x) for x in
-                                         survey.get('ethnicCategories')],
+                'dsv2EthnicCategories': survey.get('ethnicCategories') if not bq_request else
+                    [WorkbenchResearcherEthnicCategory.to_dict().get(x) for x in survey.get('ethnicCategories')],
                 'dsv2EthnicityAiAnOther': survey.get('ethnicityAiAnOtherText'),
                 'dsv2EthnicityAsianOther': survey.get('ethnicityAsianOtherText'),
                 'dsv2EthnicityBlackOther': survey.get('ethnicityBlackOtherText'),
@@ -1284,11 +1284,11 @@ class WorkbenchResearcherDao(UpdatableDao):
                 'dsv2EthnicityNhPiOther': survey.get('ethnicityNhPiOtherText'),
                 'dsv2EthnicityWhiteOther': survey.get('ethnicityWhiteOtherText'),
                 'dsv2EthnicityOther': survey.get('ethnicityOtherText'),
-                'dsv2GenderIdentities': [WorkbenchResearcherGenderIdentity.to_dict().get(x) for x in
-                                         survey.get('genderIdentities')],
+                'dsv2GenderIdentities': survey.get('genderIdentities') if not bq_request else
+                    [WorkbenchResearcherGenderIdentity.to_dict().get(x) for x in survey.get('genderIdentities')],
                 'dsv2GenderOther': survey.get('genderOtherText'),
-                'dsv2SexualOrientations': [WorkbenchResearcherSexualOrientationV2.to_dict().get(x) for x in
-                                           survey.get('sexualOrientations')],
+                'dsv2SexualOrientations': survey.get('sexualOrientations') if not bq_request else
+                    [WorkbenchResearcherSexualOrientationV2.to_dict().get(x) for x in survey.get('sexualOrientations')],
                 'dsv2OrientationOther': survey.get('orientationOtherText'),
                 'dsv2SexAtBirth': WorkbenchResearcherSexAtBirthV2(survey.get('sexAtBirth', 'UNSET')),
                 'dsv2SexAtBirthOther': survey.get('sexAtBirthOtherText'),
