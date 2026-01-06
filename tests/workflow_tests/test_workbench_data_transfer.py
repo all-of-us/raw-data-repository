@@ -1,14 +1,17 @@
 import datetime
 from unittest import mock
 
-from rdr_service.dao.workbench_dao import WorkbenchWorkspaceDao
+from rdr_service.dao.workbench_dao import WorkbenchWorkspaceDao, WorkbenchResearcherDao
+from rdr_service.model.workbench_researcher import WorkbenchResearcher
 from rdr_service.model.workbench_workspace import WorkbenchWorkspaceSnapshot
 from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWorkspaceSexAtBirth, \
     WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceGeography, WorkbenchWorkspaceSexualOrientation, \
     WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceEducationLevel, \
-    WorkbenchWorkspaceIncomeLevel, WorkbenchWorkspaceAianResearchType, WorkbenchWorkspaceAccessTier
+    WorkbenchWorkspaceIncomeLevel, WorkbenchWorkspaceAianResearchType, WorkbenchWorkspaceAccessTier, \
+    WorkbenchResearcherEthnicity, WorkbenchResearcherEducation, WorkbenchResearcherDisability, \
+    WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2, WorkbenchResearcherEducationV2
 from rdr_service.workflow_management.researchers_offline.workbench_data_transfer_input_feed import \
-    WorkbenchWorkspacesFeed
+    WorkbenchWorkspacesFeed, WorkbenchResearchersFeed
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -18,7 +21,7 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
 
     @mock.patch("rdr_service.dao.workbench_dao.WorkbenchWorkspaceDao.bq_row_to_dict")
     @mock.patch("google.cloud.bigquery.Client")
-    def test_run_datafeed(self, mock_bq_client, mock_row_to_dict):
+    def test_run_workspace_datafeed(self, mock_bq_client, mock_row_to_dict):
         time_1 = datetime.datetime(2025, 11, 1, 20, 1, 1, 976505)
         time_2 = datetime.datetime(2025, 11, 5, 10, 10, 15, 900005)
 
@@ -210,3 +213,104 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
         self.assertEqual(actual_rows[1].aianResearchType, WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'))
         self.assertEqual(actual_rows[1].aianResearchDetails, "Test research details 2")
         self.assertEqual(actual_rows[1].resource, "No resource payload. Data from VWB 2.0")
+
+    @mock.patch("rdr_service.dao.workbench_dao.WorkbenchResearcherDao.bq_row_to_dict")
+    @mock.patch("google.cloud.bigquery.Client")
+    def test_run_researcher_datafeed(self, mock_bq_client, mock_row_to_dict):
+        time_1 = datetime.datetime(2025, 12, 1, 20, 1, 1, 976505)
+        time_2 = datetime.datetime(2025, 12, 5, 10, 10, 15, 900005)
+
+        record = [
+            {
+                "userSourceId": 10,
+                "creationTime": time_1,
+                "modifiedTime": time_2,
+                "givenName": "Jim",
+                "familyName": "Smith",
+                "email": "test@email.com",
+                "streetAddress1": "Street",
+                "city": "Town",
+                "state": "TN",
+                "zipCode": "11111",
+                "country": "US",
+                "ethnicity": WorkbenchResearcherEthnicity('NOT_HISPANIC'),
+                "gender": [2],
+                "race": [1, 5],
+                "sexAtBirth": [3, 1],
+                "education": WorkbenchResearcherEducation('COLLEGE_GRADUATE'),
+                "degree": [11, 6, 8],
+                "disability": WorkbenchResearcherDisability('NO'),
+                "identifiesAsLgbtq": True,
+                "lgbtqIdentity": "Bisexual",
+                "accessTierShortNames": [2, 1],
+                "dsv2CompletionTime": time_2,
+                "dsv2EthnicCategories": [20, 66, 68, 70],
+                "dsv2EthnicityAsianOther": "Asian",
+                "dsv2EthnicityBlackOther": "Black",
+                "dsv2EthnicityHispanicOther": "Hispanic",
+                "dsv2GenderIdentities": [8, 2],
+                "dsv2SexualOrientations": [9, 12],
+                "dsv2SexAtBirth": WorkbenchResearcherSexAtBirthV2("MALE"),
+                "dsv2YearOfBirth": 2000,
+                "dsv2YearOfBirthPreferNot": False,
+                "dsv2DisabilityHearing": WorkbenchResearcherYesNoPreferNot('NO'),
+                "dsv2DisabilitySeeing": WorkbenchResearcherYesNoPreferNot('PREFER_NOT_TO_ANSWER'),
+                "dsv2DisabilityConcentrating": WorkbenchResearcherYesNoPreferNot('YES'),
+                "dsv2DisabilityWalking": WorkbenchResearcherYesNoPreferNot('NO'),
+                "dsv2DisabilityDressing": WorkbenchResearcherYesNoPreferNot('YES'),
+                "dsv2DisabilityErrands": WorkbenchResearcherYesNoPreferNot('NO'),
+                "dsv2Education": WorkbenchResearcherEducationV2('DOCTORATE'),
+                "dsv2Disadvantaged": WorkbenchResearcherYesNoPreferNot('NO'),
+                "resource": "No resource payload. Data from VWB 2.0"
+            }
+        ]
+
+        mock_bq_instance = mock_bq_client.return_value
+        mock_bq_instance.query.return_value.result.return_value = record
+        mock_row_to_dict.side_effect = [record[0]]
+
+        workbench_feed = WorkbenchResearchersFeed()
+        workbench_feed.get_datafeed_definition = mock.Mock(return_value={
+            "streaming_data_sql": "streaming_sql",
+            "destination_model": WorkbenchResearcher
+        })
+
+        workbench_feed.run_datafeed("WorkbenchResearchersFeed")
+        workbench_researcher_dao = WorkbenchResearcherDao()
+        actual_rows = workbench_researcher_dao.get_all()
+
+        self.assertEqual(actual_rows[0].userSourceId, 10)
+        self.assertEqual(actual_rows[0].givenName, "Jim")
+        self.assertEqual(actual_rows[0].creationTime, datetime.datetime(2025, 12, 1, 20, 1, 1, 976505))
+        self.assertEqual(actual_rows[0].modifiedTime, datetime.datetime(2025, 12, 5, 10, 10, 15, 900005))
+        self.assertEqual(actual_rows[0].dsv2CompletionTime, datetime.datetime(2025, 12, 5, 10, 10, 15, 900005))
+        self.assertEqual(actual_rows[0].email, "test@email.com")
+        self.assertEqual(actual_rows[0].city, "Town")
+        self.assertEqual(actual_rows[0].zipCode, "11111")
+        self.assertEqual(actual_rows[0].ethnicity, WorkbenchResearcherEthnicity.NOT_HISPANIC)
+        self.assertEqual(actual_rows[0].gender, [2])
+        self.assertEqual(actual_rows[0].race, [1, 5])
+        self.assertEqual(actual_rows[0].sexAtBirth, [3, 1])
+        self.assertEqual(actual_rows[0].education, WorkbenchResearcherEducation.COLLEGE_GRADUATE)
+        self.assertEqual(actual_rows[0].degree, [11, 6, 8])
+        self.assertEqual(actual_rows[0].disability, WorkbenchResearcherDisability.NO)
+        self.assertEqual(actual_rows[0].identifiesAsLgbtq, True)
+        self.assertEqual(actual_rows[0].lgbtqIdentity, "Bisexual")
+        self.assertEqual(actual_rows[0].accessTierShortNames, [2, 1])
+        self.assertEqual(actual_rows[0].dsv2EthnicCategories, [20, 66, 68, 70])
+        self.assertEqual(actual_rows[0].dsv2EthnicityAsianOther, "Asian")
+        self.assertEqual(actual_rows[0].dsv2EthnicityBlackOther, "Black")
+        self.assertEqual(actual_rows[0].dsv2EthnicityHispanicOther, "Hispanic")
+        self.assertEqual(actual_rows[0].dsv2GenderIdentities, [8, 2])
+        self.assertEqual(actual_rows[0].dsv2SexualOrientations, [9, 12])
+        self.assertEqual(actual_rows[0].dsv2SexAtBirth, WorkbenchResearcherSexAtBirthV2.MALE)
+        self.assertEqual(actual_rows[0].dsv2YearOfBirth, 2000)
+        self.assertEqual(actual_rows[0].dsv2DisabilityHearing, WorkbenchResearcherYesNoPreferNot.NO)
+        self.assertEqual(actual_rows[0].dsv2DisabilitySeeing, WorkbenchResearcherYesNoPreferNot.PREFER_NOT_TO_ANSWER)
+        self.assertEqual(actual_rows[0].dsv2DisabilityConcentrating, WorkbenchResearcherYesNoPreferNot.YES)
+        self.assertEqual(actual_rows[0].dsv2DisabilityWalking, WorkbenchResearcherYesNoPreferNot.NO)
+        self.assertEqual(actual_rows[0].dsv2DisabilityDressing, WorkbenchResearcherYesNoPreferNot.YES)
+        self.assertEqual(actual_rows[0].dsv2DisabilityErrands, WorkbenchResearcherYesNoPreferNot.NO)
+        self.assertEqual(actual_rows[0].dsv2Education, WorkbenchResearcherEducationV2.DOCTORATE)
+        self.assertEqual(actual_rows[0].dsv2Disadvantaged, WorkbenchResearcherYesNoPreferNot.NO)
+        self.assertEqual(actual_rows[0].resource, "No resource payload. Data from VWB 2.0")

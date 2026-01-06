@@ -40,3 +40,21 @@ def get_workbench_workspaces_data_to_stream(project: str, dataset: str, mapping_
             AND rwws.modified_time = DATETIME(st.modified_time, 'UTC')
         )
     """
+
+def get_workbench_researchers_data_to_stream(project: str, dataset: str, source_table: str) -> str:
+    """Get data for Workbench Researchers to stream to MySQL. The SQL will return any records that are in
+    the staging table but not in MySQL
+    """
+    return f"""
+        SELECT
+            st.* EXCEPT (creation_time, modified_time),
+            DATETIME(st.creation_time, 'UTC') AS creation_time,
+            DATETIME(st.modified_time, 'UTC') AS modified_time
+        FROM `{project}.{dataset}.{source_table}` st
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM `rdr_operational_datastream.rdr_workbench_researcher` rwr
+            WHERE rwr.user_source_id = st.user_id
+            AND rwr.modified_time = DATETIME(st.modified_time, 'UTC')
+        )
+    """
