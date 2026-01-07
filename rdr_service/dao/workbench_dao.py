@@ -1433,9 +1433,10 @@ class WorkbenchWorkspaceAuditDao(UpdatableDao):
     def insert_with_session(self, session, workbench_audit_records):
         for record in workbench_audit_records:
             session.add(record)
-            if record.auditWorkspaceDisplayDecision == \
-                WorkbenchAuditWorkspaceDisplayDecision.PUBLISH_TO_RESEARCHER_DIRECTORY and \
-                record.auditWorkspaceAccessDecision == WorkbenchAuditWorkspaceAccessDecision.UNSET:
+            if ((record.auditWorkspaceDisplayDecision ==
+                 WorkbenchAuditWorkspaceDisplayDecision.PUBLISH_TO_RESEARCHER_DIRECTORY or
+                 record.auditWorkspaceDisplayDecision == WorkbenchAuditWorkspaceDisplayDecision.UNSET)
+               and record.auditWorkspaceAccessDecision == WorkbenchAuditWorkspaceAccessDecision.UNSET):
                 self.add_approved_workspace_with_session(session, record.workspaceSnapshotId)
             else:
                 self.remove_approved_workspace_with_session(session, record.workspaceSnapshotId)
