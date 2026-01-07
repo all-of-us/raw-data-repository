@@ -1,5 +1,7 @@
 
+import dateutil
 from sqlalchemy import or_, and_
+from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable
 
 from rdr_service import config
 from rdr_service.api_util import dispatch_task, format_json_date
@@ -16,7 +18,6 @@ from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttr
     BiobankAliquotDataset, BiobankAliquotDatasetItem, BiobankAliquotTreatment
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample, SampleStatus
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
-from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable
 
 
 class RlimsIdLoadingStrategy(LoadingStrategy):
@@ -659,8 +660,11 @@ class BiobankAliquotDatasetDao(BiobankDaoBase):
 
         dataset = BiobankAliquotDataset(rlimsId=resource['rlimsID'], aliquot_rlims_id=aliquot_rlims_id)
 
-        for field_name in ['name', 'status']:
+        for field_name in ['name', 'status', 'extractionMethod']:
             self.map_optional_json_field_to_object(resource, dataset, field_name)
+        self.map_optional_json_field_to_object(
+            resource, dataset, 'extractionDate', parser=dateutil.parser.parse
+        )
 
         if 'datasetItems' in resource:
             item_dao = BiobankAliquotDatasetItemDao(preloader=self.preloader)
