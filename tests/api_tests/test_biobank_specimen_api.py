@@ -1201,13 +1201,20 @@ class BiobankOrderApiTest(BaseTestCase):
                     'paramID': 'param_one',
                     'displayValue': 'foobar'
                 }
-            ]
+            ],
+            'extractionDate': '2025-12-08T09:14:25 -0600',
+            'extractionMethod': 'CHEMB'
         })
 
         specimen = self.retrieve_specimen_json(result['id'])
         dataset = specimen['aliquots'][0]['datasets'][1]
         self.assertEqual('updated', dataset['status'])
         self.assertEqual('foobar', dataset['datasetItems'][0]['displayValue'])
+        self.assertEqual('CHEMB', dataset['extractionMethod'])
+        self.assertEqual(
+            datetime.datetime(2025, 12, 8, 15, 14, 25),
+            dataset['extractionDate']
+        )
 
     def test_new_specimen_with_existing_stored_sample(self):
         """
