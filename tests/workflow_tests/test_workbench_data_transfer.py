@@ -53,8 +53,8 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
                 "findingsFromStudy": None,
                 "ethicalLegalSocialImplications": False,
                 "focusOnUnderrepresentedPopulations": False,
-                "raceEthnicity": [],
-                "age": [],
+                "raceEthnicity": [1, 2],
+                "age": [2],
                 "sexAtBirth": WorkbenchWorkspaceSexAtBirth('INTERSEX'),
                 "genderIdentity": WorkbenchWorkspaceGenderIdentity('UNSET'),
                 "sexualOrientation": WorkbenchWorkspaceSexualOrientation('OTHER_THAN_STRAIGHT'),
@@ -98,8 +98,8 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
                 "findingsFromStudy": None,
                 "ethicalLegalSocialImplications": True,
                 "focusOnUnderrepresentedPopulations": True,
-                "raceEthnicity": [],
-                "age": [],
+                "raceEthnicity": [2],
+                "age": [1],
                 "sexAtBirth": WorkbenchWorkspaceSexAtBirth('INTERSEX'),
                 "genderIdentity": WorkbenchWorkspaceGenderIdentity('UNSET'),
                 "sexualOrientation": WorkbenchWorkspaceSexualOrientation('OTHER_THAN_STRAIGHT'),
@@ -162,8 +162,8 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
         self.assertEqual(actual_rows[0].intendToStudy, None)
         self.assertEqual(actual_rows[0].ethicalLegalSocialImplications, False)
         self.assertEqual(actual_rows[0].focusOnUnderrepresentedPopulations, False)
-        self.assertEqual(actual_rows[0].raceEthnicity, [])
-        self.assertEqual(actual_rows[0].age, [])
+        self.assertEqual(actual_rows[0].raceEthnicity, [1, 2])
+        self.assertEqual(actual_rows[0].age, [2])
         self.assertEqual(actual_rows[0].sexAtBirth, WorkbenchWorkspaceSexAtBirth('INTERSEX'))
         self.assertEqual(actual_rows[0].genderIdentity, None)
         self.assertEqual(actual_rows[0].sexualOrientation, WorkbenchWorkspaceSexualOrientation('OTHER_THAN_STRAIGHT'))
@@ -195,8 +195,8 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
         self.assertEqual(actual_rows[1].intendToStudy, None)
         self.assertEqual(actual_rows[1].ethicalLegalSocialImplications, True)
         self.assertEqual(actual_rows[1].focusOnUnderrepresentedPopulations, True)
-        self.assertEqual(actual_rows[1].raceEthnicity, [])
-        self.assertEqual(actual_rows[1].age, [])
+        self.assertEqual(actual_rows[1].raceEthnicity, [2])
+        self.assertEqual(actual_rows[1].age, [1])
         self.assertEqual(actual_rows[1].sexAtBirth, WorkbenchWorkspaceSexAtBirth('INTERSEX'))
         self.assertEqual(actual_rows[1].genderIdentity, None)
         self.assertEqual(actual_rows[1].sexualOrientation, WorkbenchWorkspaceSexualOrientation('OTHER_THAN_STRAIGHT'))
