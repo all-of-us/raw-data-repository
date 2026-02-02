@@ -61,7 +61,7 @@ class SmsSample(NphBase):
     plate_number = Column(String(32))
     position = Column(String(16))
     labware_type = Column(String(32))
-    sample_identifier = Column(String(32))
+    sample_identifier = Column(String(64))
     diet = Column(String(32))
     sex_at_birth = Column(String(32))
     bmi = Column(String(32))
@@ -109,6 +109,7 @@ class SmsN0(NphBase):
     shipment_storage_temperature = Column(String(16))
     sample_comments = Column(String(1024))
     age = Column(String(4))
+    lims_parent_sample_id = Column(String(32))
 
 
 event.listen(SmsN0, "before_insert", model_insert_listener)
@@ -131,7 +132,7 @@ class SmsN1Mc1(NphBase):
     sample_id = Column(String(32), index=True)
     matrix_id = Column(String(32))
     biobank_id = Column(String(32))
-    sample_identifier = Column(String(32))
+    sample_identifier = Column(String(64))
     study = Column(String(64))
     visit = Column(String(64))
     timepoint = Column(String(64))
@@ -161,6 +162,7 @@ class SmsN1Mc1(NphBase):
     dlw_dose_batch = Column(String(1024))
     dlw_dose_date_time = Column(String(1024))
     dlw_dose_grams = Column(String(1024))
+    lims_parent_sample_id = Column(String(32))
 
 
 event.listen(SmsN1Mc1, "before_insert", model_insert_listener)

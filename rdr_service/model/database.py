@@ -22,7 +22,7 @@ from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample, \
     BiobankSpecimen, BiobankAliquot, BiobankAliquotDataset, BiobankAliquotDatasetItem, BiobankSpecimenAttribute, \
-    BiobankQuestOrderSiteAddress
+    BiobankQuestOrderSiteAddress, BiobankAliquotTreatment
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.code import CodeBook, Code, CodeHistory
 from rdr_service.model.calendar import Calendar
@@ -89,6 +89,7 @@ from rdr_service.model.ppsc_partner_data_transfer import PPSCCore
 from rdr_service.etl.model.etl_vocabulary import Concept, ConceptRelationship, CombinedQuestionFilter,\
     CombinedSurveyFilter, SourceToConceptMap
 from rdr_service.model.exposomics import ExposomicsM0
+from rdr_service.model.participant_research_ids import ParticipantResearchIds
 
 RETRY_CONNECTION_LIMIT = 10
 

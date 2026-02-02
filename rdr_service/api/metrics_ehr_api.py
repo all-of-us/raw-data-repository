@@ -3,7 +3,7 @@ from flask_restful import Resource
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import app_util, clock
-from rdr_service.api_util import HEALTHPRO, parse_date
+from rdr_service.api_util import RDR, parse_date
 from rdr_service.dao.metrics_ehr_service import MetricsEhrService
 from rdr_service.dao.organization_dao import OrganizationDao
 
@@ -61,7 +61,7 @@ class MetricsEhrApi(MetricsEhrApiBaseResource):
   - Organization Participant Status Counts
   """
 
-    @app_util.auth_required(HEALTHPRO)
+    @app_util.auth_required(RDR)
     def get(self):
         valid_arguments = self.parse_input()
         return MetricsEhrService().get_current_metrics(organization_ids=valid_arguments["organization"])
@@ -72,7 +72,7 @@ class ParticipantEhrMetricsOverTimeApi(MetricsEhrApiBaseResource):
   Participant EHR Consented vs EHR Received
   """
 
-    @app_util.auth_required(HEALTHPRO)
+    @app_util.auth_required(RDR)
     def get(self):
         valid_arguments = self.parse_input()
         return MetricsEhrService().get_current_ehr_data(organization_ids=valid_arguments["organization"])
@@ -89,7 +89,7 @@ class OrganizationMetricsApi(MetricsEhrApiBaseResource):
             end_date=self._make_parse_with_default(self._parse_date, clock.CLOCK.now()),
         )
 
-    @app_util.auth_required(HEALTHPRO)
+    @app_util.auth_required(RDR)
     def get(self):
         valid_arguments = self.parse_input()
         return MetricsEhrService().get_organization_metrics_data(

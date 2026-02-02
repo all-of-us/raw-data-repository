@@ -331,8 +331,7 @@ GROUP BY participant_id, event_id, event_type_name
 
 def get_survey_completion_activity_to_stream(project: str,
                                               source_dataset: str,
-                                              temp_table_name: str,
-                                              sent_table_name: str) -> str:
+                                              temp_table_name: str) -> str:
     return f"""
 CREATE OR REPLACE TABLE `{project}.{source_dataset}.{temp_table_name}` AS
 WITH ranked_events AS (
@@ -353,7 +352,7 @@ WITH ranked_events AS (
   AND se.event_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1
-      FROM `{project}.{source_dataset}.{sent_table_name}` sent
+      FROM `{project}.{source_dataset}.intake_summary_datafeed_sent` sent
       WHERE sent.participant_id = se.participant_id
         AND sent.event_id >= se.event_id
         AND sent.event_type_name = se.event_type_name
@@ -368,10 +367,21 @@ WITH ranked_events AS (
   and data_element_name IN ("activity_status", '​activity_status', "gender_genderidentity","biologicalsexatbirth_sexatbirth","thebasics_sexualorientation","race_whatraceethnicity","educationlevel_highestgrade","income_annualincome")
   and se.ignore_flag = 0
 )
+, aian_flag AS (
+  SELECT
+    participant_id,
+    MAX(CASE
+      WHEN data_element_name = 'race_whatraceethnicity'
+           AND data_element_value = 'WhatRaceEthnicity_AIAN'
+      THEN 1 ELSE 0 END) AS is_aian
+  FROM `{project}.{source_dataset}.ppsc_survey_completion_event`
+  WHERE ignore_flag = 0
+  GROUP BY participant_id
+)
 SELECT
-  participant_id,
-  event_id,
-  event_type_name,
+  ranked_events.participant_id,
+  ranked_events.event_id,
+  ranked_events.event_type_name,
   -- Basics Data
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'gender_genderidentity' THEN data_element_value END) AS gender_identity,
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'biologicalsexatbirth_sexatbirth' THEN data_element_value END) AS sex,
@@ -379,10 +389,7 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'race_whatraceethnicity' THEN data_element_value END) AS race,
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'educationlevel_highestgrade' THEN data_element_value END) AS education,
   MAX(CASE WHEN event_type_name = 'Basics Data' AND data_element_name = 'income_annualincome' THEN data_element_value END) AS income,
-  MAX(CASE WHEN event_type_name = 'Basics Data'
-    AND data_element_name = 'race_whatraceethnicity'
-    AND data_element_value = "WhatRaceEthnicity_AIAN"
-    THEN "yes" END) AS aian,
+  MAX(CASE WHEN aian_flag.is_aian = 1 THEN "yes" ELSE "no" END) AS aian,
 
   -- Overall Health
   MAX(CASE WHEN event_type_name = 'Overall Health' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_overall_health,
@@ -425,8 +432,9 @@ SELECT
   MAX(CASE WHEN event_type_name = 'Pediatric Environmental Health' AND data_element_name IN ("activity_status", '​activity_status') THEN data_element_value END) AS questionnaire_on_environmental_exposures_authored
 
 FROM ranked_events
+LEFT JOIN aian_flag ON ranked_events.participant_id = aian_flag.participant_id
 WHERE rank = 1
-GROUP BY participant_id, event_id, event_type_name
+GROUP BY ranked_events.participant_id, ranked_events.event_id, ranked_events.event_type_name
     """
 
 

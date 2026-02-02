@@ -17,6 +17,7 @@ from rdr_service.services.gcp_logging import begin_request_logging, end_request_
     flask_restful_log_exception_error
 from rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed import InputFeed, Intake2SummaryFeed, \
     AwardeeInSiteFeed
+from rdr_service.tools.tool_libs.GCSFileCopierToS3 import GCSFileCopierToS3
 
 
 @app_util.auth_required_scheduler
@@ -95,6 +96,23 @@ def ppsc_nph_opt_in_sync():
     return '{ "success": "true" }'
 
 
+@app_util.auth_required_scheduler
+def copy_from_gcs_to_s3():
+    """
+    Copy EHR, Health Data Sharing Stream, and Core Data Report to PPSC AWS Bucket
+    """
+    gcs_bucket = request.get_json().get("gcs_bucket")
+    s3_bucket = request.get_json().get("s3_bucket")
+    copier = GCSFileCopierToS3(gcs_bucket=gcs_bucket, s3_bucket=s3_bucket)
+    gcs_to_ppsc_directories_map = {
+        "ehr_exports": "ehr-updates",
+        "core_data": "core-data",
+        "health_sharing_status": "health-sharing"
+    }
+    copier.run(gcs_to_ppsc_directories_map)
+    return '{ "success": "true" }'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     ppsc_pipeline = Flask(__name__)
@@ -169,6 +187,13 @@ def _build_pipeline_app():
         endpoint="ppsc_nph_opt_in_sync",
         view_func=ppsc_nph_opt_in_sync,
         methods=["GET"],
+    )
+
+    ppsc_pipeline.add_url_rule(
+        PPSC_PIPELINE_PREFIX + "CopyFromGCSToS3",
+        endpoint="copy_from_gcs_to_s3",
+        view_func=copy_from_gcs_to_s3,
+        methods=["POST"]
     )
 
     ppsc_pipeline.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])

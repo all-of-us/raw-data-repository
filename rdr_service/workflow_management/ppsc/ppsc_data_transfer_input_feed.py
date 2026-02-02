@@ -179,8 +179,7 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
             temp_table_name = "temp_ranked_events_survey_completion"
             source_data_sql = get_survey_completion_activity_to_stream(project=self.project,
                                                                         source_dataset=src,
-                                                                        temp_table_name=temp_table_name,
-                                                                        sent_table_name=sent_table_name)
+                                                                        temp_table_name=temp_table_name)
             destination_model = ParticipantSummary
             de_mapping = survey_completion_data_elements
 

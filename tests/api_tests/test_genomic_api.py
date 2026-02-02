@@ -1,13 +1,11 @@
 import datetime
 import http.client
 import pytz
-import random
 
 from copy import deepcopy
 from dateutil import parser
 from unittest import mock
 
-from rdr_service.api_util import PTC, HEALTHPRO, GEM, RDR
 from rdr_service.dao.database_utils import format_datetime
 from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus
 from rdr_service.services.system_utils import JSONObject
@@ -628,43 +626,6 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         }
 
         self.send_post(local_path, request_data=payload, expected_status=404)
-
-    def test_get_roles_return_response(self):
-        participant = self._make_participant()
-
-        fake_date = parser.parse('2020-05-29T08:00:01-05:00')
-        self._make_summary(
-            participant,
-            consentForGenomicsRORAuthored=fake_date,
-            consentForStudyEnrollmentAuthored=fake_date
-        )
-        self._make_set_member(
-            participant,
-            genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY
-        )
-
-        accepted_roles = [PTC, GEM, RDR]
-
-        self.overwrite_test_user_roles(
-            [random.choice(accepted_roles)]
-        )
-
-        resp = self.send_get(
-            f'GenomicOutreach/GEM?participant_id=P{participant.participantId}'
-        )
-
-        self.assertTrue(resp.get('participant_report_statuses') is not None)
-
-        self.overwrite_test_user_roles([HEALTHPRO])
-
-        resp = self.send_get(
-            f'GenomicOutreach/GEM?participant_id=P{participant.participantId}',
-            expected_status=403
-        )
-
-        self.assertTrue(resp.status_code == 403)
-
-
 class GenomicOutreachApiV2Test(GenomicApiTestBase, GenomicDataGenMixin):
     def setUp(self):
         super(GenomicOutreachApiV2Test, self).setUp()

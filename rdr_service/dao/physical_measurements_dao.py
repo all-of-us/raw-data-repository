@@ -258,7 +258,6 @@ class PhysicalMeasurementsDao(UpdatableDao):
         return super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
 
     def insert_with_session(self, session, obj):
-        participant_summary = None
         is_amendment = False
         obj.logPosition = LogPosition()
         obj.final = True
@@ -304,9 +303,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
         if not is_amendment:  # Amendments aren't expected to have site ID extensions.
             if participant_summary.biospecimenCollectedSiteId is None:
                 ParticipantDao().add_missing_hpo_from_site(
-                    session, inserted_obj.participantId, inserted_obj.finalizedSiteId
+                    session, inserted_obj.participantId, inserted_obj.finalizedSiteId, pairing=False
                 )
-
         # Commit before recalculating the enrollment status-related details so DB queries to retrieve measurements
         # data during the calculation will return what was just inserted
         session.commit()

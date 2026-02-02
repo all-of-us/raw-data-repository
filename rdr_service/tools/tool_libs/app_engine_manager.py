@@ -109,7 +109,6 @@ class DeployAppClass(ToolBase):
         self._current_git_branch = git_current_branch()
         self.jira_board = 'PD'
         self.docs_version = 'stable'  # Use as default version slug for readthedocs
-
         self.environment = RdrEnvironment(self.args.project)
 
     def write_config_file(self, key: str, config: list, filename: str = None):
@@ -233,7 +232,7 @@ class DeployAppClass(ToolBase):
             Monique Bristol, Shahwaiz Punjwani, David Konopka, Lance Lopez
             Needed By Date/Event: <target release date>
             Priority: <Low, Medium, High>
-            Configuration/Change Manager: Megan Morris
+            Configuration/Change Manager: Queenie Ho
 
             Anticipated Impact: <None, Low, Medium, High>
             Software Impact: <Software Impact>

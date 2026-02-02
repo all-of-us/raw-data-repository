@@ -141,6 +141,7 @@ class StoredSample(NphBase):
     specimen_volume_ul = Column(Integer, default=None)
     freeze_thaw_count = Column(Integer, default=None)
     participant = relationship(Participant, back_populates="stored_samples")
+    lims_parent_sample_id = Column(String(32), default=None)
 
 
 event.listen(StoredSample, "before_insert", model_insert_listener)

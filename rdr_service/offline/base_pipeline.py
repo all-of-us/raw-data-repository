@@ -1,6 +1,5 @@
 # pylint: disable=unused-argument
 # pylint: disable=unused-import
-import datetime
 import logging
 import os
 
@@ -9,7 +8,7 @@ from rdr_service.config import GAE_PROJECT
 # from google.appengine.api import mail
 # from google.appengine.ext import db
 
-from rdr_service import config
+
 
 class pipeline(object):
     """ Dummy class to replace Pipeline 2.7 library package """

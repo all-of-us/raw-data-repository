@@ -23,7 +23,14 @@ if release_version_pattern.match(version_id):
     version_id = version_id.replace('.', '-')
 
 # Check to see if an instance responds
-app_engine_url = f'https://{version_id}-dot-{project_id}.appspot.com/'
+env_split = project_id.split('-')[-1]
+app_engine_url = f'https://rdr-api-{env_split}.pmi-ops.org/rdr/v1/'
+
+if project_id == 'all-of-us-rdr-prod':
+    app_engine_url = 'https://rdr-api.pmi-ops.org/rdr/v1/'
+elif project_id == 'pmi-drc-api-test':
+    app_engine_url = 'https://drc-api-test.pmi-ops.org/rdr/v1/'
+
 logger.info(f'Checking "{app_engine_url}" for a running instance')
 response = requests.get(app_engine_url)
 

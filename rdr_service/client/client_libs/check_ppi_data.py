@@ -33,6 +33,7 @@ class CheckPPIDataClass(object):
         self.args = args
         self.gcp_env = gcp_env
 
+
     def check_ppi_data(self):
         """
         Fetch and process spreadsheet, then call CheckPpiData for results
@@ -70,7 +71,6 @@ class CheckPPIDataClass(object):
         if len(ppi_data) == 0:
             _logger.error("No participants matched filter criteria. aborting.")
             return
-
         host = f'{self.gcp_env.project}.appspot.com'
         data = {"ppi_data": ppi_data}
 

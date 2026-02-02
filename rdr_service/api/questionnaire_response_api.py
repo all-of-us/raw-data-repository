@@ -6,7 +6,7 @@ from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.api.base_api import BaseApi
 from rdr_service.api.etm_api import EtmApi
-from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO
+from rdr_service.api_util import RDR
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
@@ -24,12 +24,12 @@ class QuestionnaireResponseApi(BaseApi):
     def __init__(self):
         super(QuestionnaireResponseApi, self).__init__(QuestionnaireResponseDao())
 
-    @app_util.auth_required(PTC_AND_HEALTHPRO)
+    @app_util.auth_required(RDR)
     def get(self, p_id, id_):
         # pylint: disable=unused-argument
         return super(QuestionnaireResponseApi, self).get(id_)
 
-    @app_util.auth_required(PTC)
+    @app_util.auth_required(RDR)
     def post(self, p_id):
         # Reject any questionnaire response POSTs for participants that are withdrawn
         participant = ParticipantDao().get(p_id)
@@ -62,7 +62,7 @@ class QuestionnaireResponseApi(BaseApi):
 
 
 class ParticipantQuestionnaireAnswers(Resource):
-    @app_util.auth_required(PTC_AND_HEALTHPRO)
+    @app_util.auth_required(RDR)
     def get(self, p_id=None, module=None):
         """
     Return questionnaire answers for a participant

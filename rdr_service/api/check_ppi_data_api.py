@@ -3,7 +3,7 @@ import re
 
 from flask import request
 
-from rdr_service.api_util import PTC_AND_HEALTHPRO
+from rdr_service.api_util import RDR
 from rdr_service.app_util import auth_required
 from rdr_service.code_constants import EMAIL_QUESTION_CODE, PPI_SYSTEM
 from rdr_service.dao.code_dao import CodeDao
@@ -13,7 +13,7 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant_summary import ParticipantSummary
 
 
-@auth_required(PTC_AND_HEALTHPRO)
+@auth_required(RDR)
 def check_ppi_data():
     """
     Validates the questions/responses for test participants.

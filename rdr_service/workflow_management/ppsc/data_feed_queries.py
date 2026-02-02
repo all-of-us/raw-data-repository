@@ -347,6 +347,7 @@ def insert_awardee_insite_data(
     project: str, src_operational_dataset: str, destination_dataset: str
 ) -> str:
     """Insert data into `datafeed_input_awardee_insite` table. Also takes care of withdrawn participants"""
+    curation_project = config.getSettingJson(config.CURATION_PROD_PROJECT)[0]
 
     return f"""
         INSERT INTO `{project}.{destination_dataset}.datafeed_input_awardee_insite`
@@ -408,11 +409,11 @@ def insert_awardee_insite_data(
           ),
           profile_pivot AS (
             SELECT participant_id
-              , coalesce(piiname_first,'') AS first_name
+              , COALESCE(piiname_first,'') AS first_name
               , piiname_middle AS middle_name
-              , coalesce(piiname_last,'')  AS last_name
+              , COALESCE(piiname_last,'')  AS last_name
               , streetaddress_piizip AS zip_code
-              , streetaddress_piistate AS state
+              , COALESCE(sm.state, streetaddress_piistate) AS state
               , streetaddress_piicity AS city
               , piiaddress_streetaddress AS street_address
               , piiaddress_streetaddress2 AS street_address2
@@ -442,6 +443,29 @@ def insert_awardee_insite_data(
                       , 'piibirthinformation_birthdate'
                     )
                 )
+            LEFT JOIN `{project}.{src_operational_dataset}.state_mapping` sm
+            ON sm.code_value = streetaddress_piistate
+          ),
+          organization_cte AS (
+              SELECT participant_id
+                  , event_id
+                  , MAX(event_authored_time) AS activity_date_time
+                  , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
+              FROM `{project}.{src_operational_dataset}.ppsc_attribution_event`
+              WHERE event_type_name = 'Org Attribution' AND ignore_flag = 0
+              GROUP BY 1, 2
+          ),
+          latest_organization_cte AS (
+              SELECT participant_id
+                  , activity_status AS latest_organization
+              FROM (
+                SELECT participant_id
+                  , activity_status
+                  , activity_date_time
+                  , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
+                FROM organization_cte
+              )
+              WHERE rn = 1
           ),
           withdrawn_cte AS (
             SELECT participant_id
@@ -455,7 +479,7 @@ def insert_awardee_insite_data(
           latest_withdrawn AS (
             SELECT participant_id
             , activity_status AS withdrawal_status
-            , activity_date_time AS withdrawal_time
+            , TIMESTAMP_TRUNC(activity_date_time, SECOND) AS withdrawal_time
             FROM (
               SELECT participant_id
                 , activity_status
@@ -477,7 +501,7 @@ def insert_awardee_insite_data(
           earliest_deactivation AS (
               SELECT participant_id
                 , activity_status AS deactivation_status
-                , activity_date_time AS deactivation_time
+                , TIMESTAMP_TRUNC(activity_date_time, SECOND) AS deactivation_time
               FROM (
                 SELECT participant_id
                   , activity_status
@@ -499,7 +523,7 @@ def insert_awardee_insite_data(
           latest_deceased AS (
             SELECT participant_id
                 , activity_status AS deceased_status
-                , activity_date_time AS deceased_authored
+                , TIMESTAMP_TRUNC(activity_date_time, SECOND) AS deceased_authored
             FROM (
                   SELECT participant_id
                     , activity_status
@@ -515,7 +539,7 @@ def insert_awardee_insite_data(
                 , MAX(event_authored_time) AS activity_date_time
                 , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
               FROM `{project}.{src_operational_dataset}.ppsc_consent_event`
-              WHERE event_type_name ='EHR Authorization' AND ignore_flag = 0
+              WHERE event_type_name IN ('EHR Authorization', 'Pediatric EHR Authorization') AND ignore_flag = 0
               GROUP BY 1, 2
           ),
           ehr_transformed_values AS (
@@ -533,7 +557,7 @@ def insert_awardee_insite_data(
           ehr_latest_submitted AS (
             SELECT participant_id
                 , activity_status_cleaned AS consent_for_electronic_health_records
-                , activity_date_time AS consent_for_electronic_health_records_authored
+                , TIMESTAMP_TRUNC(activity_date_time, SECOND) AS consent_for_electronic_health_records_authored
             FROM (
               SELECT participant_id
                 , activity_status_cleaned
@@ -573,36 +597,6 @@ def insert_awardee_insite_data(
                 FROM primary_consent_cleaned_values
               )
              WHERE rn = 1
-          ),
-          enrollment_status_cte AS (
-            SELECT participant_id
-                , data_element_name
-                , MAX(CASE WHEN data_element_value IN ('0', '1') THEN data_element_value END) AS data_element_value
-                , MAX(CASE WHEN data_element_value NOT IN ('0', '1') THEN data_element_value END) AS event_authored_time
-            FROM `{project}.{src_operational_dataset}.ppsc_participant_status_event`
-            WHERE LOWER(event_type_name) = 'enrollment status' AND ignore_flag = 0
-              AND LOWER(data_element_name) IN
-                ('registered', 'participant', 'participant_ehr_consent', 'enrolled', 'pmb_eligible', 'core_minus_pm', 'core_participant')
-            GROUP BY 1, 2
-          ),
-          -- Get most recently received payload Enrollment Status event with a value of yes, but without a no after for that field name
-          enrollment_status_recent_yes_ranked AS (
-            SELECT es1.participant_id
-              , es1.data_element_name
-              , ROW_NUMBER() OVER (PARTITION BY es1.participant_id ORDER BY es1.event_authored_time DESC) AS rn
-            FROM enrollment_status_cte es1
-            LEFT JOIN enrollment_status_cte es2
-            ON es1.participant_id = es2.participant_id
-              AND es1.data_element_name = es2.data_element_name
-              AND LOWER(es2.data_element_value) = 'no'
-              AND es1.event_authored_time < es2.event_authored_time
-            WHERE es2.participant_id IS NULL AND LOWER(es1.data_element_value) = '1'
-          ),
-          enrollment_status_recent_yes AS (
-            SELECT participant_id
-              , data_element_name AS enrollment_status
-            FROM enrollment_status_recent_yes_ranked
-            WHERE rn = 1
           ),
           physical_measurement_cte AS (
             SELECT physical_measurements_id
@@ -677,26 +671,82 @@ def insert_awardee_insite_data(
             WHERE rn = 1
           ),
           enrollment_status_mapping AS (
-            SELECT 1 AS enrollment_status, "participant" AS status
+            SELECT 1 AS enrollment_status_rank, "registered" AS status
             UNION ALL
-            SELECT 2 AS enrollment_status, "participant_ehr_consent" AS status
+            SELECT 2 AS enrollment_status_rank, "participant" AS status
             UNION ALL
-            SELECT 3 AS enrollment_status, "enrolled" AS status
+            SELECT 3 AS enrollment_status_rank, "participant_ehr_consent" AS status
             UNION ALL
-            SELECT 4 AS enrollment_status, "core_minus_pm" AS status
+            SELECT 4 AS enrollment_status_rank, "enrolled" AS status
             UNION ALL
-            SELECT 5 AS enrollment_status, "core_participant" AS status
+            SELECT 5 AS enrollment_status_rank, "pmb_eligible" AS status
             UNION ALL
-            SELECT 6 AS enrollment_status, "pmb_eligible" AS status
+            SELECT 6 AS enrollment_status_rank, "core_minus_pm" AS status
+            UNION ALL
+            SELECT 7 AS enrollment_status_rank, "core_participant" AS status
+          ),
+          enrollment_status_cte as (
+            SELECT
+            participant_id
+            , data_element_name
+            , data_element_value
+            FROM `{project}.{src_operational_dataset}.ppsc_participant_status_event`
+            WHERE  ignore_flag = 0
+            AND event_type_name = "Enrollment Status"
+            AND LOWER(data_element_name) IN
+             (
+                'registered', 'registered_date_time',
+                'participant', 'participant_date_time',
+                'participant_ehr_consent', 'participant_ehr_consent_date_time',
+                'enrolled', 'enrolled_date_time',
+                'pmb_eligible', 'pmb_eligible_date_time',
+                'core_minus_pm', 'core_minus_pm_date_time',
+                'core_participant', 'core_participant_date_time'
+                )
+          ),
+          enrollment_status_transformed AS (
+            SELECT e1.participant_id
+              , e1.data_element_value AS event_authored
+              , e2.data_element_name AS enrollment_status
+              , e2.data_element_value as data_element_value
+            FROM enrollment_status_cte AS e1 LEFT JOIN enrollment_status_cte AS e2
+            ON e1.participant_id = e2.participant_id AND REGEXP_REPLACE(e1.data_element_name, "_date_time", "")  = e2.data_element_name
+            WHERE e1.data_element_name LIKE "%date_time%" and e2.data_element_value = "yes"
+          ),
+          enrollment_status_drop_dupes AS (
+              SELECT *
+              FROM (
+                SELECT *
+                , ROW_NUMBER() OVER (PARTITION BY participant_id, enrollment_status ORDER BY event_authored DESC) AS rn
+              FROM enrollment_status_transformed
+              )
+            WHERE rn = 1
+          ),
+          latest_enrollement_status AS (
+            SELECT participant_id
+              , enrollment_status
+            FROM (
+              SELECT * except(rn)
+                , ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY map.enrollment_status_rank DESC) AS rn
+              FROM enrollment_status_drop_dupes esdd LEFT JOIN enrollment_status_mapping map
+              ON esdd.enrollment_status = map.status
+              )
+            WHERE rn = 1
+          ),
+          -- 2 BQ jobs are run daily in curation project."materialize_ehr_uploads_pids_view_into_table" changes the view
+          -- to a table & "copy_rdr_operational_across_regions" moves the dataset from US to uscentral1 so it can be
+          -- queried here
+          latest_ehr_receipt_time_cte AS (
+            SELECT person_id
+            , CAST(FORMAT_TIMESTAMP("%Y-%m-%dT%H:%M:%S", latest_upload_time) AS DATETIME) AS latest_ehr_receipt_time
+            FROM `{curation_project}.rdr_operational_us_central.ehr_upload_pids`
           ),
           participant_summary_cte AS (
             SELECT
               participant_id
               , ehr_receipt_time AS first_ehr_receipt_time
-              , ehr_update_time AS latest_ehr_receipt_time
               , consent_for_electronic_health_records_first_yes_authored
               , consent_for_study_enrollment_authored
-              , map.status AS enrollment_status
               , patient_status
               , s2.google_group AS biospecimen_source_site
               , biospecimen_order_time
@@ -705,12 +755,10 @@ def insert_awardee_insite_data(
               , sample_status_1sal2
               , sample_order_status_1sal2
               , sample_order_status_1sal2_time
-              , o.external_id AS organization
+              , o.external_id AS ps_organization
             FROM `{project}.{src_operational_dataset}.rdr_participant_summary` ps
             LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` s2
             ON ps.biospecimen_source_site_id = s2.site_id
-            LEFT JOIN enrollment_status_mapping map
-            ON ps.enrollment_status_v_3_2 = map.enrollment_status
             LEFT JOIN `{project}.{src_operational_dataset}.rdr_organization` o
             ON ps.organization_id = o.organization_id
           ),
@@ -728,7 +776,7 @@ def insert_awardee_insite_data(
               , phone_number
               , email
               , date_of_birth
-              , organization
+              , COALESCE(latest_organization, ps_organization) AS organization
               , COALESCE(withdrawal_status, 'not_withdrawn') AS withdrawal_status
               , withdrawal_time
               , COALESCE(deactivation_status, 'not_deactivated') AS deactivation_status
@@ -742,7 +790,7 @@ def insert_awardee_insite_data(
               , latest_ehr_receipt_time
               , COALESCE(consent_for_study_enrollment, 'no') AS consent_for_study_enrollment
               , consent_for_study_enrollment_authored
-              , enrollment_status
+              , COALESCE(enrollment_status, 'registered') AS enrollment_status
               , CASE
                   WHEN clinic_physical_measurements_id IS NOT NULL THEN 'completed'
                   WHEN cancelled_measurement_id IS NOT NULL THEN 'cancelled'
@@ -816,6 +864,12 @@ def insert_awardee_insite_data(
             USING (participant_id)
             LEFT JOIN physical_measurement_latest_self_reported
             USING (participant_id)
+            LEFT JOIN latest_enrollement_status
+            USING (participant_id)
+            LEFT JOIN latest_ehr_receipt_time_cte lertc
+            ON participant_cte.participant_id = lertc.person_id
+            LEFT JOIN latest_organization_cte
+            USING(participant_id)
           ),
           withdrawn_update AS (
               SELECT
@@ -868,13 +922,22 @@ def insert_awardee_insite_data(
                 , CURRENT_TIMESTAMP() AS created
                 , *
             FROM withdrawn_update
+          ),
+          latest_datafeed_records AS (
+              SELECT * EXCEPT(rn)
+              FROM (
+                SELECT *
+                , ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY created DESC) AS rn
+                FROM `{project}.{destination_dataset}.datafeed_input_awardee_insite`
+              )
+              WHERE rn = 1
           )
 
         SELECT *
         FROM final_result_with_surrogate_key fr
         WHERE NOT EXISTS (
             SELECT 1
-            FROM `{project}.{destination_dataset}.datafeed_input_awardee_insite` staging_data
+            FROM latest_datafeed_records staging_data
             WHERE staging_data.participant_id = fr.participant_id  -- to detect new pids
                 AND staging_data.surrogate_key = fr.surrogate_key  -- to detect updated records
         );
