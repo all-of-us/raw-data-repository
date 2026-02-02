@@ -572,6 +572,7 @@ class NphParticipantAPITest(BaseTestCase):
         )
         result = json.loads(executed.data.decode('utf-8'))
         edge = result.get('participant').get('edges')
+
         self.assertEqual(len(edge), 1)
         self.assertEqual(edge[0].get('node').get('participantNphId'), str(nph_participant.ancillary_participant_id))
 
