@@ -74,8 +74,3 @@ cron:
   schedule: 1 of month 07:00
   timezone: America/New_York
   target: offline
-- description: Create Participant Research Ids (Daily)
-  url: /offline/CreateParticipantResearchIds
-  schedule: every day 05:45
-  timezone: America/New_York
-  target: offline
