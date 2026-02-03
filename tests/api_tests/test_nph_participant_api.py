@@ -557,6 +557,25 @@ class NphParticipantAPITest(BaseTestCase):
         result = json.loads(executed.data.decode('utf-8'))
         self.assertTrue(result.get('participant').get('edges') == [])
 
+    def test_last_modified_filter_parameter(self):
+        summary = self.participant_summary_dao.get_by_participant_id(900000000)
+        summary.lastModified = clock.CLOCK.now()
+        self.participant_summary_dao.update(summary)
+
+        rex_participants = self.rex_mapping_dao.get_all()
+        nph_participant = list(filter(lambda x: x.primary_participant_id == summary.participantId, rex_participants))[0]
+        self.add_consents(nph_participant_ids=[nph_participant.ancillary_participant_id])
+
+        executed = app.test_client().post(
+            '/rdr/v1/nph_participant',
+            data='{participant (lastModified: "2026-01-01") { edges { node { participantNphId lastModified } } }}'
+        )
+        result = json.loads(executed.data.decode('utf-8'))
+        edge = result.get('participant').get('edges')
+
+        self.assertEqual(len(edge), 1)
+        self.assertEqual(edge[0].get('node').get('participantNphId'), str(nph_participant.ancillary_participant_id))
+
     def test_nph_prefix_strip_filter_parameter(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
         current_nph_participant = self.nph_participant_dao.get(self.base_participant_ids[0])
