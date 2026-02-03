@@ -37,7 +37,7 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
 
 WORKSPACE_ENUM_FIELDS = ['status', 'sex_at_birth', 'gender_identity', 'sexual_orientation', 'geography',
                          'disability_status', 'access_to_care', 'education_level', 'income_level', 'aian_research_type',
-                         'access_tier', 'workspace_users', 'creator', 'resource']
+                         'access_tier', 'workspace_users', 'creator', 'resource', 'race_ethnicity', 'age']
 
 RESEARCHER_ENUM_FIELDS = ['ethnicity', 'education', 'disability', 'user_id', 'verified_institutional_affiliation',
                           'demographicSurveyV2', 'gender', 'race', 'sex_at_birth', 'degree', 'access_tier_short_names']
@@ -279,6 +279,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         row_dict['created'] = current_timestamp
         row_dict['modified'] = current_timestamp
         row_dict['status'] = WorkbenchWorkspaceStatus(row.get('status', 'UNSET'))
+        row_dict['raceEthnicity'] = [WorkbenchWorkspaceRaceEthnicity.to_dict().get(x) for x in
+                                     row.get('race_ethnicity')]
+        row_dict['age'] = [WorkbenchWorkspaceAge.to_dict().get(x) for x in row.get('age')]
         row_dict['sexAtBirth'] = WorkbenchWorkspaceSexAtBirth(row.get('sex_at_birth', 'UNSET'))
         row_dict['genderIdentity'] = WorkbenchWorkspaceGenderIdentity(row.get('gender_identity', 'UNSET'))
         row_dict['sexualOrientation'] = WorkbenchWorkspaceSexualOrientation(row.get('sexual_orientation', 'UNSET'))
