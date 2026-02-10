@@ -84,7 +84,6 @@ class Aliquot:
     parent_aliquot_rlims_id:    str
 
     child_plan_service:         str
-    initial_treatment:          str
     container_type_id:          str
 
     sample_type:                str
@@ -108,7 +107,6 @@ class Aliquot:
             sample_rlims_id=sample_rlims_id,
             parent_aliquot_rlims_id=aliquot.parent_aliquot_rlims_id,
             child_plan_service=aliquot.childPlanService,
-            initial_treatment=aliquot.initialTreatment,
             container_type_id=aliquot.containerTypeId,
             sample_type=aliquot.sampleType,
             status=aliquot.status,
@@ -131,6 +129,9 @@ class Dataset:
     name:                       str
     status:                     str
 
+    extraction_method:          str
+    extraction_timestamp:       datetime
+
     @classmethod
     def build(cls, dataset: models.BiobankAliquotDataset) -> 'Dataset':
         assert dataset.aliquot_rlims_id  # just to be sure we have one for each of them
@@ -138,7 +139,9 @@ class Dataset:
             rlims_id=dataset.rlimsId,
             aliquot_rlims_id=dataset.aliquot_rlims_id,
             name=dataset.name,
-            status=dataset.status
+            status=dataset.status,
+            extraction_method=dataset.extractionMethod,
+            extraction_timestamp=dataset.extractionDate
         )
 
 
@@ -158,6 +161,21 @@ class DatasetItem:
             dataset_rlims_id=item.dataset_rlims_id,
             display_value=item.displayValue,
             display_units=item.displayUnits
+        )
+
+
+@dataclass()
+class AliquotTreatment:
+    aliquot_rlims_id:           str
+    name:                       str
+    rdr_received_timestamp:     datetime
+
+    @classmethod
+    def build(cls, treatment: models.BiobankAliquotTreatment) -> 'AliquotTreatment':
+        return AliquotTreatment(
+            aliquot_rlims_id=treatment.aliquot_rlims_id,
+            name=treatment.name,
+            rdr_received_timestamp=treatment.rdr_received_timestamp
         )
 
 
@@ -196,6 +214,7 @@ class BiospecimenExport(ToolBase):
         self.aliquot_writer = CsvExport(Aliquot, today)
         self.dataset_writer = CsvExport(Dataset, today)
         self.item_writer = CsvExport(DatasetItem, today)
+        self.treatment_writer = CsvExport(AliquotTreatment, today)
 
     def run(self):
         super().run()
@@ -230,9 +249,12 @@ class BiospecimenExport(ToolBase):
                 sample_aliquot_map = self._load_aliquots(sample_rlims_id_list, session)
 
                 aliquot_id_list = []
+                aliquot_rlims_id_list = []
                 for aliquot_list in sample_aliquot_map.values():
                     aliquot_id_list.extend([aliquot.id for aliquot in aliquot_list])
+                    aliquot_rlims_id_list.extend([aliquot.rlimsId for aliquot in aliquot_list])
                 aliquot_dataset_map = self._load_datasets(aliquot_id_list, session)
+                aliquot_treatment_map = self._load_treatments(aliquot_rlims_id_list, session)
 
                 written_dataset_rlims_id_list: List[str] = []
                 for db_sample in samples:
@@ -253,6 +275,9 @@ class BiospecimenExport(ToolBase):
                         written_dataset_rlims_id_list.extend(
                             self._process_datasets(aliquot_dataset_map[db_aliquot.id], db_aliquot.rlimsId)
                         )
+
+                        for treatment in aliquot_treatment_map[db_aliquot.rlimsId]:
+                            self.treatment_writer.write(treatment)
 
                 dataset_item_list = self._load_dataset_items(written_dataset_rlims_id_list, session)
                 for db_dataset_item in dataset_item_list:
@@ -337,12 +362,30 @@ class BiospecimenExport(ToolBase):
 
         return final_dataset_id_list
 
+    @classmethod
+    def _load_treatments(cls, aliquot_rlims_id_list, session) -> Dict[str, List[models.BiobankAliquotTreatment]]:
+        treatment_results: Iterable[models.BiobankAliquotTreatment] = session.query(
+            models.BiobankAliquotTreatment
+        ).filter(
+            models.BiobankAliquotTreatment.aliquot_rlims_id.in_(aliquot_rlims_id_list)
+        ).all()
+
+        result: Dict[str, List[models.BiobankAliquotTreatment]] = defaultdict(list)
+        for db_treatment in treatment_results:
+            result[db_treatment.aliquot_rlims_id].append(
+                AliquotTreatment.build(db_treatment)
+            )
+
+        return result
+
+
     def close_writers(self):
         self.sample_writer.close()
         self.attribute_writer.close()
         self.aliquot_writer.close()
         self.dataset_writer.close()
         self.item_writer.close()
+        self.treatment_writer.close()
 
 
 def run():
