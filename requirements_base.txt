@@ -30,7 +30,7 @@ google-auth-httplib2==0.0.3  # via google-api-python-client, google-python-cloud
 google-auth==1.28.0       # via google-api-core, google-api-python-client, google-auth-httplib2, google-cloud-bigquery, google-cloud-storage, google-python-cloud-debugger
 google-cloud-bigquery==1.24.0  # via -r requirements.in
 google-cloud-core==1.3.0  # via google-cloud-bigquery, google-cloud-datastore, google-cloud-firestore, google-cloud-logging, google-cloud-storage
-google-cloud-datastore==2.23.0  # via -r requirements.in
+google-cloud-datastore==1.15.0  # via -r requirements.in
 google-cloud-firestore==1.7.0  # via -r requirements.in
 google-cloud-logging==1.15.0  # via -r requirements.in
 google-cloud-storage==1.28.1  # via -r requirements.in
