@@ -82,7 +82,6 @@ trap finish EXIT
 
 run_cloud_sql_proxy
 
-
 echo "Updating database user passwords..."
 echo "Generating passwords.."
 randpw
@@ -126,8 +125,24 @@ cat tools/update_passwords.sql | envsubst >> $UPDATE_DB_FILE
 
 echo "applying database changes..."
 if mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}; then
-  echo "done"
+  echo "Password updated for all users using SQL statement"
+  PASSWORD_UPDATE_SUCCESS=true
+else
+    echo "SQL update failed. Updating passwords using gcloud"
+    if \
+      gcloud sql users set-password "$READONLY_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$READONLY_PASSWORD" && \
+      gcloud sql users set-password "$RDR_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$RDR_PASSWORD" && \
+      gcloud sql users set-password "$ALEMBIC_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$RDR_PASSWORD"; then
 
+      echo "Passwords updated successfully using gcloud"
+      PASSWORD_UPDATE_SUCCESS=true
+    else
+        echo "Password update failed completely."
+        exit 1
+    fi
+fi
+
+if [ "$PASSWORD_UPDATE_SUCCESS" = true ]; then
   echo "Updating Secrets Manager's Root secrets"
   echo -n "$ROOT_PASSWORD" | gcloud secrets versions add rdr-cloud-sql-root-password --data-file=-
   gcloud secrets versions disable $(gcloud secrets versions list rdr-cloud-sql-root-password --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=rdr-cloud-sql-root-password
@@ -139,22 +154,31 @@ if mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} <
   echo "Updating Secrets Manager's READ ONLY secrets"
   echo -n "$READONLY_PASSWORD" | gcloud secrets versions add rdr-cloud-sql-readonly-password --data-file=-
   gcloud secrets versions disable $(gcloud secrets versions list rdr-cloud-sql-readonly-password --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=rdr-cloud-sql-readonly-password
-else
-    echo "failed - you will likely need to generate passwords"
 fi
 
 if [[ ! -z "$DATASTREAM_SECRET_NAME" ]]; then
   echo "applying datastream changes..."
   cat tools/update_datastream_password.sql | envsubst >> $UPDATE_DATASTREAM_DB_FILE
   if mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DATASTREAM_DB_FILE}; then
-    echo "Updating Secrets Manager's DATASTREAM secrets"
-    echo -n "$DATASTREAM_PASSWORD" | gcloud secrets versions add $DATASTREAM_SECRET_NAME --data-file=-
-    gcloud secrets versions disable $(gcloud secrets versions list $DATASTREAM_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$DATASTREAM_SECRET_NAME
+    echo "Password updated for datastream using SQL statement"
+    PASSWORD_UPDATE_SUCCESS_DS=true
   else
-    echo "failed - you will likely need to regenerate datastream password"
+    echo "SQL update failed. Updating passwords using gcloud"
+    if gcloud sql users set-password "$DATASTREAM_DB_USER" --host % --instance $INSTANCE_NAME --password "$DATASTREAM_PASSWORD"; then
+      echo "Password updated successfully using gcloud"
+      PASSWORD_UPDATE_SUCCESS_DS=true
+    else
+      echo "Password update failed completely."
+      exit 1
+    fi
   fi
 fi
 
+if [ "$PASSWORD_UPDATE_SUCCESS_DS" = true ]; then
+  echo "Updating Secrets Manager's DATASTREAM secrets"
+  echo -n "$DATASTREAM_PASSWORD" | gcloud secrets versions add $DATASTREAM_SECRET_NAME --data-file=-
+  gcloud secrets versions disable $(gcloud secrets versions list $DATASTREAM_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$DATASTREAM_SECRET_NAME
+fi
 echo "Secret Manager values updated."
 
 echo "Setting database configuration..."
