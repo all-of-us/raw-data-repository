@@ -12,11 +12,11 @@ case "$1" in
       * ) PW_PROJECT=pmi-drc-api-test;;
 esac
 
-echo "Readonly:"
+echo "Readonly password:"
 gcloud secrets versions access latest --secret='rdr-cloud-sql-readonly-password' --project=${PW_PROJECT}
 echo
-echo "RDR:"
+echo "RDR password:"
 gcloud secrets versions access latest --secret='rdr-cloud-sql-rdr-password' --project=${PW_PROJECT}
 echo
-echo "Root:"
+echo "Root password:"
 gcloud secrets versions access latest --secret='rdr-cloud-sql-root-password' --project=${PW_PROJECT}
