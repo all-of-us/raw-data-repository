@@ -90,6 +90,7 @@ requests-toolbelt==1.0.0  # via jira
 requests[security]==2.32.4  # via -r requirements.in, fhirclient, google-api-core, googlemaps, jira, locust, requests-oauthlib, requests-toolbelt, sphinx
 rsa==4.7.2                  # via google-auth, oauth2client
 sendgrid==6.9.1           # via -r requirements.in
+setuptools==81.0.0
 simple-geometry==0.1.4  # geometry
 simplejson==3.17.0        # via -r requirements.in
 six==1.15.0               # via astroid, cryptography, flask-restful, geventhttpclient, google-api-core, google-api-python-client, google-auth, google-cloud-bigquery, google-python-cloud-debugger, google-resumable-media, grpcio, isodate, jira, oauth2client, packaging, pip-tools, protobuf, protorpc, pyopenssl, python-dateutil
