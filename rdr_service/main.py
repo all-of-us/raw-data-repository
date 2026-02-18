@@ -79,8 +79,6 @@ got_request_exception.connect(_log_request_exception, app)
 #
 
 api = Api(app)
-app_util.install_rate_limiting(app)
-
 
 api.add_resource(
     ParticipantApi,

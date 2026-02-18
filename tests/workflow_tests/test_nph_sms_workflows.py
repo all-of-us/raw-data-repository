@@ -31,6 +31,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.clear_table_after_test("nph.sms_sample")
         self.clear_table_after_test("nph.sms_n0")
         self.clear_table_after_test("nph.sms_n1_mc1")
+        self.clear_table_after_test("nph.participant")
 
     def create_cloud_csv(self, test_data_filename, file_name, bucket=None, prefix=None):
 
@@ -423,7 +424,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         )
 
     @staticmethod
-    def create_data_duke_n1_mc1_generation(destination="DUKE"):
+    def create_data_duke_n1_mc1_generation(destination="DUKE_SUPP"):
         sms_datagen = NphSmsDataGenerator()
         nph_datagen = NphDataGenerator()
         nph_pid, biobank_id, research_id = 1_000_000_001, 11_000_000_003, 10001
@@ -471,8 +472,8 @@ class NphSmsWorkflowsTest(BaseTestCase):
             manufacturer_lot='256837',
             age="22",
             biobank_id=f"T{biobank_id}",
-            lims_sample_id="000200",
-            lims_parent_sample_id="12345678",
+            lims_sample_id="12345678",
+            lims_parent_sample_id="000200",
         )
 
     def test_n1_mc1_generation(self):
@@ -612,7 +613,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         generation_data = {
             "job": "FILE_GENERATION",
             "file_type": "N1_MC1",
-            "recipient": "DUKE",
+            "recipient": "DUKE_SUPP",
             "package_id": "test"
         }
         with clock.FakeClock(self.TIME_1):
@@ -624,7 +625,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        duke_csv_path = "test-bucket-unc-meta/n1_manifests/DUKE_n1_2023-04-25T15:13:00.000000.csv"
+        duke_csv_path = "test-bucket-unc-meta/n1_manifests/DUKE_SUPP_n1_2023-04-25T15:13:00.000000.csv"
 
         with open_cloud_file(duke_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file, delimiter=',')
@@ -632,7 +633,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
 
         self.assertEqual(csv_rows[0]['sample_id'], '4')
         self.assertEqual(csv_rows[0]['matrix_id'], "1111")
-        self.assertEqual(csv_rows[0]['lims_parent_sample_id'], "12345678")
+        self.assertEqual(csv_rows[0]['lims_parent_sample_id'], "000200")
 
         n1_dao = SmsN1Mc1Dao()
         manifest_records = n1_dao.get_all()
@@ -644,7 +645,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(manifest_records[0].collection_site, "UNC")
         self.assertEqual(manifest_records[0].manufacturer_lot, '256837')
         self.assertEqual(manifest_records[0].collection_date_time, api_util.parse_date("2023-04-20T15:54:33"))
-        self.assertEqual(manifest_records[0].lims_parent_sample_id, "12345678")
+        self.assertEqual(manifest_records[0].lims_parent_sample_id, "000200")
 
     @mock.patch("rdr_service.services.ancillary_studies.nph_incident.SlackMessageHandler.send_message_to_webhook")
     def test_n1_mc1_raises_error_on_data_validation_failure(self, mock_send_message_to_webhook):

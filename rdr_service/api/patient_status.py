@@ -1,5 +1,5 @@
 from rdr_service.api.base_api import BaseApi, UpdatableApi
-from rdr_service.api_util import HEALTHPRO
+from rdr_service.api_util import RDR
 from rdr_service.app_util import auth_required
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 
@@ -8,15 +8,15 @@ class PatientStatusApi(UpdatableApi):
     def __init__(self):
         super(PatientStatusApi, self).__init__(PatientStatusDao(), get_returns_children=True)
 
-    @auth_required(HEALTHPRO)
+    @auth_required(RDR)
     def post(self, p_id, org_id=None):  # pylint: disable=unused-argument
         return super(PatientStatusApi, self).post(participant_id=p_id), 201
 
-    @auth_required(HEALTHPRO)
+    @auth_required(RDR)
     def get(self, p_id, org_id):  # pylint: disable=unused-argument
         return self.dao.get(p_id, org_id)
 
-    @auth_required(HEALTHPRO)
+    @auth_required(RDR)
     def put(self, p_id, org_id):  # pylint: disable=unused-argument
         return super(PatientStatusApi, self).put(org_id, participant_id=p_id, skip_etag=True)
 
@@ -29,6 +29,6 @@ class PatientStatusHistoryApi(BaseApi):
     def __init__(self):
         super(PatientStatusHistoryApi, self).__init__(PatientStatusDao(), get_returns_children=True)
 
-    @auth_required(HEALTHPRO)
+    @auth_required(RDR)
     def get(self, p_id, org_id):
         return self.dao.get_history(p_id, org_id)

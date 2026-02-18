@@ -189,7 +189,8 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             ).outerjoin(
                 SmsSample,
                 and_(
-                    SmsN0.lims_sample_id == SmsSample.lims_sample_id,
+                    SmsSample.lims_sample_id == (SmsN0.lims_parent_sample_id if (
+                        'duke_supp' in kwargs.get('recipient').lower()) else SmsN0.lims_sample_id),
                     SmsSample.ignore_flag == 0
                 )
             ).outerjoin(
@@ -247,7 +248,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                         SmsN1Mc1.ignore_flag == 0
                     )
                 )
-            elif 'duke' in kwargs.get('recipient').lower():
+            elif 'duke_supp' in kwargs.get('recipient').lower() or 'duke_urine' in kwargs.get('recipient').lower():
                 query = query.add_columns(
                     SmsN0.lims_parent_sample_id,
                 ).outerjoin(

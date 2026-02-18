@@ -347,6 +347,7 @@ def insert_awardee_insite_data(
     project: str, src_operational_dataset: str, destination_dataset: str
 ) -> str:
     """Insert data into `datafeed_input_awardee_insite` table. Also takes care of withdrawn participants"""
+    curation_project = config.getSettingJson(config.CURATION_PROD_PROJECT)[0]
 
     return f"""
         INSERT INTO `{project}.{destination_dataset}.datafeed_input_awardee_insite`
@@ -445,6 +446,27 @@ def insert_awardee_insite_data(
             LEFT JOIN `{project}.{src_operational_dataset}.state_mapping` sm
             ON sm.code_value = streetaddress_piistate
           ),
+          organization_cte AS (
+              SELECT participant_id
+                  , event_id
+                  , MAX(event_authored_time) AS activity_date_time
+                  , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
+              FROM `{project}.{src_operational_dataset}.ppsc_attribution_event`
+              WHERE event_type_name = 'Org Attribution' AND ignore_flag = 0
+              GROUP BY 1, 2
+          ),
+          latest_organization_cte AS (
+              SELECT participant_id
+                  , activity_status AS latest_organization
+              FROM (
+                SELECT participant_id
+                  , activity_status
+                  , activity_date_time
+                  , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY activity_date_time DESC) AS rn
+                FROM organization_cte
+              )
+              WHERE rn = 1
+          ),
           withdrawn_cte AS (
             SELECT participant_id
             , event_id
@@ -517,7 +539,7 @@ def insert_awardee_insite_data(
                 , MAX(event_authored_time) AS activity_date_time
                 , MAX(CASE WHEN REPLACE(data_element_name, '\u200B', '') = 'activity_status' THEN data_element_value END) AS activity_status
               FROM `{project}.{src_operational_dataset}.ppsc_consent_event`
-              WHERE event_type_name ='EHR Authorization' AND ignore_flag = 0
+              WHERE event_type_name IN ('EHR Authorization', 'Pediatric EHR Authorization') AND ignore_flag = 0
               GROUP BY 1, 2
           ),
           ehr_transformed_values AS (
@@ -711,11 +733,18 @@ def insert_awardee_insite_data(
               )
             WHERE rn = 1
           ),
+          -- 2 BQ jobs are run daily in curation project."materialize_ehr_uploads_pids_view_into_table" changes the view
+          -- to a table & "copy_rdr_operational_across_regions" moves the dataset from US to uscentral1 so it can be
+          -- queried here
+          latest_ehr_receipt_time_cte AS (
+            SELECT person_id
+            , CAST(FORMAT_TIMESTAMP("%Y-%m-%dT%H:%M:%S", latest_upload_time) AS DATETIME) AS latest_ehr_receipt_time
+            FROM `{curation_project}.rdr_operational_us_central.ehr_upload_pids`
+          ),
           participant_summary_cte AS (
             SELECT
               participant_id
               , ehr_receipt_time AS first_ehr_receipt_time
-              , ehr_update_time AS latest_ehr_receipt_time
               , consent_for_electronic_health_records_first_yes_authored
               , consent_for_study_enrollment_authored
               , patient_status
@@ -726,7 +755,7 @@ def insert_awardee_insite_data(
               , sample_status_1sal2
               , sample_order_status_1sal2
               , sample_order_status_1sal2_time
-              , o.external_id AS organization
+              , o.external_id AS ps_organization
             FROM `{project}.{src_operational_dataset}.rdr_participant_summary` ps
             LEFT JOIN `{project}.{src_operational_dataset}.rdr_site` s2
             ON ps.biospecimen_source_site_id = s2.site_id
@@ -747,7 +776,7 @@ def insert_awardee_insite_data(
               , phone_number
               , email
               , date_of_birth
-              , organization
+              , COALESCE(latest_organization, ps_organization) AS organization
               , COALESCE(withdrawal_status, 'not_withdrawn') AS withdrawal_status
               , withdrawal_time
               , COALESCE(deactivation_status, 'not_deactivated') AS deactivation_status
@@ -837,6 +866,10 @@ def insert_awardee_insite_data(
             USING (participant_id)
             LEFT JOIN latest_enrollement_status
             USING (participant_id)
+            LEFT JOIN latest_ehr_receipt_time_cte lertc
+            ON participant_cte.participant_id = lertc.person_id
+            LEFT JOIN latest_organization_cte
+            USING(participant_id)
           ),
           withdrawn_update AS (
               SELECT
@@ -889,13 +922,22 @@ def insert_awardee_insite_data(
                 , CURRENT_TIMESTAMP() AS created
                 , *
             FROM withdrawn_update
+          ),
+          latest_datafeed_records AS (
+              SELECT * EXCEPT(rn)
+              FROM (
+                SELECT *
+                , ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY created DESC) AS rn
+                FROM `{project}.{destination_dataset}.datafeed_input_awardee_insite`
+              )
+              WHERE rn = 1
           )
 
         SELECT *
         FROM final_result_with_surrogate_key fr
         WHERE NOT EXISTS (
             SELECT 1
-            FROM `{project}.{destination_dataset}.datafeed_input_awardee_insite` staging_data
+            FROM latest_datafeed_records staging_data
             WHERE staging_data.participant_id = fr.participant_id  -- to detect new pids
                 AND staging_data.surrogate_key = fr.surrogate_key  -- to detect updated records
         );

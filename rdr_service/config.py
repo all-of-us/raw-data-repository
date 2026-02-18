@@ -155,6 +155,7 @@ GENOMIC_GC_SITE_BUCKET_MAP = 'gc_site_bucket_map'
 CONFIG_BUCKET = "all-of-us-rdr-sequestered-config-test"
 EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT = "ehr_status_bigquery_view_participant"
 EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION = "ehr_status_bigquery_view_organization"
+CURATION_PROD_PROJECT = "curation_prod_project"
 HPO_REPORT_CONFIG_MIXIN_PATH = "hpo_report_config_mixin_path"
 LOCALHOST_DEFAULT_BUCKET_NAME = 'local_bucket'
 BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN = 'biobank_samples_daily_inventory_file_pattern'
@@ -184,6 +185,10 @@ HHEAR_BUCKET_NAME = 'hhear_bucket_name'
 PPSC_DATAFEED_BIOSPECIMEN_TYPES = 'ppsc_datafeed_biospecimen_types'
 PPSC_DATAFEED_SRC_DATASET = 'ppsc_datafeed_src_dataset'
 PPSC_DATAFEED_DEST_DATASET = 'ppsc_datafeed_dest_dataset'
+VWB_DATAFEED_DATASET = 'vwb_datafeed_dataset'
+VWB_WORKSPACES_SRC_TABLE = 'vwb_workspaces_src_table'
+VWB_WORKSPACES_ID_MAPPING_TABLE = 'vwb_workspaces_id_mapping_table'
+WB_RESEARCHERS_SRC_TABLE = 'wb_researchers_src_table'
 
 CVL_SITES_DATA_BUCKETS = {
     "bcm": "prod-genomics-data-baylor",
@@ -226,7 +231,9 @@ NPH_SMS_BUCKETS = {
     "prod": {
         "UNC_META": "prod-nph-sample-data-mcac-unc-meta",
         "NCSU": "prod-nph-sample-data-mcac-ncsu",
-        "DUKE": "prod-nph-sample-data-mcac-duke",
+        "DUKE_NPH": "prod-nph-sample-data-mcac-duke",
+        "DUKE_SUPP": "prod-nph-sample-data-mcac-duke",
+        "DUKE_URINE": "prod-nph-sample-data-mcac-duke",
         "UNC_CLINICAL": "prod-nph-sample-data-mcac-unc-clinical",
         "PBRC": "prod-nph-sample-data-tandam-pbrc",
         "UCSD": "prod-nph-sample-data-mmc-ucsd"
@@ -234,7 +241,9 @@ NPH_SMS_BUCKETS = {
     "stable": {
         "UNC_META": "stable-nph-sample-data-mcac-unc-meta",
         "NCSU": "stable-nph-sample-data-mcac-ncsu",
-        "DUKE": "stable-nph-sample-data-mcac-duke",
+        "DUKE_NPH": "stable-nph-sample-data-mcac-duke",
+        "DUKE_SUPP": "stable-nph-sample-data-mcac-duke",
+        "DUKE_URINE": "stable-nph-sample-data-mcac-duke",
         "UNC_CLINICAL": "stable-nph-sample-data-mcac-unc-clinical",
         "PBRC": "stable-nph-sample-data-tandam-pbrc",
         "UCSD": "stable-nph-sample-data-mmc-ucsd"
@@ -309,6 +318,8 @@ PUBLIC_METRICS_CODE_TABLE = "public_metrics_code_table"
 PUBLIC_METRICS_GENDER_ANSWERS_TABLE = "public_metrics_gender_answers_table"
 PUBLIC_METRICS_RACE_ANSWERS_TABLE = "public_metrics_race_answers_table"
 PUBLIC_METRICS_PARTICIPANT_STATUS_EVENT_TABLE = "public_metrics_participant_status_event_table"
+
+PPSC_AWS_CREDS = "ppsc_aws_creds"
 
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}

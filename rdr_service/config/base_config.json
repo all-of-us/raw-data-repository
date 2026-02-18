@@ -79,7 +79,9 @@
     "a2_manifest_workflow": 1,
     "a3_manifest_workflow": 1,
     "update_report_state_for_consent_removal": 1,
-    "aw0_manifest_workflow": 1,
+    "aw0_manifest_workflow": 0,
+    "c1_aw0_manifest_workflow": 0,
+    "c2_aw0_manifest_workflow": 0,
     "aw1_manifest_workflow": 1,
     "aw1c_manifest_workflow": 0,
     "aw1cf_manifest_workflow": 0,
@@ -212,7 +214,8 @@
   ],
   "ppsc_primary_consent_types": [
     "Primary Consent",
-    "Pediatric Permission"
+    "Pediatric Permission",
+    "Test Flag"
   ],
   "ppsc_intake_consent_event_types": ["Primary Consent", "Adult EHR Authorization", "Pediatric Permission"],
   "ppsc_intake_survey_completion_event_types": [
@@ -229,7 +232,11 @@
     "Pediatric Basics 0to6",
     "Pediatric Overall Health 0to6",
     "Pediatric Environmental Health 0to6",
-    "Basics Data Peds 0to6"
+    "Basics Data Peds 0to6",
+    "Social Factors Update",
+    "Health and Wellness Update",
+    "Mental Health and Wellbeing Update",
+    "Personal and Family Health History Update"
   ],
   "ppsc_intake_profile_updates_event_types": ["Profile Data", "Account Type"],
   "ppsc_intake_withdrawal_event_types": ["Withdrawal"],
