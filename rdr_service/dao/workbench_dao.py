@@ -261,7 +261,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 aianResearchType=WorkbenchWorkspaceAianResearchType(item.get('aianResearchType', 'UNSET')),
                 aianResearchDetails=item.get('aianResearchDetails'),
                 accessTier=WorkbenchWorkspaceAccessTier(item.get('accessTier', 'UNSET')),
-                resource=json.dumps(item)
+                resource=json.dumps(item),
+                isDataCollection=item.get('isDataCollection')
             )
 
             workspaces.append(workspace)
@@ -395,7 +396,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     .distinct()
                     .filter(WorkbenchWorkspaceUserHistory.researcherId == WorkbenchResearcherHistory.id,
                             WorkbenchWorkspaceSnapshot.id == subquery.c.active_id,
-                            subquery.c.active_id == WorkbenchWorkspaceUserHistory.workspaceId)
+                            subquery.c.active_id == WorkbenchWorkspaceUserHistory.workspaceId,
+                            WorkbenchWorkspaceSnapshot.isDataCollection == 0)
             )
 
             if workspace_id:
@@ -560,6 +562,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                              WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
                          WorkbenchWorkspaceApproved.status == int(WorkbenchWorkspaceStatus.ACTIVE),
                          WorkbenchInstitutionalAffiliations.isVerified == 1,
+                         WorkbenchWorkspaceApproved.isDataCollection == 0,
                          or_(WorkbenchWorkspaceUser.isCreator == 1,
                              and_(
                                  WorkbenchWorkspaceUser.role == int(WorkbenchWorkspaceUserRole.OWNER),
@@ -580,6 +583,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 ).filter(
                     or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
                         WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
+                    WorkbenchWorkspaceApproved.isDataCollection == 0
                 ).group_by(WorkbenchWorkspaceSnapshot.workspaceSourceId).subquery()
             )
 
@@ -601,6 +605,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 ).filter(
                     or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
                         WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
+                    WorkbenchWorkspaceApproved.isDataCollection == 0,
                     WorkbenchWorkspaceApproved.creationTime > start_date
                 ).order_by(
                     desc(WorkbenchWorkspaceApproved.modifiedTime)
@@ -619,6 +624,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                                      ).filter(
                     or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
                         WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
+                    WorkbenchWorkspaceApproved.isDataCollection == 0,
                     WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
                     WorkbenchInstitutionalAffiliations.isVerified == 1,
                     WorkbenchWorkspaceApproved.creationTime > start_date
