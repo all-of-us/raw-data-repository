@@ -69,7 +69,8 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
                 "cdrVersion": "All of Us Registered Tier Dataset v8",
                 "aianResearchType": WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'),
                 "aianResearchDetails": "Test research details",
-                "resource": "No resource payload. Data from VWB 2.0"
+                "resource": "No resource payload. Data from VWB 2.0",
+                "isDataCollection": False
             },
             {
                 "created": time_2,
@@ -114,7 +115,8 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
                 "cdrVersion": "All of Us Registered Tier Dataset v8",
                 "aianResearchType": WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'),
                 "aianResearchDetails": "Test research details 2",
-                "resource": "No resource payload. Data from VWB 2.0"
+                "resource": "No resource payload. Data from VWB 2.0",
+                "isDataCollection": False
             },
             {
                 "created": time_2,
@@ -128,7 +130,8 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
                 "cdrVersion": "All of Us Registered Tier Dataset v8",
                 "aianResearchType": WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'),
                 "aianResearchDetails": "Test research details 3",
-                "resource": "No resource payload. Data from VWB 2.0"
+                "resource": "No resource payload. Data from VWB 2.0",
+                "isDataCollection": False
             }
         ]
 
@@ -179,6 +182,7 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
         self.assertEqual(actual_rows[0].aianResearchType, WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'))
         self.assertEqual(actual_rows[0].aianResearchDetails, "Test research details")
         self.assertEqual(actual_rows[0].resource, "No resource payload. Data from VWB 2.0")
+        self.assertEqual(actual_rows[0].isDataCollection, False)
 
         self.assertEqual(actual_rows[1].workspaceSourceId, 22222)
         self.assertEqual(actual_rows[1].name, "Test Workspace Name 2")
@@ -213,6 +217,7 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
         self.assertEqual(actual_rows[1].aianResearchType, WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'))
         self.assertEqual(actual_rows[1].aianResearchDetails, "Test research details 2")
         self.assertEqual(actual_rows[1].resource, "No resource payload. Data from VWB 2.0")
+        self.assertEqual(actual_rows[0].isDataCollection, False)
 
     @mock.patch("rdr_service.dao.workbench_dao.WorkbenchResearcherDao.bq_row_to_dict")
     @mock.patch("google.cloud.bigquery.Client")
