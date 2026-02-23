@@ -34,6 +34,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
                 "email": "john@example.com",
                 "dateOfBirth": "1992-06-08",
                 "organization": self.pitt_org_name,
+                "awardee": "PITT",
             },
             {
                 "participantId": 2299,
@@ -49,6 +50,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
                 "email": "alex_smith@example.com",
                 "dateOfBirth": "1989-05-05",
                 "organization": self.pitt_org_name,
+                "awardee": "PITT",
             },
             {
                 "participantId": 3000,
@@ -64,6 +66,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
                 "email": "meed@example.com",
                 "dateOfBirth": "1984-05-08",
                 "organization": self.pitt_org_name,
+                "awardee": "PITT",
             },
             {
                 "participantId": 4866,
@@ -79,6 +82,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
                 "email": "jack_ma@example.com",
                 "dateOfBirth": "1990-12-18",
                 "organization": self.az_org_name,
+                "awardee": "AZ_TUCSON",
             },
             {
                 "participantId": 5450,
@@ -94,6 +98,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
                 "email": "alimo@example.com",
                 "dateOfBirth": "1970-02-09",
                 "organization": self.pitt_org_name,
+                "awardee": "PITT",
             },
         ]
         # Insert records in awardee_insite table
@@ -194,6 +199,10 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "consentForStudyEnrollmentAuthored": "2024-11-21T18:12:00",
             "patientStatus": [],
             "enrollmentStatus": "registered",
+            "genderIdentity": "GenderIdentity_Man",
+            "questionnaireOnOverallHealth": "submitted_complete",
+            "questionnaireOnOverallHealthAuthored": "2024-11-28T18:12:00",
+
         }
         self.awardee_insite_dao.upsert(AwardeeInSite(**awardee_insite_values))
 
@@ -238,6 +247,26 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "city": "Lafayette",
             "email": "jack_ma@example.com",
             "organization": "AZ_TUCSON_BANNER_HEALTH",
+            "genderIdentity": "GenderIdentity_Man",
+            "awardee": "AZ_TUCSON",
+            "isEhrDataAvailable": "no",
+            "aian": "no",
+            "questionnaireOnOverallHealth": "submitted_complete",
+            "questionnaireOnOverallHealthAuthored": "2024-11-28T18:12:00",
+            "questionnaireOnLifestyle": None,
+            "questionnaireOnLifestyleAuthored": None,
+            "questionnaireOnTheBasics": None,
+            "questionnaireOnTheBasicsAuthored": None,
+            "questionnaireOnHealthCareAccess": None,
+            "questionnaireOnHealthCareAccessAuthored": None,
+            "questionnaireOnSocialDeterminantsOfHealth": None,
+            "questionnaireOnSocialDeterminantsOfHealthAuthored": None,
+            "questionnaireOnPersonalAndFamilyHealthHistory": None,
+            "questionnaireOnPersonalAndFamilyHealthHistoryAuthored": None,
+            "questionnaireOnLifeFunctioning": None,
+            "questionnaireOnLifeFunctioningAuthored": None,
+            "questionnaireOnEmotionalHealthHistoryAndWellBeing": None,
+            "questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored": None,
         }
 
         response = self.send_get("AwardeeInSite")
