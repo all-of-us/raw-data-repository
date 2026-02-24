@@ -10,7 +10,7 @@ cachetools==4.1.0         # via google-auth
 certifi==2024.7.4       # via geventhttpclient, requests
 cffi==1.15.1              # via cryptography
 chardet==3.0.4            # via requests
-click==8.1.3              # via flask, pip-tools
+click==8.2.0              # via flask, pip-tools
 configargparse==1.2.3     # via locust
 coverage==7.2.5             # via -r requirements.in
 cryptography==44.0.1      # via oauthlib, pyopenssl, requests
