@@ -468,7 +468,7 @@ class AwardeeInSite(PPSCBase):
     """Indicates the time at which the participant completed the Life Functioning questionnaire."""
 
     questionnaireOnEmotionalHealthHistoryAndWellBeing = Column(
-        "questionnaire_on_emotional_health_history_and_well_being",
+        "questionnaire_on_emotional_health",
         String(64),
         nullable=True,
     )
@@ -481,7 +481,7 @@ class AwardeeInSite(PPSCBase):
     * submitted_incomplete
     """
     questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored = Column(
-        "questionnaire_on_emotional_health_history_and_well_being_authored", UTCDateTime, nullable=True
+        "questionnaire_on_emotional_health_authored", UTCDateTime, nullable=True
     )
     """
     Indicates the time at which the participant completed the Emotional Health History and Well Being questionnaire.

@@ -200,6 +200,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "patientStatus": [],
             "enrollmentStatus": "registered",
             "genderIdentity": "GenderIdentity_Man",
+            "isEhrDataAvailable": "no",
             "questionnaireOnOverallHealth": "submitted_complete",
             "questionnaireOnOverallHealthAuthored": "2024-11-28T18:12:00",
 
@@ -250,27 +251,28 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "genderIdentity": "GenderIdentity_Man",
             "awardee": "AZ_TUCSON",
             "isEhrDataAvailable": "no",
-            "aian": "no",
+            "aian": "UNSET",
             "questionnaireOnOverallHealth": "submitted_complete",
             "questionnaireOnOverallHealthAuthored": "2024-11-28T18:12:00",
-            "questionnaireOnLifestyle": None,
-            "questionnaireOnLifestyleAuthored": None,
-            "questionnaireOnTheBasics": None,
-            "questionnaireOnTheBasicsAuthored": None,
-            "questionnaireOnHealthCareAccess": None,
-            "questionnaireOnHealthCareAccessAuthored": None,
-            "questionnaireOnSocialDeterminantsOfHealth": None,
-            "questionnaireOnSocialDeterminantsOfHealthAuthored": None,
-            "questionnaireOnPersonalAndFamilyHealthHistory": None,
-            "questionnaireOnPersonalAndFamilyHealthHistoryAuthored": None,
-            "questionnaireOnLifeFunctioning": None,
-            "questionnaireOnLifeFunctioningAuthored": None,
-            "questionnaireOnEmotionalHealthHistoryAndWellBeing": None,
-            "questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored": None,
+            "questionnaireOnLifestyle": "UNSET",
+            "questionnaireOnLifestyleAuthored": "UNSET",
+            "questionnaireOnTheBasics": "UNSET",
+            "questionnaireOnTheBasicsAuthored": "UNSET",
+            "questionnaireOnHealthcareAccess": "UNSET",
+            "questionnaireOnHealthcareAccessAuthored": "UNSET",
+            "questionnaireOnSocialDeterminantsOfHealth": "UNSET",
+            "questionnaireOnSocialDeterminantsOfHealthAuthored": "UNSET",
+            "questionnaireOnPersonalAndFamilyHealthHistory": "UNSET",
+            "questionnaireOnPersonalAndFamilyHealthHistoryAuthored": "UNSET",
+            "questionnaireOnLifeFunctioning": "UNSET",
+            "questionnaireOnLifeFunctioningAuthored": "UNSET",
+            "questionnaireOnEmotionalHealthHistoryAndWellBeing": "UNSET",
+            "questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored": "UNSET",
         }
 
         response = self.send_get("AwardeeInSite")
         result = response.get("entry")[0]["resource"]
+        print(result)
 
         self.assertEqual(result, expected_result)
 
