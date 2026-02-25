@@ -394,6 +394,7 @@ def insert_awardee_insite_data(
           , sample_status_1sal2
           , sample_order_status_1sal2
           , sample_order_status_1sal2_time
+          , primary_language
           , gender_identity
           , awardee
           , is_ehr_data_available
@@ -442,6 +443,7 @@ def insert_awardee_insite_data(
               , piicontactinformation_phone AS phone_number
               , piicontactinformation_email AS email
               , piibirthinformation_birthdate AS date_of_birth
+              , language_preference AS primary_language
             FROM
               (
                 SELECT participant_id
@@ -463,6 +465,7 @@ def insert_awardee_insite_data(
                       , 'piicontactinformation_phone'
                       , 'piicontactinformation_email'
                       , 'piibirthinformation_birthdate'
+                      , 'language_preference'
                     )
                 )
             LEFT JOIN `{project}.{src_operational_dataset}.state_mapping` sm
@@ -916,6 +919,7 @@ def insert_awardee_insite_data(
               , phone_number
               , email
               , date_of_birth
+              , primary_language
               , COALESCE(latest_organization, ps_organization) AS organization
               , COALESCE(withdrawal_status, 'not_withdrawn') AS withdrawal_status
               , withdrawal_time
@@ -1057,6 +1061,7 @@ def insert_awardee_insite_data(
                 IF(withdrawal_status = 'withdrawn', NULL, phone_number) AS phone_number,
                 IF(withdrawal_status = 'withdrawn', NULL, email) AS email,
                 date_of_birth,
+                IF(withdrawal_status = 'withdrawn', NULL, primary_language) AS primary_language,
                 organization,
                 withdrawal_status,
                 withdrawal_time,

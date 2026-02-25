@@ -189,6 +189,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
 
         awardee_insite_values = {
             "id": id_,
+            "primaryLanguage": "en",
             "deactivationStatus": "deactivated",
             "deactivationTime": "2024-11-21T18:12:00",
             "consentForElectronicHealthRecords": "no",
@@ -217,6 +218,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "streetAddress2": "Apt 67",
             "phoneNumber": "9843685667",
             "dateOfBirth": "1990-12-18",
+            "primaryLanguage": "en",
             "withdrawalStatus": "not_withdrawn",
             "withdrawalTime": "UNSET",
             "deactivationStatus": "deactivated",
@@ -274,6 +276,8 @@ class AwardeeInSiteApiTest(BaseTestCase):
 
         response = self.send_get("AwardeeInSite")
         result = response.get("entry")[0]["resource"]
+
+        print(result)
 
         self.assertEqual(result, expected_result)
 

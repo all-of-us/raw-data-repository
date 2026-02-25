@@ -304,6 +304,16 @@ class AwardeeInSite(PPSCBase):
     )
     """The time the sample was marked as finalized by the processing site."""
 
+    primaryLanguage = Column("primary_language", String(32), nullable=True)
+    """
+    Indicates the language of the consent that the participant signed.
+
+    Values:
+
+    * en
+    * es
+    """
+
     genderIdentity = Column("gender_identity", String(255), nullable=True)
     """
     The personal sense of one's own gender. It can correlate with assigned sex at birth or can differ from it.
