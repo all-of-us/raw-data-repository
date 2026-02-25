@@ -277,8 +277,6 @@ class AwardeeInSiteApiTest(BaseTestCase):
         response = self.send_get("AwardeeInSite")
         result = response.get("entry")[0]["resource"]
 
-        print(result)
-
         self.assertEqual(result, expected_result)
 
 
