@@ -487,6 +487,26 @@ class AwardeeInSite(PPSCBase):
     Indicates the time at which the participant completed the Emotional Health History and Well Being questionnaire.
     """
 
+    questionnaireOnBehavioralHealthAndPersonality = Column(
+        "questionnaire_on_behavioral_health",
+        String(64),
+        nullable=True,
+    )
+    """
+    Indicates the status of BehavioralHealthAndPersonality questionnaire.
+
+    Values:
+
+    * submitted_complete
+    * submitted_incomplete
+    """
+    questionnaireOnBehavioralHealthAndPersonalityAuthored = Column(
+        "questionnaire_on_behavioral_health_authored", UTCDateTime, nullable=True
+    )
+    """
+    Indicates the time at which the participant completed the Behavioral Health & Personality questionnaire.
+    """
+
     @classmethod
     def create_surrogate_key_sql(cls) -> str:
         """

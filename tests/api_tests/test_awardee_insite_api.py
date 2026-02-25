@@ -268,6 +268,8 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "questionnaireOnLifeFunctioningAuthored": "UNSET",
             "questionnaireOnEmotionalHealthHistoryAndWellBeing": "UNSET",
             "questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored": "UNSET",
+            "questionnaireOnBehavioralHealthAndPersonality": "UNSET",
+            "questionnaireOnBehavioralHealthAndPersonalityAuthored": "UNSET",
         }
 
         response = self.send_get("AwardeeInSite")

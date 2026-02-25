@@ -412,8 +412,10 @@ def insert_awardee_insite_data(
           , questionnaire_on_personal_and_family_health_history_authored
           , questionnaire_on_life_functioning
           , questionnaire_on_life_functioning_authored
-          , questionnaire_on_emotional_health_history_and_well_being
-          , questionnaire_on_emotional_health_history_and_well_being_authored
+          , questionnaire_on_emotional_health
+          , questionnaire_on_emotional_health_authored
+          , questionnaire_on_behavioral_health
+          , questionnaire_on_behavioral_health_authored
         )
         WITH
           participant_cte AS (
@@ -845,7 +847,8 @@ def insert_awardee_insite_data(
                 'social determinants of health',
                 'personal and family health history',
                 'life functioning survey',
-                'emotional health history and well-being'
+                'emotional health history and well-being',
+                'behavioral health & personality'
               )
               AND ignore_flag = 0
               GROUP BY participant_id, event_type_name, event_id
@@ -890,8 +893,12 @@ def insert_awardee_insite_data(
               , MAX(CASE WHEN LOWER(event_type_name) = 'life functioning survey' THEN event_authored_time END) AS questionnaire_on_life_functioning_authored
 
               -- emotional health history and well-being
-              , MAX(CASE WHEN LOWER(event_type_name) = 'emotional health history and well-being' THEN activity_status END) AS questionnaire_on_emotional_health_history_and_well_being
-              , MAX(CASE WHEN LOWER(event_type_name) = 'emotional health history and well-being' THEN event_authored_time END) AS questionnaire_on_emotional_health_history_and_well_being_authored
+              , MAX(CASE WHEN LOWER(event_type_name) = 'emotional health history and well-being' THEN activity_status END) AS questionnaire_on_emotional_health
+              , MAX(CASE WHEN LOWER(event_type_name) = 'emotional health history and well-being' THEN event_authored_time END) AS questionnaire_on_emotional_health_authored
+
+              -- behavioral health and personality
+              , MAX(CASE WHEN LOWER(event_type_name) = 'behavioral health & personality' THEN activity_status END) AS questionnaire_on_behavioral_health
+              , MAX(CASE WHEN LOWER(event_type_name) = 'behavioral health & personality' THEN event_authored_time END) AS questionnaire_on_behavioral_health_authored
             FROM survey_completion_latest_submitted
             GROUP BY participant_id
           ),
@@ -994,8 +1001,10 @@ def insert_awardee_insite_data(
               , questionnaire_on_personal_and_family_health_history_authored
               , questionnaire_on_life_functioning
               , questionnaire_on_life_functioning_authored
-              , questionnaire_on_emotional_health_history_and_well_being
-              , questionnaire_on_emotional_health_history_and_well_being_authored
+              , questionnaire_on_emotional_health
+              , questionnaire_on_emotional_health_authored
+              , questionnaire_on_behavioral_health
+              , questionnaire_on_behavioral_health_authored
             FROM participant_cte
             LEFT JOIN profile_pivot
             USING (participant_id)
@@ -1094,8 +1103,10 @@ def insert_awardee_insite_data(
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_personal_and_family_health_history_authored) AS questionnaire_on_personal_and_family_health_history_authored
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_life_functioning) AS questionnaire_on_life_functioning
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_life_functioning_authored) AS questionnaire_on_life_functioning_authored
-              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_emotional_health_history_and_well_being) AS questionnaire_on_emotional_health_history_and_well_being
-              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_emotional_health_history_and_well_being_authored) AS questionnaire_on_emotional_health_history_and_well_being_authored
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_emotional_health_history) AS questionnaire_on_emotional_health
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_emotional_health_history_authored) AS questionnaire_on_emotional_health_authored
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_behavioral_health) AS questionnaire_on_behavioral_health
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_behavioral_health_authored) AS questionnaire_on_behavioral_health_authored
             FROM default_filled_columns
           ),
           -- creating surrogate key to detect changes

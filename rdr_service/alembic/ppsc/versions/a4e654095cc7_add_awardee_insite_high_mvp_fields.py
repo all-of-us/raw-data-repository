@@ -153,6 +153,18 @@ def upgrade_ppsc():
             nullable=True,
         ),
     )
+    op.add_column(
+        "awardee_insite",
+        sa.Column("questionnaire_on_behavioral_health", sa.String(length=64), nullable=True),
+    )
+    op.add_column(
+        "awardee_insite",
+        sa.Column(
+            "questionnaire_on_behavioral_health_authored",
+            rdr_service.model.utils.UTCDateTime(),
+            nullable=True,
+        ),
+    )
     # ### end Alembic commands ###
 
 
@@ -169,6 +181,12 @@ def downgrade_ppsc():
     )
     op.drop_column(
         "awardee_insite", "questionnaire_on_personal_and_family_health_history"
+    )
+    op.drop_column(
+        "awardee_insite", "questionnaire_on_behavioral_health_authored"
+    )
+    op.drop_column(
+        "awardee_insite", "questionnaire_on_behavioral_health"
     )
     op.drop_column("awardee_insite", "questionnaire_on_overall_health_authored")
     op.drop_column("awardee_insite", "questionnaire_on_overall_health")
