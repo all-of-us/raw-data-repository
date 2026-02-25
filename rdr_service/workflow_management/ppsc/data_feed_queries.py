@@ -1108,8 +1108,8 @@ def insert_awardee_insite_data(
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_personal_and_family_health_history_authored) AS questionnaire_on_personal_and_family_health_history_authored
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_life_functioning) AS questionnaire_on_life_functioning
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_life_functioning_authored) AS questionnaire_on_life_functioning_authored
-              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_emotional_health_history) AS questionnaire_on_emotional_health
-              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_emotional_health_history_authored) AS questionnaire_on_emotional_health_authored
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_emotional_health) AS questionnaire_on_emotional_health
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_emotional_health_authored) AS questionnaire_on_emotional_health_authored
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_behavioral_health) AS questionnaire_on_behavioral_health
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_behavioral_health_authored) AS questionnaire_on_behavioral_health_authored
             FROM default_filled_columns
