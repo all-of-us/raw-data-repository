@@ -405,8 +405,8 @@ def insert_awardee_insite_data(
           , questionnaire_on_lifestyle_authored
           , questionnaire_on_the_basics
           , questionnaire_on_the_basics_authored
-          , questionnaire_on_health_care_access
-          , questionnaire_on_health_care_access_authored
+          , questionnaire_on_healthcare_access
+          , questionnaire_on_healthcare_access_authored
           , questionnaire_on_social_determinants_of_health
           , questionnaire_on_social_determinants_of_health_authored
           , questionnaire_on_personal_and_family_health_history
@@ -880,8 +880,8 @@ def insert_awardee_insite_data(
               , MAX(CASE WHEN LOWER(event_type_name) = 'the basics' THEN event_authored_time END) AS questionnaire_on_the_basics_authored
 
               -- health care access & utilization
-              , MAX(CASE WHEN LOWER(event_type_name) = 'health care access & utilization' THEN activity_status END) AS questionnaire_on_health_care_access
-              , MAX(CASE WHEN LOWER(event_type_name) = 'health care access & utilization' THEN event_authored_time END) AS questionnaire_on_health_care_access_authored
+              , MAX(CASE WHEN LOWER(event_type_name) = 'health care access & utilization' THEN activity_status END) AS questionnaire_on_healthcare_access
+              , MAX(CASE WHEN LOWER(event_type_name) = 'health care access & utilization' THEN event_authored_time END) AS questionnaire_on_healthcare_access_authored
 
               -- social determinants of health
               , MAX(CASE WHEN LOWER(event_type_name) = 'social determinants of health' THEN activity_status END) AS questionnaire_on_social_determinants_of_health
@@ -997,8 +997,8 @@ def insert_awardee_insite_data(
               , questionnaire_on_lifestyle_authored
               , questionnaire_on_the_basics
               , questionnaire_on_the_basics_authored
-              , questionnaire_on_health_care_access
-              , questionnaire_on_health_care_access_authored
+              , questionnaire_on_healthcare_access
+              , questionnaire_on_healthcare_access_authored
               , questionnaire_on_social_determinants_of_health
               , questionnaire_on_social_determinants_of_health_authored
               , questionnaire_on_personal_and_family_health_history
@@ -1100,8 +1100,8 @@ def insert_awardee_insite_data(
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_lifestyle_authored) AS questionnaire_on_lifestyle_authored
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_the_basics) AS questionnaire_on_the_basics
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_the_basics_authored) AS questionnaire_on_the_basics_authored
-              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_health_care_access) AS questionnaire_on_health_care_access
-              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_health_care_access_authored) AS questionnaire_on_health_care_access_authored
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_healthcare_access) AS questionnaire_on_healthcare_access
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_healthcare_access_authored) AS questionnaire_on_healthcare_access_authored
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_social_determinants_of_health) AS questionnaire_on_social_determinants_of_health
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_social_determinants_of_health_authored) AS questionnaire_on_social_determinants_of_health_authored
               , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_personal_and_family_health_history) AS questionnaire_on_personal_and_family_health_history
