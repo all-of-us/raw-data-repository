@@ -394,6 +394,29 @@ def insert_awardee_insite_data(
           , sample_status_1sal2
           , sample_order_status_1sal2
           , sample_order_status_1sal2_time
+          , primary_language
+          , gender_identity
+          , awardee
+          , is_ehr_data_available
+          , aian
+          , questionnaire_on_overall_health
+          , questionnaire_on_overall_health_authored
+          , questionnaire_on_lifestyle
+          , questionnaire_on_lifestyle_authored
+          , questionnaire_on_the_basics
+          , questionnaire_on_the_basics_authored
+          , questionnaire_on_healthcare_access
+          , questionnaire_on_healthcare_access_authored
+          , questionnaire_on_social_determinants_of_health
+          , questionnaire_on_social_determinants_of_health_authored
+          , questionnaire_on_personal_and_family_health_history
+          , questionnaire_on_personal_and_family_health_history_authored
+          , questionnaire_on_life_functioning
+          , questionnaire_on_life_functioning_authored
+          , questionnaire_on_emotional_health
+          , questionnaire_on_emotional_health_authored
+          , questionnaire_on_behavioral_health
+          , questionnaire_on_behavioral_health_authored
         )
         WITH
           participant_cte AS (
@@ -420,6 +443,7 @@ def insert_awardee_insite_data(
               , piicontactinformation_phone AS phone_number
               , piicontactinformation_email AS email
               , piibirthinformation_birthdate AS date_of_birth
+              , language_preference AS primary_language
             FROM
               (
                 SELECT participant_id
@@ -441,6 +465,7 @@ def insert_awardee_insite_data(
                       , 'piicontactinformation_phone'
                       , 'piicontactinformation_email'
                       , 'piibirthinformation_birthdate'
+                      , 'language_preference'
                     )
                 )
             LEFT JOIN `{project}.{src_operational_dataset}.state_mapping` sm
@@ -466,6 +491,15 @@ def insert_awardee_insite_data(
                 FROM organization_cte
               )
               WHERE rn = 1
+          ),
+          hpo_cte AS (
+            SELECT participant_id
+                , h.name AS awardee
+            FROM latest_organization_cte loc
+            LEFT JOIN `{project}.{src_operational_dataset}.rdr_organization` o
+            ON loc.latest_organization = o.external_id
+            LEFT JOIN `{project}.{src_operational_dataset}.rdr_hpo` h
+            ON o.hpo_id = h.hpo_id
           ),
           withdrawn_cte AS (
             SELECT participant_id
@@ -762,6 +796,115 @@ def insert_awardee_insite_data(
             LEFT JOIN `{project}.{src_operational_dataset}.rdr_organization` o
             ON ps.organization_id = o.organization_id
           ),
+          latest_gender_identity AS (
+              SELECT participant_id
+                , data_element_value AS gender_identity
+              FROM (
+                SELECT *
+                  , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY event_authored_time DESC) AS rn
+                FROM `{project}.{src_operational_dataset}.ppsc_survey_completion_event`
+                WHERE LOWER(event_type_name) = 'basics data'
+                  AND LOWER(data_element_name) ='gender_genderidentity'
+                  AND ignore_flag = 0
+              )
+              WHERE rn = 1
+          ),
+          ehr_data_available_cte AS (
+            SELECT participant_id
+                , CASE
+                    WHEN latest_upload_time IS NOT NULL OR LOWER(consent_for_electronic_health_records) = 'yes' THEN 'yes'
+                    ELSE 'no'
+                END AS is_ehr_data_available
+            FROM `{curation_project}.rdr_operational_us_central.ehr_upload_pids` eup
+            LEFT JOIN ehr_latest_submitted els
+            ON eup.person_id = els.participant_id
+          ),
+          aian_cte AS (
+            SELECT DISTINCT participant_id
+                , 'yes' AS aian
+            FROM `{project}.{src_operational_dataset}.ppsc_survey_completion_event`
+            WHERE LOWER(data_element_name) = 'race_whatraceethnicity'
+              AND LOWER(data_element_value) = 'whatraceethnicity_aian'
+              AND ignore_flag = 0
+          ),
+          survey_completion_cte AS (
+              SELECT
+                  participant_id
+                  , event_type_name
+                  , event_id
+                  , MAX(
+                      SAFE_CAST(event_authored_time AS DATETIME)
+                    ) AS event_authored_time
+                  , MAX(
+                      CASE
+                        WHEN data_element_name = 'activity_status'
+                        THEN data_element_value
+                    END
+                  ) AS activity_status
+              FROM `{project}.{src_operational_dataset}.ppsc_survey_completion_event`
+              WHERE LOWER(event_type_name) IN (
+                'overall health',
+                'lifestyle',
+                'the basics',
+                'health care access & utilization',
+                'social determinants of health',
+                'personal and family health history',
+                'life functioning survey',
+                'emotional health history and well-being',
+                'behavioral health & personality'
+              )
+              AND ignore_flag = 0
+              GROUP BY participant_id, event_type_name, event_id
+          ),
+          survey_completion_latest_submitted AS (
+              SELECT * EXCEPT (event_id, rn)
+              FROM (
+                SELECT *
+                  , ROW_NUMBER() OVER(PARTITION BY participant_id, event_type_name ORDER BY event_authored_time DESC) AS rn
+                FROM survey_completion_cte
+              )
+              WHERE rn = 1
+          ),
+          survey_completion_pivot AS (
+            SELECT participant_id
+              -- overall health
+              , MAX(CASE WHEN LOWER(event_type_name) = 'overall health' THEN activity_status END) AS questionnaire_on_overall_health
+              , MAX(CASE WHEN LOWER(event_type_name) = 'overall health' THEN event_authored_time END) AS questionnaire_on_overall_health_authored
+
+              -- lifestyle
+              , MAX(CASE WHEN LOWER(event_type_name) = 'lifestyle' THEN activity_status END) AS questionnaire_on_lifestyle
+              , MAX(CASE WHEN LOWER(event_type_name) = 'lifestyle' THEN event_authored_time END) AS questionnaire_on_lifestyle_authored
+
+              -- the basics
+              , MAX(CASE WHEN LOWER(event_type_name) = 'the basics' THEN activity_status END) AS questionnaire_on_the_basics
+              , MAX(CASE WHEN LOWER(event_type_name) = 'the basics' THEN event_authored_time END) AS questionnaire_on_the_basics_authored
+
+              -- health care access & utilization
+              , MAX(CASE WHEN LOWER(event_type_name) = 'health care access & utilization' THEN activity_status END) AS questionnaire_on_healthcare_access
+              , MAX(CASE WHEN LOWER(event_type_name) = 'health care access & utilization' THEN event_authored_time END) AS questionnaire_on_healthcare_access_authored
+
+              -- social determinants of health
+              , MAX(CASE WHEN LOWER(event_type_name) = 'social determinants of health' THEN activity_status END) AS questionnaire_on_social_determinants_of_health
+              , MAX(CASE WHEN LOWER(event_type_name) = 'social determinants of health' THEN event_authored_time END) AS questionnaire_on_social_determinants_of_health_authored
+
+              -- personal and family health history
+              , MAX(CASE WHEN LOWER(event_type_name) = 'personal and family health history' THEN activity_status END) AS questionnaire_on_personal_and_family_health_history
+              , MAX(CASE WHEN LOWER(event_type_name) = 'personal and family health history' THEN event_authored_time END) AS questionnaire_on_personal_and_family_health_history_authored
+
+              -- life functioning survey
+              , MAX(CASE WHEN LOWER(event_type_name) = 'life functioning survey' THEN activity_status END) AS questionnaire_on_life_functioning
+              , MAX(CASE WHEN LOWER(event_type_name) = 'life functioning survey' THEN event_authored_time END) AS questionnaire_on_life_functioning_authored
+
+              -- emotional health history and well-being
+              , MAX(CASE WHEN LOWER(event_type_name) = 'emotional health history and well-being' THEN activity_status END) AS questionnaire_on_emotional_health
+              , MAX(CASE WHEN LOWER(event_type_name) = 'emotional health history and well-being' THEN event_authored_time END) AS questionnaire_on_emotional_health_authored
+
+              -- behavioral health and personality
+              , MAX(CASE WHEN LOWER(event_type_name) = 'behavioral health & personality' THEN activity_status END) AS questionnaire_on_behavioral_health
+              , MAX(CASE WHEN LOWER(event_type_name) = 'behavioral health & personality' THEN event_authored_time END) AS questionnaire_on_behavioral_health_authored
+            FROM survey_completion_latest_submitted
+            GROUP BY participant_id
+          ),
           default_filled_columns AS (
             SELECT
               participant_id
@@ -776,6 +919,7 @@ def insert_awardee_insite_data(
               , phone_number
               , email
               , date_of_birth
+              , primary_language
               , COALESCE(latest_organization, ps_organization) AS organization
               , COALESCE(withdrawal_status, 'not_withdrawn') AS withdrawal_status
               , withdrawal_time
@@ -843,6 +987,28 @@ def insert_awardee_insite_data(
                   ELSE 'unset'
                 END AS sample_order_status_1sal2
               , sample_order_status_1sal2_time
+              , gender_identity
+              , COALESCE(awardee, 'unset') AS awardee
+              , COALESCE(is_ehr_data_available, 'no') AS is_ehr_data_available
+              , COALESCE(aian, 'no') AS aian
+              , questionnaire_on_overall_health
+              , questionnaire_on_overall_health_authored
+              , questionnaire_on_lifestyle
+              , questionnaire_on_lifestyle_authored
+              , questionnaire_on_the_basics
+              , questionnaire_on_the_basics_authored
+              , questionnaire_on_healthcare_access
+              , questionnaire_on_healthcare_access_authored
+              , questionnaire_on_social_determinants_of_health
+              , questionnaire_on_social_determinants_of_health_authored
+              , questionnaire_on_personal_and_family_health_history
+              , questionnaire_on_personal_and_family_health_history_authored
+              , questionnaire_on_life_functioning
+              , questionnaire_on_life_functioning_authored
+              , questionnaire_on_emotional_health
+              , questionnaire_on_emotional_health_authored
+              , questionnaire_on_behavioral_health
+              , questionnaire_on_behavioral_health_authored
             FROM participant_cte
             LEFT JOIN profile_pivot
             USING (participant_id)
@@ -869,7 +1035,17 @@ def insert_awardee_insite_data(
             LEFT JOIN latest_ehr_receipt_time_cte lertc
             ON participant_cte.participant_id = lertc.person_id
             LEFT JOIN latest_organization_cte
-            USING(participant_id)
+            USING (participant_id)
+            LEFT JOIN latest_gender_identity
+            USING (participant_id)
+            LEFT JOIN hpo_cte
+            USING (participant_id)
+            LEFT JOIN ehr_data_available_cte
+            USING (participant_id)
+            LEFT JOIN aian_cte
+            USING (participant_id)
+            LEFT JOIN survey_completion_pivot
+            USING (participant_id)
           ),
           withdrawn_update AS (
               SELECT
@@ -885,6 +1061,7 @@ def insert_awardee_insite_data(
                 IF(withdrawal_status = 'withdrawn', NULL, phone_number) AS phone_number,
                 IF(withdrawal_status = 'withdrawn', NULL, email) AS email,
                 date_of_birth,
+                IF(withdrawal_status = 'withdrawn', NULL, primary_language) AS primary_language,
                 organization,
                 withdrawal_status,
                 withdrawal_time,
@@ -913,6 +1090,28 @@ def insert_awardee_insite_data(
                 IF(withdrawal_status = 'withdrawn', 'unset', sample_status_1sal2) AS sample_status_1sal2,
                 IF(withdrawal_status = 'withdrawn', 'unset', sample_order_status_1sal2) AS sample_order_status_1sal2,
                 IF(withdrawal_status = 'withdrawn', NULL, sample_order_status_1sal2_time) AS sample_order_status_1sal2_time
+              , IF(withdrawal_status = 'withdrawn', NULL, gender_identity) AS gender_identity
+              , awardee
+              , IF(withdrawal_status = 'withdrawn', NULL, is_ehr_data_available) AS is_ehr_data_available
+              , IF(withdrawal_status = 'withdrawn', NULL, aian) AS aian
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_overall_health) AS questionnaire_on_overall_health
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_overall_health_authored) AS questionnaire_on_overall_health_authored
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_lifestyle) AS questionnaire_on_lifestyle
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_lifestyle_authored) AS questionnaire_on_lifestyle_authored
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_the_basics) AS questionnaire_on_the_basics
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_the_basics_authored) AS questionnaire_on_the_basics_authored
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_healthcare_access) AS questionnaire_on_healthcare_access
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_healthcare_access_authored) AS questionnaire_on_healthcare_access_authored
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_social_determinants_of_health) AS questionnaire_on_social_determinants_of_health
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_social_determinants_of_health_authored) AS questionnaire_on_social_determinants_of_health_authored
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_personal_and_family_health_history) AS questionnaire_on_personal_and_family_health_history
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_personal_and_family_health_history_authored) AS questionnaire_on_personal_and_family_health_history_authored
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_life_functioning) AS questionnaire_on_life_functioning
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_life_functioning_authored) AS questionnaire_on_life_functioning_authored
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_emotional_health) AS questionnaire_on_emotional_health
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_emotional_health_authored) AS questionnaire_on_emotional_health_authored
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_behavioral_health) AS questionnaire_on_behavioral_health
+              , IF(withdrawal_status = 'withdrawn', NULL, questionnaire_on_behavioral_health_authored) AS questionnaire_on_behavioral_health_authored
             FROM default_filled_columns
           ),
           -- creating surrogate key to detect changes
@@ -933,7 +1132,71 @@ def insert_awardee_insite_data(
               WHERE rn = 1
           )
 
-        SELECT *
+        SELECT surrogate_key
+          , created
+          , participant_id
+          , first_name
+          , middle_name
+          , last_name
+          , zip_code
+          , state
+          , city
+          , street_address
+          , street_address2
+          , phone_number
+          , email
+          , date_of_birth
+          , organization
+          , withdrawal_status
+          , withdrawal_time
+          , deactivation_status
+          , deactivation_time
+          , deceased_status
+          , deceased_authored
+          , consent_for_electronic_health_records
+          , consent_for_electronic_health_records_authored
+          , consent_for_electronic_health_records_first_yes_authored
+          , first_ehr_receipt_time
+          , latest_ehr_receipt_time
+          , consent_for_study_enrollment
+          , consent_for_study_enrollment_authored
+          , enrollment_status
+          , clinic_physical_measurements_status
+          , clinic_physical_measurements_finalized_time
+          , clinic_physical_measurements_finalized_site
+          , self_reported_physical_measurements_status
+          , self_reported_physical_measurements_authored
+          , patient_status
+          , biospecimen_source_site
+          , biospecimen_order_time
+          , biospecimen_status
+          , sample_1sal2_collection_method
+          , sample_status_1sal2
+          , sample_order_status_1sal2
+          , sample_order_status_1sal2_time
+          , primary_language
+          , gender_identity
+          , awardee
+          , is_ehr_data_available
+          , aian
+          , questionnaire_on_overall_health
+          , questionnaire_on_overall_health_authored
+          , questionnaire_on_lifestyle
+          , questionnaire_on_lifestyle_authored
+          , questionnaire_on_the_basics
+          , questionnaire_on_the_basics_authored
+          , questionnaire_on_healthcare_access
+          , questionnaire_on_healthcare_access_authored
+          , questionnaire_on_social_determinants_of_health
+          , questionnaire_on_social_determinants_of_health_authored
+          , questionnaire_on_personal_and_family_health_history
+          , questionnaire_on_personal_and_family_health_history_authored
+          , questionnaire_on_life_functioning
+          , questionnaire_on_life_functioning_authored
+          , questionnaire_on_emotional_health
+          , questionnaire_on_emotional_health_authored
+          , questionnaire_on_behavioral_health
+          , questionnaire_on_behavioral_health_authored
         FROM final_result_with_surrogate_key fr
         WHERE NOT EXISTS (
             SELECT 1
