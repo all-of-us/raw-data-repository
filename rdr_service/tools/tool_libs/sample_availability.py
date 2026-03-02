@@ -14,6 +14,7 @@ from rdr_service.model.biobank_order import (
     BiobankAliquot, BiobankAliquotDataset, BiobankAliquotDatasetItem, BiobankSpecimen
 )
 from rdr_service.model.participant import Participant
+from rdr_service.services.bigquery import BigQueryTable
 from rdr_service.services.system_utils import list_chunks
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
@@ -21,7 +22,12 @@ tool_cmd = 'sample-availability'
 tool_desc = 'Generates dataset of sample availability'
 
 
-SampleCollectionCutoffDate = datetime(2025, 1, 1)
+SampleCollectionCutoffDate = datetime(2023, 10, 1)
+BqUploadLocation = {
+    'project': 'aou-warehouse-preprod',
+    'dataset': 'privacy_review',
+    'table': 'aou_sample_availability'
+}
 
 
 @dataclass
@@ -190,6 +196,11 @@ class SampleAvailabilityDatasetTool(ToolBase):
 
                     participant_export_data.set_type_as_available(sample_type, collection_date)
 
+        # self._store_as_csv(data_to_export)
+        self._upload_to_bq(data_to_export)
+
+    @classmethod
+    def _store_as_csv(cls, data_to_export: List[ParticipantData]):
         with open('export.csv', 'w') as file:
             writer = csv.DictWriter(file, [
                 'person_id',
@@ -219,6 +230,34 @@ class SampleAvailabilityDatasetTool(ToolBase):
                     'saliva_availability': 'Y' if data.saliva_availability.is_available else 'N',
                     'saliva_collection_timestamp': data.saliva_availability.collection_datetime,
                 })
+
+    @classmethod
+    def _upload_to_bq(cls, data_to_export: List[ParticipantData]):
+        # had about 420,000 records
+        bq_table = BigQueryTable(**BqUploadLocation)
+        batch_size = 2000
+
+        count = 0
+        total = len(data_to_export)
+        for batch in list_chunks(data_to_export, batch_size):
+            bq_table.insert([
+                {
+                    'person_id': data.participant_id,
+                    'pst_plasma_availability': data.pst_plasma_availability.is_available,
+                    'pst_plasma_collection_timestamp': data.pst_plasma_availability.collection_datetime,
+                    'edta_plasma_availability': data.edta_plasma_availability.is_available,
+                    'edta_plasma_collection_timestamp': data.edta_plasma_availability.collection_datetime,
+                    'serum_availability': data.serum_availability.is_available,
+                    'serum_collection_timestamp': data.serum_availability.collection_datetime,
+                    'blood_availability': data.blood_availability.is_available,
+                    'blood_collection_timestamp': data.blood_availability.collection_datetime,
+                    'saliva_availability': data.saliva_availability.is_available,
+                    'saliva_collection_timestamp': data.saliva_availability.collection_datetime,
+                }
+                for data in batch
+            ])
+            count += batch_size
+            print(f'{datetime.now()}: finish with {count} of {total}')
 
     @classmethod
     def _get_timestamp_or_none(cls, is_available, timestamp):
