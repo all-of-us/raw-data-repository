@@ -809,16 +809,6 @@ def insert_awardee_insite_data(
               )
               WHERE rn = 1
           ),
-          ehr_data_available_cte AS (
-            SELECT participant_id
-                , CASE
-                    WHEN latest_upload_time IS NOT NULL OR LOWER(consent_for_electronic_health_records) = 'yes' THEN 'yes'
-                    ELSE 'no'
-                END AS is_ehr_data_available
-            FROM `{curation_project}.rdr_operational_us_central.ehr_upload_pids` eup
-            LEFT JOIN ehr_latest_submitted els
-            ON eup.person_id = els.participant_id
-          ),
           aian_cte AS (
             SELECT DISTINCT participant_id
                 , 'yes' AS aian
@@ -989,7 +979,10 @@ def insert_awardee_insite_data(
               , sample_order_status_1sal2_time
               , gender_identity
               , COALESCE(awardee, 'unset') AS awardee
-              , COALESCE(is_ehr_data_available, 'no') AS is_ehr_data_available
+              , CASE
+                    WHEN lertc.latest_ehr_receipt_time IS NOT NULL OR LOWER(consent_for_electronic_health_records) = 'yes' THEN 'yes'
+                    ELSE 'no'
+                END AS is_ehr_data_available
               , COALESCE(aian, 'no') AS aian
               , questionnaire_on_overall_health
               , questionnaire_on_overall_health_authored
@@ -1039,8 +1032,6 @@ def insert_awardee_insite_data(
             LEFT JOIN latest_gender_identity
             USING (participant_id)
             LEFT JOIN hpo_cte
-            USING (participant_id)
-            LEFT JOIN ehr_data_available_cte
             USING (participant_id)
             LEFT JOIN aian_cte
             USING (participant_id)
