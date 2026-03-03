@@ -8,6 +8,32 @@ from rdr_service.model.base import (
     PPSCBase,
 )
 
+MVP_FIELDS = [
+    "primaryLanguage",
+    "genderIdentity",
+    "awardee",
+    "isEhrDataAvailable",
+    "aian",
+    "questionnaireOnOverallHealth",
+    "questionnaireOnOverallHealthAuthored",
+    "questionnaireOnLifestyle",
+    "questionnaireOnLifestyleAuthored",
+    "questionnaireOnTheBasics",
+    "questionnaireOnTheBasicsAuthored",
+    "questionnaireOnHealthcareAccess",
+    "questionnaireOnHealthcareAccessAuthored",
+    "questionnaireOnSocialDeterminantsOfHealth",
+    "questionnaireOnSocialDeterminantsOfHealthAuthored",
+    "questionnaireOnPersonalAndFamilyHealthHistory",
+    "questionnaireOnPersonalAndFamilyHealthHistoryAuthored",
+    "questionnaireOnLifeFunctioning",
+    "questionnaireOnLifeFunctioningAuthored",
+    "questionnaireOnEmotionalHealthHistoryAndWellBeing",
+    "questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored",
+    "questionnaireOnBehavioralHealthAndPersonality",
+    "questionnaireOnBehavioralHealthAndPersonalityAuthored",
+]
+
 
 class AwardeeInSite(PPSCBase):
     __tablename__ = "awardee_insite"
