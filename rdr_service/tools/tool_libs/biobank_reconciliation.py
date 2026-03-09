@@ -23,11 +23,9 @@ class Correction:
 
 class BiobankReconciliation(ToolBase):
 
-    def _process_correction(self, correction, db_object: BiobankAliquot):
-        # db_object.location
-        field_name = 'location'                                              # db field ref
+    def _process_correction(self, correction, db_object: BiobankAliquotDataset):
         if self.dry_run:
-            db_value = db_object.__getattribute__(field_name)
+            db_value = db_object.extractionMethod                                        # (dry-run) extract db value
             if db_value == correction.correct_value:
                 print(f'{correction.key}: WOULD NOT CHANGE VALUE')
             else:
@@ -58,7 +56,7 @@ class BiobankReconciliation(ToolBase):
 
             sample_field = 'status'
             new_value = BiobankSpecimenDao._get_stored_status(
-                status_str=db_object.status,                                # specimen value ref
+                status_str=db_object.status,                                # (sample update) specimen value ref
                 disposal_reason_str=db_object.disposalReason
             )
             # new_value = correction.correct_value
@@ -79,9 +77,9 @@ class BiobankReconciliation(ToolBase):
     @classmethod
     def _get_mapped_db_objects(cls, keys, session) -> Dict:
         query_results = session.query(
-            BiobankAliquot                                                  # database table
+            BiobankAliquotDataset                                                  # database table
         ).filter(
-            BiobankAliquot.rlimsId.in_(keys)                               # primary key filter
+            BiobankAliquotDataset.rlimsId.in_(keys)                               # primary key filter
         ).all()
 
         return {
@@ -92,9 +90,13 @@ class BiobankReconciliation(ToolBase):
     def run(self):
         super().run()
                                                                             # file path
-        file_path = 'reconciliation_files/reconciliation_20250623_aliquots_location_20250729.csv'
+        file_path = 'reconciliation/reconciliation_20260202_datasets_extractionmethod_20260303.csv'
         batch_size = 5000
         self.dry_run = True                                                 # dry run
+
+        # todo:
+        #   move dry_run and stored_sample_update flags to the top
+        #   when doing dry_run, print total count of changes at the end (for when verifying there are no changes)
 
         # specimen value changed:
         #   biobankId, orderId, testCode, confirmedDate,
@@ -179,11 +181,11 @@ class BiobankReconciliation(ToolBase):
     @classmethod
     def _run_batch_update(cls, session: Session, id_value_map):
         query = (
-            'update biobank_aliquot set modified = now(), '
-            'location = CASE id'
+            'update biobank_aliquot_dataset set modified = now(), '
+            'extraction_method = CASE id'
         )                                                                           # db column ref
-        for id, value in id_value_map.items():
-            query += f' when {id} then "{value}"'
+        for _id, value in id_value_map.items():
+            query += f' when {_id} then "{value}"'
 
         id_list_str = ','.join([str(_id) for _id in id_value_map.keys()])
         query += f' end where id in ({id_list_str});'
