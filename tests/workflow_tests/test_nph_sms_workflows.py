@@ -339,7 +339,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             matrix_id=1112,
             package_id="test",
             storage_unit_id="test",
-            file_path=f"DUKE_n0_test.csv",
+            file_path="DUKE_n0_test.csv",
             well_box_position="A2",
             tracking_number="test",
             sample_comments="test",
@@ -558,16 +558,16 @@ class NphSmsWorkflowsTest(BaseTestCase):
             csv_reader = csv.DictReader(cloud_file)
             csv_rows = list(csv_reader)
 
-       # with open_cloud_file(duke_csv_path, mode='r') as duke_file:
-       #     csv_reader = csv.DictReader(duke_file)
-       #     duke_rows = list(csv_reader)
+        with open_cloud_file(duke_csv_path, mode='r') as duke_file:
+            csv_reader = csv.DictReader(duke_file)
+            duke_rows = list(csv_reader)
 
         self.assertEqual(csv_rows[0]['sample_id'], '10001')
         self.assertEqual(csv_rows[0]['matrix_id'], "1111")
         self.assertEqual(csv_rows[0]['urine_color'], '"Color 4"')
         self.assertEqual(csv_rows[0]['urine_clarity'], '"Clean"')
         self.assertEqual(csv_rows[0]['manufacturer_lot'], '256837')
-        #self.assertEqual(duke_rows[0]['sample_id'], '10002')
+        self.assertEqual(duke_rows[0]['sample_id'], '10002')
 
         n1_mcac_dao = SmsN1Mc1Dao()
         manifest_records = n1_mcac_dao.get_all()
