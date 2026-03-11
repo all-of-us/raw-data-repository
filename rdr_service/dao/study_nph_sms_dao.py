@@ -147,6 +147,17 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
         if not kwargs.get('package_id'):
             raise KeyError("package_id required for N1_MC1")
 
+        recipient_enum = {
+            "unc_meta": "MCAC_UNC_META",
+            "ncsu": "MCAC_NCSU",
+            "duke_nph": "MCAC_DUKE",
+            "duke_supp": "DUKE",
+            "duke_urine": "DUKE",
+            "unc_clinical": "MCAC_UNC_CLINICAL",
+            "pbrc": "PBRC",
+            "ucsd": "UCSD"
+        }
+
         with self.session() as session:
             most_recent = session.query(
                 SmsSample.lims_sample_id,
@@ -191,6 +202,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 and_(
                     SmsSample.lims_sample_id == (SmsN0.lims_parent_sample_id if (
                         'duke_supp' in kwargs.get('recipient').lower()) else SmsN0.lims_sample_id),
+                    SmsSample.destination == recipient_enum[kwargs.get('recipient').lower()],
                     SmsSample.ignore_flag == 0
                 )
             ).outerjoin(
@@ -245,6 +257,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                     SmsN1Mc1,
                     and_(
                         SmsN0.sample_id == SmsN1Mc1.sample_id,
+                        SmsN1Mc1.destination == SmsSample.destination,
                         SmsN1Mc1.ignore_flag == 0
                     )
                 )
@@ -255,6 +268,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                     SmsN1Mc1,
                     and_(
                         SmsN0.lims_sample_id == SmsN1Mc1.sample_id,
+                        SmsN1Mc1.destination == SmsSample.destination,
                         SmsN1Mc1.ignore_flag == 0
                     )
                 )
@@ -273,6 +287,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                     SmsN1Mc1,
                     and_(
                         SmsN0.sample_id == SmsN1Mc1.sample_id,
+                        SmsN1Mc1.destination == SmsSample.destination,
                         SmsN1Mc1.ignore_flag == 0
                     )
                 )
