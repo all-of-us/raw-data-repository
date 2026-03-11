@@ -42,6 +42,10 @@ class SampleType(Enum):
     edta_plasma = auto()
     pst_plasma = auto()
     serum = auto()
+    ccfdna = auto()
+    urine = auto()
+    pxr_rna = auto()
+    hep = auto()
 
 
 @dataclass
@@ -73,6 +77,10 @@ class ParticipantData:
     serum_availability: Availability = field(default_factory=Availability)
     blood_availability: Availability = field(default_factory=Availability)
     saliva_availability: Availability = field(default_factory=Availability)
+    cell_free_dna_availability: Availability = field(default_factory=Availability)
+    urine_availability: Availability = field(default_factory=Availability)
+    pxr_rna_availability: Availability = field(default_factory=Availability)
+    hep_availability: Availability = field(default_factory=Availability)
 
     def set_type_as_available(self, sample_type: SampleType, collection_date: datetime):
         field_to_set = None
@@ -87,6 +95,14 @@ class ParticipantData:
                 field_to_set = self.pst_plasma_availability
             case SampleType.serum:
                 field_to_set = self.serum_availability
+            case SampleType.ccfdna:
+                field_to_set = self.cell_free_dna_availability
+            case SampleType.urine:
+                field_to_set = self.urine_availability
+            case SampleType.pxr_rna:
+                field_to_set = self.pxr_rna_availability
+            case SampleType.hep:
+                field_to_set = self.hep_availability
 
         if field_to_set:
             field_to_set.is_available = True
@@ -117,11 +133,28 @@ SerumSampleCodes = [
     '1SST8',
     '2SST8'
 ]
+CellFreeCodes = [
+    '1CFD9'
+]
+UrineCodes = [
+    '1UR10',
+    '1UR90'
+]
+PxrRnaCodes = [
+    '1PXR2'
+]
+HepCodes = [
+    '1HEP4'
+]
 SampleCodesToProcess = [
     *SalivaSampleCodes,
     *BloodSampleCodes,
     *PlasmaSampleCodes,
-    *SerumSampleCodes
+    *SerumSampleCodes,
+    *CellFreeCodes,
+    *UrineCodes,
+    *PxrRnaCodes,
+    *HepCodes
 ]
 
 availability_data = defaultdict(lambda participant_id: ParticipantData(participant_id))
@@ -320,6 +353,14 @@ class SampleAvailabilityDatasetTool(ToolBase):
             return SampleType.serum
         elif test_code in SalivaSampleCodes and sample_type == 'DNA':
             return SampleType.saliva
+        elif test_code in CellFreeCodes:
+            return SampleType.ccfdna
+        elif test_code in UrineCodes:
+            return SampleType.urine
+        elif test_code in PxrRnaCodes:
+            return SampleType.pxr_rna
+        elif test_code in HepCodes:
+            return SampleType.hep
 
         return None
 
