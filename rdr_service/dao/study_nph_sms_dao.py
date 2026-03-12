@@ -170,7 +170,6 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
 
             sample_well = aliased(SmsN1Mc1)
 
-            aliquot_sample = aliased(OrderedSample)
             query = session.query(
                 SmsSample.sample_id,
                 SmsN0.matrix_id,
@@ -227,6 +226,8 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             )
 
             if 'pbrc' in kwargs.get('recipient').lower():
+                aliquot_sample = aliased(OrderedSample)
+
                 query = query.add_columns(
                     func.json_extract(OrderedSample.supplemental_fields, "$.color").label('urine_color'),
                     func.json_extract(OrderedSample.supplemental_fields, "$.clarity").label('urine_clarity'),
