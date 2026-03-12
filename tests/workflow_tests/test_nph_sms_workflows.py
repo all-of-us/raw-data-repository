@@ -490,7 +490,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             matrix_id=1111,
             package_id="test",
             storage_unit_id="test",
-            file_path=f"{destination}_n0_test.csv",
+            file_path=f"{destination}_SUPP_n0_test.csv",
             well_box_position="A5",
             tracking_number="test",
             sample_comments="test",
@@ -552,7 +552,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             )
 
         expected_csv_path = "test-bucket-unc-meta/n1_manifests/UNC_META_n1_2023-04-25T15:13:00.000000.csv"
-        duke_csv_path = "test-bucket-unc-meta/n1_manifests/DUKE_SUPP_n1_2023-04-25T15:13:00.000000.txt"
+        duke_csv_path = "test-bucket-unc-meta/n1_manifests/DUKE_SUPP_n1_2023-04-25T15:13:00.000000.csv"
 
         with open_cloud_file(expected_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file)
@@ -611,7 +611,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
         manifest_records = n1_mcac_dao.get_all()
-        self.assertEqual(len(manifest_records), 4)
+        self.assertEqual(len(manifest_records), 6)
 
     def test_n1_mc1_pbrc_generation(self):
         self.create_data_pbrc_n1_mc1_generation()

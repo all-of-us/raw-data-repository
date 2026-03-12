@@ -165,7 +165,8 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
             ).group_by(
                 SmsSample.lims_sample_id
             ).filter(
-                SmsSample.ignore_flag == 0
+                SmsSample.ignore_flag == 0,
+                SmsSample.destination == recipient_enum[kwargs.get('recipient').lower()]
             ).subquery()
 
             sample_well = aliased(SmsN1Mc1)
@@ -215,6 +216,7 @@ class SmsN1Mc1Dao(BaseDao, SmsManifestMixin, SmsManifestSourceMixin):
                 and_(
                      SmsN0.well_box_position == sample_well.well_box_position,
                      SmsN0.package_id == sample_well.package_id,
+                     SmsSample.destination == sample_well.destination,
                      sample_well.ignore_flag == 0
                 )
             ).outerjoin(
