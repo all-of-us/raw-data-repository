@@ -14,11 +14,6 @@ from rdr_service.workflow_management.nph.sms_workflows import SmsWorkflow
 from tests.test_data import data_path
 from rdr_service.ancillary_study_resources.nph.enums import VisitPeriod
 
-from rdr_service.dao import database_factory
-from rdr_service.model.study_nph import Order, OrderedSample, DlwDosage, Participant
-from rdr_service.model.study_nph_sms import SmsSample, SmsBlocklist, SmsN0, SmsJobRun, SmsN1Mc1
-from sqlalchemy import func, and_, or_, cast, String
-from sqlalchemy.orm import aliased
 
 class NphSmsWorkflowsTest(BaseTestCase):
     def __init__(self, *args, **kwargs):
@@ -557,146 +552,25 @@ class NphSmsWorkflowsTest(BaseTestCase):
             )
 
         expected_csv_path = "test-bucket-unc-meta/n1_manifests/UNC_META_n1_2023-04-25T15:13:00.000000.csv"
-        #duke_csv_path = "test-bucket-unc-meta/n1_manifests/DUKE_SUPP_n1_2023-04-25T15:13:00.000000.txt"
+        duke_csv_path = "test-bucket-unc-meta/n1_manifests/DUKE_SUPP_n1_2023-04-25T15:13:00.000000.txt"
 
         with open_cloud_file(expected_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file)
             csv_rows = list(csv_reader)
 
-        #with open_cloud_file(duke_csv_path, mode='r') as duke_file:
-        #    csv_reader = csv.DictReader(duke_file)
-        #    duke_rows = list(csv_reader)
+        with open_cloud_file(duke_csv_path, mode='r') as duke_file:
+            csv_reader = csv.DictReader(duke_file)
+            duke_rows = list(csv_reader)
 
         self.assertEqual(csv_rows[0]['sample_id'], '10001')
         self.assertEqual(csv_rows[0]['matrix_id'], "1111")
         self.assertEqual(csv_rows[0]['urine_color'], '"Color 4"')
         self.assertEqual(csv_rows[0]['urine_clarity'], '"Clean"')
         self.assertEqual(csv_rows[0]['manufacturer_lot'], '256837')
-        #self.assertEqual(duke_rows[0]['sample_id'], '10002')
+        self.assertEqual(duke_rows[0]['sample_id'], '10002')
 
         n1_mcac_dao = SmsN1Mc1Dao()
         manifest_records = n1_mcac_dao.get_all()
-        with database_factory.make_server_cursor_database(
-                database_name='rdr',
-                alembic=False
-            ).session() as session:
-            recipient_enum = {
-                "unc_meta": "MCAC_UNC_META",
-                "ncsu": "MCAC_NCSU",
-                "duke_nph": "MCAC_DUKE",
-                "duke_supp": "DUKE",
-                "duke_urine": "DUKE",
-                "unc_clinical": "MCAC_UNC_CLINICAL",
-                "pbrc": "PBRC",
-                "ucsd": "UCSD"
-            }
-            most_recent = session.query(
-                SmsSample.lims_sample_id,
-                func.max(SmsSample.created).label("created")
-            ).group_by(
-                SmsSample.lims_sample_id
-            ).filter(
-                SmsSample.ignore_flag == 0
-            ).subquery()
-            samples = session.query(SmsSample).all()
-            n0s = session.query(SmsN0).all()
-            n1s = session.query(SmsN1Mc1).all()
-            for sample in samples:
-                print(sample.sample_id)
-                print(sample.destination)
-                print(sample.lims_sample_id)
-                print('-----------------------')
-            print('=========== starting N0s ============')
-            for n0 in n0s:
-                print(n0.lims_sample_id)
-                print(n0.lims_parent_sample_id)
-                print(n0.file_path)
-                print('------------------------')
-            print('=========== starting N1s ==============')
-            for n1 in n1s:
-                print(n1.sample_id)
-                print(n1.file_path)
-                print(n1.destination)
-                print('------------------------')
-
-
-            sample_well = aliased(SmsN1Mc1)
-            query = session.query(
-                SmsSample.sample_id,
-                SmsN0.matrix_id,
-                SmsN0.biobank_id,
-                SmsSample.sample_identifier,
-                SmsN0.study,
-                SmsN0.visit,
-                SmsN0.timepoint,
-                SmsN0.collection_site,
-                SmsN0.collection_date_time,
-                SmsN0.sample_type,
-                SmsN0.additive_treatment,
-                SmsN0.quantity_ml,
-                SmsSample.age,
-                SmsSample.sex_at_birth,
-                SmsN0.package_id,
-                SmsN0.storage_unit_id,
-                SmsN0.well_box_position,
-                SmsSample.destination,
-                SmsN0.tracking_number,
-                SmsN0.manufacturer_lot,
-                SmsN0.sample_comments,
-                SmsSample.ethnicity,
-                SmsSample.race,
-                SmsSample.bmi,
-                SmsSample.diet,
-            ).outerjoin(
-                SmsSample,
-                and_(
-                    SmsSample.lims_sample_id == (SmsN0.lims_parent_sample_id if (
-                        'duke_supp' in 'duke_supp') else SmsN0.lims_sample_id),
-                    SmsSample.destination == 'DUKE',
-                    SmsSample.ignore_flag == 0
-                )
-            ).outerjoin(
-                SmsBlocklist,
-                and_(
-                    SmsSample.sample_id == SmsBlocklist.identifier_value,
-                    SmsBlocklist.identifier_type == "sample_id"
-                )
-            ).outerjoin(
-                sample_well,
-                and_(
-                    SmsN0.well_box_position == sample_well.well_box_position,
-                    SmsN0.package_id == sample_well.package_id,
-                    sample_well.ignore_flag == 0
-                )
-            ).outerjoin(
-                most_recent,
-                and_(
-                    SmsSample.lims_sample_id == most_recent.c.lims_sample_id,
-                    SmsSample.created == most_recent.c.created
-                )
-            )
-            query = query.add_columns(
-                SmsN0.lims_parent_sample_id,
-            ).outerjoin(
-                SmsN1Mc1,
-                and_(
-                    SmsN0.lims_sample_id == SmsN1Mc1.sample_id,
-                    SmsN1Mc1.destination == SmsSample.destination,
-                    SmsN1Mc1.ignore_flag == 0
-                )
-            )
-            query = query.filter(
-                SmsBlocklist.id.is_(None),
-                sample_well.id.is_(None),
-                SmsN0.ignore_flag == 0,
-                SmsN0.package_id == 'test',
-                SmsN0.file_path.ilike(f'%DUKE_SUPP%'),
-                or_(
-                    SmsSample.created == most_recent.c.created,
-                    SmsSample.created.is_(None)
-                )
-            ).distinct().order_by(SmsN0.id)
-            print(query.all())
 
         self.assertEqual(len(manifest_records), 4)
         self.assertEqual(manifest_records[0].file_path, expected_csv_path)
