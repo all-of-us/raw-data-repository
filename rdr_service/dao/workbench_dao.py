@@ -37,8 +37,10 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
 
 WORKSPACE_ENUM_FIELDS = ['status', 'sex_at_birth', 'gender_identity', 'sexual_orientation', 'geography',
                          'disability_status', 'access_to_care', 'education_level', 'income_level', 'aian_research_type',
-                         'access_tier', 'workspace_users', 'creator', 'resource']
+                         'access_tier', 'workspace_users', 'creator', 'resource', 'race_ethnicity', 'age']
 
+RESEARCHER_ENUM_FIELDS = ['ethnicity', 'education', 'disability', 'user_id', 'verified_institutional_affiliation',
+                          'demographicSurveyV2', 'gender', 'race', 'sex_at_birth', 'degree', 'access_tier_short_names']
 
 class WorkbenchWorkspaceDao(UpdatableDao):
     def __init__(self):
@@ -259,7 +261,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 aianResearchType=WorkbenchWorkspaceAianResearchType(item.get('aianResearchType', 'UNSET')),
                 aianResearchDetails=item.get('aianResearchDetails'),
                 accessTier=WorkbenchWorkspaceAccessTier(item.get('accessTier', 'UNSET')),
-                resource=json.dumps(item)
+                resource=json.dumps(item),
+                isDataCollection=item.get('isDataCollection')
             )
 
             workspaces.append(workspace)
@@ -277,6 +280,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         row_dict['created'] = current_timestamp
         row_dict['modified'] = current_timestamp
         row_dict['status'] = WorkbenchWorkspaceStatus(row.get('status', 'UNSET'))
+        row_dict['raceEthnicity'] = [WorkbenchWorkspaceRaceEthnicity.to_dict().get(x) for x in
+                                     row.get('race_ethnicity')]
+        row_dict['age'] = [WorkbenchWorkspaceAge.to_dict().get(x) for x in row.get('age')]
         row_dict['sexAtBirth'] = WorkbenchWorkspaceSexAtBirth(row.get('sex_at_birth', 'UNSET'))
         row_dict['genderIdentity'] = WorkbenchWorkspaceGenderIdentity(row.get('gender_identity', 'UNSET'))
         row_dict['sexualOrientation'] = WorkbenchWorkspaceSexualOrientation(row.get('sexual_orientation', 'UNSET'))
@@ -390,7 +396,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     .distinct()
                     .filter(WorkbenchWorkspaceUserHistory.researcherId == WorkbenchResearcherHistory.id,
                             WorkbenchWorkspaceSnapshot.id == subquery.c.active_id,
-                            subquery.c.active_id == WorkbenchWorkspaceUserHistory.workspaceId)
+                            subquery.c.active_id == WorkbenchWorkspaceUserHistory.workspaceId,
+                            WorkbenchWorkspaceSnapshot.isDataCollection == 0)
             )
 
             if workspace_id:
@@ -555,6 +562,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                              WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
                          WorkbenchWorkspaceApproved.status == int(WorkbenchWorkspaceStatus.ACTIVE),
                          WorkbenchInstitutionalAffiliations.isVerified == 1,
+                         WorkbenchWorkspaceApproved.isDataCollection == 0,
                          or_(WorkbenchWorkspaceUser.isCreator == 1,
                              and_(
                                  WorkbenchWorkspaceUser.role == int(WorkbenchWorkspaceUserRole.OWNER),
@@ -575,6 +583,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 ).filter(
                     or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
                         WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
+                    WorkbenchWorkspaceApproved.isDataCollection == 0
                 ).group_by(WorkbenchWorkspaceSnapshot.workspaceSourceId).subquery()
             )
 
@@ -596,6 +605,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 ).filter(
                     or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
                         WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
+                    WorkbenchWorkspaceApproved.isDataCollection == 0,
                     WorkbenchWorkspaceApproved.creationTime > start_date
                 ).order_by(
                     desc(WorkbenchWorkspaceApproved.modifiedTime)
@@ -614,6 +624,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                                      ).filter(
                     or_(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
                         WorkbenchWorkspaceApproved.excludeFromPublicDirectory.is_(None)),
+                    WorkbenchWorkspaceApproved.isDataCollection == 0,
                     WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
                     WorkbenchInstitutionalAffiliations.isVerified == 1,
                     WorkbenchWorkspaceApproved.creationTime > start_date
@@ -1028,8 +1039,31 @@ class WorkbenchResearcherDao(UpdatableDao):
                 survey["sexualOrientations"] = sexual_orientations
                 item["demographicSurveyV2"] = survey
 
+    def bq_row_to_dict(self, row: bigquery.Row, current_timestamp: str) -> dict:
+        row_dict = self._build_survey_parameters(row.get("demographicSurveyV2"), bq_request=True)
 
+        for key in row.keys():
+            if key not in RESEARCHER_ENUM_FIELDS:
+                camel_key = self.snake_to_camel(key)
+                row_dict[camel_key] = row[key]
 
+        row_dict['workbenchInstitutionalAffiliations'] = (
+            self._get_affiliations(row.get('affiliations'), row.get('verified_institutional_affiliation'))
+        )
+        row_dict['userSourceId'] = row['user_id']
+        row_dict['created'] = current_timestamp
+        row_dict['modified'] = current_timestamp
+        row_dict['ethnicity'] = WorkbenchResearcherEthnicity(row.get('ethnicity', 'UNSET'))
+        row_dict['education'] = WorkbenchResearcherEducation(row.get('education', 'UNSET'))
+        row_dict['disability'] = WorkbenchResearcherDisability(row.get('disability', 'UNSET'))
+        row_dict['resource'] = "No resource payload. Data from VWB 2.0"
+        row_dict['gender'] = [WorkbenchResearcherGender.to_dict().get(x) for x in row.get('gender')]
+        row_dict['race'] = [WorkbenchResearcherRace.to_dict().get(x) for x in row.get('race')]
+        row_dict['sexAtBirth'] = [WorkbenchResearcherSexAtBirthV2.to_dict().get(x) for x in row.get('sex_at_birth')]
+        row_dict['degree'] = [WorkbenchResearcherDegree.to_dict().get(x) for x in row.get('degree')]
+        row_dict['accessTierShortNames'] = [WorkbenchResearcherAccessTierShortName.to_dict().get(x) for x in
+                                               row.get('access_tier_short_names')]
+        return row_dict
 
     def get_redcap_audit_researchers(
         self,
@@ -1244,23 +1278,26 @@ class WorkbenchResearcherDao(UpdatableDao):
         return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId.in_(user_id_list)).all()
 
     @staticmethod
-    def _build_survey_parameters(survey):
+    def _build_survey_parameters(survey, bq_request=False):
         if survey:
             survey_params = {
                 'dsv2CompletionTime': parse(survey.get('completionTime')) if survey.get(
                     'completionTime') is not None else None,
-                'dsv2EthnicCategories': survey.get('ethnicCategories'),
+                'dsv2EthnicCategories': survey.get('ethnicCategories') if not bq_request else
+                    [WorkbenchResearcherEthnicCategory.to_dict().get(x) for x in survey.get('ethnicCategories')],
                 'dsv2EthnicityAiAnOther': survey.get('ethnicityAiAnOtherText'),
                 'dsv2EthnicityAsianOther': survey.get('ethnicityAsianOtherText'),
-                'dsv2EthnicityBlackOther': survey.get('ethnicityAsianOtherText'),
+                'dsv2EthnicityBlackOther': survey.get('ethnicityBlackOtherText'),
                 'dsv2EthnicityHispanicOther': survey.get('ethnicityHispanicOtherText'),
                 'dsv2EthnicityMeNaOther': survey.get('ethnicityMeNaOtherText'),
                 'dsv2EthnicityNhPiOther': survey.get('ethnicityNhPiOtherText'),
                 'dsv2EthnicityWhiteOther': survey.get('ethnicityWhiteOtherText'),
                 'dsv2EthnicityOther': survey.get('ethnicityOtherText'),
-                'dsv2GenderIdentities': survey.get('genderIdentities'),
+                'dsv2GenderIdentities': survey.get('genderIdentities') if not bq_request else
+                    [WorkbenchResearcherGenderIdentity.to_dict().get(x) for x in survey.get('genderIdentities')],
                 'dsv2GenderOther': survey.get('genderOtherText'),
-                'dsv2SexualOrientations': survey.get('sexualOrientations'),
+                'dsv2SexualOrientations': survey.get('sexualOrientations') if not bq_request else
+                    [WorkbenchResearcherSexualOrientationV2.to_dict().get(x) for x in survey.get('sexualOrientations')],
                 'dsv2OrientationOther': survey.get('orientationOtherText'),
                 'dsv2SexAtBirth': WorkbenchResearcherSexAtBirthV2(survey.get('sexAtBirth', 'UNSET')),
                 'dsv2SexAtBirthOther': survey.get('sexAtBirthOtherText'),
@@ -1284,6 +1321,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 'dsv2EthnicCategories': [],
                 'dsv2EthnicityAiAnOther': None,
                 'dsv2EthnicityAsianOther': None,
+                'dsv2EthnicityBlackOther': None,
                 'dsv2EthnicityHispanicOther': None,
                 'dsv2EthnicityMeNaOther': None,
                 'dsv2EthnicityNhPiOther': None,
@@ -1404,9 +1442,10 @@ class WorkbenchWorkspaceAuditDao(UpdatableDao):
     def insert_with_session(self, session, workbench_audit_records):
         for record in workbench_audit_records:
             session.add(record)
-            if record.auditWorkspaceDisplayDecision == \
-                WorkbenchAuditWorkspaceDisplayDecision.PUBLISH_TO_RESEARCHER_DIRECTORY and \
-                record.auditWorkspaceAccessDecision == WorkbenchAuditWorkspaceAccessDecision.UNSET:
+            if ((record.auditWorkspaceDisplayDecision ==
+                 WorkbenchAuditWorkspaceDisplayDecision.PUBLISH_TO_RESEARCHER_DIRECTORY or
+                 record.auditWorkspaceDisplayDecision == WorkbenchAuditWorkspaceDisplayDecision.UNSET)
+               and record.auditWorkspaceAccessDecision == WorkbenchAuditWorkspaceAccessDecision.UNSET):
                 self.add_approved_workspace_with_session(session, record.workspaceSnapshotId)
             else:
                 self.remove_approved_workspace_with_session(session, record.workspaceSnapshotId)

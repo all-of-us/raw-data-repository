@@ -82,6 +82,8 @@ class WorkbenchWorkspaceBase(object):
 
     resource = Column("resource", BlobUTF8, nullable=False)
     """The resource payload"""
+    isDataCollection = Column("is_data_collection", Boolean, default=False)
+    """Signifies if a record is a workbench user created data collection"""
 
 
 class WorkbenchWorkspaceApproved(WorkbenchWorkspaceBase, Base):

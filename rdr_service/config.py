@@ -188,6 +188,7 @@ PPSC_DATAFEED_DEST_DATASET = 'ppsc_datafeed_dest_dataset'
 VWB_DATAFEED_DATASET = 'vwb_datafeed_dataset'
 VWB_WORKSPACES_SRC_TABLE = 'vwb_workspaces_src_table'
 VWB_WORKSPACES_ID_MAPPING_TABLE = 'vwb_workspaces_id_mapping_table'
+WB_RESEARCHERS_SRC_TABLE = 'wb_researchers_src_table'
 
 CVL_SITES_DATA_BUCKETS = {
     "bcm": "prod-genomics-data-baylor",
@@ -317,6 +318,8 @@ PUBLIC_METRICS_CODE_TABLE = "public_metrics_code_table"
 PUBLIC_METRICS_GENDER_ANSWERS_TABLE = "public_metrics_gender_answers_table"
 PUBLIC_METRICS_RACE_ANSWERS_TABLE = "public_metrics_race_answers_table"
 PUBLIC_METRICS_PARTICIPANT_STATUS_EVENT_TABLE = "public_metrics_participant_status_event_table"
+
+PPSC_AWS_CREDS = "ppsc_aws_creds"
 
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}

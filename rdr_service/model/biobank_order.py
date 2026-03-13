@@ -412,6 +412,9 @@ class BiobankAliquotDataset(Base, BiobankSpecimenBase):
     name = Column("name", String(80))
     status = Column("status", String(80))
 
+    extractionMethod = Column('extraction_method', String(200))
+    extractionDate = Column('extraction_date', UTCDateTime)
+
     datasetItems = relationship("BiobankAliquotDatasetItem", cascade="all, delete-orphan",
                                 foreign_keys="BiobankAliquotDatasetItem.dataset_id",
                                 order_by="BiobankAliquotDatasetItem.paramId")

@@ -8,6 +8,32 @@ from rdr_service.model.base import (
     PPSCBase,
 )
 
+MVP_FIELDS = [
+    "primaryLanguage",
+    "genderIdentity",
+    "awardee",
+    "isEhrDataAvailable",
+    "aian",
+    "questionnaireOnOverallHealth",
+    "questionnaireOnOverallHealthAuthored",
+    "questionnaireOnLifestyle",
+    "questionnaireOnLifestyleAuthored",
+    "questionnaireOnTheBasics",
+    "questionnaireOnTheBasicsAuthored",
+    "questionnaireOnHealthcareAccess",
+    "questionnaireOnHealthcareAccessAuthored",
+    "questionnaireOnSocialDeterminantsOfHealth",
+    "questionnaireOnSocialDeterminantsOfHealthAuthored",
+    "questionnaireOnPersonalAndFamilyHealthHistory",
+    "questionnaireOnPersonalAndFamilyHealthHistoryAuthored",
+    "questionnaireOnLifeFunctioning",
+    "questionnaireOnLifeFunctioningAuthored",
+    "questionnaireOnEmotionalHealthHistoryAndWellBeing",
+    "questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored",
+    "questionnaireOnBehavioralHealthAndPersonality",
+    "questionnaireOnBehavioralHealthAndPersonalityAuthored",
+]
+
 
 class AwardeeInSite(PPSCBase):
     __tablename__ = "awardee_insite"
@@ -303,6 +329,219 @@ class AwardeeInSite(PPSCBase):
         "sample_order_status_1sal2_time", UTCDateTime, nullable=True
     )
     """The time the sample was marked as finalized by the processing site."""
+
+    primaryLanguage = Column("primary_language", String(32), nullable=True)
+    """
+    Indicates the language of the consent that the participant signed.
+
+    Values:
+
+    * en
+    * es
+    """
+
+    genderIdentity = Column("gender_identity", String(255), nullable=True)
+    """
+    The personal sense of one's own gender. It can correlate with assigned sex at birth or can differ from it.
+
+    Values:
+
+    * PMI_Skip
+    * GenderIdentity_Man
+    * GenderIdentity_Woman
+    * GenderIdentity_NonBinary
+    * GenderIdentity_Transgender
+    * GenderIdentity_AdditionalOptions
+    * GenderIdentity_PreferNotToAnswer
+    * PMI_PreferNotToAnswer
+    """
+
+    awardee = Column("awardee", String(255), nullable=True)
+    """Name of the HPO."""
+
+    isEhrDataAvailable = Column(
+        "is_ehr_data_available",
+        String(10),
+        nullable=True,
+    )
+    """
+    Indicates whether Electronic Health Records (EHR) are currently present for the participant.
+    This can be both participant mediated or HPO provided.
+
+    Values:
+
+    * yes
+    * no
+    """
+
+    aian = Column("aian", String(32), nullable=True)
+    """Denotes if the participants race is AI_AN (AMERICAN_INDIAN_OR_ALASKA_NATIVE)."""
+
+    questionnaireOnOverallHealth = Column(
+        "questionnaire_on_overall_health",
+        String(64),
+        nullable=True,
+    )
+    """
+    Indicates status for Overall Health questionnaire.
+
+    Values:
+
+    * submitted_complete
+    * submitted_incomplete
+    """
+    questionnaireOnOverallHealthAuthored = Column(
+        "questionnaire_on_overall_health_authored", UTCDateTime, nullable=True
+    )
+    """Indicates the time at which the participant completed the overall health questionnaire."""
+
+    questionnaireOnLifestyle = Column(
+        "questionnaire_on_lifestyle",
+        String(64),
+        nullable=True,
+    )
+    """
+    Indicates the status of lifestyle questionnaire.
+
+    Values:
+
+    * submitted_complete
+    * submitted_incomplete
+    """
+    questionnaireOnLifestyleAuthored = Column(
+        "questionnaire_on_lifestyle_authored", UTCDateTime, nullable=True
+    )
+    """Indicates the time at which the participant completed the lifestyle questionnaire."""
+
+    questionnaireOnTheBasics = Column(
+        "questionnaire_on_the_basics",
+        String(64),
+        nullable=True,
+    )
+    """
+    Indicates the status of TheBasics questionnaire.
+
+    Values:
+
+    * submitted_complete
+    * submitted_incomplete
+    """
+    questionnaireOnTheBasicsAuthored = Column(
+        "questionnaire_on_the_basics_authored", UTCDateTime, nullable=True
+    )
+    """Indicates the time at which the participant completed the basics questionnaire."""
+
+    questionnaireOnHealthcareAccess = Column(
+        "questionnaire_on_healthcare_access",
+        String(64),
+        nullable=True,
+    )
+    """
+    Indicates the status of HealthcareAccess questionnaire.
+
+    Values:
+
+    * submitted_complete
+    * submitted_incomplete
+    """
+    questionnaireOnHealthcareAccessAuthored = Column(
+        "questionnaire_on_healthcare_access_authored", UTCDateTime, nullable=True
+    )
+    """Indicates the time at which the participant completed the health care access questionnaire."""
+
+    questionnaireOnSocialDeterminantsOfHealth = Column(
+        "questionnaire_on_social_determinants_of_health",
+        String(64),
+        nullable=True,
+    )
+    """
+    Indicates the status of SocialDeterminantsOfHealth questionnaire.
+
+    Values:
+
+    * submitted_complete
+    * submitted_incomplete
+    """
+    questionnaireOnSocialDeterminantsOfHealthAuthored = Column(
+        "questionnaire_on_social_determinants_of_health_authored", UTCDateTime, nullable=True
+    )
+    """Indicates the time at which the participant completed the social determinants of health questionnaire."""
+
+    questionnaireOnPersonalAndFamilyHealthHistory = Column(
+        "questionnaire_on_personal_and_family_health_history",
+        String(64),
+        nullable=True,
+    )
+    """
+    Indicates the status PersonalAndFamilyHealthHistory questionnaire.
+
+    Values:
+
+    * submitted_complete
+    * submitted_incomplete
+    """
+    questionnaireOnPersonalAndFamilyHealthHistoryAuthored = Column(
+        "questionnaire_on_personal_and_family_health_history_authored", UTCDateTime, nullable=True
+    )
+    """Indicates the time at which the participant completed the personal and family health history questionnaire."""
+
+    questionnaireOnLifeFunctioning = Column(
+        "questionnaire_on_life_functioning",
+        String(64),
+        nullable=True,
+    )
+    """
+    Indicates the status of LifeFunctioning questionnaire.
+
+    Values:
+
+    * submitted_complete
+    * submitted_incomplete
+    """
+    questionnaireOnLifeFunctioningAuthored = Column(
+        "questionnaire_on_life_functioning_authored", UTCDateTime, nullable=True
+    )
+    """Indicates the time at which the participant completed the Life Functioning questionnaire."""
+
+    questionnaireOnEmotionalHealthHistoryAndWellBeing = Column(
+        "questionnaire_on_emotional_health",
+        String(64),
+        nullable=True,
+    )
+    """
+    Indicates the status of EmotionalHealthHistoryAndWellBeing questionnaire.
+
+    Values:
+
+    * submitted_complete
+    * submitted_incomplete
+    """
+    questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored = Column(
+        "questionnaire_on_emotional_health_authored", UTCDateTime, nullable=True
+    )
+    """
+    Indicates the time at which the participant completed the Emotional Health History and Well Being questionnaire.
+    """
+
+    questionnaireOnBehavioralHealthAndPersonality = Column(
+        "questionnaire_on_behavioral_health",
+        String(64),
+        nullable=True,
+    )
+    """
+    Indicates the status of BehavioralHealthAndPersonality questionnaire.
+
+    Values:
+
+    * submitted_complete
+    * submitted_incomplete
+    """
+    questionnaireOnBehavioralHealthAndPersonalityAuthored = Column(
+        "questionnaire_on_behavioral_health_authored", UTCDateTime, nullable=True
+    )
+    """
+    Indicates the time at which the participant completed the Behavioral Health & Personality questionnaire.
+    """
 
     @classmethod
     def create_surrogate_key_sql(cls) -> str:

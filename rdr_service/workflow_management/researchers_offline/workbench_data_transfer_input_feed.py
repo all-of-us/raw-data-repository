@@ -2,8 +2,9 @@ import logging
 from google.cloud import bigquery
 
 from rdr_service import clock, config
-from rdr_service.dao.workbench_dao import WorkbenchWorkspaceDao
+from rdr_service.dao.workbench_dao import WorkbenchWorkspaceDao, WorkbenchResearcherDao
 from rdr_service.dao.metadata_dao import WORKBENCH_LAST_SYNC_KEY, MetadataDao
+from rdr_service.model.workbench_researcher import WorkbenchResearcher
 from rdr_service.model.workbench_workspace import WorkbenchWorkspaceSnapshot
 from rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed import PPSCBigQueryDatafeedBase
 from rdr_service.workflow_management.researchers_offline import data_feed_queries
@@ -55,3 +56,41 @@ class WorkbenchWorkspacesFeed(PPSCBigQueryDatafeedBase):
                 now = clock.CLOCK.now()
                 workspaces_dict = dao.bq_row_to_dict(row, now)
                 dao.insert([WorkbenchWorkspaceSnapshot(**workspaces_dict)])
+
+
+class WorkbenchResearchersFeed(PPSCBigQueryDatafeedBase):
+
+    def __init__(self, project='test'):
+        self.project = project
+        self.bq_client = bigquery.Client()
+
+    def make_datafeed_job(self, job_def: str):
+        """Runs the query in BQ and returns the result."""
+        return self.bq_client.query(job_def).result()
+
+    def get_datafeed_definition(self) -> dict:
+        vwb_dataset = config.getSettingJson(config.VWB_DATAFEED_DATASET, ['rdr_workbench'])[0]
+        src_table = config.getSettingJson(config.WB_RESEARCHERS_SRC_TABLE, ['v_researchers_expanded'])[0]
+
+        job_def = {
+            # Query to stream new data to MySQL
+            "streaming_data_sql": data_feed_queries.get_workbench_researchers_data_to_stream(
+                self.project, vwb_dataset, src_table
+            ),
+            "destination_model": WorkbenchResearcher,
+        }
+
+        return job_def
+
+    def run_datafeed(self, datafeed: str) -> None:
+        logging.info(f"Running {datafeed} Data Feed...")
+
+        datafeed_def = self.get_datafeed_definition()
+        streaming_data_rows = list(self.make_datafeed_job(datafeed_def["streaming_data_sql"]))
+
+        dao = WorkbenchResearcherDao()
+        if streaming_data_rows:
+            for row in streaming_data_rows:
+                now = clock.CLOCK.now()
+                researchers_dict = dao.bq_row_to_dict(row, now)
+                dao.insert([WorkbenchResearcher(**researchers_dict)])

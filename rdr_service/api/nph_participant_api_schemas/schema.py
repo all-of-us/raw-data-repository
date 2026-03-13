@@ -145,6 +145,14 @@ class ParticipantField(ObjectType):
         sort_modifier=lambda context: context.set_order_expression(Participant.id),
         filter_modifier=lambda context, value: context.add_filter(Participant.id == value)
     )
+
+    lastModified = SortableField(
+        String,
+        description="Last modified timestamp, sourced from participant_summary table",
+        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.lastModified),
+        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.lastModified >= value)
+    )
+
     biobankId = SortableField(
         String,
         description='NPH Biobank id value for the participant, sourced from NPH participant data table',

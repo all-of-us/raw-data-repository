@@ -1,8 +1,8 @@
 cron:
 - description: Daily Biobank sample import and order reconciliation
   url: /offline/BiobankSamplesPipeline
-  schedule: every day 02:30
-  timezone: America/New_York
+  schedule: every day 01:30
+  timezone: America/Chicago
   target: offline
 - description: Skew duplicate last modified
   url: /offline/SkewDuplicates
