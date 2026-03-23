@@ -3,7 +3,7 @@ import csv
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import auto, Enum
-from typing import Dict, List, Optional
+from typing import Collection, Dict, List, Optional
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from rdr_service.model import genomics, ppsc
 from rdr_service.model.awardee_insite import AwardeeInSite
 from rdr_service.model.biobank_order import (
-    BiobankAliquot, BiobankAliquotDataset, BiobankAliquotDatasetItem, BiobankSpecimen
+    BiobankAliquot, BiobankAliquotDataset, BiobankAliquotDatasetItem, BiobankSpecimen, BiobankAliquotTreatment
 )
 from rdr_service.model.participant import Participant
 from rdr_service.services.bigquery import BigQueryTable
@@ -22,7 +22,7 @@ tool_cmd = 'sample-availability'
 tool_desc = 'Generates dataset of sample availability'
 
 
-SampleCollectionCutoffDate = datetime(2023, 10, 1)
+SampleCollectionCutoffDate = datetime(2025, 1, 1)
 BqUploadLocation = {
     'project': 'aou-warehouse-preprod',
     'dataset': 'privacy_review',
@@ -51,19 +51,44 @@ class SampleType(Enum):
 @dataclass
 class AliquotData:
     aliquot_id: int
+    aliquot_rlims_id: str
     participant_id: int
     volume: float
     volume_units: str
     sample_type: SampleType
     collection_timestamp: datetime
+    freeze_thaw_count: int
+    first_freeze_date: datetime
     ds_dna_mass: float = None
+    ds_concentration: float = None
+    ds_concentration_units: str = None
+    total_dna_concentration: float = None
+    total_dna_concentration_units: str = None
     total_dna_mass: float = None
+    a_260_230_ratio: float = None
+    a_260_280_ratio: float = None
+    extraction_method: str = None
+    extraction_date: datetime = None
+    treatment_type: str = None
+    treatment_date: str = None
+    wgs_sequenced: bool = False
+    array_sequenced: bool = False
 
     def meets_quantity_reqs(self) -> bool:
         if self.sample_type in [SampleType.saliva, SampleType.blood]:
             return self.ds_dna_mass is not None and self.ds_dna_mass >= 2500
         else:
-            return self.volume >= 100
+            if self.volume is None:
+                return False
+
+            match self.volume_units.lower():
+                case 'ul':
+                    ul_volume = self.volume
+                case 'ml':
+                    ul_volume = self.volume * 1000
+                case _:
+                    raise Exception(f'Unexpected volume units "{self.volume_units}"')
+            return ul_volume >= 100
 
     def __str__(self):
         return f'{self.aliquot_id}: {self.volume} ({self.ds_dna_mass} ug) {self.sample_type}'
@@ -81,6 +106,10 @@ class ParticipantData:
     urine_availability: Availability = field(default_factory=Availability)
     pxr_rna_availability: Availability = field(default_factory=Availability)
     hep_availability: Availability = field(default_factory=Availability)
+    array_status: bool = False
+    array_source_blood: bool = False
+    wgs_status: bool = False
+    wgs_source_blood: bool = False
 
     def set_type_as_available(self, sample_type: SampleType, collection_date: datetime):
         field_to_set = None
@@ -162,14 +191,17 @@ availability_data = defaultdict(lambda participant_id: ParticipantData(participa
 
 class SampleAvailabilityDatasetTool(ToolBase):
     def run(self):
-        super().run()
+        super().run()  # 3/17 started test run at 8:10
 
         with self.get_session() as session:
             aliquot_list = self.retrieve_potential_aliquot_list(session)
-            self.calculate_dna_mass(session, aliquot_list)
+            self.process_dataset_info(session, aliquot_list)
+            self.load_treatment_data(session, aliquot_list)
+            self.load_sequencing_data(session, aliquot_list)
 
             eligible_participant_id_list = sorted(self.retrieve_eligible_participant_ids(session))
 
+        print(datetime.now(), 'getting end-check counts')
         counts = defaultdict(int)
         total_count = len(aliquot_list)
         blood_mass_count = 0
@@ -200,9 +232,11 @@ class SampleAvailabilityDatasetTool(ToolBase):
         for k in unit_count:
             print(str(unit_count[k]).rjust(30), f'{k[0]} ({k[1]})')
 
+        print(datetime.now(), 'prepping for csv')
         aliquots_by_participant = self.organize_aliquots(aliquot_list)
 
-        data_to_export: List[ParticipantData] = []
+        participant_data_to_export: List[ParticipantData] = []
+        aliquot_data_to_export: List[AliquotData] = []
         for participant_id in eligible_participant_id_list:
             if not participant_id in aliquots_by_participant:
                 continue
@@ -211,6 +245,8 @@ class SampleAvailabilityDatasetTool(ToolBase):
             participant_export_data = None
             for sample_type in participant_aliquot_data:
                 collection_date = None
+                wgs_source = None
+                array_source = None
                 for aliquot_data in participant_aliquot_data[sample_type]:
                     if (
                         aliquot_data.meets_quantity_reqs()
@@ -221,22 +257,38 @@ class SampleAvailabilityDatasetTool(ToolBase):
                         )
                     ):
                         collection_date = aliquot_data.collection_timestamp
+                        aliquot_data_to_export.append(aliquot_data)
+
+                        if aliquot_data.array_sequenced or aliquot_data.wgs_sequenced:
+                            source = 'blood' if sample_type == SampleType.blood else 'saliva'
+                            if aliquot_data.array_sequenced:
+                                array_source = source
+                            if aliquot_data.wgs_sequenced:
+                                wgs_source = source
 
                 if collection_date:
                     if participant_export_data is None:
                         participant_export_data = ParticipantData(participant_id)
-                        data_to_export.append(participant_export_data)
+                        participant_data_to_export.append(participant_export_data)
 
                     participant_export_data.set_type_as_available(sample_type, collection_date)
+                    if not participant_export_data.wgs_status and wgs_source:
+                        participant_export_data.wgs_status = True
+                        participant_export_data.wgs_source_blood = wgs_source == 'blood'
+                    if not participant_export_data.array_status and array_source:
+                        participant_export_data.array_status = True
+                        participant_export_data.array_source_blood = array_source == 'blood'
 
-        # self._store_as_csv(data_to_export)
-        self._upload_to_bq(data_to_export)
+        print(datetime.now(), 'writing to csv')
+        self._export_participant_data_as_csv(participant_data_to_export)
+        self._export_aliquot_data_as_csv(aliquot_data_to_export)
+        # self._upload_to_bq(data_to_export)
 
     @classmethod
-    def _store_as_csv(cls, data_to_export: List[ParticipantData]):
-        with open('export.csv', 'w') as file:
+    def _export_participant_data_as_csv(cls, data_to_export: List[ParticipantData]):
+        with open('participant_export.csv', 'w') as file:
             writer = csv.DictWriter(file, [
-                'person_id',
+                'participant_id',
                 'pst_plasma_availability',
                 'pst_plasma_collection_timestamp',
                 'edta_plasma_availability',
@@ -246,12 +298,32 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 'blood_availability',
                 'blood_collection_timestamp',
                 'saliva_availability',
-                'saliva_collection_timestamp'
+                'saliva_collection_timestamp',
+                'cell_free_dna_availability',
+                'cell_free_dna_collection_timestamp',
+                'urine_availability',
+                'urine_collection_timestamp',
+                'pxr_rna_availability',
+                'pxr_rna_collection_timestamp',
+                'hep_availability',
+                'hep_collection_timestamp',
+                'array_sequencing_status',
+                'array_dna_source',
+                'wgs_sequencing_status',
+                'wgs_dna_source',
+                'src_id'
             ])
             writer.writeheader()
             for data in data_to_export:
+                array_source = ''
+                if data.array_status:
+                    array_source = 'Whole Blood' if data.array_source_blood else 'Saliva'
+                wgs_source = ''
+                if data.wgs_status:
+                    wgs_source = 'Whole Blood' if data.wgs_source_blood else 'Saliva'
+
                 writer.writerow({
-                    'person_id': data.participant_id,
+                    'participant_id': data.participant_id,
                     'pst_plasma_availability': 'Y' if data.pst_plasma_availability.is_available else 'N',
                     'pst_plasma_collection_timestamp': data.pst_plasma_availability.collection_datetime,
                     'edta_plasma_availability': 'Y' if data.edta_plasma_availability.is_available else 'N',
@@ -262,11 +334,79 @@ class SampleAvailabilityDatasetTool(ToolBase):
                     'blood_collection_timestamp': data.blood_availability.collection_datetime,
                     'saliva_availability': 'Y' if data.saliva_availability.is_available else 'N',
                     'saliva_collection_timestamp': data.saliva_availability.collection_datetime,
+                    'cell_free_dna_availability': 'Y' if data.cell_free_dna_availability.is_available else 'N',
+                    'cell_free_dna_collection_timestamp': data.cell_free_dna_availability.collection_datetime,
+                    'urine_availability': 'Y' if data.urine_availability.is_available else 'N',
+                    'urine_collection_timestamp': data.urine_availability.collection_datetime,
+                    'pxr_rna_availability': 'Y' if data.pxr_rna_availability.is_available else 'N',
+                    'pxr_rna_collection_timestamp': data.pxr_rna_availability.collection_datetime,
+                    'hep_availability': 'Y' if data.hep_availability.is_available else 'N',
+                    'hep_collection_timestamp': data.hep_availability.collection_datetime,
+                    'array_sequencing_status': 'Y' if data.array_status else 'N',
+                    'array_dna_source': array_source,
+                    'wgs_sequencing_status': 'Y' if data.wgs_status else 'N',
+                    'wgs_dna_source': wgs_source,
+                    'src_id': 'Staff Portal: LIMS'
+                })
+
+    @classmethod
+    def _export_aliquot_data_as_csv(cls, data_to_export: List[AliquotData]):
+        with open('aliquot_export.csv', 'w') as file:
+            writer = csv.DictWriter(file, [
+                'participant_id',
+                'aliquot_rlims_id',
+                'sample_type',
+                'collection_timestamp',
+                'volume',
+                'volume_units',
+                'total_mass',
+                'total_mass_units',
+                'ds_dna_mass',
+                'ds_dna_mass_units',
+                'total_dna_concentration',
+                'total_dna_concentration_units',
+                'ds_concentration',
+                'ds_concentration_units',
+                '260/230_ratio',
+                '260/280_ratio',
+                'freeze_thaw_count',
+                'treatment_type',
+                'treatment_date',
+                'extraction_method',
+                'extraction_date',
+                'first_freeze_date',
+                'src_id'
+            ])
+            writer.writeheader()
+            for data in data_to_export:
+                writer.writerow({
+                    'participant_id': data.participant_id,
+                    'aliquot_rlims_id': data.aliquot_rlims_id,
+                    'sample_type': data.sample_type.name,
+                    'collection_timestamp': data.collection_timestamp,
+                    'volume': data.volume,
+                    'volume_units': data.volume_units,
+                    'total_mass': data.total_dna_mass,
+                    'total_mass_units': 'ng',
+                    'ds_dna_mass': data.ds_dna_mass,
+                    'ds_dna_mass_units': 'ng',
+                    'total_dna_concentration': data.total_dna_concentration,
+                    'total_dna_concentration_units': data.total_dna_concentration_units,
+                    'ds_concentration': data.ds_concentration,
+                    'ds_concentration_units': data.ds_concentration_units,
+                    '260/230_ratio': data.a_260_230_ratio,
+                    '260/280_ratio': data.a_260_280_ratio,
+                    'freeze_thaw_count': data.freeze_thaw_count,
+                    'treatment_type': data.treatment_type,
+                    'treatment_date': data.treatment_date,
+                    'extraction_method': data.extraction_method,
+                    'extraction_date': data.extraction_date,
+                    'first_freeze_date': data.first_freeze_date,
+                    'src_id': 'Staff Portal: LIMS'
                 })
 
     @classmethod
     def _upload_to_bq(cls, data_to_export: List[ParticipantData]):
-        # had about 420,000 records
         bq_table = BigQueryTable(**BqUploadLocation)
         batch_size = 2000
 
@@ -301,12 +441,15 @@ class SampleAvailabilityDatasetTool(ToolBase):
         print(datetime.now(), 'retrieving aliquots...')
         query = session.query(
             BiobankAliquot.id,
+            BiobankAliquot.rlimsId,
             Participant.participantId,
             BiobankAliquot.quantity,
             BiobankAliquot.quantityUnits,
             BiobankSpecimen.testCode,
             BiobankAliquot.sampleType,
-            BiobankSpecimen.collectionDate
+            BiobankSpecimen.collectionDate,
+            BiobankAliquot.freezeThawCount,
+            BiobankAliquot.processingCompleteDate
         ).join(
             BiobankSpecimen, BiobankSpecimen.rlimsId == BiobankAliquot.specimen_rlims_id
         ).join(
@@ -323,8 +466,8 @@ class SampleAvailabilityDatasetTool(ToolBase):
         aliquots = []
         for result in query_results:
             (
-                aliquot_id, participant_id, volume_str, units_str,
-                test_code, sample_type, collection_timestamp
+                aliquot_id, aliquot_rlims_id, participant_id, volume_str, units_str,
+                test_code, sample_type, collection_timestamp, freeze_count, processing_datetime
             ) = result
             sample_type = cls.determine_sample_type(test_code, sample_type)
             if not sample_type:
@@ -334,7 +477,10 @@ class SampleAvailabilityDatasetTool(ToolBase):
             if volume_str:
                 volume_val = float(volume_str)
             aliquots.append(
-                AliquotData(aliquot_id, participant_id, volume_val, units_str, sample_type, collection_timestamp)
+                AliquotData(
+                    aliquot_id, aliquot_rlims_id, participant_id, volume_val, units_str,
+                    sample_type, collection_timestamp, freeze_count, processing_datetime
+                )
             )
         return aliquots
 
@@ -365,27 +511,21 @@ class SampleAvailabilityDatasetTool(ToolBase):
         return None
 
     @classmethod
-    def calculate_dna_mass(cls, session: Session, aliquot_list: List[AliquotData]):
-        # only need to find mass values for blood and saliva aliquots
-        dna_aliquots = [
-            aliquot for aliquot in aliquot_list
-            if aliquot.sample_type in [SampleType.blood, SampleType.saliva]
-        ]
-
+    def process_dataset_info(cls, session: Session, aliquot_list: List[AliquotData]):
         batch_size = 8000
         current_count = 0
-        total_count = len(dna_aliquots)
+        total_count = len(aliquot_list)
 
-        for aliquot_subset in list_chunks(dna_aliquots, batch_size):
+        for aliquot_subset in list_chunks(aliquot_list, batch_size):
             print(datetime.now(), 'calculating mass values...')
             aliquot_id_list = []
-            aliquot_map = {}
+            aliquot_map: Dict[int, AliquotData] = {}
             for aliquot in aliquot_subset:
                 aliquot_map[aliquot.aliquot_id] = aliquot
                 aliquot_id_list.append(aliquot.aliquot_id)
 
             print(datetime.now(), 'building dataset list...')
-            dataset_list = session.query(
+            dataset_list: Collection[BiobankAliquotDataset] = session.query(
                 BiobankAliquotDataset
             ).filter(
                 BiobankAliquotDataset.aliquot_id.in_(aliquot_id_list)
@@ -393,12 +533,17 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 BiobankAliquotDataset.id
             ).all()
 
+            extraction_values = {}
+
             latest_dataset_map = {}
             dataset_to_aliquot_map: Dict[int, int] = {}
             for dataset in dataset_list:
                 key_val = (dataset.aliquot_id, dataset.name)
                 latest_dataset_map[key_val] = dataset.id
                 dataset_to_aliquot_map[dataset.id] = dataset.aliquot_id
+
+                if dataset.extractionDate:
+                    extraction_values[dataset.aliquot_id] = (dataset.extractionMethod, dataset.extractionDate)
 
             print(datetime.now(), 'getting dataset items...')
             dataset_item_list = session.query(
@@ -409,22 +554,130 @@ class SampleAvailabilityDatasetTool(ToolBase):
 
             ds_conc_values: Dict[int, BiobankAliquotDatasetItem] = {}
             total_conc_values: Dict[int, BiobankAliquotDatasetItem] = {}
+            a230_values: Dict[int, BiobankAliquotDatasetItem] = {}
+            a280_values: Dict[int, BiobankAliquotDatasetItem] = {}
             for dataset_item in dataset_item_list:
                 aliquot_id = dataset_to_aliquot_map[dataset_item.dataset_id]
                 if dataset_item.paramId == 'dsDNA Conc':
                     ds_conc_values[aliquot_id] = dataset_item
                 elif dataset_item.paramId == 'Total DNA Conc':
                     total_conc_values[aliquot_id] = dataset_item
+                elif dataset_item.paramId == 'A260/230':
+                    a230_values[aliquot_id] = dataset_item
+                elif dataset_item.paramId == 'A260/280':
+                    a280_values[aliquot_id] = dataset_item
 
             for aliquot_id in ds_conc_values:
                 aliquot = aliquot_map[aliquot_id]
-                conc_value = float(ds_conc_values[aliquot_id].displayValue)
-                aliquot.ds_dna_mass = aliquot.volume * conc_value
+                conc_data = ds_conc_values[aliquot_id]
+                aliquot.ds_concentration = float(conc_data.displayValue)
+                aliquot.ds_concentration_units = conc_data.displayUnits
+                aliquot.ds_dna_mass = aliquot.volume * aliquot.ds_concentration  # uL * ng/uL
 
             for aliquot_id in total_conc_values:
                 aliquot = aliquot_map[aliquot_id]
-                conc_value = float(total_conc_values[aliquot_id].displayValue)
-                aliquot.total_dna_mass = aliquot.volume * conc_value
+                conc_data = total_conc_values[aliquot_id]
+                aliquot.total_dna_concentration = float(conc_data.displayValue)
+                aliquot.total_dna_concentration_units = conc_data.displayUnits
+                aliquot.total_dna_mass = aliquot.volume * aliquot.total_dna_concentration
+
+                # TODO: make sure all concentrations have the same units (ng/ul).
+                #       as of 2026-03-19, they're all good. query to check:
+                #                       select distinct param_id, bai.display_units, ba.quantity_units
+                #                       from biobank_aliquot_dataset_item bai
+                #                       inner join biobank_aliquot_dataset bad on bad.id = bai.dataset_id
+                #                       inner join biobank_aliquot ba on ba.id  = bad.aliquot_id
+                #                       where param_id like '%conc%';
+
+            for aliquot_id in a230_values:
+                aliquot = aliquot_map[aliquot_id]
+                dataset_item = a230_values[aliquot_id]
+                aliquot.a_260_230_ratio = dataset_item.displayValue
+
+            for aliquot_id in a280_values:
+                aliquot = aliquot_map[aliquot_id]
+                dataset_item = a280_values[aliquot_id]
+                aliquot.a_260_280_ratio = dataset_item.displayValue
+
+            for aliquot_id in extraction_values:
+                aliquot = aliquot_map[aliquot_id]
+                aliquot.extraction_method, aliquot.extraction_date = extraction_values[aliquot_id]
+
+            current_count += len(aliquot_subset)
+            print(datetime.now(), f'completed {current_count} of {total_count}')
+
+    @classmethod
+    def load_treatment_data(cls, session: Session, aliquot_list: List[AliquotData]):
+        batch_size = 8000
+        current_count = 0
+        total_count = len(aliquot_list)
+
+        for aliquot_subset in list_chunks(aliquot_list, batch_size):
+            print(datetime.now(), 'retrieving treatment data...')
+            aliquot_id_list = []
+            aliquot_map: Dict[str, AliquotData] = {}
+            for aliquot in aliquot_subset:
+                aliquot_map[aliquot.aliquot_rlims_id] = aliquot
+                aliquot_id_list.append(aliquot.aliquot_rlims_id)
+
+            treatment_data: Collection[BiobankAliquotTreatment] = session.query(
+                BiobankAliquotTreatment
+            ).filter(
+                BiobankAliquotTreatment.aliquot_rlims_id.in_(aliquot_id_list)
+            ).order_by(
+                BiobankAliquotTreatment.rdr_received_timestamp
+            ).all()
+
+            aliquot_treatment_map: Dict[str, List[BiobankAliquotTreatment]] = defaultdict(list)
+            for treatment in treatment_data:
+                aliquot_treatment_map[treatment.aliquot_rlims_id].append(treatment)
+
+            for aliquot_rlims_id, treatment_list in aliquot_treatment_map.items():
+                aliquot = aliquot_map[aliquot_rlims_id]
+                aliquot.treatment_type = ','.join([treatment.name for treatment in treatment_list])
+                aliquot.treatment_date = ','.join(
+                    [treatment.rdr_received_timestamp.isoformat() for treatment in treatment_list]
+                )
+
+            current_count += len(aliquot_subset)
+            print(datetime.now(), f'completed {current_count} of {total_count}')
+
+    @classmethod
+    def load_sequencing_data(cls, session: Session, aliquot_list: List[AliquotData]):
+        batch_size = 8000
+        current_count = 0
+        total_count = len(aliquot_list)
+
+        for aliquot_subset in list_chunks(aliquot_list, batch_size):
+            print(datetime.now(), 'retrieving sequencing data...')
+            aliquot_id_list = []
+            aliquot_map: Dict[str, AliquotData] = {}
+            for aliquot in aliquot_subset:
+                aliquot_map[aliquot.aliquot_rlims_id] = aliquot
+                aliquot_id_list.append(aliquot.aliquot_rlims_id)
+
+            query = session.query(
+                genomics.GenomicAW4Raw.genome_type,
+                genomics.GenomicAW1Raw.parent_sample_id
+            ).join(
+                genomics.GenomicAW1Raw,
+                genomics.GenomicAW4Raw.sample_id == genomics.GenomicAW1Raw.sample_id
+            ).filter(
+                genomics.GenomicAW4Raw.qc_status.like('pass'),
+                genomics.GenomicAW1Raw.parent_sample_id.in_(aliquot_id_list),
+                genomics.GenomicAW4Raw.ignore_flag == False,
+                genomics.GenomicAW1Raw.ignore_flag == False
+            )
+            qc_success_data: Collection[genomics.GenomicAW4Raw] = query.all()
+
+            for genome_type, aliquot_rlims_id in qc_success_data:
+                aliquot = aliquot_map[aliquot_rlims_id]
+                if genome_type is None:
+                    continue
+                if genome_type.lower().endswith('wgs'):
+                    aliquot.wgs_sequenced = True
+                else:
+                    aliquot.array_sequenced = True
 
             current_count += len(aliquot_subset)
             print(datetime.now(), f'completed {current_count} of {total_count}')
@@ -440,6 +693,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
 
     @classmethod
     def retrieve_eligible_participant_ids(cls, session: Session) -> List[int]:
+        print(datetime.now(), 'getting participant ids')
         query = session.query(
             AwardeeInSite.participantId
         ).filter(
@@ -472,6 +726,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
 
     @classmethod
     def filter_participants_by_genomic_data(cls, session, participant_id_list: List[int]) -> List[int]:
+        print(datetime.now(), 'filtering participant level genomic data')
         result: List[int] = []
         batch_size = 2000
         for id_subset in list_chunks(participant_id_list, batch_size):
