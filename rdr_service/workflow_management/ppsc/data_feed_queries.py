@@ -772,8 +772,9 @@ def insert_awardee_insite_data(
           -- queried here
           latest_ehr_receipt_time_cte AS (
             SELECT person_id
-            , CAST(FORMAT_TIMESTAMP("%Y-%m-%dT%H:%M:%S", latest_upload_time) AS DATETIME) AS latest_ehr_receipt_time
+            , MAX(CAST(FORMAT_TIMESTAMP("%Y-%m-%dT%H:%M:%S", latest_upload_time) AS DATETIME)) AS latest_ehr_receipt_time
             FROM `{curation_project}.rdr_operational_us_central.ehr_upload_pids`
+            GROUP BY person_id
           ),
           participant_summary_cte AS (
             SELECT
