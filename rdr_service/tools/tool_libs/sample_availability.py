@@ -21,8 +21,9 @@ from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 tool_cmd = 'sample-availability'
 tool_desc = 'Generates dataset of sample availability'
 
-
-SampleCollectionCutoffDate = datetime(2025, 1, 1)
+v8_cutoff = datetime(2023, 10, 1)
+v9_cutoff = datetime(2025, 1, 1)
+SampleCollectionCutoffDate = v9_cutoff
 BqUploadLocation = {
     'project': 'aou-warehouse-preprod',
     'dataset': 'privacy_review',
@@ -37,15 +38,16 @@ class Availability:
 
 
 class SampleType(Enum):
-    saliva = auto()
-    blood = auto()
     edta_plasma = auto()
     pst_plasma = auto()
+    blood_dna = auto()
+    saliva_dna = auto()
     serum = auto()
-    ccfdna = auto()
+    wbc = auto()
+    rbc = auto()
     urine = auto()
-    pxr_rna = auto()
-    hep = auto()
+    rna = auto()
+    whole_blood_dmso = auto()
 
 
 @dataclass
@@ -75,7 +77,7 @@ class AliquotData:
     array_sequenced: bool = False
 
     def meets_quantity_reqs(self) -> bool:
-        if self.sample_type in [SampleType.saliva, SampleType.blood]:
+        if self.sample_type in [SampleType.saliva_dna, SampleType.blood_dna]:
             return self.ds_dna_mass is not None and self.ds_dna_mass >= 2500
         else:
             if self.volume is None:
@@ -97,41 +99,35 @@ class AliquotData:
 @dataclass
 class ParticipantData:
     participant_id: int
-    pst_plasma_availability: Availability = field(default_factory=Availability)
     edta_plasma_availability: Availability = field(default_factory=Availability)
+    pst_plasma_availability: Availability = field(default_factory=Availability)
+    blood_dna_availability: Availability = field(default_factory=Availability)
+    saliva_dna_availability: Availability = field(default_factory=Availability)
     serum_availability: Availability = field(default_factory=Availability)
-    blood_availability: Availability = field(default_factory=Availability)
-    saliva_availability: Availability = field(default_factory=Availability)
-    cell_free_dna_availability: Availability = field(default_factory=Availability)
+    wbc_availability: Availability = field(default_factory=Availability)
+    rbc_availability: Availability = field(default_factory=Availability)
     urine_availability: Availability = field(default_factory=Availability)
-    pxr_rna_availability: Availability = field(default_factory=Availability)
-    hep_availability: Availability = field(default_factory=Availability)
+    rna_availability: Availability = field(default_factory=Availability)
+    whole_blood_dmso_availability: Availability = field(default_factory=Availability)
+
     array_status: bool = False
     array_source_blood: bool = False
     wgs_status: bool = False
     wgs_source_blood: bool = False
 
     def set_type_as_available(self, sample_type: SampleType, collection_date: datetime):
-        field_to_set = None
-        match sample_type:
-            case SampleType.saliva:
-                field_to_set = self.saliva_availability
-            case SampleType.blood:
-                field_to_set = self.blood_availability
-            case SampleType.edta_plasma:
-                field_to_set = self.edta_plasma_availability
-            case SampleType.pst_plasma:
-                field_to_set = self.pst_plasma_availability
-            case SampleType.serum:
-                field_to_set = self.serum_availability
-            case SampleType.ccfdna:
-                field_to_set = self.cell_free_dna_availability
-            case SampleType.urine:
-                field_to_set = self.urine_availability
-            case SampleType.pxr_rna:
-                field_to_set = self.pxr_rna_availability
-            case SampleType.hep:
-                field_to_set = self.hep_availability
+        field_to_set = {
+            SampleType.edta_plasma: self.edta_plasma_availability,
+            SampleType.pst_plasma: self.pst_plasma_availability,
+            SampleType.blood_dna: self.blood_dna_availability,
+            SampleType.saliva_dna: self.saliva_dna_availability,
+            SampleType.serum: self.serum_availability,
+            SampleType.wbc: self.wbc_availability,
+            SampleType.rbc: self.rbc_availability,
+            SampleType.urine: self.urine_availability,
+            SampleType.rna: self.rna_availability,
+            SampleType.whole_blood_dmso: self.whole_blood_dmso_availability
+        }.get(sample_type, None)
 
         if field_to_set:
             field_to_set.is_available = True
@@ -148,7 +144,8 @@ BloodSampleCodes = [
     '1ED04',
     '1ED10',
     '2ED02',
-    '2ED04'
+    '2ED04',
+    '2ED10'
 ]
 PlasmaSampleCodes = [
     '1PS4A',
@@ -161,9 +158,6 @@ PlasmaSampleCodes = [
 SerumSampleCodes = [
     '1SST8',
     '2SST8'
-]
-CellFreeCodes = [
-    '1CFD9'
 ]
 UrineCodes = [
     '1UR10',
@@ -180,13 +174,14 @@ SampleCodesToProcess = [
     *BloodSampleCodes,
     *PlasmaSampleCodes,
     *SerumSampleCodes,
-    *CellFreeCodes,
     *UrineCodes,
     *PxrRnaCodes,
     *HepCodes
 ]
 
 availability_data = defaultdict(lambda participant_id: ParticipantData(participant_id))
+
+distinct_sequence_sources = defaultdict(int)
 
 
 class SampleAvailabilityDatasetTool(ToolBase):
@@ -208,9 +203,9 @@ class SampleAvailabilityDatasetTool(ToolBase):
         saliva_mass_count = 0
         for a in aliquot_list:
             counts[a.sample_type] += 1
-            if a.sample_type == SampleType.blood and a.ds_dna_mass:
+            if a.sample_type == SampleType.blood_dna and a.ds_dna_mass:
                 blood_mass_count += 1
-            elif a.sample_type == SampleType.saliva and a.ds_dna_mass:
+            elif a.sample_type == SampleType.saliva_dna and a.ds_dna_mass:
                 saliva_mass_count += 1
 
         print('')
@@ -219,8 +214,8 @@ class SampleAvailabilityDatasetTool(ToolBase):
         for t in counts:
             print(str(counts[t]).rjust(30), t)
         print('')
-        print(str(counts[SampleType.blood] - blood_mass_count).rjust(30), 'blood missing mass val')
-        print(str(counts[SampleType.saliva] - saliva_mass_count).rjust(30), 'saliva missing mass val')
+        print(str(counts[SampleType.blood_dna] - blood_mass_count).rjust(30), 'blood missing mass val')
+        print(str(counts[SampleType.saliva_dna] - saliva_mass_count).rjust(30), 'saliva missing mass val')
 
         unit_count = defaultdict(int)
         for a in aliquot_list:
@@ -260,7 +255,8 @@ class SampleAvailabilityDatasetTool(ToolBase):
                         aliquot_data_to_export.append(aliquot_data)
 
                         if aliquot_data.array_sequenced or aliquot_data.wgs_sequenced:
-                            source = 'blood' if sample_type == SampleType.blood else 'saliva'
+                            distinct_sequence_sources[sample_type] += 1
+                            source = 'blood' if sample_type == SampleType.blood_dna else 'saliva'
                             if aliquot_data.array_sequenced:
                                 array_source = source
                             if aliquot_data.wgs_sequenced:
@@ -280,9 +276,46 @@ class SampleAvailabilityDatasetTool(ToolBase):
                         participant_export_data.array_source_blood = array_source == 'blood'
 
         print(datetime.now(), 'writing to csv')
+        # self._export_participant_3a_data_as_csv(participant_data_to_export)
         self._export_participant_data_as_csv(participant_data_to_export)
         self._export_aliquot_data_as_csv(aliquot_data_to_export)
         # self._upload_to_bq(data_to_export)
+
+        print()
+        print('dna sources:')
+        print(distinct_sequence_sources)
+
+    @classmethod
+    def _export_participant_3a_data_as_csv(cls, data_to_export: List[ParticipantData]):
+        with open('participant_export.csv', 'w') as file:
+            writer = csv.DictWriter(file, [
+                'participant_id',
+                'pst_plasma_availability',
+                'pst_plasma_collection_timestamp',
+                'edta_plasma_availability',
+                'edta_plasma_collection_timestamp',
+                'blood_dna_availability',
+                'blood_dna_collection_timestamp',
+                'saliva_dna_availability',
+                'saliva_dna_collection_timestamp',
+                'serum_availability',
+                'serum_collection_timestamp'
+            ])
+            writer.writeheader()
+            for data in data_to_export:
+                writer.writerow({
+                    'participant_id': data.participant_id,
+                    'pst_plasma_availability': 'Y' if data.pst_plasma_availability.is_available else 'N',
+                    'pst_plasma_collection_timestamp': data.pst_plasma_availability.collection_datetime,
+                    'edta_plasma_availability': 'Y' if data.edta_plasma_availability.is_available else 'N',
+                    'edta_plasma_collection_timestamp': data.edta_plasma_availability.collection_datetime,
+                    'blood_dna_availability': 'Y' if data.blood_dna_availability.is_available else 'N',
+                    'blood_dna_collection_timestamp': data.blood_dna_availability.collection_datetime,
+                    'saliva_dna_availability': 'Y' if data.saliva_dna_availability.is_available else 'N',
+                    'saliva_dna_collection_timestamp': data.saliva_dna_availability.collection_datetime,
+                    'serum_availability': 'Y' if data.serum_availability.is_available else 'N',
+                    'serum_collection_timestamp': data.serum_availability.collection_datetime
+                })
 
     @classmethod
     def _export_participant_data_as_csv(cls, data_to_export: List[ParticipantData]):
@@ -293,20 +326,22 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 'pst_plasma_collection_timestamp',
                 'edta_plasma_availability',
                 'edta_plasma_collection_timestamp',
+                'blood_dna_availability',
+                'blood_dna_collection_timestamp',
+                'saliva_dna_availability',
+                'saliva_dna_collection_timestamp',
                 'serum_availability',
                 'serum_collection_timestamp',
-                'blood_availability',
-                'blood_collection_timestamp',
-                'saliva_availability',
-                'saliva_collection_timestamp',
-                'cell_free_dna_availability',
-                'cell_free_dna_collection_timestamp',
+                'wbc_availability',
+                'wbc_collection_timestamp',
+                'rbc_availability',
+                'rbc_collection_timestamp',
                 'urine_availability',
                 'urine_collection_timestamp',
-                'pxr_rna_availability',
-                'pxr_rna_collection_timestamp',
-                'hep_availability',
-                'hep_collection_timestamp',
+                'rna_availability',
+                'rna_collection_timestamp',
+                'whole_blood_dmso_availability',
+                'whole_blood_dmso_collection_timestamp',
                 'array_sequencing_status',
                 'array_dna_source',
                 'wgs_sequencing_status',
@@ -328,20 +363,22 @@ class SampleAvailabilityDatasetTool(ToolBase):
                     'pst_plasma_collection_timestamp': data.pst_plasma_availability.collection_datetime,
                     'edta_plasma_availability': 'Y' if data.edta_plasma_availability.is_available else 'N',
                     'edta_plasma_collection_timestamp': data.edta_plasma_availability.collection_datetime,
+                    'blood_dna_availability': 'Y' if data.blood_dna_availability.is_available else 'N',
+                    'blood_dna_collection_timestamp': data.blood_dna_availability.collection_datetime,
+                    'saliva_dna_availability': 'Y' if data.saliva_dna_availability.is_available else 'N',
+                    'saliva_dna_collection_timestamp': data.saliva_dna_availability.collection_datetime,
                     'serum_availability': 'Y' if data.serum_availability.is_available else 'N',
                     'serum_collection_timestamp': data.serum_availability.collection_datetime,
-                    'blood_availability': 'Y' if data.blood_availability.is_available else 'N',
-                    'blood_collection_timestamp': data.blood_availability.collection_datetime,
-                    'saliva_availability': 'Y' if data.saliva_availability.is_available else 'N',
-                    'saliva_collection_timestamp': data.saliva_availability.collection_datetime,
-                    'cell_free_dna_availability': 'Y' if data.cell_free_dna_availability.is_available else 'N',
-                    'cell_free_dna_collection_timestamp': data.cell_free_dna_availability.collection_datetime,
+                    'wbc_availability': 'Y' if data.wbc_availability.is_available else 'N',
+                    'wbc_collection_timestamp': data.wbc_availability.collection_datetime,
+                    'rbc_availability': 'Y' if data.rbc_availability.is_available else 'N',
+                    'rbc_collection_timestamp': data.rbc_availability.collection_datetime,
                     'urine_availability': 'Y' if data.urine_availability.is_available else 'N',
                     'urine_collection_timestamp': data.urine_availability.collection_datetime,
-                    'pxr_rna_availability': 'Y' if data.pxr_rna_availability.is_available else 'N',
-                    'pxr_rna_collection_timestamp': data.pxr_rna_availability.collection_datetime,
-                    'hep_availability': 'Y' if data.hep_availability.is_available else 'N',
-                    'hep_collection_timestamp': data.hep_availability.collection_datetime,
+                    'rna_availability': 'Y' if data.rna_availability.is_available else 'N',
+                    'rna_collection_timestamp': data.rna_availability.collection_datetime,
+                    'whole_blood_dmso_availability': 'Y' if data.whole_blood_dmso_availability.is_available else 'N',
+                    'whole_blood_dmso_collection_timestamp': data.whole_blood_dmso_availability.collection_datetime,
                     'array_sequencing_status': 'Y' if data.array_status else 'N',
                     'array_dna_source': array_source,
                     'wgs_sequencing_status': 'Y' if data.wgs_status else 'N',
@@ -469,7 +506,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 aliquot_id, aliquot_rlims_id, participant_id, volume_str, units_str,
                 test_code, sample_type, collection_timestamp, freeze_count, processing_datetime
             ) = result
-            sample_type = cls.determine_sample_type(test_code, sample_type)
+            sample_type = cls.determine_sample_type(test_code, sample_type.lower())
             if not sample_type:
                 continue
 
@@ -487,28 +524,42 @@ class SampleAvailabilityDatasetTool(ToolBase):
     @classmethod
     def determine_sample_type(cls, test_code: str, sample_type: str) -> Optional[SampleType]:
         if test_code in BloodSampleCodes:
-            if sample_type == 'Plasma':
+            if sample_type == 'plasma':
                 return SampleType.edta_plasma
-            elif sample_type == 'DNA':
-                return SampleType.blood
+            elif sample_type == 'dna':
+                return SampleType.blood_dna
             else:
                 return None
         elif test_code in PlasmaSampleCodes:
             return SampleType.pst_plasma
-        elif test_code in SerumSampleCodes:
-            return SampleType.serum
-        elif test_code in SalivaSampleCodes and sample_type == 'DNA':
-            return SampleType.saliva
-        elif test_code in CellFreeCodes:
-            return SampleType.ccfdna
-        elif test_code in UrineCodes:
-            return SampleType.urine
-        elif test_code in PxrRnaCodes:
-            return SampleType.pxr_rna
-        elif test_code in HepCodes:
-            return SampleType.hep
 
-        return None
+        match sample_type:
+            case 'plasma':
+                if test_code in BloodSampleCodes:
+                    return SampleType.edta_plasma
+                elif test_code in PlasmaSampleCodes:
+                    return SampleType.pst_plasma
+            case 'dna':
+                if test_code in BloodSampleCodes:
+                    return SampleType.blood_dna
+                elif test_code in SalivaSampleCodes:
+                    return SampleType.saliva_dna
+                else:
+                    return None
+            case 'serum':
+                return SampleType.serum
+            case 'wbc':
+                return SampleType.wbc
+            case 'rbc':
+                return SampleType.rbc
+            case 'random urine':
+                return SampleType.urine
+            case 'rna':
+                return SampleType.rna
+            case 'whole blood':
+                return SampleType.whole_blood_dmso
+            case _:
+                return None
 
     @classmethod
     def process_dataset_info(cls, session: Session, aliquot_list: List[AliquotData]):
