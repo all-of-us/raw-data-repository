@@ -1,6 +1,7 @@
 #!/bin/bash -ae
 
 # Sets up a Cloud SQL instance and sets the 5 passwords that need to be rotated (root, alembic, readonly, rdr, datastream)
+# Example cmd to run on an instance different than rdrmaindb: ./tools/renew_passwords.sh --account <ACCOUNT> --project all-of-us-rdr-sandbox -i rdrsandbox-maindb
 
 USAGE="tools/renew_passwords.sh --account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>]"
 while true; do
@@ -35,16 +36,6 @@ fi
 source tools/setup_vars.sh
 
 
-if [ "${PROJECT}" == "all-of-us-rdr-sandbox" ]
-    then DATASTREAM_SECRET_NAME="datastream-rdr-sandbox-password"
-elif [ "${PROJECT}" == "all-of-us-rdr-staging" ]
-    then DATASTREAM_SECRET_NAME="datastream_password_rdr_warehouse_staging"
-elif [ "${PROJECT}" == "all-of-us-rdr-stable" ]
-  then DATASTREAM_SECRET_NAME="maindb-datastream-user-password"
-elif [ "${PROJECT}" == "all-of-us-rdr-prod" ]
-    then DATASTREAM_SECRET_NAME="rdrmaindb-datastream-password"
-fi
-
 # Get a randomly generated password including special characters
 function randpw {
     lower=$(LC_ALL=C tr -dc 'a-z' < /dev/urandom | head -c1)
@@ -56,8 +47,43 @@ function randpw {
     new_password="${lower}${upper}${digit}${special}${rest}"
     }
 
-INSTANCE_NAME=rdrmaindb
+if [ ! -z "$INSTANCE" ]; then
+  INSTANCE_NAME="$INSTANCE"
+else
+  INSTANCE_NAME=rdrmaindb
+fi
 FAILOVER_INSTANCE_NAME=rdrbackupdb
+
+# Set secret names based on the env and instance name
+if [ "${INSTANCE_NAME}" == "rdrsandbox-maindb" ];
+  then
+    ROOT_PWD_SECRET_NAME="root-rdrmaindb-password"
+    RDR_PWD_SECRET_NAME="rdr-rdrmaindb-password"
+    READONLY_PWD_SECRET_NAME="readonly-rdrmaindb-password"
+elif [ "${INSTANCE_NAME}" == "rdr-preprod-curation" ];
+  then
+    ROOT_PWD_SECRET_NAME="preprod-curation-sql-root-password"
+    RDR_PWD_SECRET_NAME="preprod-curation-sql-rdr-password"
+    READONLY_PWD_SECRET_NAME="preprod-curation-sql-readonly-password"
+else
+  ROOT_PWD_SECRET_NAME="rdr-cloud-sql-root-password"
+  RDR_PWD_SECRET_NAME="rdr-cloud-sql-rdr-password"
+  READONLY_PWD_SECRET_NAME="rdr-cloud-sql-readonly-password"
+fi
+
+if [ "${PROJECT}" == "all-of-us-rdr-sandbox" ] && [ "${INSTANCE_NAME}" == "rdrsandbox-maindb" ]
+    then DATASTREAM_SECRET_NAME="datastream-rdrmaindb-password"
+elif [ "${PROJECT}" == "all-of-us-rdr-prod" ] && [ "${INSTANCE_NAME}" == "rdr-preprod-curation" ]
+    then DATASTREAM_SECRET_NAME="rdr-preprod-curation-db-datastream-password"
+elif [ "${PROJECT}" == "all-of-us-rdr-sandbox" ]
+    then DATASTREAM_SECRET_NAME="datastream-rdr-sandbox-password"
+elif [ "${PROJECT}" == "all-of-us-rdr-staging" ]
+    then DATASTREAM_SECRET_NAME="datastream_password_rdr_warehouse_staging"
+elif [ "${PROJECT}" == "all-of-us-rdr-stable" ]
+  then DATASTREAM_SECRET_NAME="maindb-datastream-user-password"
+elif [ "${PROJECT}" == "all-of-us-rdr-prod" ]
+    then DATASTREAM_SECRET_NAME="rdrmaindb-datastream-password"
+fi
 
 source tools/auth_setup.sh
 
@@ -144,16 +170,16 @@ fi
 
 if [ "$PASSWORD_UPDATE_SUCCESS" = true ]; then
   echo "Updating Secrets Manager's Root secrets"
-  echo -n "$ROOT_PASSWORD" | gcloud secrets versions add rdr-cloud-sql-root-password --data-file=-
-  gcloud secrets versions disable $(gcloud secrets versions list rdr-cloud-sql-root-password --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=rdr-cloud-sql-root-password
+  echo -n "$ROOT_PASSWORD" | gcloud secrets versions add $ROOT_PWD_SECRET_NAME --data-file=-
+  gcloud secrets versions disable $(gcloud secrets versions list $ROOT_PWD_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$ROOT_PWD_SECRET_NAME
 
   echo "Updating Secrets Manager's RDR secrets"
-  echo -n "$RDR_PASSWORD" | gcloud secrets versions add rdr-cloud-sql-rdr-password --data-file=-
-  gcloud secrets versions disable $(gcloud secrets versions list rdr-cloud-sql-rdr-password --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=rdr-cloud-sql-rdr-password
+  echo -n "$RDR_PASSWORD" | gcloud secrets versions add $RDR_PWD_SECRET_NAME --data-file=-
+  gcloud secrets versions disable $(gcloud secrets versions list $RDR_PWD_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$RDR_PWD_SECRET_NAME
 
   echo "Updating Secrets Manager's READ ONLY secrets"
-  echo -n "$READONLY_PASSWORD" | gcloud secrets versions add rdr-cloud-sql-readonly-password --data-file=-
-  gcloud secrets versions disable $(gcloud secrets versions list rdr-cloud-sql-readonly-password --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=rdr-cloud-sql-readonly-password
+  echo -n "$READONLY_PASSWORD" | gcloud secrets versions add $READONLY_PWD_SECRET_NAME --data-file=-
+  gcloud secrets versions disable $(gcloud secrets versions list $READONLY_PWD_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$READONLY_PWD_SECRET_NAME
 fi
 
 if [[ ! -z "$DATASTREAM_SECRET_NAME" ]]; then
