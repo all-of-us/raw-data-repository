@@ -66,7 +66,10 @@ class AliquotData:
     ds_concentration_units: str = None
     total_dna_concentration: float = None
     total_dna_concentration_units: str = None
+    total_rna_concentration: float = None
+    total_rna_concentration_units: str = None
     total_dna_mass: float = None
+    total_rna_mass: float = None
     a_260_230_ratio: float = None
     a_260_280_ratio: float = None
     extraction_method: str = None
@@ -528,8 +531,6 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 return SampleType.edta_plasma
             elif sample_type == 'dna':
                 return SampleType.blood_dna
-            else:
-                return None
         elif test_code in PlasmaSampleCodes:
             return SampleType.pst_plasma
 
@@ -604,7 +605,8 @@ class SampleAvailabilityDatasetTool(ToolBase):
             ).all()
 
             ds_conc_values: Dict[int, BiobankAliquotDatasetItem] = {}
-            total_conc_values: Dict[int, BiobankAliquotDatasetItem] = {}
+            rna_conc_values: Dict[int, BiobankAliquotDatasetItem] = {}
+            total_dna_conc_values: Dict[int, BiobankAliquotDatasetItem] = {}
             a230_values: Dict[int, BiobankAliquotDatasetItem] = {}
             a280_values: Dict[int, BiobankAliquotDatasetItem] = {}
             for dataset_item in dataset_item_list:
@@ -612,7 +614,9 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 if dataset_item.paramId == 'dsDNA Conc':
                     ds_conc_values[aliquot_id] = dataset_item
                 elif dataset_item.paramId == 'Total DNA Conc':
-                    total_conc_values[aliquot_id] = dataset_item
+                    total_dna_conc_values[aliquot_id] = dataset_item
+                elif dataset_item.paramId == 'Total RNA Conc':
+                    rna_conc_values[aliquot_id] = dataset_item
                 elif dataset_item.paramId == 'A260/230':
                     a230_values[aliquot_id] = dataset_item
                 elif dataset_item.paramId == 'A260/280':
@@ -625,12 +629,19 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 aliquot.ds_concentration_units = conc_data.displayUnits
                 aliquot.ds_dna_mass = aliquot.volume * aliquot.ds_concentration  # uL * ng/uL
 
-            for aliquot_id in total_conc_values:
+            for aliquot_id in total_dna_conc_values:
                 aliquot = aliquot_map[aliquot_id]
-                conc_data = total_conc_values[aliquot_id]
+                conc_data = total_dna_conc_values[aliquot_id]
                 aliquot.total_dna_concentration = float(conc_data.displayValue)
                 aliquot.total_dna_concentration_units = conc_data.displayUnits
                 aliquot.total_dna_mass = aliquot.volume * aliquot.total_dna_concentration
+
+            for aliquot_id in rna_conc_values:
+                aliquot = aliquot_map[aliquot_id]
+                conc_data = rna_conc_values[aliquot_id]
+                aliquot.total_rna_concentration = float(conc_data.displayValue)
+                aliquot.total_rna_concentration_units = conc_data.displayUnits
+                aliquot.total_rna_mass = aliquot.volume * aliquot.total_rna_concentration
 
                 # TODO: make sure all concentrations have the same units (ng/ul).
                 #       as of 2026-03-19, they're all good. query to check:
