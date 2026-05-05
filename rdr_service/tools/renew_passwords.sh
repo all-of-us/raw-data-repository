@@ -52,7 +52,12 @@ if [ ! -z "$INSTANCE" ]; then
 else
   INSTANCE_NAME=rdrmaindb
 fi
-FAILOVER_INSTANCE_NAME=rdrbackupdb
+
+if [ "${PROJECT}" == "all-of-us-rdr-prod" ];
+  then FAILOVER_INSTANCE_NAME=rdrbackupdb-e
+else
+  FAILOVER_INSTANCE_NAME=rdrbackupdb
+fi
 
 # Set secret names based on the env and instance name
 if [ "${INSTANCE_NAME}" == "rdrsandbox-maindb" ];
@@ -90,7 +95,7 @@ source tools/auth_setup.sh
 INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
 BACKUP_INSTANCE_NAME=$(gcloud sql instances describe $FAILOVER_INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
 
-if [ ${PROJECT} = 'all-of-us-rdr-sandbox' ]
+if [ "${PROJECT}" = 'all-of-us-rdr-sandbox' ]
 then
     BACKUP_INSTANCE_NAME=$INSTANCE_CONNECTION_NAME
     PORT=3306
@@ -207,6 +212,8 @@ if [ "$PASSWORD_UPDATE_SUCCESS_DS" = true ]; then
 fi
 echo "Secret Manager values updated."
 
-echo "Setting database configuration..."
-tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
+if [ "$INSTANCE_NAME" == "rdrmaindb" ]; then
+  echo "Setting database configuration..."
+  tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
+fi
 echo "Done."
