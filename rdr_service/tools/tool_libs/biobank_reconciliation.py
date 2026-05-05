@@ -15,6 +15,9 @@ tool_cmd = 'biobank-reconciliation'
 tool_desc = 'Load a specific reconciliation file from Biobank to correct a field we have'
 
 
+DRY_RUN = True
+
+
 @dataclass()
 class Correction:
     key: str
@@ -24,15 +27,17 @@ class Correction:
 class BiobankReconciliation(ToolBase):
 
     def _process_correction(self, correction, db_object: BiobankAliquotDataset):
-        if self.dry_run:
-            db_value = db_object.extractionMethod                                        # (dry-run) extract db value
+        if DRY_RUN:
+            db_value = db_object.extractionDate                                        # (dry-run) extract db value
             if db_value == correction.correct_value:
                 print(f'{correction.key}: WOULD NOT CHANGE VALUE')
             else:
+                value_display = lambda value: None if value is None else f"{value}"
+
                 print(
                     f'{correction.key}: would change '
-                    f'db "{db_value}" to '
-                    f'"{correction.correct_value}"'
+                    f'db {value_display(db_value)} to '
+                    f'{value_display(correction.correct_value)}'
                 )
         else:
             # db_object.__setattr__(field_name, correction.correct_value)
@@ -61,7 +66,7 @@ class BiobankReconciliation(ToolBase):
             )
             # new_value = correction.correct_value
 
-            if self.dry_run:
+            if DRY_RUN:
                 db_stored_value = stored_sample.__getattribute__(sample_field)
                 if db_stored_value == new_value:
                     print('\t not changing stored sample data')
@@ -90,9 +95,8 @@ class BiobankReconciliation(ToolBase):
     def run(self):
         super().run()
                                                                             # file path
-        file_path = 'reconciliation/reconciliation_20260202_datasets_extractionmethod_20260303.csv'
+        file_path = 'recon/reconciliation_20260406_datasets_extractionmethodtimestamp_20260430.csv'
         batch_size = 5000
-        self.dry_run = True                                                 # dry run
 
         # todo:
         #   move dry_run and stored_sample_update flags to the top
@@ -132,7 +136,7 @@ class BiobankReconciliation(ToolBase):
                         correction, mapped_objects[correction.key]
                     )
 
-                if not self.dry_run:
+                if not DRY_RUN:
                     self._run_batch_update(session, self.batch_data)
                 session.commit()
 
@@ -154,9 +158,9 @@ class BiobankReconciliation(ToolBase):
             reader = csv.DictReader(file)
             for index, row in enumerate(reader):
                 key, value = row.values()
-                if value == '':
+                if value == '':                                              # comment out to allow for clobbering data
                     value = None
-                # value = cls._parse_date(value)
+                value = cls._parse_date(value)                                        # date parse
 
                 if not key:
                     raise Exception(f'bad key found at {index}')
@@ -176,16 +180,17 @@ class BiobankReconciliation(ToolBase):
 
     @classmethod
     def _parse_date(cls, date_str):
-        return datetime.strptime(date_str, '%d%b%y:%H:%M:%S')
+        return datetime.strptime(date_str, '%d%b%Y:%H:%M:%S')
 
     @classmethod
     def _run_batch_update(cls, session: Session, id_value_map):
         query = (
             'update biobank_aliquot_dataset set modified = now(), '
-            'extraction_method = CASE id'
+            'extraction_date = CASE id'
         )                                                                           # db column ref
         for _id, value in id_value_map.items():
-            query += f' when {_id} then "{value}"'
+            value_text = "null" if value is None else f'"{value}"'
+            query += f' when {_id} then {value_text}'
 
         id_list_str = ','.join([str(_id) for _id in id_value_map.keys()])
         query += f' end where id in ({id_list_str});'
