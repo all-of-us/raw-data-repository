@@ -1,10 +1,11 @@
 import csv
 import io
-from typing import List
+from typing import Dict, List
 
 from google.cloud.storage import Blob
 
 from rdr_service import code_constants
+from rdr_service.model.code import Code
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
@@ -308,15 +309,80 @@ QUALTRICS_QUESTION_CODE_MAP = {
     'SDOH_EDS_FOLLOW_UP_X': 'sdoh_eds_follow_up_1_xx'
 }
 
+NON_QUESTION_COLUMNS = {
+    'StartDate',
+    'EndDate',
+    'Status',
+    'IPAddress',
+    'Progress',
+    'Duration (in seconds)',
+    'Finished',
+    'RecordedDate',
+    'ResponseId',
+    'RecipientLastName',
+    'RecipientFirstName',
+    'RecipientEmail',
+    'ExternalReference',
+    'LocationLatitude',
+    'LocationLongitude',
+    'DistributionChannel',
+    'UserLanguage',
+    'LastModifiedDate',
+    'META_INFO_Browser',
+    'META_INFO_Version',
+    'META_INFO_Operating System',
+    'META_INFO_Resolution',
+    'VERSION',
+    'GEOPOSTAL',
+    'GEOCITY',
+    'GEOREGION',
+    'GEOCOUNTRYNAME',
+    'GEOCOUNTRYCODE',
+    'ENV_RUN',
+    'S3URL',
+    'Q_CHL',
+    'P_CONTACTID',
+    'NORCINDEXID',
+    'P_ID',
+    'Q_URL',
+    'P_DOB',
+    'SHOW_REPORT'
+}
+
+
+class ResponseFileParser:
+    def __init__(self, file_blob: Blob):
+        file_data = io.StringIO(file_blob.download_as_string().decode('utf8'))
+        self.reader = csv.DictReader(file_data)
+        self.question_codes = self._get_question_codes()
+
+    def _get_question_codes(self) -> List[str]:
+        question_column_names = [
+            name
+            for name in self.reader.fieldnames
+            if name not in NON_QUESTION_COLUMNS and not name.startswith('__js_')
+        ]
+
+        result = []
+        for name in question_column_names:
+            if name in QUALTRICS_QUESTION_CODE_MAP:
+                result.append(QUALTRICS_QUESTION_CODE_MAP[name].lower())
+            else:
+                result.append(name.lower())
+        return result
+
+
 
 class SurveyDataImport(ToolBase):
     def run(self):
         super().run()
 
-        for blob in self._get_response_blobs():
-            print()
-            print(blob.name)
-            self._process_response_blob(blob)
+        with self.get_session() as session:
+            db_codes = self._get_db_codes(session)
+            for blob in self._get_response_blobs():
+                print()
+                print(blob.name)
+                self._process_response_blob(blob, db_codes)
 
     def _get_response_blobs(self) -> List[Blob]:
         directory_path = self.args.path
@@ -333,11 +399,11 @@ class SurveyDataImport(ToolBase):
         return results
 
     @classmethod
-    def _process_response_blob(cls, blob: Blob):
-        file_data = io.StringIO(blob.download_as_string().decode('utf8'))
-        reader = csv.DictReader(file_data)
-
-        print(reader.fieldnames)
+    def _process_response_blob(cls, blob: Blob, db_codes: Dict[str, Code]):
+        parser = ResponseFileParser(blob)
+        for question_code in parser.question_codes:
+            if question_code not in db_codes:
+                print(f'{question_code} not found')
 
 
         # TODO:
@@ -349,6 +415,16 @@ class SurveyDataImport(ToolBase):
 
         pass
 
+    @classmethod
+    def _get_db_codes(cls, session) -> Dict[str, Code]:
+        codes = session.query(
+            Code.codeId,
+            Code.value
+        ).all()
+        return {
+            code.value: code
+            for code in codes
+        }
 
 
 
