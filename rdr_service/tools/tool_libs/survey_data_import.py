@@ -420,7 +420,7 @@ class SurveyDataImport(ToolBase):
         with self.get_session() as session:
             db_codes = self._get_db_codes(session)
             for blob in self._get_response_blobs():
-                print()
+                print('--------------------\n')
                 print(blob.name)
                 self._process_response_blob(blob, db_codes, session)
 
@@ -441,6 +441,7 @@ class SurveyDataImport(ToolBase):
     @classmethod
     def _process_response_blob(cls, blob: Blob, db_codes: Dict[str, Code], session):
         parser = ResponseFileParser(blob)
+        logger.info(f'Module name: {parser.get_module_name()}')
 
         unregonized_question_codes = []
         recognized_question_codes = []
@@ -450,7 +451,7 @@ class SurveyDataImport(ToolBase):
             else:
                 recognized_question_codes.append(question_code)
         if unregonized_question_codes:
-            logger.warning(f'Unrecognized question codes: {", ".join(unregonized_question_codes)}')
+            logger.warning(f'Unrecognized question codes: {", ".join(unregonized_question_codes)}\n')
 
         module_code = db_codes[parser.get_module_name()]
         questionnaire = QuestionnaireProxy(module_code.codeId, session)
@@ -460,14 +461,14 @@ class SurveyDataImport(ToolBase):
             if question_code not in questionnaire.question_codes:
                 extra_codes.append(question_code)
         if extra_codes:
-            logger.warning(f'Question codes not found in module definition: {", ".join(extra_codes)}')
+            logger.warning(f'Question codes not found in module definition: {", ".join(extra_codes)}\n')
 
         missing_codes = []
         for question_code in questionnaire.question_codes:
             if question_code not in recognized_question_codes:
                 missing_codes.append(question_code)
         if missing_codes:
-            logger.warning(f'Question codes not found in data file: {", ".join(missing_codes)}')
+            logger.warning(f'Question codes not found in data file: {", ".join(missing_codes)}\n')
 
         # TODO:
         #   read the headers and determine the corresponding question code
