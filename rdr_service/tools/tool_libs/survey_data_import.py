@@ -1,4 +1,5 @@
 import csv
+import io
 from typing import List
 
 from google.cloud.storage import Blob
@@ -333,12 +334,10 @@ class SurveyDataImport(ToolBase):
 
     @classmethod
     def _process_response_blob(cls, blob: Blob):
-        file_data = blob.download_as_string()
-        reader = csv.reader(file_data)
+        file_data = io.StringIO(blob.download_as_string().decode('utf8'))
+        reader = csv.DictReader(file_data)
 
-        for line in reader:
-            print(line)
-            return
+        print(reader.fieldnames)
 
 
         # TODO:
