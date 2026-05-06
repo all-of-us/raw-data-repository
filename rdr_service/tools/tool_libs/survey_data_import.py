@@ -6,8 +6,9 @@ from google.cloud.storage import Blob
 
 from rdr_service import code_constants
 from rdr_service.model.code import Code
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.storage import GoogleCloudStorageProvider
-from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase, logger
 
 
 tool_cmd = 'survey-data-import'
@@ -283,7 +284,7 @@ QUALTRICS_QUESTION_CODE_MAP = {
     'SELFREPORT_WTLB': 'self_reported_weight_pounds',
     'SELFREPORT_WTKG': 'self_reported_weight_kg',
     # 2010
-    #   note: all question codes match redcap definitions
+    'MHQUKB_31_AMITRIP': 'mhqukb_31_amitriptyline',
     # 2011
     #   note: all question codes match redcap definitions
     # 2012
@@ -355,6 +356,7 @@ class ResponseFileParser:
         file_data = io.StringIO(file_blob.download_as_string().decode('utf8'))
         self.reader = csv.DictReader(file_data)
         self.question_codes = self._get_question_codes()
+        self.blob = file_blob
 
     def _get_question_codes(self) -> List[str]:
         question_column_names = [
@@ -371,6 +373,44 @@ class ResponseFileParser:
                 result.append(name.lower())
         return result
 
+    def get_module_name(self) -> str:
+        file_name = self.blob.name.split('/')[-1]
+        module_identifier = file_name[:4]
+        return SURVEY_CODE_MAP[module_identifier].lower()
+
+
+class QuestionnaireProxy:
+    def __init__(self, module_code_id, session):
+        query = session.query(
+            QuestionnaireConcept.questionnaireId,
+            QuestionnaireConcept.questionnaireVersion
+        ).filter(
+            QuestionnaireConcept.codeId == module_code_id
+        ).order_by(
+            QuestionnaireConcept.questionnaireId.desc(),
+            QuestionnaireConcept.questionnaireVersion.desc()
+        )
+        concept: QuestionnaireConcept = query.first()
+
+        self.questionnaire_id = concept.questionnaireId
+        self.version_number = concept.questionnaireVersion
+
+        question_query = session.query(
+            QuestionnaireQuestion.questionnaireQuestionId,
+            Code.value
+        ).join(
+            Code,
+            QuestionnaireQuestion.codeId == Code.codeId
+        ).filter(
+            QuestionnaireQuestion.questionnaireId == self.questionnaire_id,
+            QuestionnaireQuestion.questionnaireVersion == self.version_number
+        )
+        question_list = question_query.all()
+
+        self.question_codes = {
+            code_str.lower(): question_id
+            for question_id, code_str in question_list
+        }
 
 
 class SurveyDataImport(ToolBase):
@@ -382,7 +422,7 @@ class SurveyDataImport(ToolBase):
             for blob in self._get_response_blobs():
                 print()
                 print(blob.name)
-                self._process_response_blob(blob, db_codes)
+                self._process_response_blob(blob, db_codes, session)
 
     def _get_response_blobs(self) -> List[Blob]:
         directory_path = self.args.path
@@ -399,15 +439,37 @@ class SurveyDataImport(ToolBase):
         return results
 
     @classmethod
-    def _process_response_blob(cls, blob: Blob, db_codes: Dict[str, Code]):
+    def _process_response_blob(cls, blob: Blob, db_codes: Dict[str, Code], session):
         parser = ResponseFileParser(blob)
+
+        unregonized_question_codes = []
+        recognized_question_codes = []
         for question_code in parser.question_codes:
             if question_code not in db_codes:
-                print(f'{question_code} not found')
+                unregonized_question_codes.append(question_code)
+            else:
+                recognized_question_codes.append(question_code)
+        if unregonized_question_codes:
+            logger.warning(f'Unrecognized question codes: {", ".join(unregonized_question_codes)}')
 
+        module_code = db_codes[parser.get_module_name()]
+        questionnaire = QuestionnaireProxy(module_code.codeId, session)
+
+        extra_codes = []
+        for question_code in recognized_question_codes:
+            if question_code not in questionnaire.question_codes:
+                extra_codes.append(question_code)
+        if extra_codes:
+            logger.warning(f'Question codes not found in module definition: {", ".join(extra_codes)}')
+
+        missing_codes = []
+        for question_code in questionnaire.question_codes:
+            if question_code not in recognized_question_codes:
+                missing_codes.append(question_code)
+        if missing_codes:
+            logger.warning(f'Question codes not found in data file: {", ".join(missing_codes)}')
 
         # TODO:
-        #   get the csv bytes in memory
         #   read the headers and determine the corresponding question code
         #       if in QUALTRICS_QUESTION_CODE_MAP then use mapped value (else use lowered value directly)
         #       find db code with matching value
@@ -422,7 +484,7 @@ class SurveyDataImport(ToolBase):
             Code.value
         ).all()
         return {
-            code.value: code
+            code.value.lower(): code
             for code in codes
         }
 
