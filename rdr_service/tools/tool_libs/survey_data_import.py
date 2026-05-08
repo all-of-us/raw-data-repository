@@ -7,7 +7,7 @@ from google.cloud.storage import Blob
 
 from rdr_service import code_constants
 from rdr_service.model.code import Code
-from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase, logger
@@ -507,19 +507,8 @@ class SurveyDataImport(ToolBase):
 
         responses = parser.generate_responses(questionnaire)
         logger.info(f'\nfound {len(responses)} responses')
-        first_response = responses[0]
-        logger.info(f'authored: {first_response.authored}, participant: {first_response.participantId}, questionnaire: {first_response.questionnaireId}')
-        for answer in first_response.answers:
-            logger.info(f'\t{answer.questionId}: {answer.valueString}')
-        print(first_response.resource)
-
-        # TODO:
-        #   read the headers and determine the corresponding question code
-        #       if in QUALTRICS_QUESTION_CODE_MAP then use mapped value (else use lowered value directly)
-        #       find db code with matching value
-        #   run implementation in this state to be sure all the data files reference known question codes
-
-        pass
+        session.add_all(responses)
+        session.commit()
 
     @classmethod
     def _get_db_codes(cls, session) -> Dict[str, Code]:
@@ -531,7 +520,6 @@ class SurveyDataImport(ToolBase):
             code.value.lower(): code
             for code in codes
         }
-
 
 
 def add_additional_arguments(parser):
