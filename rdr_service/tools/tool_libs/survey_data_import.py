@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 from typing import Dict, List
 
 from google.cloud.storage import Blob
@@ -7,6 +8,7 @@ from google.cloud.storage import Blob
 from rdr_service import code_constants
 from rdr_service.model.code import Code
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase, logger
 
@@ -53,7 +55,7 @@ QUALTRICS_QUESTION_CODE_MAP = {
     'SEXORIEN_CLOSERDESCR': 'genderidentity_sexualitycloserdescription',
     'SOMETHINGELSETEXTBOX': 'somethingelse_sexualitysomethingelsetextbox',
     'EDULVL_HIGHESTGRADE': 'educationlevel_highestgrade',
-    'ACTIVEDUTYSERVSTAT': 'activeduty_activedutyservestatus',
+    'ACTIVEDUTYSERVSTAT': 'activeduty_avtivedutyservestatus',
     'CURRMARSTAT': 'maritalstatus_currentmaritalstatus',
     'LIVINGSIT_NUMBER': 'livingsituation_howmanypeople',
     'LIVINGSIT_UNDER18': 'livingsituation_peopleunder18',
@@ -357,6 +359,7 @@ class ResponseFileParser:
         self.reader = csv.DictReader(file_data)
         self.question_codes = self._get_question_codes()
         self.blob = file_blob
+        self._question_code_column_map: Dict[str, str] = {}
 
     def _get_question_codes(self) -> List[str]:
         question_column_names = [
@@ -367,16 +370,40 @@ class ResponseFileParser:
 
         result = []
         for name in question_column_names:
+            mapped_name = name.lower()
             if name in QUALTRICS_QUESTION_CODE_MAP:
-                result.append(QUALTRICS_QUESTION_CODE_MAP[name].lower())
-            else:
-                result.append(name.lower())
+                mapped_name = QUALTRICS_QUESTION_CODE_MAP[name].lower()
+
+            result.append(mapped_name)
+            self._question_code_column_map[mapped_name] = name
         return result
 
     def get_module_name(self) -> str:
         file_name = self.blob.name.split('/')[-1]
         module_identifier = file_name[:4]
         return SURVEY_CODE_MAP[module_identifier].lower()
+
+    def generate_responses(self, questionnaire_proxy: 'QuestionnaireProxy') -> List[QuestionnaireResponse]:
+        result = []
+        for row in self.reader:
+            response = QuestionnaireResponse(
+                questionnaireId=questionnaire_proxy.questionnaire_id,
+                questionnaireVersion=questionnaire_proxy.version_number,
+                participantId=row['P_ID'][1:],
+                authored=row['EndDate'],
+                resource=json.dumps(row),
+                externalId=row['ResponseId']
+            )
+            for question_code in questionnaire_proxy.question_map:
+                column_name = self._question_code_column_map[question_code]
+                if column_name in row:
+                    answer = QuestionnaireResponseAnswer(
+                        questionId=questionnaire_proxy.question_map[question_code]
+                    )
+                    answer.valueString = row[column_name]
+                    response.answers.append(answer)
+            result.append(response)
+        return result
 
 
 class QuestionnaireProxy:
@@ -407,7 +434,7 @@ class QuestionnaireProxy:
         )
         question_list = question_query.all()
 
-        self.question_codes = {
+        self.question_map = {
             code_str.lower(): question_id
             for question_id, code_str in question_list
         }
@@ -465,12 +492,18 @@ class SurveyDataImport(ToolBase):
             logger.warning(f'Question codes not found in module definition:\n{", ".join(sorted(extra_codes))}\n')
 
         missing_codes = []
-        for question_code in questionnaire.question_codes:
+        for question_code in questionnaire.question_map:
             if question_code not in recognized_question_codes:
                 missing_codes.append(question_code)
         if missing_codes:
             logger.warning(f'Question codes not found in data file:\n{", ".join(sorted(missing_codes))}\n')
 
+        responses = parser.generate_responses(questionnaire)
+        logger.info(f'\nfound {len(responses)} responses')
+        first_response = responses[0]
+        logger.info(f'authored: {first_response.authored}, participant: {first_response.participantId}, questionnaire: {first_response.questionnaireId}')
+        for answer in first_response.answers:
+            logger.info(f'\t{answer.questionId}: {answer.valueString}')
 
         # TODO:
         #   read the headers and determine the corresponding question code
