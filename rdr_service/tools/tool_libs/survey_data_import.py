@@ -11,6 +11,7 @@ from rdr_service import code_constants
 from rdr_service.model.code import Code
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.services.system_utils import list_chunks
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase, logger
 
@@ -517,7 +518,9 @@ class SurveyDataImport(ToolBase):
             response.questionnaireResponseId = response_ids[index]
 
         logger.info(f'saving responses...')
-        session.add_all(responses)
+        for subset in list_chunks(responses, 500):
+            session.add_all(subset)
+            session.flush()
         session.commit()
 
     @classmethod
@@ -556,7 +559,9 @@ class SurveyDataImport(ToolBase):
             """
             query_result = session.execute(query)
             for value in query_result:
-                result.append(value[0])
+                val_not_in_db = value[0]
+                if val_not_in_db not in result:
+                    result.append(value[0])
 
         return result
 
