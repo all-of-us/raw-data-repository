@@ -1,6 +1,8 @@
 import csv
+from datetime import datetime
 import io
 import json
+import random
 from typing import Dict, List
 
 from google.cloud.storage import Blob
@@ -392,7 +394,8 @@ class ResponseFileParser:
                 participantId=row['P_ID'][1:],
                 authored=row['EndDate'],
                 resource=json.dumps(row),
-                externalId=row['ResponseId']
+                externalId=row['ResponseId'],
+                created=datetime.now()
             )
             for question_code in questionnaire_proxy.question_map:
                 if question_code not in self._question_code_column_map:
@@ -506,7 +509,14 @@ class SurveyDataImport(ToolBase):
             logger.warning(f'Question codes not found in data file:\n{", ".join(sorted(missing_codes))}\n')
 
         responses = parser.generate_responses(questionnaire)
-        logger.info(f'\nfound {len(responses)} responses')
+        response_count = len(responses)
+        logger.info(f'\nfound {response_count} responses')
+        logger.info(f'generating ids...')
+        response_ids = cls._generate_questionnaire_response_ids(response_count, session)
+        for index, response in enumerate(responses):
+            response.questionnaireResponseId = response_ids[index]
+
+        logger.info(f'saving responses...')
         session.add_all(responses)
         session.commit()
 
@@ -520,6 +530,35 @@ class SurveyDataImport(ToolBase):
             code.value.lower(): code
             for code in codes
         }
+
+    @classmethod
+    def _generate_questionnaire_response_ids(cls, count, session) -> List[int]:
+        result = []
+        batch_size = 2000
+
+        while len(result) < count:
+            ids_to_check = [
+                random.randrange(100_000_000, 999_999_999)
+                for _i in range(batch_size)
+            ]
+
+            sequence_select_str = ' union all '.join([
+                f'select {id_val} id' for id_val in ids_to_check
+            ])
+            query = f"""
+                select *
+                from ({sequence_select_str}) possible_ids
+                where id not in (
+                    select qr.questionnaire_response_id
+                    from questionnaire_response qr
+                )
+                ;
+            """
+            query_result = session.execute(query)
+            for value in query_result:
+                result.append(value[0])
+
+        return result
 
 
 def add_additional_arguments(parser):
