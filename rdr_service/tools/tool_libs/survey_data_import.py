@@ -357,9 +357,9 @@ class ResponseFileParser:
     def __init__(self, file_blob: Blob):
         file_data = io.StringIO(file_blob.download_as_string().decode('utf8'))
         self.reader = csv.DictReader(file_data)
+        self._question_code_column_map: Dict[str, str] = {}
         self.question_codes = self._get_question_codes()
         self.blob = file_blob
-        self._question_code_column_map: Dict[str, str] = {}
 
     def _get_question_codes(self) -> List[str]:
         question_column_names = [
@@ -395,12 +395,19 @@ class ResponseFileParser:
                 externalId=row['ResponseId']
             )
             for question_code in questionnaire_proxy.question_map:
+                if question_code not in self._question_code_column_map:
+                    continue
+
                 column_name = self._question_code_column_map[question_code]
                 if column_name in row:
+                    answer_str = row[column_name]
+                    if answer_str == "":
+                        continue
+
                     answer = QuestionnaireResponseAnswer(
                         questionId=questionnaire_proxy.question_map[question_code]
                     )
-                    answer.valueString = row[column_name]
+                    answer.valueString = answer_str
                     response.answers.append(answer)
             result.append(response)
         return result
@@ -486,7 +493,7 @@ class SurveyDataImport(ToolBase):
 
         extra_codes = []
         for question_code in recognized_question_codes:
-            if question_code not in questionnaire.question_codes:
+            if question_code not in questionnaire.question_map:
                 extra_codes.append(question_code)
         if extra_codes:
             logger.warning(f'Question codes not found in module definition:\n{", ".join(sorted(extra_codes))}\n')
@@ -504,6 +511,7 @@ class SurveyDataImport(ToolBase):
         logger.info(f'authored: {first_response.authored}, participant: {first_response.participantId}, questionnaire: {first_response.questionnaireId}')
         for answer in first_response.answers:
             logger.info(f'\t{answer.questionId}: {answer.valueString}')
+        print(first_response.resource)
 
         # TODO:
         #   read the headers and determine the corresponding question code
