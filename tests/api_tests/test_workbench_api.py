@@ -6,7 +6,7 @@ from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResea
 from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchInstitutionNonAcademic, \
     WorkbenchResearcherEducation, WorkbenchResearcherDisability, WorkbenchResearcherEthnicity, \
     WorkbenchWorkspaceAccessTier, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2, \
-    WorkbenchResearcherEducationV2, WorkbenchWorkspaceAianResearchType
+    WorkbenchResearcherEducationV2, WorkbenchWorkspaceAianResearchType, WorkbenchWorkspaceSourcePlatform
 
 
 class WorkbenchApiTest(BaseTestCase):
@@ -938,6 +938,8 @@ class WorkbenchApiTest(BaseTestCase):
                 },
                 "cdrVersionName": "irving2",
                 "aianResearchDetails": 'string2',
+                "sourcePlatform": "VWB",
+                "migrationState": "FINISHED",
             }
         ]
 
@@ -954,6 +956,8 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
         self.assertEqual(results[0].aianResearchDetails, 'string2')
+        self.assertEqual(results[0].sourcePlatform, WorkbenchWorkspaceSourcePlatform('VWB'))
+        self.assertEqual(results[0].migrationState, 'FINISHED')
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
         results = workspace_history_dao.get_all_with_children()

@@ -33,10 +33,18 @@ def participant_counts_over_time():
 
 @app_util.auth_required_scheduler
 def workbench_workspaces_input_feed():
-    logging.info('Starting workbench workspaces datafeed...')
+    logging.info('Starting 2.0 workbench workspaces datafeed...')
     datafeed = request.get_json().get("datafeed")
     input_feed = WorkbenchWorkspacesFeed(project=GAE_PROJECT)
     input_feed.run_datafeed(datafeed)
+    return '{ "success": "true" }'
+
+@app_util.auth_required_scheduler
+def legacy_workbench_workspaces_input_feed():
+    logging.info('Starting legacy 1.0 workbench workspaces datafeed...')
+    datafeed = request.get_json().get("datafeed")
+    input_feed = WorkbenchWorkspacesFeed(project=GAE_PROJECT)
+    input_feed.run_legacy_datafeed(datafeed)
     return '{ "success": "true" }'
 
 @app_util.auth_required_scheduler
@@ -71,6 +79,13 @@ def _build_pipeline_app():
         RESEARCHERS_OFFLINE_PREFIX + "WorkbenchWorkspacesInputFeed",
         endpoint="workbench_workspaces_input_feed",
         view_func=workbench_workspaces_input_feed,
+        methods=["GET", "POST"]
+    )
+
+    researchers_offline.add_url_rule(
+        RESEARCHERS_OFFLINE_PREFIX + "WorkbenchWorkspacesLegacyInputFeed",
+        endpoint="legacy_workbench_workspaces_input_feed",
+        view_func=legacy_workbench_workspaces_input_feed,
         methods=["GET", "POST"]
     )
 
