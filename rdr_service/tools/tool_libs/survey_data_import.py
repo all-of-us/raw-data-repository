@@ -519,10 +519,30 @@ class SurveyDataImport(ToolBase):
 
         logger.info(f'saving responses...')
         count = 0
-        for subset in list_chunks(responses, 500):
+        for subset in list_chunks(responses, 20):
+            response_answer_map: Dict[QuestionnaireResponse, List[QuestionnaireResponseAnswer]] = {}
+            for response in subset:
+                response_answer_map[response] = response.answers
+                response.answers = []
+
             session.add_all(subset)
             session.flush()
 
+            answer_value_strings = []
+            for response, answer_list in response_answer_map.items():
+                for answer in answer_list:
+                    answer_value_strings.append(
+                        f"({response.questionnaireResponseId}, {answer.questionId}, '{answer.valueString}')"
+                    )
+
+            batch_ans_sql = """
+                insert into questionnaire_response_answer (
+                    questionnaire_response_id, question_id, value_string
+                ) values
+            """ + ', '.join(answer_value_strings)
+            session.execute(batch_ans_sql)
+
+            session.flush()
             count += len(subset)
             print(f"Flushed {count} of {response_count}                     ", end="\r", flush=True)
 
