@@ -37,7 +37,8 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
 
 WORKSPACE_ENUM_FIELDS = ['status', 'sex_at_birth', 'gender_identity', 'sexual_orientation', 'geography',
                          'disability_status', 'access_to_care', 'education_level', 'income_level', 'aian_research_type',
-                         'access_tier', 'workspace_users', 'creator', 'resource', 'race_ethnicity', 'age']
+                         'access_tier', 'workspace_users', 'creator', 'resource', 'race_ethnicity', 'age',
+                         'source_platform']
 
 RESEARCHER_ENUM_FIELDS = ['ethnicity', 'education', 'disability', 'user_id', 'verified_institutional_affiliation',
                           'demographicSurveyV2', 'gender', 'race', 'sex_at_birth', 'degree', 'access_tier_short_names']
