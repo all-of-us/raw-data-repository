@@ -518,9 +518,15 @@ class SurveyDataImport(ToolBase):
             response.questionnaireResponseId = response_ids[index]
 
         logger.info(f'saving responses...')
+        count = 0
         for subset in list_chunks(responses, 500):
             session.add_all(subset)
             session.flush()
+
+            count += len(subset)
+            print(f"Flushed {count} of {response_count}                     ", end="\r", flush=True)
+
+        print()
         session.commit()
 
     @classmethod
