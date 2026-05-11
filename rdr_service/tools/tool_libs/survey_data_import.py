@@ -6,6 +6,7 @@ import random
 from typing import Dict, List
 
 from google.cloud.storage import Blob
+from sqlalchemy.orm import Session
 
 from rdr_service import code_constants
 from rdr_service.model.code import Code
@@ -477,7 +478,7 @@ class SurveyDataImport(ToolBase):
         return results
 
     @classmethod
-    def _process_response_blob(cls, blob: Blob, db_codes: Dict[str, Code], session):
+    def _process_response_blob(cls, blob: Blob, db_codes: Dict[str, Code], session: Session):
         parser = ResponseFileParser(blob)
         logger.info(f'Module name: {parser.get_module_name()}\n')
         logger.info(f'Question codes:\n{sorted(parser.question_codes)}\n')
@@ -528,19 +529,16 @@ class SurveyDataImport(ToolBase):
             session.add_all(subset)
             session.flush()
 
-            answer_value_strings = []
+            answer_values = []
             for response, answer_list in response_answer_map.items():
                 for answer in answer_list:
-                    answer_value_strings.append(
-                        f"({response.questionnaireResponseId}, {answer.questionId}, '{answer.valueString}')"
-                    )
+                    answer_values.append({
+                        'questionnaireResponseId': response.questionnaireResponseId,
+                        'questionId': answer.questionId,
+                        'valueString': answer.valueString
+                    })
 
-            batch_ans_sql = """
-                insert into questionnaire_response_answer (
-                    questionnaire_response_id, question_id, value_string
-                ) values
-            """ + ', '.join(answer_value_strings)
-            session.execute(batch_ans_sql)
+            session.bulk_insert_mappings(QuestionnaireResponseAnswer, answer_values)
 
             session.flush()
             count += len(subset)
