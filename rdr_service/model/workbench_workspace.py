@@ -8,7 +8,7 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceAccessToCare, \
     WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchAuditReviewType, \
     WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditWorkspaceAccessDecision, WorkbenchWorkspaceAccessTier, \
-    WorkbenchWorkspaceAianResearchType
+    WorkbenchWorkspaceAianResearchType, WorkbenchWorkspaceSourcePlatform
 
 
 class WorkbenchWorkspaceBase(object):
@@ -84,6 +84,11 @@ class WorkbenchWorkspaceBase(object):
     """The resource payload"""
     isDataCollection = Column("is_data_collection", Boolean, default=False)
     """Signifies if a record is a workbench user created data collection"""
+    sourcePlatform = Column("source_platform", Enum(WorkbenchWorkspaceSourcePlatform),
+                            default=WorkbenchWorkspaceSourcePlatform.UNSET)
+    """Signifies if the workspace snapshot was sourced from Researcher Workbench (1.0) or Verily Workbench (2.0)"""
+    migrationState = Column("migration_state", String(200))
+    """The migration state of the record for the 2.0 Workbench migration if it is a Researcher Workbench (1.0) record"""
 
 
 class WorkbenchWorkspaceApproved(WorkbenchWorkspaceBase, Base):

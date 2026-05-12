@@ -33,11 +33,12 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType, WorkbenchWorkspaceAccessTier, \
     WorkbenchResearcherAccessTierShortName, WorkbenchResearcherEthnicCategory, WorkbenchResearcherSexualOrientationV2, \
     WorkbenchResearcherGenderIdentity, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2, \
-    WorkbenchResearcherEducationV2, WorkbenchWorkspaceAianResearchType
+    WorkbenchResearcherEducationV2, WorkbenchWorkspaceAianResearchType, WorkbenchWorkspaceSourcePlatform
 
 WORKSPACE_ENUM_FIELDS = ['status', 'sex_at_birth', 'gender_identity', 'sexual_orientation', 'geography',
                          'disability_status', 'access_to_care', 'education_level', 'income_level', 'aian_research_type',
-                         'access_tier', 'workspace_users', 'creator', 'resource', 'race_ethnicity', 'age']
+                         'access_tier', 'workspace_users', 'creator', 'resource', 'race_ethnicity', 'age',
+                         'source_platform']
 
 RESEARCHER_ENUM_FIELDS = ['ethnicity', 'education', 'disability', 'user_id', 'verified_institutional_affiliation',
                           'demographicSurveyV2', 'gender', 'race', 'sex_at_birth', 'degree', 'access_tier_short_names']
@@ -262,7 +263,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 aianResearchDetails=item.get('aianResearchDetails'),
                 accessTier=WorkbenchWorkspaceAccessTier(item.get('accessTier', 'UNSET')),
                 resource=json.dumps(item),
-                isDataCollection=item.get('isDataCollection')
+                isDataCollection=item.get('isDataCollection'),
+                sourcePlatform=WorkbenchWorkspaceSourcePlatform(item.get('sourcePlatform', 'UNSET')),
+                migrationState=item.get('migrationState')
             )
 
             workspaces.append(workspace)
@@ -294,6 +297,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         row_dict['aianResearchType'] = WorkbenchWorkspaceAianResearchType(row.get('aian_research_type', 'UNSET'))
         row_dict['accessTier'] = WorkbenchWorkspaceAccessTier(row.get('access_Tier', 'UNSET'))
         row_dict['workbenchWorkspaceUser'] = self._get_users(row.get('workspace_users'), row.get('creator'))
+        row_dict['sourcePlatform'] = WorkbenchWorkspaceSourcePlatform(row.get('source_platform', 'UNSET'))
         row_dict['resource'] = "No resource payload. Data from VWB 2.0"
         return row_dict
 
