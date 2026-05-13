@@ -7,7 +7,7 @@ import logging
 import re
 from typing import Dict, List, Optional, Sequence
 
-from dateutil.parser import parse
+from dateutil.parser import parse, ParserError
 from sqlalchemy.orm import Session
 
 from rdr_service.code_constants import PMI_SKIP_CODE
@@ -62,10 +62,14 @@ class Condition(ABC):
 
     @classmethod
     def from_branching_logic(cls, branching_logic):
-        parser = _BranchingLogicParser()
-        for char in branching_logic:
-            parser.process_char(char)
-        return parser.get_resulting_conditional()
+        try:
+            parser = _BranchingLogicParser()
+            for char in branching_logic:
+                parser.process_char(char)
+            return parser.get_resulting_conditional()
+        except Exception as e:
+            print(f'error on: "{branching_logic}"')
+            raise e
 
     @abstractmethod
     def reset_state(self):
@@ -250,6 +254,33 @@ class And(Condition):
         return f'({result})'
 
 
+class Sum(Condition):
+    """Hybrid condition wrapper that checks if enough conditions pass"""
+
+    def __init__(self, child_conditions: Sequence[Condition], value: int):
+        self._child_conditions = child_conditions
+        self._target_value = value
+
+    def reset_state(self):
+        for child in self._child_conditions:
+            child.reset_state()
+
+    def passes(self) -> bool:
+        sum_value = sum([
+            1 for child in self._child_conditions
+            if child.passes()
+        ])
+        return sum_value > self._target_value
+
+    def process_response(self, response: response_domain_model):
+        for child in self._child_conditions:
+            child.process_response(response)
+
+    def __str__(self):
+        result = ' and '.join([str(condition) for condition in self._child_conditions])
+        return f'({result})'
+
+
 class Or(Condition):
     """Condition wrapper that checks if any supplied conditions pass"""
 
@@ -295,7 +326,7 @@ class _HasAnsweredQuestionWith(Condition):
         answer = response.get_single_answer_for(self.question_code)
 
         if self.comparison == _Comparison.EQUALS:
-            self._passes = answer and answer.value == self.expected_answer_value
+            self._passes = answer and answer.value.lower() == self.expected_answer_value.lower()
         elif self.comparison == _Comparison.GREATER_THAN:
             self._passes = answer and answer.value > self.expected_answer_value
         elif self.comparison == _Comparison.LESS_THAN:
@@ -329,7 +360,7 @@ class _HasSelectedOption(Condition):
 
     def process_response(self, response: response_domain_model):
         answers = response.get_answers_for(self.question_code)
-        self._passes = answers and self.expected_selection in [answer.value for answer in answers]
+        self._passes = answers and self.expected_selection.lower() in [answer.value.lower() for answer in answers]
 
     def __str__(self):
         return f"[{self.question_code}({self.expected_selection})] = '1'"
@@ -594,6 +625,13 @@ class _BranchingLogicParser(_BaseParser):
         self._next_expected_chars = [ExpectedChar('r'), ExpectedChar(' ')]
         self._state = None
 
+    def start_sum_constraint(self):
+        if self._state is not None:
+            raise BranchParsingError('unexpected transition to sum operator')
+
+        self._next_expected_chars = [ExpectedChar('u'), ExpectedChar('m'), ExpectedChar('(')]
+        self._child_parser = _SumParser(self)
+
     def _process_char(self, char):
         # Handle the end of a nesting level when reading a constraint
         if (
@@ -620,6 +658,8 @@ class _BranchingLogicParser(_BaseParser):
                 self.finish_and_operation()
             elif char == 'o' and self._state in [None, _ParserState.READING_CONDITIONAL]:
                 self.finish_or_operation()
+            elif char == 's' and self._state is None:
+                self.start_sum_constraint()
             else:
                 raise BranchParsingError(f'unsure what to do with "{char}" in state {self._state}')
 
@@ -634,10 +674,13 @@ class _BranchingLogicParser(_BaseParser):
 
     def get_resulting_conditional(self):
         if self._child_parser:
-            if isinstance(self._child_parser, _BranchingLogicParser):
+            if (
+                isinstance(self._child_parser, _BranchingLogicParser)
+                and not isinstance(self._child_parser, _SumParser)
+            ):
                 raise BranchParsingError('Unexpected end of parsing: unfinished nesting levels')
-            elif isinstance(self._child_parser, _ConstraintParser):
-                self._child_parser.finish_constraint()
+
+            self._child_parser.finish_constraint()
 
         # Simply return the operation if there's only one
         if len(self.parsed_tokens) == 1:
@@ -680,6 +723,49 @@ class _BranchingLogicParser(_BaseParser):
             or_ops = [process_sub_group(sub_group) for sub_group in sub_groups]
             return And(or_ops)
 
+
+class _SumParser(_BranchingLogicParser):
+    """
+    Parses a summation comparison and returns the resulting Condition to the parent parser.
+    """
+    def __init__(self, parent_parser: '_BranchingLogicParser'):
+        super().__init__()
+        self._parent = parent_parser
+
+        self._answer_constraint_list: List[Condition] = []
+        self._current_parser: Optional[_ConstraintParser] = None
+
+        self._reading_value = False
+        self._value_chars = []
+
+    def _process_char(self, char):
+        if self._reading_value:
+            self._value_chars.append(char)
+        elif self._current_parser:
+            self._current_parser.process_char(char)
+        elif char in [",", " "]:
+            pass
+        elif char == '[':
+            self._start_new_answer_constraint()
+        elif char == ')':
+            self._start_comparison_parsing()
+
+    def _start_new_answer_constraint(self):
+        self._current_parser = _ConstraintParser(self)
+
+    def _start_comparison_parsing(self):
+        self._reading_value = True
+        self._next_expected_chars = [ExpectedChar('>')]
+
+    def child_parsing_complete(self, new_condition: Condition, next_expected_chars=None):
+        self._answer_constraint_list.append(new_condition)
+        self._current_parser = None
+        self._next_expected_chars = [ExpectedChar(']')]
+
+    def finish_constraint(self):
+        target_value = int(''.join(self._value_chars))
+        condition = Sum(self._answer_constraint_list, target_value)
+        self._parent.child_parsing_complete(condition)
 
 class ResponseValidator:
     def __init__(self, survey_definition: Survey, session: Session):
@@ -736,8 +822,7 @@ class ResponseValidator:
             answers = response.get_answers_for(question_code_str)
 
             if answers:
-                if len(answers) == 1 and answers[0].data_type == response_domain_model.DataType.CODE and \
-                        answers[0].value == PMI_SKIP_CODE:
+                if len(answers) == 1 and answers[0].value == 'pmi_skip':
                     continue  # Any question can be skipped, no need to check for datatype and min/max if it's skipped
 
                 if question.questionType in [
@@ -755,16 +840,7 @@ class ResponseValidator:
                         )
 
                     for answer in answers:
-                        if answer.data_type != response_domain_model.DataType.CODE:
-                            errors_by_question[question_code_str].append(
-                                ValidationError(
-                                    question_code_str,
-                                    [answer.id],
-                                    reason=f'Code answer expected, but found {str(answer.data_type)}',
-                                    error_type=ValidationErrorType.INVALID_DATA_TYPE
-                                )
-                            )
-                        elif answer.value not in [option.code.value for option in question.options]:
+                        if answer.value.lower() not in [option.code.value.lower() for option in question.options]:
                             errors_by_question[question_code_str].append(
                                 ValidationError(
                                     question_code_str,
@@ -800,36 +876,26 @@ class ResponseValidator:
                             min_value = None
                             max_value = None
                             if question.validation.startswith('date'):
-                                if answer.data_type not in [
-                                    response_domain_model.DataType.DATE, response_domain_model.DataType.DATETIME
-                                ]:
+                                try:
+                                    answer_value = parse(answer.value)
+                                except ParserError:
                                     errors_by_question[question_code_str].append(
                                         ValidationError(
                                             question_code_str,
                                             [answer.id],
-                                            reason=f'Date answer expected, but found {str(answer.data_type)}',
+                                            reason=f'Unable to parse date from answer',
                                             error_type=ValidationErrorType.INVALID_DATA_TYPE
                                         )
                                     )
+
                                 # Check if datetime is epoch
                                 if answer.data_type == response_domain_model.DataType.STRING:
                                     answer_value = datetime.datetime.fromtimestamp(int(answer.value) / 1000)
-                                else:
-                                    answer_value = parse(answer.value)
                                 if question.validation_min:
                                     min_value = parse(question.validation_min)
                                 if question.validation_max:
                                     max_value = parse(question.validation_max)
                             elif question.validation == 'integer':
-                                if answer.data_type != response_domain_model.DataType.INTEGER:
-                                    errors_by_question[question_code_str].append(
-                                        ValidationError(
-                                            question_code_str,
-                                            [answer.id],
-                                            reason=f'Integer answer expected, but found {str(answer.data_type)}',
-                                            error_type=ValidationErrorType.INVALID_DATA_TYPE
-                                        )
-                                    )
                                 answer_value = None
                                 try:
                                     answer_value = int(answer.value)
@@ -880,6 +946,16 @@ class ResponseValidator:
                                             error_type=ValidationErrorType.INVALID_VALUE
                                         )
                                     )
+                            elif question.validation == 'number_1dp':
+                                if not re.fullmatch('[0-9]*\\.[0-9]', answer.value):
+                                    errors_by_question[question_code_str].append(
+                                        ValidationError(
+                                            question_code_str,
+                                            [answer.id],
+                                            reason=f'Answer is not a 1 decimal point number',
+                                            error_type=ValidationErrorType.INVALID_VALUE
+                                        )
+                                    )
                             else:
                                 logging.error(f'Unexpected validation string for question, got "{question.validation}"')
 
@@ -904,5 +980,26 @@ class ResponseValidator:
                 elif question.questionType == SurveyQuestionType.FILE:
                     # TODO: unsure how to validate FILE
                     ...
+                elif question.questionType == SurveyQuestionType.TRUEFALSE:
+                    if len(answers) > 1:
+                        errors_by_question[question_code_str].append(
+                            ValidationError(
+                                question_code_str,
+                                answer_id=[answer.id for answer in answers],
+                                reason=f'more than one answer to question of type "{question.questionType}"',
+                                error_type=ValidationErrorType.INVALID_VALUE
+                            )
+                        )
+                    elif len(answers) == 1:
+                        answer = answers[0]
+                        if answer.value.lower() not in ['true', 'false']:
+                            errors_by_question[question_code_str].append(
+                                ValidationError(
+                                    question_code_str,
+                                    [answer.id],
+                                    reason=f'Expected true/false response',
+                                    error_type=ValidationErrorType.INVALID_VALUE
+                                )
+                            )
                 else:
                     logging.error(f'Unrecognized question type "{question.questionType}"')

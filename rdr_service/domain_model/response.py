@@ -1,3 +1,4 @@
+import logging
 from enum import auto, Enum
 
 from collections import defaultdict
@@ -58,7 +59,8 @@ class Response:
             return None
 
         if len(answers) > 1 and len({answer.value for answer in answers}) > 1:
-            raise Exception(f'Too many answers found for question "{question_code_str}" (responsed id {self.id})')
+            logging.error(f'Too many answers found for question "{question_code_str}" (response id {self.id})')
+            return answers[0]
         else:
             return answers[0]
 
@@ -82,33 +84,9 @@ class Answer:
     is_valid: bool = True
 
     @classmethod
-    def from_db_model(cls, db_answer: QuestionnaireResponseAnswer):
-        if db_answer.valueBoolean is not None:
-            answer_str = str(db_answer.valueBoolean)
-            answer_type = DataType.BOOLEAN
-        elif db_answer.valueCodeId is not None:
-            answer_str = db_answer.code.value
-            answer_type = DataType.CODE
-        elif db_answer.valueDate is not None:
-            answer_str = str(db_answer.valueDate)
-            answer_type = DataType.DATE
-        elif db_answer.valueDateTime is not None:
-            answer_str = str(db_answer.valueDateTime)
-            answer_type = DataType.DATETIME
-        elif db_answer.valueDecimal is not None:
-            answer_str = str(db_answer.valueDecimal)
-            answer_type = DataType.DECIMAL
-        elif db_answer.valueInteger is not None:
-            answer_str = str(db_answer.valueInteger)
-            answer_type = DataType.INTEGER
-        elif db_answer.valueString is not None:
-            answer_str = db_answer.valueString
-            answer_type = DataType.STRING
-        elif db_answer.valueUri is not None:
-            answer_str = db_answer.valueUri
-            answer_type = DataType.URI
-        else:
-            raise Exception(f'Unable to parse answer with id "{db_answer.questionnaireResponseAnswerId}')
+    def from_db_model(cls, db_answer: QuestionnaireResponseAnswer, answer_value: str = None):
+        answer_str = db_answer.valueString if answer_value is None else answer_value
+        answer_type = DataType.STRING
 
         return Answer(
             id=db_answer.questionnaireResponseAnswerId,

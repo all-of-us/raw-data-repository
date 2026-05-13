@@ -141,9 +141,20 @@ class QuestionnaireResponseRepository:
                 )
                 response_collection_for_participant.responses[response_id] = response
 
-            response.answered_codes[question_code_str].append(
-                response_domain_model.Answer.from_db_model(answer)
-            )
+            if ',' in answer.valueString and ' ' not in answer.valueString:
+                answer_values = answer.valueString.split(',')
+                for value in answer_values:
+                    response.answered_codes[question_code_str].append(
+                        response_domain_model.Answer.from_db_model(answer, answer_value=value)
+                    )
+            elif answer.valueString == '-99':
+                response.answered_codes[question_code_str].append(
+                    response_domain_model.Answer.from_db_model(answer, answer_value='pmi_skip')
+                )
+            else:
+                response.answered_codes[question_code_str].append(
+                    response_domain_model.Answer.from_db_model(answer)
+                )
 
         return dict(participant_response_map)
 

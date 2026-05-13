@@ -317,6 +317,33 @@ class TestConditionalFromBranchingLogic(BaseTestCase):
         )
         self.assertTrue(result.passes())
 
+    def test_sum_operator(self):
+        branching_logic = 'sum([a(a1)], [a(a2)], [b(b1)])>1'
+        checker = Condition.from_branching_logic(branching_logic)
+
+        checker.process_response(
+            self._build_response({
+                'a': ('a3', DataType.STRING),
+                'b': ('b3', DataType.STRING),
+            })
+        )
+        self.assertFalse(checker.passes())
+
+        checker.process_response(
+            self._build_response({
+                'a': ('a1', DataType.STRING)
+            })
+        )
+        self.assertFalse(checker.passes())
+
+        checker.process_response(
+            self._build_response({
+                'a': ('a2', DataType.STRING),
+                'b': ('b1', DataType.STRING)
+            })
+        )
+        self.assertTrue(checker.passes())
+
     def test_number_comparison_with_quotes(self):
         branching_logic = "[a] > '7'"
         result = Condition.from_branching_logic(branching_logic)

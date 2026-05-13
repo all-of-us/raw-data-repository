@@ -130,9 +130,21 @@ class ResponseValidationController:
                     f'{survey_code} "{question_code}" Error: {error_str}, number affected answers: {count}'
                 )
         else:
-            for error_list in self._error_list.values():
-                for error in error_list:
-                    result_list.append(error)
+            for validation_result in self._result_list:
+                for error in validation_result.errors:
+                    if (
+                        (
+                            error.question_code == 'self_reported_weight_pounds'
+                            and 'Answer is not 1dp response' in error.error_str
+                        ) or (
+                            error.question_code == 'SocialSecurity_PreferNotToAnswer'
+                            and 'Expected true/false response' in error.error_str
+                        ) or (
+                            error.question_code == 'self_reported_weight_kg'
+                            and 'Answer is not 1dp response' in error.error_str
+                        )
+                    ):
+                        continue
                     result_list.append(
                         f'{error.survey_code_value} - question "{error.question_code}" Error: {error.error_str} '
                         f'(P{error.participant_id}, ansID {error.questionnaire_response_answer_id})'
