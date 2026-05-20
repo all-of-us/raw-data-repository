@@ -39,7 +39,7 @@ def get_workbench_workspaces_data_to_stream(project: str, dataset: str, mapping_
         SELECT
             st.* EXCEPT (workspace_source_id, creation_time, modified_time),
             IF(
-                lwb.workspace_id IS NULL, mt.legacy_workspace_source_id, lwb.workspace_id
+                lwb.workspace_source_id IS NULL, mt.legacy_workspace_source_id, lwb.workspace_source_id
             ) AS workspace_source_id,
             DATETIME(st.creation_time, 'UTC') AS creation_time,
             DATETIME(st.modified_time, 'UTC') AS modified_time
@@ -47,7 +47,7 @@ def get_workbench_workspaces_data_to_stream(project: str, dataset: str, mapping_
         LEFT JOIN `{project}.{dataset}.{mapping_table}` mt ON (mt.workspace_source_id = st.workspace_source_id
                                                               AND mt.ignore_flag = false)
         LEFT JOIN (
-            SELECT workspace_id, migrated_vwb_workspace_id
+            SELECT workspace_source_id, migrated_vwb_workspace_id
             FROM `{project}.{dataset}.{wb_source_table}`
             WHERE migrated_vwb_workspace_id IS NOT NULL
             AND migration_state = 'FINISHED'
@@ -58,7 +58,7 @@ def get_workbench_workspaces_data_to_stream(project: str, dataset: str, mapping_
             WHERE rwws.workspace_source_id = mt.legacy_workspace_source_id
             AND rwws.modified_time = DATETIME(st.modified_time, 'UTC')
         )
-        AND (mt.legacy_workspace_source_id IS NOT NULL OR lwb.workspace_id IS NOT NULL)
+        AND (mt.legacy_workspace_source_id IS NOT NULL OR lwb.workspace_source_id IS NOT NULL)
     """
 
 
