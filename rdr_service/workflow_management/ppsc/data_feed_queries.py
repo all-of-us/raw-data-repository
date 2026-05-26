@@ -1000,7 +1000,7 @@ def insert_awardee_insite_data(
               SELECT *
                 -- doing order by id since there are a lot of duplicates, where event_id, event_authored_time is the same but the race is different
                 , ROW_NUMBER() OVER(PARTITION BY participant_id ORDER BY id DESC) AS rn
-              FROM `rdr_operational_datastream.ppsc_survey_completion_event`
+              FROM `{project}.{src_operational_dataset}.ppsc_survey_completion_event`
               WHERE LOWER(data_element_name) IN ('race_whatraceethnicity', 'whatraceethnicity_raceethnicitynoneofthese', 'race_whatraceethnicity_ped')
             )
             WHERE rn = 1
@@ -1290,7 +1290,7 @@ def insert_awardee_insite_data(
               , IF(withdrawal_status = 'withdrawn', NULL, retention_eligible_time) AS retention_eligible_time
               , IF(withdrawal_status = 'withdrawn', NULL, last_active_retention_activity_time) AS last_active_retention_activity_time
               , IF(withdrawal_status = 'withdrawn', NULL, retention_type) AS retention_type
-              , IF(withdrawal_status = 'withdrawn', NULL, duplicate_account_statu) AS duplicate_account_status
+              , IF(withdrawal_status = 'withdrawn', NULL, duplicate_account_status) AS duplicate_account_status
               , IF(withdrawal_status = 'withdrawn', NULL, race) AS race
               , IF(withdrawal_status = 'withdrawn', NULL, age_range) AS age_range
             FROM default_filled_columns

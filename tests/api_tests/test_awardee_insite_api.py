@@ -213,9 +213,6 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "questionnaireOnPersonalAndFamilyHealthHistoryUpdateAuthored": "2025-10-28T18:12:00",
             "retentionEligibleStatus": "not_eligible",
             "duplicateAccountStatus": "no",
-            "race": "Black",
-
-
         }
         self.awardee_insite_dao.upsert(AwardeeInSite(**awardee_insite_values))
 
