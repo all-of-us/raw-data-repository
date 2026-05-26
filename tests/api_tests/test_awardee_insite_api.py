@@ -213,6 +213,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "questionnaireOnPersonalAndFamilyHealthHistoryUpdateAuthored": "2025-10-28T18:12:00",
             "retentionEligibleStatus": "not_eligible",
             "duplicateAccountStatus": "no",
+            "ageRange": "36-45",
         }
         self.awardee_insite_dao.upsert(AwardeeInSite(**awardee_insite_values))
 
@@ -302,12 +303,14 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "withdrawalReason": "UNSET",
             "duplicateAccountStatus": "no",
             "race": "Black",
-            "ageRange": "UNSET",
+            "ageRange": "36-45",
             "enrollmentStatusTime": "UNSET",
         }
 
         response = self.send_get("AwardeeInSite")
         result = response.get("entry")[0]["resource"]
+
+        print(response)
 
         self.assertEqual(result, expected_result)
 
