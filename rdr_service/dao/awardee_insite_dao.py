@@ -23,7 +23,11 @@ class AwardeeInSiteDao(UpsertableDao):
     def snake_to_camel_case(self, string_value: str) -> str:
         string = self.snake_to_camel(string_value)
         # Replace sal with SAL
-        return re.sub(r'(\d)sal(\d)', r'\1SAL\2', string, flags=re.IGNORECASE)
+        string = re.sub(r'(\d)sal(\d)', r'\1SAL\2', string, flags=re.IGNORECASE)
+        # Replace Wellbeing with WellBeing
+        string = re.sub(r'Wellbeing', 'WellBeing', string)
+
+        return string
 
     def get_id(self, obj: AwardeeInSite) -> int | None:
         """
