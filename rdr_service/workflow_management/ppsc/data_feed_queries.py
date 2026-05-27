@@ -796,7 +796,7 @@ def insert_awardee_insite_data(
           latest_enrollement_status AS (
             SELECT participant_id
               , enrollment_status
-              , event_authored AS enrollment_status_time
+              , SAFE_CAST(REPLACE(event_authored, 'Z', '') AS DATETIME) AS enrollment_status_time
             FROM (
               SELECT * except(rn)
                 , ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY map.enrollment_status_rank DESC) AS rn
@@ -972,9 +972,9 @@ def insert_awardee_insite_data(
           retention_cte AS (
             SELECT participant_id
               , MAX(CASE WHEN data_element_name = 'activity_status' THEN data_element_value END) AS retention_eligible_status
-              , MAX(CASE WHEN data_element_name = 'activity_date_time' THEN data_element_value END) AS retention_eligible_time
+              , SAFE_CAST(REPLACE(MAX(CASE WHEN data_element_name = 'activity_date_time' THEN data_element_value END), 'Z', '') AS DATETIME) AS retention_eligible_time
               , LOWER(MAX(CASE WHEN data_element_name = 'retention_type' THEN data_element_value END)) AS retention_type
-              , MAX(CASE WHEN data_element_name = 'last_retention_activity_date_time' THEN data_element_value END) AS last_active_retention_activity_time
+              , SAFE_CAST(REPLACE(MAX(CASE WHEN data_element_name = 'last_retention_activity_date_time' THEN data_element_value END), 'Z', '') AS DATETIME) AS last_active_retention_activity_time
             FROM (
                 SELECT *
                 , DENSE_RANK() OVER(PARTITION BY participant_id ORDER BY event_id DESC) AS rn
