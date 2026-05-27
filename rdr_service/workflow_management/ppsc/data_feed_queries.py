@@ -1154,7 +1154,7 @@ def insert_awardee_insite_data(
               , retention_eligible_status
               , retention_eligible_time
               , last_active_retention_activity_time
-              , retention_type
+              , COALESCE(retention_type, 'unset') AS retention_type
               , COALESCE(duplicate_account_status, 'no') AS duplicate_account_status
               , COALESCE(race, 'unset') AS race
               , age_range
