@@ -21,7 +21,8 @@ from rdr_service.model.workbench_researcher import (
     WorkbenchResearcher,
     WorkbenchResearcherHistory,
     WorkbenchInstitutionalAffiliations,
-    WorkbenchInstitutionalAffiliationsHistory
+    WorkbenchInstitutionalAffiliationsHistory,
+    WorkbenchInstitutionalDura
 )
 from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWorkspaceUserRole, \
     WorkbenchInstitutionNonAcademic, WorkbenchResearcherEthnicity, WorkbenchResearcherSexAtBirth, \
@@ -42,6 +43,13 @@ WORKSPACE_ENUM_FIELDS = ['status', 'sex_at_birth', 'gender_identity', 'sexual_or
 
 RESEARCHER_ENUM_FIELDS = ['ethnicity', 'education', 'disability', 'user_id', 'verified_institutional_affiliation',
                           'demographicSurveyV2', 'gender', 'race', 'sex_at_birth', 'degree', 'access_tier_short_names']
+
+DURA_TIMESTAMP_FIELDS = ['agreement_end_date', 'agreement_start_date', 'ct_requester_date',
+                         'ein_and_uei_number_timestamp', 'finalization_formdate', 'ocmsubmissiondate_ct',
+                         'peerconfirmationdate', 'peersubmissionstatusdate', 'preapproval_discussion_date',
+                         'preapproval_projectcreation_date', 'preapproval_requestform_date', 'presentation_date',
+                         'reviewconfirmationdate', 'reviewrequestdate_ct', 'reviewrequestdate_ct_2',
+                         'signedriderdate_ct', 'signing_official_contact_date']
 
 class WorkbenchWorkspaceDao(UpdatableDao):
     def __init__(self):
@@ -1478,3 +1486,32 @@ class WorkbenchWorkspaceAuditDao(UpdatableDao):
         workspace_snapshot.excludeFromPublicDirectory = False
         workspace_snapshot.isReviewed = True
         self.workspace_dao.add_approved_workspace_with_session(session, workspace_snapshot, is_reviewed=True)
+
+
+class WorkbenchInstitutionalDuraDao(UpdatableDao):
+    def __init__(self):
+        super().__init__(WorkbenchInstitutionalDuraDao, order_by_ending=["id"])
+
+    @staticmethod
+    def transform_rows(resource):
+        # Support setting null column values.
+        for key in resource:
+            value = resource.get(key)
+            if isinstance(value, str) and value.lower() in ('', 'null'):
+                resource[key] = None
+
+            # Parse all timestamp fields
+            if key in DURA_TIMESTAMP_FIELDS and resource[key] is not None:
+                resource[key] = parse(value)
+
+        return resource
+
+    def insert_with_session(self, session, obj: WorkbenchInstitutionalDura):
+        insert_result = super(WorkbenchInstitutionalDuraDao, self).insert_with_session(session, obj)
+        return insert_result
+
+    def get_by_id(self, record_id) -> WorkbenchInstitutionalDura:
+        with self.session() as session:
+            return session.query(WorkbenchInstitutionalDuraDao).filter(
+                WorkbenchInstitutionalDuraDao.id == record_id
+            ).one_or_none()
