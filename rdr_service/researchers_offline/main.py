@@ -60,7 +60,7 @@ def workbench_researchers_input_feed():
 def workbench_institutional_dura_import():
     logging.info('Starting workbench institutional DURA import...')
     since_date = request.get_json().get("since_date")
-    importer = WorkbenchDuraImporter(project=GAE_PROJECT)
+    importer = WorkbenchDuraImporter()
     importer.import_reports(since_date)
     return '{ "success": "true" }'
 
@@ -109,7 +109,7 @@ def _build_pipeline_app():
         RESEARCHERS_OFFLINE_PREFIX + "WorkbenchInstitutionalDuraImport",
         endpoint="workbench_institutional_dura_import",
         view_func=workbench_institutional_dura_import,
-        methods=["GET"],
+        methods=["GET", "POST"],
     )
 
     researchers_offline.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])

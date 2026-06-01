@@ -10,12 +10,12 @@ from rdr_service.services.redcap_client import RedcapClient
 
 USER_SYSTEM = 'https://www.pmi-ops.org/redcap'
 
+
 class WorkbenchDuraImporter:
     """Functionality for importing Workbench DURA data from REDCap"""
 
     def __init__(self):
         self.redcap_api_key = config.getSettingJson(config.WB_INSTITUTIONAL_DURA_REDCAP_TOKEN)
-        self.redcap = RedcapClient()
         self.workbench_dura_dao = WorkbenchInstitutionalDuraDao()
 
     def get_records(self, project_api_token, datetime_range_begin: datetime = None):
@@ -31,7 +31,8 @@ class WorkbenchDuraImporter:
         }
         if datetime_range_begin:
             request_parameters['dateRangeBegin'] = datetime_range_begin.strftime('%Y-%m-%d %H:%M:%S')
-        return self.redcap.send_request(project_api_token, 'record', request_parameters)
+        redcap = RedcapClient()
+        return redcap.send_request(project_api_token, 'record', request_parameters)
 
     def create_dura_record(self, record, current_timestamp: str):
         return WorkbenchInstitutionalDura(
@@ -281,7 +282,7 @@ class WorkbenchDuraImporter:
         :param since: DateTime to use as start of date range request. Will import all reports created or modified
             after the given date. Defaults to the start (midnight) of yesterday.
         """
-        if since is None:
+        if since is None or since == "":
             now_yesterday = datetime.now() - timedelta(days=1)
             since = datetime(now_yesterday.year, now_yesterday.month, now_yesterday.day)
 
@@ -291,13 +292,13 @@ class WorkbenchDuraImporter:
             for record in records:
                 try:
                     now = clock.CLOCK.now()
+                    record_id = record['record_id']
                     dura_record = self.create_dura_record(self.workbench_dura_dao.transform_rows(record), now)
                     self.workbench_dura_dao.insert_with_session(session, dura_record)
                 except IntegrityError:
                     session.rollback()
-                    logging.error(f'Record for DURA import encountered a database error', exc_info=True)
+                    logging.error(f'DURA record_id: {record_id} import encountered a database error', exc_info=True)
                 except (HTTPException, KeyError, ValueError):
-                    logging.error(f'Record for DURA import encountered an error', exc_info=True)
+                    logging.error(f'DURA record_id: {record_id}  import encountered an error', exc_info=True)
 
         logging.info('Workbench Institutional DURA import complete')
-

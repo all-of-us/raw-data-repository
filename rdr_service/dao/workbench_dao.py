@@ -1509,9 +1509,3 @@ class WorkbenchInstitutionalDuraDao(UpdatableDao):
     def insert_with_session(self, session, obj: WorkbenchInstitutionalDura):
         insert_result = super(WorkbenchInstitutionalDuraDao, self).insert_with_session(session, obj)
         return insert_result
-
-    def get_by_id(self, record_id) -> WorkbenchInstitutionalDura:
-        with self.session() as session:
-            return session.query(WorkbenchInstitutionalDuraDao).filter(
-                WorkbenchInstitutionalDuraDao.id == record_id
-            ).one_or_none()
