@@ -1490,7 +1490,7 @@ class WorkbenchWorkspaceAuditDao(UpdatableDao):
 
 class WorkbenchInstitutionalDuraDao(UpdatableDao):
     def __init__(self):
-        super().__init__(WorkbenchInstitutionalDuraDao, order_by_ending=["id"])
+        super().__init__(WorkbenchInstitutionalDura, order_by_ending=["id"])
 
     @staticmethod
     def transform_rows(resource):

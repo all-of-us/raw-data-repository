@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from dateutil import parser
 import logging
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import HTTPException
@@ -277,16 +278,18 @@ class WorkbenchDuraImporter:
             zip=record.get('zip')
         )
 
-    def import_reports(self, since: datetime = None):
+    def import_reports(self, since: str = None):
         """
         :param since: DateTime to use as start of date range request. Will import all reports created or modified
             after the given date. Defaults to the start (midnight) of yesterday.
         """
         if since is None or since == "":
             now_yesterday = datetime.now() - timedelta(days=1)
-            since = datetime(now_yesterday.year, now_yesterday.month, now_yesterday.day)
+            parsed_since_date = datetime(now_yesterday.year, now_yesterday.month, now_yesterday.day)
+        else:
+            parsed_since_date = parser.parse(since)
 
-        records = self.get_records(self.redcap_api_key, since)
+        records = self.get_records(self.redcap_api_key, parsed_since_date)
 
         with self.workbench_dura_dao.session() as session:
             for record in records:
