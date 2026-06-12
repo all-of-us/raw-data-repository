@@ -143,7 +143,8 @@ SELECT
   genome_type,
   ny_flag,
   validation_passed,
-  ai_an
+  ai_an,
+  pediatric
 FROM delta
 ;
 
