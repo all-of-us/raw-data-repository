@@ -139,11 +139,7 @@ SELECT
   genome_type,
   ny_flag,
   validation_passed,
-  ai_an,
-  pediatric,
-  finalized,
-  created,
-  file_path
+  ai_an
 FROM delta
 ;
 
@@ -155,9 +151,6 @@ INSERT INTO `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_a
   ny_flag,
   validation_passed,
   ai_an,
-  pediatric,
-  finalized,
-  created,
   file_path,
   batch_id,
   export_timestamp
@@ -170,9 +163,6 @@ SELECT
   ny_flag,
   validation_passed,
   ai_an,
-  pediatric,
-  finalized,
-  CAST(created AS TIMESTAMP),
   'gs://{{ params.bucket_name }}/genomic_samples_manifests/plating/Genomic-Manifest-AoU-{{ ds }}_C3-{{ ts_nodash | truncate(12, False, '') }}pl.csv' AS file_path,
   batch_id,
   CURRENT_TIMESTAMP()
