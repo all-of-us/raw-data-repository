@@ -75,7 +75,11 @@ WITH source_rows AS (
     biobank_id,
     sex_at_birth,
     genome_type,
-    ny_flag,
+    CASE
+      WHEN ny_flag = "0" THEN "N"
+      WHEN ny_flag = "1" THEN "Y"
+      ELSE ny_flag
+    END as ny_flag,
     validation_passed,
     ai_an,
     pediatric,
