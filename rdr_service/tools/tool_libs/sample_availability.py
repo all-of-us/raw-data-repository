@@ -30,6 +30,8 @@ BqUploadLocation = {
     'table': 'aou_sample_availability'
 }
 
+running_3a_dataset = False
+
 
 @dataclass
 class Availability:
@@ -80,6 +82,9 @@ class AliquotData:
     array_sequenced: bool = False
 
     def meets_quantity_reqs(self) -> bool:
+        if not running_3a_dataset:
+            return self.total_rna_concentration is not None if self.sample_type == SampleType.rna else True
+
         if self.sample_type in [SampleType.saliva_dna, SampleType.blood_dna]:
             return self.ds_dna_mass is not None and self.ds_dna_mass >= 2500
         else:
@@ -279,9 +284,11 @@ class SampleAvailabilityDatasetTool(ToolBase):
                         participant_export_data.array_source_blood = array_source == 'blood'
 
         print(datetime.now(), 'writing to csv')
-        # self._export_participant_3a_data_as_csv(participant_data_to_export)
-        self._export_participant_data_as_csv(participant_data_to_export)
-        self._export_aliquot_data_as_csv(aliquot_data_to_export)
+        if running_3a_dataset:
+            self._export_participant_3a_data_as_csv(participant_data_to_export)
+        else:
+            self._export_participant_data_as_csv(participant_data_to_export)
+            self._export_aliquot_data_as_csv(aliquot_data_to_export)
         # self._upload_to_bq(data_to_export)
 
         print()
@@ -446,7 +453,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 })
 
     @classmethod
-    def _upload_to_bq(cls, data_to_export: List[ParticipantData]):
+    def _upload_3a_to_bq(cls, data_to_export: List[ParticipantData]):
         bq_table = BigQueryTable(**BqUploadLocation)
         batch_size = 2000
 
@@ -478,6 +485,18 @@ class SampleAvailabilityDatasetTool(ToolBase):
 
     @classmethod
     def retrieve_potential_aliquot_list(cls, session: Session) -> List[AliquotData]:
+        if running_3a_dataset:
+            sample_filter_criteria = sa.and_(
+                BiobankSpecimen.testCode.in_(SampleCodesToProcess),
+                BiobankAliquot.status == 'In Circulation',
+                BiobankAliquot.location == 'Mayo_MN'
+            )
+        else:
+            sample_filter_criteria = sa.and_(
+                BiobankSpecimen.testCode.in_(SampleCodesToProcess),
+                BiobankAliquot.location == 'Mayo_MN'
+            )
+
         print(datetime.now(), 'retrieving aliquots...')
         query = session.query(
             BiobankAliquot.id,
@@ -495,11 +514,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
         ).join(
             Participant, Participant.biobankId == BiobankSpecimen.biobankId
         ).filter(
-            sa.and_(
-                BiobankSpecimen.testCode.in_(SampleCodesToProcess),
-                BiobankAliquot.status == 'In Circulation',
-                BiobankAliquot.location == 'Mayo_MN'
-            )
+            sample_filter_criteria
         )
         query_results = query.all()
 
@@ -758,20 +773,25 @@ class SampleAvailabilityDatasetTool(ToolBase):
         print(datetime.now(), 'getting participant ids')
         query = session.query(
             AwardeeInSite.participantId
-        ).filter(
-            sa.or_(
-                AwardeeInSite.clinicPhysicalMeasurementsStatus == 'completed',
-                AwardeeInSite.selfReportedPhysicalMeasurementsStatus == 'completed'
-            ),
-            AwardeeInSite.firstEhrReceiptTime != None
         )
-        query = cls.filter_query_by_survey('The Basics', query)
-        query = cls.filter_query_by_survey('Lifestyle', query)
-        query = cls.filter_query_by_survey('Overall Health', query)
+        if running_3a_dataset:
+            query = query.filter(
+                sa.or_(
+                    AwardeeInSite.clinicPhysicalMeasurementsStatus == 'completed',
+                    AwardeeInSite.selfReportedPhysicalMeasurementsStatus == 'completed'
+                ),
+                AwardeeInSite.firstEhrReceiptTime != None
+            )
+            query = cls.filter_query_by_survey('The Basics', query)
+            query = cls.filter_query_by_survey('Lifestyle', query)
+            query = cls.filter_query_by_survey('Overall Health', query)
         result = query.distinct().all()
         participant_id_list = [record.participantId for record in result]
 
-        return cls.filter_participants_by_genomic_data(session, participant_id_list)
+        if running_3a_dataset:
+            return cls.filter_participants_by_genomic_data(session, participant_id_list)
+        else:
+            return participant_id_list
 
     @classmethod
     def filter_query_by_survey(cls, survey_name, query: sa.orm.query) -> sa.orm.query:
