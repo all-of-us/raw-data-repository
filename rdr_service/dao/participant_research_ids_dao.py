@@ -6,6 +6,8 @@ from rdr_service.model.participant_research_ids import ParticipantResearchIds
 
 _MIN_REGISTERED_TIER_RESEARCH_ID = 200001000000
 _MAX_REGISTERED_TIER_RESEARCH_ID = 200009999999
+_MIN_CONTROLLED_TIER_PLUS_RESEARCH_ID = 300001000000
+_MAX_CONTROLLED_TIER_PLUS_RESEARCH_ID = 300009999999
 
 class ParticipantResearchIdsDao(UpsertableDao):
     def __init__(self):
@@ -44,3 +46,4 @@ class ParticipantResearchIdsDao(UpsertableDao):
         for participant in participant_objects:
             research_ids = ParticipantResearchIds(participant_id=participant.participantId)
             self.insert_random_research_ids(research_ids,['registered_tier_id'])
+            self.insert_random_research_ids(research_ids,['controlled_tier_plus_id'], min_id=_MIN_CONTROLLED_TIER_PLUS_RESEARCH_ID, max_id=_MAX_CONTROLLED_TIER_PLUS_RESEARCH_ID)

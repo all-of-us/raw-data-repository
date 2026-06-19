@@ -35,3 +35,4 @@ class ParticipantResearchIdsDaoTest(BaseTestCase):
         self.assertEqual(new_participants[0].researchId, research_ids.research_id)
         self.assertEqual(new_participants[0].externalId, research_ids.external_id)
         self.assertIsNotNone(research_ids.registered_tier_id)
+        self.assertIsNotNone(research_ids.controlled_tier_plus_id)
