@@ -36,3 +36,17 @@ class ParticipantResearchIdsDaoTest(BaseTestCase):
         self.assertEqual(new_participants[0].externalId, research_ids.external_id)
         self.assertIsNotNone(research_ids.registered_tier_id)
         self.assertIsNotNone(research_ids.controlled_tier_plus_id)
+
+    def test_research_id_range(self):
+        _MIN_REGISTERED_TIER_RESEARCH_ID = 200001000000
+        _MAX_REGISTERED_TIER_RESEARCH_ID = 200009999999
+        _MIN_CONTROLLED_TIER_PLUS_RESEARCH_ID = 300001000000
+        _MAX_CONTROLLED_TIER_PLUS_RESEARCH_ID = 300009999999
+        participant = Participant(participantId=10, biobankId=20)
+        self.p_dao.insert(participant)
+        self.dao.insert_new_participants([participant])
+        research_ids = self.dao.get(10)
+        self.assertGreaterEqual(research_ids.registered_tier_id, _MIN_REGISTERED_TIER_RESEARCH_ID)
+        self.assertLessEqual(research_ids.registered_tier_id, _MAX_REGISTERED_TIER_RESEARCH_ID)
+        self.assertGreaterEqual(research_ids.controlled_tier_plus_id, _MIN_CONTROLLED_TIER_PLUS_RESEARCH_ID)
+        self.assertLessEqual(research_ids.controlled_tier_plus_id, _MAX_CONTROLLED_TIER_PLUS_RESEARCH_ID)
