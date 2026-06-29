@@ -8,32 +8,6 @@ from rdr_service.model.base import (
     PPSCBase,
 )
 
-SECOND_ROUND_FIELDS = [
-    "questionnaireOnSocialFactorsUpdate",
-    "questionnaireOnSocialFactorsUpdateAuthored",
-    "questionnaireOnHealthAndWellnessUpdate",
-    "questionnaireOnHealthAndWellnessUpdateAuthored",
-    "questionnaireOnMentalHealthAndWellBeingUpdate",
-    "questionnaireOnMentalHealthAndWellBeingUpdateAuthored",
-    "questionnaireOnPersonalAndFamilyHealthHistoryUpdate",
-    "questionnaireOnPersonalAndFamilyHealthHistoryUpdateAuthored",
-    "questionnaireOnPediatricBasics",
-    "questionnaireOnPediatricBasicsAuthored",
-    "questionnaireOnPediatricOverallHealth",
-    "questionnaireOnPediatricOverallHealthAuthored",
-    "questionnaireOnPediatricEnvironmentalHealth",
-    "questionnaireOnPediatricEnvironmentalHealthAuthored",
-    "retentionEligibleStatus",
-    "retentionEligibleTime",
-    "lastActiveRetentionActivityTime",
-    "retentionType",
-    "signUpTime",
-    "withdrawalReason",
-    "duplicateAccountStatus",
-    "race",
-    "ageRange",
-    "enrollmentStatusTime",
-]
 
 class AwardeeInSite(PPSCBase):
     __tablename__ = "awardee_insite"

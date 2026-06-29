@@ -5,12 +5,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.query import Query as SQLAlchemyQuery
 from werkzeug.exceptions import BadRequest
 
-from rdr_service import config
 from rdr_service.code_constants import UNSET
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
-from rdr_service.model.awardee_insite import AwardeeInSite, SECOND_ROUND_FIELDS
+from rdr_service.model.awardee_insite import AwardeeInSite
 from rdr_service.dao.base_dao import UpsertableDao
 from rdr_service.query import Results, Query, FieldFilter, Operator
 
@@ -159,11 +158,6 @@ class AwardeeInSiteDao(UpsertableDao):
 
         for field in AwardeeInSite.internal_fields:
             del result[field]
-
-        # TODO: Remove this code block after fields are live
-        if not config.getSettingJson('awardee_insite_second_round_fields_visibility', default=True):
-            for field in SECOND_ROUND_FIELDS:
-                del result[field]
 
         result["participantId"] = to_client_participant_id(result["participantId"])
         final_result = {
