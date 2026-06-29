@@ -644,7 +644,7 @@ def insert_awardee_insite_data(
               FROM ehr_cte
               WHERE LOWER(activity_status) IN ('yes', 'submitted_yes', 'submitted_complete')
               GROUP BY 1
-          )
+          ),
           primary_consent_cte AS (
             SELECT participant_id
                 , event_id
