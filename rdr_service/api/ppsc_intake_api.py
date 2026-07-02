@@ -132,7 +132,7 @@ class PPSCIntakeAPI(BaseApi):
                     age_group = element['dataElementValue']
 
             assent_status = self.get_pediatric_assent(participant_id)
-            if age_group is not None and assent_status is None:
+            if age_group == '7-12' and assent_status is None:
                 raise UnprocessableEntity('Missing pediatric assent')
 
     def handle_event_insert(self, *, req_data: dict):
@@ -212,9 +212,6 @@ class PPSCIntakeAPI(BaseApi):
             ).first()
 
     def get_pediatric_assent(self, participant_id):
-        # Return None if the participant is not pediatric,
-        # True if has permission and a non-overriding assent.
-
         with self.dao.session() as session:
             permission_event_name = 'Pediatric Permission'
             assent_event_name = 'Pediatrics Assent'
