@@ -1,7 +1,11 @@
+from collections import OrderedDict
+from dataclasses import dataclass
+import logging
+
 from dateutil import parser
 from flask import request
 from sqlalchemy.exc import IntegrityError
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest, NotFound, UnprocessableEntity
 
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import RDR, PPSC
@@ -93,8 +97,9 @@ class PPSCIntakeAPI(BaseApi):
                 raise BadRequest("No activity_date_time_value provided.")
 
         # Check for Primary Consent
+        participant_id = req_data['participantId'].split('P')[1]
         if req_data['eventType'] not in self.primary_consent_types:
-            if not self.check_consent(req_data['participantId'].split('P')[1],
+            if not self.check_consent(participant_id,
                                               self.primary_consent_types,
                                               'activity_status',
                                               '%yes%'):
@@ -118,6 +123,17 @@ class PPSCIntakeAPI(BaseApi):
                         raise BadRequest("Invalid Date of Birth")
             if not dob_present:
                 raise BadRequest("Profile Data payload missing Date of Birth")
+
+        # Verify if pediatric assent is needed
+        if req_data['activity'] == 'Survey Completion' and req_data['eventType'] != 'Pediatrics Assent':
+            age_group = None
+            for element in req_data['dataElements']:
+                if element['dataElementName'] == 'age_group':
+                    age_group = element['dataElementValue']
+
+            assent_status = self.get_pediatric_assent(participant_id)
+            if age_group == '7-12' and assent_status is None:
+                raise UnprocessableEntity('Missing pediatric assent')
 
     def handle_event_insert(self, *, req_data: dict):
         activity_record = list(filter(lambda x: x.name.lower() == req_data['activity'].lower(),
@@ -194,3 +210,87 @@ class PPSCIntakeAPI(BaseApi):
                 ConsentEvent.data_element_name == data_element_name,
                 ConsentEvent.data_element_value.ilike(data_element_value)
             ).first()
+
+    def get_pediatric_assent(self, participant_id):
+        with self.dao.session() as session:
+            permission_event_name = 'Pediatric Permission'
+            assent_event_name = 'Pediatrics Assent'
+            age_group_element_name = 'age_group'
+            status_element_name = 'activity_status'
+
+            permission_query = session.query(
+                ConsentEvent.event_type_name,
+                ConsentEvent.event_authored_time,
+                ConsentEvent.data_element_value,
+                ConsentEvent.event_id,
+                ConsentEvent.data_element_name
+            ).filter(
+                ConsentEvent.event_type_name == permission_event_name,
+                ConsentEvent.participant_id == participant_id,
+                ConsentEvent.data_element_name.in_([status_element_name, age_group_element_name]),
+                ConsentEvent.ignore_flag == 0
+            )
+            assent_query = session.query(
+                SurveyCompletionEvent.event_type_name,
+                SurveyCompletionEvent.event_authored_time,
+                SurveyCompletionEvent.data_element_value,
+                SurveyCompletionEvent.event_id,
+                SurveyCompletionEvent.data_element_name
+            ).filter(
+                SurveyCompletionEvent.event_type_name == assent_event_name,
+                SurveyCompletionEvent.participant_id == participant_id,
+                SurveyCompletionEvent.data_element_name.in_([status_element_name, age_group_element_name]),
+                SurveyCompletionEvent.ignore_flag == 0
+            )
+            result = list(permission_query.union_all(assent_query).all())
+            result.sort(key=lambda item: item.event_authored_time)
+
+            @dataclass
+            class PediatricEvent:
+                age_group: str = None
+                event_name: str = None
+                response: str = None
+            event_data = OrderedDict()
+
+            for record in result:
+                if record.event_id not in event_data:
+                    event_data[record.event_id] = PediatricEvent()
+                    event_data[record.event_id].event_name = record.event_type_name
+
+                if record.data_element_name == age_group_element_name:
+                    event_data[record.event_id].age_group = record.data_element_value
+                elif record.data_element_name == status_element_name:
+                    event_data[record.event_id].response = record.data_element_value.lower()
+
+            has_permission = None
+            provided_assent = None
+
+            for event_id, event in event_data.items():
+                if event.age_group is None:
+                    logging.error(f'Pediatric age group not found for event {event_id}')
+                    continue
+                if event.age_group == '7-12':
+                    if event.event_name == permission_event_name:
+                        has_permission = event.response == 'yes'
+                    elif event.event_name == assent_event_name:
+                        match event.response:
+                            case 'n/a':
+                                provided_assent = None
+                            case 'yes':
+                                provided_assent = True
+                            case 'no':
+                                provided_assent = False
+
+            if has_permission is None:
+                if provided_assent is None:
+                    # not a 7-12 participant
+                    return None
+                else:
+                    raise UnprocessableEntity('Missing pediatric permission')
+            elif has_permission == False:
+                raise UnprocessableEntity('Missing pediatric permission')
+            else:  # has pediatric permission
+                if provided_assent == False:
+                    raise UnprocessableEntity('Missing pediatric assent')
+
+            return True
