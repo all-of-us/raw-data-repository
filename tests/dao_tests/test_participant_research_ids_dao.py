@@ -7,6 +7,7 @@ from rdr_service.clock import FakeClock
 from rdr_service.dao.participant_research_ids_dao import ParticipantResearchIdsDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_research_ids import ParticipantResearchIds
 
 
 class ParticipantResearchIdsDaoTest(BaseTestCase):
@@ -50,3 +51,34 @@ class ParticipantResearchIdsDaoTest(BaseTestCase):
         self.assertLessEqual(research_ids.registered_tier_id, _MAX_REGISTERED_TIER_RESEARCH_ID)
         self.assertGreaterEqual(research_ids.controlled_tier_plus_id, _MIN_CONTROLLED_TIER_PLUS_RESEARCH_ID)
         self.assertLessEqual(research_ids.controlled_tier_plus_id, _MAX_CONTROLLED_TIER_PLUS_RESEARCH_ID)
+
+    def test_get_participants_missing_controlled_tier_plus_ids(self):
+        participant = Participant(participantId=11, biobankId=21)
+        self.p_dao.insert(participant)
+        self.dao.insert_new_participants([participant])
+
+        with self.dao.session() as session:
+            session.query(ParticipantResearchIds).filter(
+                ParticipantResearchIds.participant_id == participant.participantId
+            ).update({'controlled_tier_plus_id': None})
+
+        missing_ids = self.dao.get_participants_missing_controlled_tier_plus_ids()
+        self.assertEqual(len(missing_ids), 1)
+        self.assertEqual(missing_ids[0].participant_id, 11)
+
+    def test_insert_missing_controlled_tier_plus_ids(self):
+        participant = Participant(participantId=12, biobankId=22)
+        self.p_dao.insert(participant)
+        self.dao.insert_new_participants([participant])
+
+        with self.dao.session() as session:
+            session.query(ParticipantResearchIds).filter(
+                ParticipantResearchIds.participant_id == participant.participantId
+            ).update({'controlled_tier_plus_id': None})
+
+        missing_ids = self.dao.get_participants_missing_controlled_tier_plus_ids()
+        self.dao.insert_missing_controlled_tier_plus_ids(missing_ids)
+
+        research_ids = self.dao.get(12)
+        self.assertIsNotNone(research_ids.controlled_tier_plus_id)
+
