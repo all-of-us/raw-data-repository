@@ -69,4 +69,6 @@ class ParticipantResearchIdsDao(UpsertableDao):
         for participant in participant_objects:
             research_ids = ParticipantResearchIds(participant_id=participant.participantId)
             self.insert_random_research_ids(research_ids,['registered_tier_id'])
-            self.insert_random_research_ids(research_ids,['controlled_tier_plus_id'], min_id=_MIN_CONTROLLED_TIER_PLUS_RESEARCH_ID, max_id=_MAX_CONTROLLED_TIER_PLUS_RESEARCH_ID)
+            self.insert_random_research_ids(research_ids,['controlled_tier_plus_id'],
+                                            min_id=_MIN_CONTROLLED_TIER_PLUS_RESEARCH_ID,
+                                            max_id=_MAX_CONTROLLED_TIER_PLUS_RESEARCH_ID)
