@@ -75,7 +75,11 @@ WITH source_rows AS (
     biobank_id,
     sex_at_birth,
     genome_type,
-    ny_flag,
+    CASE
+      WHEN ny_flag = "0" THEN "N"
+      WHEN ny_flag = "1" THEN "Y"
+      ELSE ny_flag
+    END as ny_flag,
     validation_passed,
     ai_an,
     pediatric,
@@ -83,11 +87,12 @@ WITH source_rows AS (
     created,
     file_path,
     ROW_NUMBER() OVER (
-      PARTITION BY genome_type
+      PARTITION BY collection_tube_id, genome_type
       ORDER BY created DESC
     ) AS rn
   FROM `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_aw0_tmp`
-      WHERE collection_tube_id IN UNNEST([
+      WHERE validation_passed = "Y"
+      AND collection_tube_id IN UNNEST([
        {% for id in params.collection_tube_ids %}
          '{{ id }}'{% if not loop.last %},{% endif %}
        {% endfor %}
@@ -129,7 +134,6 @@ delta AS (
     FROM `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_aw0_plating` l
     WHERE l.collection_tube_id = s.collection_tube_id
       AND l.genome_type = s.genome_type
-      AND l.file_path = s.file_path
   )
 )
 SELECT
@@ -140,10 +144,7 @@ SELECT
   ny_flag,
   validation_passed,
   ai_an,
-  pediatric,
-  finalized,
-  created,
-  file_path
+  pediatric
 FROM delta
 ;
 
@@ -155,9 +156,6 @@ INSERT INTO `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_a
   ny_flag,
   validation_passed,
   ai_an,
-  pediatric,
-  finalized,
-  created,
   file_path,
   batch_id,
   export_timestamp
@@ -170,10 +168,7 @@ SELECT
   ny_flag,
   validation_passed,
   ai_an,
-  pediatric,
-  finalized,
-  CAST(created AS TIMESTAMP),
-  file_path,
+  'gs://{{ params.bucket_name }}/genomic_samples_manifests/plating/Genomic-Manifest-AoU-{{ ds }}_C3-{{ ts_nodash | truncate(12, False, '') }}pl.csv' AS file_path,
   batch_id,
   CURRENT_TIMESTAMP()
 FROM `{{ params.project_id }}.{{ params.dataset }}.{{ params.export_table_id }}`
@@ -193,7 +188,7 @@ with DAG(
             description="List of collection_tube_id values to process"
         )
     },
-    tags=["genomics", "aw0", "bigquery", "gcs"],
+    tags=["genomics", "aw0"],
 ) as dag:
 
     run_aw0_query = BigQueryInsertJobOperator(
@@ -210,6 +205,7 @@ with DAG(
             "project_id": PROJECT_ID,
             "dataset": DATASET,
             "export_table_id": EXPORT_TABLE_ID,
+            "bucket_name": BUCKET_NAME
         },
     )
 
