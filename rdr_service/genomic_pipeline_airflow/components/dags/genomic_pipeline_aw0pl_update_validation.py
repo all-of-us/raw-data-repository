@@ -1,9 +1,7 @@
 from datetime import datetime
 from airflow import DAG
-from airflow.models.param import Param
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.operators.python import PythonOperator
-from airflow.decorators import task
 from airflow.exceptions import AirflowFailException
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 import os
