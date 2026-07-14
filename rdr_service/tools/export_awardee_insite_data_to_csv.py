@@ -97,7 +97,7 @@ SELECT
         ai.withdrawal_reason AS withdrawalReason
       FROM `rdr_operational_datastream.ppsc_awardee_insite` ai
       WHERE ai.awardee = @awardee
-      ORDER BY ai.participant_id
+      ORDER BY ai.participant_id;
 """
 
 class AwardeeInSiteDataExporter:
@@ -110,8 +110,7 @@ class AwardeeInSiteDataExporter:
                 , ARRAY_AGG(bucket_name) AS buckets
             FROM `rdr_operational_datastream.rdr_ehr_daily_file_drop_sites_view_copy`
             WHERE ignore_flag = 0
-            GROUP BY 1
-            LIMIT 3  --- update this!!!!
+            GROUP BY 1;
         """
         rows = [dict(row.items()) for row in self.client.query(query)]
         return rows
