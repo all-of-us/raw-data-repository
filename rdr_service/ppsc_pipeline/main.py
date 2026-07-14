@@ -18,7 +18,7 @@ from rdr_service.services.gcp_logging import begin_request_logging, end_request_
 from rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed import InputFeed, Intake2SummaryFeed, \
     AwardeeInSiteFeed
 from rdr_service.tools.tool_libs.GCSFileCopierToS3 import GCSFileCopierToS3
-from rdr_service.tools.export_awardee_insite_data_to_csv import AwardeeInSiteDataExporter
+from rdr_service.tools.tool_libs.export_awardee_insite_data import AwardeeInSiteDataExporter
 
 
 @app_util.auth_required_scheduler
