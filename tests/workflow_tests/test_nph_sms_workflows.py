@@ -229,7 +229,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         self.assertEqual(ingested_records[0].lims_parent_sample_id, "12345678")
 
     @staticmethod
-    def create_data_n1_mc1_generation(destination='UNC_META'):
+    def create_data_n1_mc1_generation(destination='MCAC_UNC_META'):
         sms_datagen = NphSmsDataGenerator()
 
         # Urine Sample
@@ -267,6 +267,17 @@ class NphSmsWorkflowsTest(BaseTestCase):
             sample_id=10002,
             lims_sample_id="000202",
             destination=destination
+        )
+        sms_datagen.create_database_sms_sample(
+            ethnicity="test",
+            race="test",
+            bmi="28",
+            diet="LMT",
+            sex_at_birth="M",
+            sample_identifier="test",
+            sample_id=10002,
+            lims_sample_id="000202",
+            destination='DUKE'
         )
         sms_datagen.create_database_sms_sample(
             ethnicity="test",
@@ -323,6 +334,28 @@ class NphSmsWorkflowsTest(BaseTestCase):
             age="22",
             biobank_id="test",
             lims_sample_id="000202",
+        )
+        sms_datagen.create_database_sms_n0(
+            matrix_id=1112,
+            package_id="test",
+            storage_unit_id="test",
+            file_path="DUKE_SUPP_n0_test.csv",
+            well_box_position="A2",
+            tracking_number="test",
+            sample_comments="test",
+            study="test",
+            visit="1",
+            timepoint="LMT",
+            collection_site="DUKE",
+            collection_date_time="2023-04-20T15:54:33",
+            sample_type="Stool",
+            additive_treatment="test-treatment",
+            quantity_ml="120",
+            manufacturer_lot='256838',
+            age="22",
+            biobank_id="test",
+            lims_sample_id="10002",
+            lims_parent_sample_id="000202",
         )
         sms_datagen.create_database_sms_n0(
             sample_id=10003,
@@ -424,7 +457,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
         )
 
     @staticmethod
-    def create_data_duke_n1_mc1_generation(destination="DUKE_SUPP"):
+    def create_data_duke_n1_mc1_generation(destination="DUKE"):
         sms_datagen = NphSmsDataGenerator()
         nph_datagen = NphDataGenerator()
         nph_pid, biobank_id, research_id = 1_000_000_001, 11_000_000_003, 10001
@@ -457,7 +490,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
             matrix_id=1111,
             package_id="test",
             storage_unit_id="test",
-            file_path=f"{destination}_n0_test.csv",
+            file_path=f"{destination}_SUPP_n0_test.csv",
             well_box_position="A5",
             tracking_number="test",
             sample_comments="test",
@@ -489,13 +522,18 @@ class NphSmsWorkflowsTest(BaseTestCase):
             sample_identifier="test",
             sample_id=10002,
             lims_sample_id="000202",
-            destination="UNC_META"
+            destination="MCAC_UNC_META"
         )
-
         generation_data = {
             "job": "FILE_GENERATION",
             "file_type": "N1_MC1",
             "recipient": "UNC_META",
+            "package_id": "test"
+        }
+        generation_data_2 = {
+            "job": "FILE_GENERATION",
+            "file_type": "N1_MC1",
+            "recipient": "DUKE_SUPP",
             "package_id": "test"
         }
         with clock.FakeClock(self.TIME_1):
@@ -506,22 +544,35 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 prefix="/resource/task/",
                 test_client=resource_main.app.test_client(),
             )
+            self.send_post(
+                local_path='NphSmsGenerationTaskApi',
+                request_data=generation_data_2,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
 
         expected_csv_path = "test-bucket-unc-meta/n1_manifests/UNC_META_n1_2023-04-25T15:13:00.000000.csv"
+        duke_csv_path = "test-bucket-unc-meta/n1_manifests/DUKE_SUPP_n1_2023-04-25T15:13:00.000000.csv"
 
         with open_cloud_file(expected_csv_path, mode='r') as cloud_file:
             csv_reader = csv.DictReader(cloud_file)
             csv_rows = list(csv_reader)
+
+        with open_cloud_file(duke_csv_path, mode='r') as duke_file:
+            csv_reader = csv.DictReader(duke_file)
+            duke_rows = list(csv_reader)
 
         self.assertEqual(csv_rows[0]['sample_id'], '10001')
         self.assertEqual(csv_rows[0]['matrix_id'], "1111")
         self.assertEqual(csv_rows[0]['urine_color'], '"Color 4"')
         self.assertEqual(csv_rows[0]['urine_clarity'], '"Clean"')
         self.assertEqual(csv_rows[0]['manufacturer_lot'], '256837')
+        self.assertEqual(duke_rows[0]['sample_id'], '10002')
 
         n1_mcac_dao = SmsN1Mc1Dao()
         manifest_records = n1_mcac_dao.get_all()
-        self.assertEqual(len(manifest_records), 3)
+
+        self.assertEqual(len(manifest_records), 4)
         self.assertEqual(manifest_records[0].file_path, expected_csv_path)
         self.assertEqual(manifest_records[0].sample_id, "10001")
         self.assertEqual(manifest_records[0].matrix_id, "1111")
@@ -560,7 +611,7 @@ class NphSmsWorkflowsTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
         manifest_records = n1_mcac_dao.get_all()
-        self.assertEqual(len(manifest_records), 4)
+        self.assertEqual(len(manifest_records), 6)
 
     def test_n1_mc1_pbrc_generation(self):
         self.create_data_pbrc_n1_mc1_generation()

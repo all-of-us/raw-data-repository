@@ -288,6 +288,17 @@ class Intake2SummaryFeed(PPSCBigQueryDatafeedBase):
 
 class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
 
+    # Maps BQ and MySQL field names to SQLAlchemy model attribute names. Only contains fields where the names differ.
+    FIELD_MAPPING = {
+        "questionnaire_on_behavioral_health": "questionnaireOnBehavioralHealthAndPersonality",
+        "questionnaire_on_behavioral_health_authored": "questionnaireOnBehavioralHealthAndPersonalityAuthored",
+        "questionnaire_on_emotional_health": "questionnaireOnEmotionalHealthHistoryAndWellBeing",
+        "questionnaire_on_emotional_health_authored": "questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored",
+        "questionnaire_on_family_health_history_update": "questionnaireOnPersonalAndFamilyHealthHistoryUpdate",
+        "questionnaire_on_family_health_history_update_authored":
+            "questionnaireOnPersonalAndFamilyHealthHistoryUpdateAuthored"
+    }
+
     def __init__(self, project='test'):
         self.project = project
         self.bq_client = bigquery.Client()
@@ -330,7 +341,8 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
             for row in streaming_data_rows:
                 awardee_insite_dict = AwardeeInSiteFeed.row_to_dict(row)
                 camel_case_awardee_insite_dict = {
-                    dao.snake_to_camel_case(key): val for key, val in awardee_insite_dict.items()
+                    dao.snake_to_camel_case(AwardeeInSiteFeed.FIELD_MAPPING.get(key, key)): val
+                    for key, val in awardee_insite_dict.items()
                 }
                 id_ = dao.get_id(AwardeeInSite(**camel_case_awardee_insite_dict))
                 logging.info(f"""Streaming P{camel_case_awardee_insite_dict["participantId"]}""")

@@ -9,7 +9,8 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceEducationLevel, \
     WorkbenchWorkspaceIncomeLevel, WorkbenchWorkspaceAianResearchType, WorkbenchWorkspaceAccessTier, \
     WorkbenchResearcherEthnicity, WorkbenchResearcherEducation, WorkbenchResearcherDisability, \
-    WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2, WorkbenchResearcherEducationV2
+    WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2, WorkbenchResearcherEducationV2, \
+    WorkbenchWorkspaceSourcePlatform
 from rdr_service.workflow_management.researchers_offline.workbench_data_transfer_input_feed import \
     WorkbenchWorkspacesFeed, WorkbenchResearchersFeed
 from tests.helpers.unittest_base import BaseTestCase
@@ -53,8 +54,8 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
                 "findingsFromStudy": None,
                 "ethicalLegalSocialImplications": False,
                 "focusOnUnderrepresentedPopulations": False,
-                "raceEthnicity": [],
-                "age": [],
+                "raceEthnicity": [1, 2],
+                "age": [2],
                 "sexAtBirth": WorkbenchWorkspaceSexAtBirth('INTERSEX'),
                 "genderIdentity": WorkbenchWorkspaceGenderIdentity('UNSET'),
                 "sexualOrientation": WorkbenchWorkspaceSexualOrientation('OTHER_THAN_STRAIGHT'),
@@ -69,7 +70,10 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
                 "cdrVersion": "All of Us Registered Tier Dataset v8",
                 "aianResearchType": WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'),
                 "aianResearchDetails": "Test research details",
-                "resource": "No resource payload. Data from VWB 2.0"
+                "resource": "No resource payload. Data from VWB 2.0",
+                "isDataCollection": False,
+                "sourcePlatform": WorkbenchWorkspaceSourcePlatform('VWB'),
+                "migrationState": "FINISHED"
             },
             {
                 "created": time_2,
@@ -98,8 +102,8 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
                 "findingsFromStudy": None,
                 "ethicalLegalSocialImplications": True,
                 "focusOnUnderrepresentedPopulations": True,
-                "raceEthnicity": [],
-                "age": [],
+                "raceEthnicity": [2],
+                "age": [1],
                 "sexAtBirth": WorkbenchWorkspaceSexAtBirth('INTERSEX'),
                 "genderIdentity": WorkbenchWorkspaceGenderIdentity('UNSET'),
                 "sexualOrientation": WorkbenchWorkspaceSexualOrientation('OTHER_THAN_STRAIGHT'),
@@ -114,7 +118,10 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
                 "cdrVersion": "All of Us Registered Tier Dataset v8",
                 "aianResearchType": WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'),
                 "aianResearchDetails": "Test research details 2",
-                "resource": "No resource payload. Data from VWB 2.0"
+                "resource": "No resource payload. Data from VWB 2.0",
+                "isDataCollection": False,
+                "sourcePlatform": WorkbenchWorkspaceSourcePlatform('RWB'),
+                "migrationState": "NOT_STARTED"
             },
             {
                 "created": time_2,
@@ -128,7 +135,8 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
                 "cdrVersion": "All of Us Registered Tier Dataset v8",
                 "aianResearchType": WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'),
                 "aianResearchDetails": "Test research details 3",
-                "resource": "No resource payload. Data from VWB 2.0"
+                "resource": "No resource payload. Data from VWB 2.0",
+                "isDataCollection": False
             }
         ]
 
@@ -162,8 +170,8 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
         self.assertEqual(actual_rows[0].intendToStudy, None)
         self.assertEqual(actual_rows[0].ethicalLegalSocialImplications, False)
         self.assertEqual(actual_rows[0].focusOnUnderrepresentedPopulations, False)
-        self.assertEqual(actual_rows[0].raceEthnicity, [])
-        self.assertEqual(actual_rows[0].age, [])
+        self.assertEqual(actual_rows[0].raceEthnicity, [1, 2])
+        self.assertEqual(actual_rows[0].age, [2])
         self.assertEqual(actual_rows[0].sexAtBirth, WorkbenchWorkspaceSexAtBirth('INTERSEX'))
         self.assertEqual(actual_rows[0].genderIdentity, None)
         self.assertEqual(actual_rows[0].sexualOrientation, WorkbenchWorkspaceSexualOrientation('OTHER_THAN_STRAIGHT'))
@@ -179,6 +187,9 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
         self.assertEqual(actual_rows[0].aianResearchType, WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'))
         self.assertEqual(actual_rows[0].aianResearchDetails, "Test research details")
         self.assertEqual(actual_rows[0].resource, "No resource payload. Data from VWB 2.0")
+        self.assertEqual(actual_rows[0].isDataCollection, False)
+        self.assertEqual(actual_rows[0].sourcePlatform, WorkbenchWorkspaceSourcePlatform('VWB'))
+        self.assertEqual(actual_rows[0].migrationState, "FINISHED")
 
         self.assertEqual(actual_rows[1].workspaceSourceId, 22222)
         self.assertEqual(actual_rows[1].name, "Test Workspace Name 2")
@@ -195,8 +206,8 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
         self.assertEqual(actual_rows[1].intendToStudy, None)
         self.assertEqual(actual_rows[1].ethicalLegalSocialImplications, True)
         self.assertEqual(actual_rows[1].focusOnUnderrepresentedPopulations, True)
-        self.assertEqual(actual_rows[1].raceEthnicity, [])
-        self.assertEqual(actual_rows[1].age, [])
+        self.assertEqual(actual_rows[1].raceEthnicity, [2])
+        self.assertEqual(actual_rows[1].age, [1])
         self.assertEqual(actual_rows[1].sexAtBirth, WorkbenchWorkspaceSexAtBirth('INTERSEX'))
         self.assertEqual(actual_rows[1].genderIdentity, None)
         self.assertEqual(actual_rows[1].sexualOrientation, WorkbenchWorkspaceSexualOrientation('OTHER_THAN_STRAIGHT'))
@@ -213,6 +224,9 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
         self.assertEqual(actual_rows[1].aianResearchType, WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'))
         self.assertEqual(actual_rows[1].aianResearchDetails, "Test research details 2")
         self.assertEqual(actual_rows[1].resource, "No resource payload. Data from VWB 2.0")
+        self.assertEqual(actual_rows[1].isDataCollection, False)
+        self.assertEqual(actual_rows[1].sourcePlatform, WorkbenchWorkspaceSourcePlatform('RWB'))
+        self.assertEqual(actual_rows[1].migrationState, "NOT_STARTED")
 
     @mock.patch("rdr_service.dao.workbench_dao.WorkbenchResearcherDao.bq_row_to_dict")
     @mock.patch("google.cloud.bigquery.Client")

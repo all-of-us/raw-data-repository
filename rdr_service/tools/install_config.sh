@@ -21,6 +21,18 @@ while true; do
   esac
 done
 
+if [ "${PROJECT}" == "pmi-drc-api-test" ]
+    then INSTANCE="https://drc-api-test.pmi-ops.org"
+elif [ "${PROJECT}" == "all-of-us-rdr-stable" ]
+  then INSTANCE="https://rdr-api-stable.pmi-ops.org"
+elif [ "${PROJECT}" == "all-of-us-rdr-sandbox" ]
+    then INSTANCE="https://rdr-api-sandbox.pmi-ops.org"
+elif [ "${PROJECT}" == "all-of-us-rdr-staging" ]
+    then INSTANCE="https://rdr-api-staging.pmi-ops.org"
+elif [ "${PROJECT}" == "all-of-us-rdr-prod" ]
+    then INSTANCE="https://rdr-api.pmi-ops.org"
+fi
+
 if [ -z "${CREDS_ACCOUNT}" ]
 then
   CREDS_ACCOUNT="${ACCOUNT}"

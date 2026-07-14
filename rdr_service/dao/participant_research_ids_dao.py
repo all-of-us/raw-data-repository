@@ -4,16 +4,16 @@ from rdr_service.model.participant import Participant
 from rdr_service.dao.base_dao import UpsertableDao
 from rdr_service.model.participant_research_ids import ParticipantResearchIds
 
-_MIN_RESEARCH_ID = 1000000
-_MAX_RESEARCH_ID = 9999999
+_MIN_REGISTERED_TIER_RESEARCH_ID = 200001000000
+_MAX_REGISTERED_TIER_RESEARCH_ID = 200009999999
 
 class ParticipantResearchIdsDao(UpsertableDao):
     def __init__(self):
         super().__init__(ParticipantResearchIds)
 
     def insert_random_research_ids(self, obj: ParticipantResearchIds, fields: List[str],
-                                   min_id: int = _MIN_RESEARCH_ID,
-                                   max_id: int = _MAX_RESEARCH_ID) -> None:
+                                   min_id: int = _MIN_REGISTERED_TIER_RESEARCH_ID,
+                                   max_id: int = _MAX_REGISTERED_TIER_RESEARCH_ID) -> None:
         """Attempts to insert an entity with randomly assigned ID(s) repeatedly until success
     or a maximum number of attempts are performed."""
         self._insert_with_random_id(obj, fields, min_id=min_id, max_id=max_id, insert_fun=self.upsert_with_session)
@@ -43,5 +43,4 @@ class ParticipantResearchIdsDao(UpsertableDao):
 
         for participant in participant_objects:
             research_ids = ParticipantResearchIds(participant_id=participant.participantId)
-            self.insert_random_research_ids(research_ids,
-                                            ['controlled_tier_id', 'registered_tier_id', 'controlled_tier_plus_id'])
+            self.insert_random_research_ids(research_ids,['registered_tier_id'])

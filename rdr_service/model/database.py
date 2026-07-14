@@ -56,7 +56,7 @@ from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOptio
 from rdr_service.model.workbench_workspace import WorkbenchWorkspaceApproved, WorkbenchWorkspaceSnapshot, \
     WorkbenchWorkspaceUser, WorkbenchWorkspaceUserHistory
 from rdr_service.model.workbench_researcher import WorkbenchResearcher, WorkbenchResearcherHistory, \
-    WorkbenchInstitutionalAffiliations, WorkbenchInstitutionalAffiliationsHistory
+    WorkbenchInstitutionalAffiliations, WorkbenchInstitutionalAffiliationsHistory, WorkbenchInstitutionalDura
 from rdr_service.model.metadata import Metadata
 from rdr_service.model.resource_type import ResourceType
 from rdr_service.model.resource_schema import ResourceSchema
@@ -80,7 +80,6 @@ from rdr_service.model.participant_data_to_tactis import ParticipantDataToTactis
 from rdr_service.model.retention_status_import_failures import RetentionStatusImportFailures
 from rdr_service.model.sample_order_status import SampleOrderStatus
 from rdr_service.model.sample_receipt_status import SampleReceiptStatus
-
 from rdr_service.model.study_nph import Participant
 from rdr_service.model.study_nph_sms import SmsSample, SmsJobRun
 from rdr_service.model.rex import Study

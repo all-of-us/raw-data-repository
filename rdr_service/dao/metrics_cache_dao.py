@@ -92,6 +92,8 @@ race_answers_table = config.getSettingJson(config.PUBLIC_METRICS_RACE_ANSWERS_TA
                                            'rdr_operational_datastream.rdr_participant_race_answers')
 participant_status_event_table = config.getSettingJson(config.PUBLIC_METRICS_PARTICIPANT_STATUS_EVENT_TABLE,
                                            'rdr_operational_datastream.ppsc_participant_status_event')
+withdrawal_event_table = config.getSettingJson(config.PUBLIC_METRICS_WITHDRAWAL_EVENT_TABLE,
+                                           'rdr_operational_datastream.ppsc_withdrawal_event')
 
 class MetricsDaoMixin:
     def insert_bulk(self, batch: List[Dict]) -> None:
@@ -271,6 +273,14 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
                                 AND pse.ignore_flag = 0
                                 AND (p.is_test_participant != 1 OR p.is_test_participant IS NULL)
                                 AND (p.is_ghost_id != 1 OR p.is_ghost_id IS NULL)
+                                AND pse.participant_id NOT IN (
+                                    SELECT DISTINCT we.participant_id
+                                    FROM `{withdrawal_event}` we
+                                    WHERE we.data_element_name = 'activity_status'
+                                    AND we.data_element_value = 'withdrawn'
+                                    AND we.event_type_name = 'Withdrawal'
+                                    AND ignore_flag = 0
+                                )
                             GROUP BY DATE(pse.data_element_value), p.hpo_id
                         ) AS results
                         WHERE core_date IS NOT NULL AND c.day>=DATE(core_date)
@@ -282,7 +292,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
                 ;
                 """.format(calendar=f"{bq_project}.{calendar_table}", participant=f"{bq_project}.{participant_table}",
                            participant_status_event=f"{bq_project}.{participant_status_event_table}",
-                           hpo_filter=hpo_id_params)
+                           hpo_filter=hpo_id_params, withdrawal_event=f"{bq_project}.{withdrawal_event_table}")
 
         params = [
             bigquery.ScalarQueryParameter("start_date", "DATE", start_date),
