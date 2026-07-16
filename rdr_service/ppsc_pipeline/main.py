@@ -18,7 +18,6 @@ from rdr_service.services.gcp_logging import begin_request_logging, end_request_
 from rdr_service.workflow_management.ppsc.ppsc_data_transfer_input_feed import InputFeed, Intake2SummaryFeed, \
     AwardeeInSiteFeed
 from rdr_service.tools.tool_libs.GCSFileCopierToS3 import GCSFileCopierToS3
-from rdr_service.tools.tool_libs.export_awardee_insite_data import AwardeeInSiteDataExporter
 
 
 @app_util.auth_required_scheduler
@@ -38,11 +37,6 @@ def awardee_insite_input_feed():
     input_feed.run_datafeed(datafeed)
     return '{ "success": "true" }'
 
-
-@app_util.auth_required_scheduler
-def export_awardee_insite_data_to_sites():
-    AwardeeInSiteDataExporter().export_data()
-    return '{ "success": "true" }'
 
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_input_feed():
@@ -138,13 +132,6 @@ def _build_pipeline_app():
         endpoint="awardee_insite_input_feed",
         view_func=awardee_insite_input_feed,
         methods=["GET", "POST"]
-    )
-
-    ppsc_pipeline.add_url_rule(
-        PPSC_PIPELINE_PREFIX + "ExportAwardeeInSiteDataToSites",
-        endpoint="export_awardee_insite_data_to_sites",
-        view_func=export_awardee_insite_data_to_sites,
-        methods=["GET"],
     )
 
     ppsc_pipeline.add_url_rule(
