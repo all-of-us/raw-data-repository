@@ -882,29 +882,29 @@ class CurationExportClass(ToolBase):
                 filter_options["exclude_surveys"] = surveys
 
         if self.args.omit_surveys:
-         filter_options["omit_surveys"] = True
+            filter_options["omit_surveys"] = True
 
         if self.args.omit_measurements:
-         filter_options["omit_measurements"] = True
+            filter_options["omit_measurements"] = True
 
         if self.args.exclude_in_person_pm:
-         self.include_in_person_pm = False
-         filter_options["in_person_pm"] = False
+            self.include_in_person_pm = False
+            filter_options["in_person_pm"] = False
         else:
-         filter_options["in_person_pm"] = True
+            filter_options["in_person_pm"] = True
 
         if self.args.exclude_remote_pm:
-         self.include_remote_pm = False
-         filter_options["remote_pm"] = False
+            self.include_remote_pm = False
+            filter_options["remote_pm"] = False
         else:
-         filter_options["remote_pm"] = True
+            filter_options["remote_pm"] = True
 
         if self.args.include_participants_under_18:
-         self.include_participants_under_18 = True
-         filter_options["include_participants_under_18"] = True
-         _logger.info("Including participants under 18 in ETL process")
+            self.include_participants_under_18 = True
+            filter_options["include_participants_under_18"] = True
+            _logger.info("Including participants under 18 in ETL process")
 
-         # save ETL running info into ETL history table
+        # save ETL running info into ETL history table
         if not self.args.vocabulary:
             raise NameError(
                 "parameter vocabulary must be set, example: gs://curation-vocabulary/aou_vocab_20220201/")
