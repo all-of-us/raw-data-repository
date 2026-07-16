@@ -89,6 +89,7 @@ class CurationExportClass(ToolBase):
         self.cutoff_date = None
         self.include_in_person_pm: bool = True
         self.include_remote_pm: bool = True
+        self.include_participants_under_18: bool = False
 
     @classmethod
     def _render_export_select(cls, export_sql, column_name_list):
@@ -677,11 +678,15 @@ class CurationExportClass(ToolBase):
             Participant.isTestParticipant.isnot(True),
             HPO.name != 'TEST',
             ParticipantSummary.dateOfBirth.isnot(None),
-            ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored.isnot(None),
-            func.timestampdiff(text('YEAR'), ParticipantSummary.dateOfBirth,
-                               ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored) >= 18
-
+            ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored.isnot(None)
         )
+
+        # Apply age restriction unless participants under 18 are explicitly included
+        if not self.include_participants_under_18:
+            query = query.filter(
+                func.timestampdiff(text('YEAR'), ParticipantSummary.dateOfBirth,
+                                   ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored) >= 18
+            )
         if cutoff_date:
             query = query.filter(
                 or_(
@@ -877,24 +882,29 @@ class CurationExportClass(ToolBase):
                 filter_options["exclude_surveys"] = surveys
 
         if self.args.omit_surveys:
-            filter_options["omit_surveys"] = True
+         filter_options["omit_surveys"] = True
 
         if self.args.omit_measurements:
-            filter_options["omit_measurements"] = True
+         filter_options["omit_measurements"] = True
 
         if self.args.exclude_in_person_pm:
-            self.include_in_person_pm = False
-            filter_options["in_person_pm"] = False
+         self.include_in_person_pm = False
+         filter_options["in_person_pm"] = False
         else:
-            filter_options["in_person_pm"] = True
+         filter_options["in_person_pm"] = True
 
         if self.args.exclude_remote_pm:
-            self.include_remote_pm = False
-            filter_options["remote_pm"] = False
+         self.include_remote_pm = False
+         filter_options["remote_pm"] = False
         else:
-            filter_options["remote_pm"] = True
+         filter_options["remote_pm"] = True
 
-        # save ETL running info into ETL history table
+        if self.args.include_participants_under_18:
+         self.include_participants_under_18 = True
+         filter_options["include_participants_under_18"] = True
+         _logger.info("Including participants under 18 in ETL process")
+
+         # save ETL running info into ETL history table
         if not self.args.vocabulary:
             raise NameError(
                 "parameter vocabulary must be set, example: gs://curation-vocabulary/aou_vocab_20220201/")
@@ -2329,39 +2339,42 @@ def add_additional_arguments(parser):
 
     cdm_parser = subparsers.add_parser('cdm-data')
     cdm_parser.add_argument("--cutoff", help="populate cdm with cut off date, example: 2022-04-01",
-                            type=str, default=None)  # noqa
+                    type=str, default=None)  # noqa
     cdm_parser.add_argument("--vocabulary", help="the path of the vocabulary of this run, "
-                                                 "example: gs://curation-vocabulary/aou_vocab_20220201/",
-                            type=str, default=None)  # noqa
+                                         "example: gs://curation-vocabulary/aou_vocab_20220201/",
+                    type=str, default=None)  # noqa
     cdm_parser.add_argument("--participant-origin",
-                            help="Participant origin for run, accepts vibrent, careevolution, or all",
-                            type=str, default=None)
+                    help="Participant origin for run, accepts vibrent, careevolution, or all",
+                    type=str, default=None)
     cdm_parser.add_argument("--participant-list-file",
-                            help="Path to a file containing a list of PIDs to run the ETL process with",
-                            type=str, default=None)
+                    help="Path to a file containing a list of PIDs to run the ETL process with",
+                    type=str, default=None)
     cdm_parser.add_argument("--include-surveys", help="Path to a file containing list of survey names to include",
-                            type=str, default=None)
+                    type=str, default=None)
     cdm_parser.add_argument("--exclude-surveys", help="Path to a file containing list of survey names to exclude",
-                            type=str, default=None)
+                    type=str, default=None)
     cdm_parser.add_argument("--omit-surveys", help="Observation table won't include survey data",
-                            action="store_true", default=False)
+                     action="store_true", default=False)
     cdm_parser.add_argument("--omit-measurements", help="Observation table won't include physical measurements",
-                            action="store_true", default=False)
+                         action="store_true", default=False)
     cdm_parser.add_argument("--exclude-participants", help="Path to a file containing a list of PIDs to exclude",
-                            type=str, default=None)
+                         type=str, default=None)
     cdm_parser.add_argument("--exclude-in-person-pm", help="Excludes in-person physical measurements",
-                            action="store_true", default=False)
+                         action="store_true", default=False)
     cdm_parser.add_argument("--exclude-remote-pm", help="Excludes remote physical measurements",
-                            action="store_true", default=False)
+                         action="store_true", default=False)
+    cdm_parser.add_argument("--include-participants-under-18",
+                         help="Include participants under 18 years old in the ETL process",
+                         action="store_true", default=False)
     cdm_parser.add_argument("--prep-bq", help="Only create src tables to load to BigQuery", action="store_true",
-                            default=False)
+                         default=False)
 
     manage_code_parser = subparsers.add_parser('exclude-code')
     manage_code_parser.add_argument("--operation", help="operation type for exclude code command: add or remove",
-                                    type=str, default=None)  # noqa
+                                type=str, default=None)  # noqa
     manage_code_parser.add_argument("--code-value", help="code values, split by comma", type=str, default=None)  # noqa
     manage_code_parser.add_argument("--code-type", help="code type: module, question or answer",
-                                    type=str, default=None)  # noqa
+                                type=str, default=None)  # noqa
 
 
 def run():
