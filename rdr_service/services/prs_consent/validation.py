@@ -18,6 +18,7 @@ class PdfParsingError(Exception):
 class BaseExpectedData:
     signed_date: date
 
+
 class _Validator(ABC):
     @classmethod
     def validate(cls, file_data_stream: BytesIO, expected_data: BaseExpectedData):
@@ -43,17 +44,17 @@ class G2pConsentValidator(_Validator):
 
         signature_page_num = pdf.get_page_number_of_text(['Sign Your Full Name'])
 
-        signature_bounds = Rect.from_edges(320, 500, 580, 600)
+        signature_bounds = Rect.from_edges(320, 500, 290, 310)
         has_signature_image = pdf.has_image_at(signature_bounds, signature_page_num)
         if not has_signature_image:
             errors.append('missing signature')
 
-        consent_check_bounds = Rect.from_edges(38, 40, 652, 655)
+        consent_check_bounds = Rect.from_edges(38, 40, 375, 380)
         has_consent_checked = pdf.has_x_stroke_at(consent_check_bounds, signature_page_num)
         if not has_consent_checked:
             errors.append('missing consent checkmark')
 
-        date_bounds = Rect.from_edges(330, 380, 490, 495)
+        date_bounds = Rect.from_edges(330, 380, 210, 215)
         date_str = pdf.get_text_at(date_bounds, signature_page_num)  # '541822131'
         try:
             signed_date = parse(date_str).date()
@@ -62,12 +63,12 @@ class G2pConsentValidator(_Validator):
         if signed_date != expected_data.signed_date:
             errors.append('signing date mismatched')
 
-        help_check_bounds = Rect.from_edges(38, 40, 438, 440)
+        help_check_bounds = Rect.from_edges(38, 40, 159, 161)
         has_helped_checked = pdf.has_x_stroke_at(help_check_bounds, signature_page_num)
         if expected_data.received_help != has_helped_checked:
             errors.append('help received mismatched')
 
-        help_name_bounds = Rect.from_edges(330, 380, 410, 415)
+        help_name_bounds = Rect.from_edges(330, 380, 130, 135)
         helper_name = pdf.get_text_at(help_name_bounds, signature_page_num)
         if expected_data.helper_name != helper_name:
             errors.append('helper name mismatched')

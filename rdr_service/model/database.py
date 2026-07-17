@@ -89,6 +89,7 @@ from rdr_service.etl.model.etl_vocabulary import Concept, ConceptRelationship, C
     CombinedSurveyFilter, SourceToConceptMap
 from rdr_service.model.exposomics import ExposomicsM0
 from rdr_service.model.participant_research_ids import ParticipantResearchIds
+from rdr_service.model.prs_consent import *
 
 RETRY_CONNECTION_LIMIT = 10
 

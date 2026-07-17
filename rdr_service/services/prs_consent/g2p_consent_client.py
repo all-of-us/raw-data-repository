@@ -55,8 +55,11 @@ class G2pConsentClient:
             logging.info(f'validation result: {error_list}')
 
     def _validate_consent_pdf(self, record_id, expected_data: G2pConsentExpectedData):
-        pdf_response = self._redcap_client.get_pdf(
-            self._api_key, record_id, 'data_sharing_consent'
+        # pdf_response = self._redcap_client.get_pdf(
+        #     self._api_key, record_id, 'data_sharing_consent'
+        # )
+        pdf_response = self._redcap_client.get_file(
+            self._api_key, record_id, 'full_consent'
         )
         try:
             return G2pConsentValidator.validate(
