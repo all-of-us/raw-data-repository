@@ -62,3 +62,11 @@ class RedcapClient:
             'record': record_id,
             'instrument': instrument_name
         }, return_raw_response=True)
+
+    def get_file(self, project_api_token, record_id, field_name):
+        return self.send_request(project_api_token, 'file', {
+            'record': record_id,
+            'action': 'export',
+            'field': field_name,
+            'event': ''
+        }, return_raw_response=True)
