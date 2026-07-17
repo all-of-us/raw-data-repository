@@ -858,7 +858,7 @@ def insert_awardee_insite_data(
             SELECT DISTINCT participant_id
                 , 'yes' AS aian
             FROM `{project}.{src_operational_dataset}.ppsc_survey_completion_event`
-            WHERE LOWER(data_element_name) = 'race_whatraceethnicity'
+            WHERE LOWER(data_element_name) IN ('race_whatraceethnicity', 'race_whatraceethnicity_ped')
               AND LOWER(data_element_value) = 'whatraceethnicity_aian'
               AND ignore_flag = 0
           ),
