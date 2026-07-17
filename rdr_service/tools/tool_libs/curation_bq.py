@@ -170,12 +170,16 @@ class CurationBQ(ToolBase):
                     write_disposition = bigquery.job.WriteDisposition.WRITE_TRUNCATE
                 job_config = bigquery.QueryJobConfig(destination=f"{self.dataset_id}.{table_name}",
                                                      write_disposition=write_disposition)
-            self.run_query(query.format(dataset_id=self.dataset_id, cutoff=self.args.cutoff, etl_filters=self.etl_filters), job_config)
+            self.run_query(
+                query.format(dataset_id=self.dataset_id, cutoff=self.args.cutoff, etl_filters=self.etl_filters),
+                job_config)
 
     def filter_src_clean(self):
-        self.run_query(sql=queries.queries['filter_questions']['query'].format(dataset_id=self.dataset_id, etl_filters=self.etl_filters),
+        self.run_query(sql=queries.queries['filter_questions']['query'].format(dataset_id=self.dataset_id,
+                                                                               etl_filters=self.etl_filters),
                        job_config=None)
-        self.run_query(sql=queries.queries['filter_surveys']['query'].format(dataset_id=self.dataset_id, etl_filters=self.etl_filters),
+        self.run_query(sql=queries.queries['filter_surveys']['query'].format(dataset_id=self.dataset_id,
+                                                                             etl_filters=self.etl_filters),
                        job_config=None)
 
     def export(self):
