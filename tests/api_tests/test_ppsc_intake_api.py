@@ -75,7 +75,7 @@ class PPSCIntakeAPITest(BaseTestCase):
     def send_pediatric_assent(self, participant, status, age_group='7-12', authored_timestamp=datetime(2024, 6, 25, 12, 1)):
         payload = {
             "activity": "Survey Completion",
-            "eventType": 'Pediatrics Assent',
+            "eventType": 'Pediatric Assent',
             "participantId": f"P{participant.id}",
             "dataElements": [
                 {
