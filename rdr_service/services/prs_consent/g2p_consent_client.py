@@ -1,3 +1,4 @@
+import csv
 import logging
 from datetime import datetime
 from io import BytesIO
@@ -6,6 +7,33 @@ from dateutil.parser import parse
 
 from rdr_service.services.prs_consent.validation import G2pConsentValidator, G2pConsentExpectedData, PdfParsingError
 from rdr_service.services.redcap_client import RedcapClient
+
+result_export_fields = [
+    'record_id',
+    'aou_pids',
+    'study_id',
+    'first_name',
+    'last_name',
+    'date_of_birth',
+    'phone_number',
+    'primary_language',
+    'first_name_2',
+    'last_name_2',
+    'email',
+    'consent_url',
+    'consent_landing_page_url',
+    'econsent_intro_form_complete',
+    'consent_landing_page_complete',
+    'if_you_agree___1',
+    'date',
+    'please_check_the_box_below___1',
+    'name_of_the_person_who_hel',
+    'the_url',
+    'data_sharing_consent_complete',
+    'consent_validation',
+    'specify_why_the_pdf_did_no',
+    'consent_pdf_complete'
+]
 
 
 class G2pConsentClient:
@@ -26,7 +54,8 @@ class G2pConsentClient:
             'received_help': 'please_check_the_box_below___1',
             'helper_name': 'name_of_the_person_who_hel',
             'completion_status': 'data_sharing_consent_complete',
-            'consent_status': 'if_you_agree___1'
+            'consent_status': 'if_you_agree___1',
+            'validation_status': 'consent_validation'
         }
 
         record_data = {}
@@ -38,10 +67,13 @@ class G2pConsentClient:
 
             record_data[record['record_id']] = mapped_data
 
+        passed_validation = []
+        all_passed = True
         for record_id, metadata in record_data.items():
             if (
                 metadata['completion_status'] != '2'  # skip any records not set as complete
                 or metadata['consent_status'] != '1'  # skip any records that don't provide consent
+                or metadata['validation_status'] == '1'  # skip any that have already been validated
             ):
                 continue
 
@@ -52,7 +84,23 @@ class G2pConsentClient:
                 helper_name=metadata['helper_name'] or None
             )
             error_list = self._validate_consent_pdf(record_id, expected_values)
+            if error_list:
+                all_passed = False
+            else:
+                passed_validation.append(record_id)
             logging.info(f'validation result: {error_list}')
+
+        if not all_passed:
+            logging.error('validation errors were found')
+        else:
+            with open('g2p_consent_validation.csv', 'w') as output_file:
+                dict_writer = csv.DictWriter(output_file, result_export_fields)
+                dict_writer.writeheader()
+                for record_id in passed_validation:
+                    dict_writer.writerow({
+                        'record_id': record_id,
+                        'consent_validation': 1
+                    })
 
     def _validate_consent_pdf(self, record_id, expected_data: G2pConsentExpectedData):
         # pdf_response = self._redcap_client.get_pdf(
