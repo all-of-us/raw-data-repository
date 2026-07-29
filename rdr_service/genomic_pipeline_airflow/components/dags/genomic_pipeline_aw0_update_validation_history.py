@@ -2,8 +2,6 @@ import os
 import logging
 from datetime import datetime
 from airflow import DAG
-from airflow.models import Variable
-from airflow.models.param import Param
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 
 MERGE_SQL = """
