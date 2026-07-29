@@ -1,4 +1,401 @@
 queries = {
+    # ---------------------------------------------------------------------------
+    # Phase 1 – Source data generation (replaces SQLAlchemy ORM in curation.py)
+    # Reads from BigQuery tables replicated from MySQL via {rdr_dataset}.rdr_
+    # ---------------------------------------------------------------------------
+    "participant_filter": {
+        # Replicates _select_participant_ids() from curation.py
+        # Enum values: WithdrawalStatus.NO_USE=2, QuestionnaireStatus.SUBMITTED=1, UNSET=0
+        "destination": "participant_filter",
+        "append": False,
+        "query": """
+            SELECT DISTINCT p.participant_id
+            FROM `{rdr_dataset}.rdr_participant` p
+            JOIN `{rdr_dataset}.rdr_participant_summary` ps
+                ON p.participant_id = ps.participant_id
+            JOIN `{rdr_dataset}.rdr_hpo` h
+                ON p.hpo_id = h.hpo_id
+            WHERE (
+                p.is_ghost_id != 1
+                OR (
+                    ps.participant_id IS NOT NULL
+                    AND SAFE_CAST(p.date_added_ghost AS TIMESTAMP) > TIMESTAMP('2022-03-18')
+                    AND (
+                        ps.consent_for_electronic_health_records != 0
+                        OR ps.questionnaire_on_the_basics = 1
+                    )
+                )
+            )
+            AND p.is_test_participant != 1
+            AND h.name != 'TEST'
+            AND ps.date_of_birth IS NOT NULL
+            AND ps.consent_for_study_enrollment_first_yes_authored IS NOT NULL
+            {age_filter}
+            {withdrawal_filter}
+            {origin_filter}
+            {exclude_pid_filter}
+            ORDER BY p.participant_id
+        """,
+    },
+    "questionnaire_answers_by_module": {
+        # Replicates _populate_questionnaire_answers_by_module() from curation.py.
+        # Builds an intermediate lookup of (participant, survey, response, question)
+        # used to determine which response is the "latest" per participant+module.
+        # Enum values: status IN_PROGRESS=0, classification_type DUPLICATE=1, INVALID=6, PROFILE_UPDATE=2
+        "destination": "questionnaire_answers_by_module",
+        "append": False,
+        "query": """
+            SELECT DISTINCT
+                qr.participant_id,
+                qr.authored,
+                qr.created,
+                CASE WHEN c.value = 'COPE' THEN qh.external_id ELSE c.value END AS survey,
+                qr.questionnaire_response_id AS response_id,
+                qq.code_id AS question_code_id
+            FROM `{rdr_dataset}.rdr_questionnaire_response` qr
+            JOIN `{rdr_dataset}.rdr_questionnaire_concept` qc
+                ON qc.questionnaire_id = qr.questionnaire_id
+                AND qc.questionnaire_version = qr.questionnaire_version
+            JOIN `{rdr_dataset}.rdr_code` c
+                ON c.code_id = qc.code_id
+            JOIN `{rdr_dataset}.rdr_questionnaire_history` qh
+                ON qh.questionnaire_id = qr.questionnaire_id
+                AND qh.version = qr.questionnaire_version
+            JOIN `{rdr_dataset}.rdr_questionnaire_response_answer` qra
+                ON qra.questionnaire_response_id = qr.questionnaire_response_id
+            JOIN `{rdr_dataset}.rdr_questionnaire_question` qq
+                ON qq.questionnaire_question_id = qra.question_id
+            WHERE qr.status != 0
+            AND qr.classification_type NOT IN (1, 6, 2)
+            AND qr.participant_id IN (
+                SELECT participant_id FROM `{dataset_id}.participant_filter`
+            )
+            {cutoff_authored_filter}
+            {survey_filter}
+        """,
+    },
+    "src_clean": {
+        # Replicates _populate_src_clean() from curation.py.
+        #
+        # Two logical parts combined with UNION ALL:
+        #   Part 1 – non-ConsentPII modules: only answers from the single most
+        #            recent response per participant+module are included.
+        #   Part 2 – ConsentPII (CONSENT_FOR_STUDY_ENROLLMENT_MODULE):
+        #            "rolled-up" – latest answer per participant+question across
+        #            all ConsentPII responses.  StreetAddress2 is also treated as
+        #            stale when a newer StreetAddress1 response exists.
+        #
+        # Enum values (stored as integers in MySQL / BQ):
+        #   QR status IN_PROGRESS=0 | classification DUPLICATE=1, INVALID=6, PROFILE_UPDATE=2
+        #   CdrEtlCodeType MODULE=1, QUESTION=2, ANSWER=3
+        "destination": "src_clean",
+        "append": False,
+        "query": """
+            WITH
+            -- ------------------------------------------------------------------
+            -- Shared base: all eligible answer rows from the source RDR tables
+            -- ------------------------------------------------------------------
+            base_answers AS (
+                SELECT
+                    p.participant_id,
+                    p.research_id,
+                    p.external_id,
+                    -- Use COPE questionnaire external_id as the survey name for COPE surveys
+                    CASE WHEN mc.value = 'COPE' THEN qh.external_id ELSE mc.value END
+                        AS survey_name,
+                    COALESCE(qr.authored, qr.created)  AS date_of_survey,
+                    qc_code.value                       AS question_ppi_code,
+                    qq.code_id                          AS question_code_id,
+                    -- When the answer is ignored, report PMI_Skip as the value PPI code
+                    CASE WHEN qra.ignore = 1
+                         THEN 'PMI_Skip'
+                         ELSE ac.value
+                    END                                 AS value_ppi_code,
+                    ac.topic                            AS topic_value,
+                    qra.ignore                AS is_invalid,
+                    CASE WHEN qra.ignore = 1 THEN NULL ELSE qra.value_code_id END
+                        AS value_code_id,
+                    -- value_number: suppress for zip-code questions and for ignored answers
+                    CASE
+                        WHEN qra.ignore = 1 THEN NULL
+                        WHEN qc_code.value IN (
+                            'EmploymentWorkAddress_ZipCode', 'StreetAddress_PIIZIP'
+                        ) THEN NULL
+                        ELSE COALESCE(
+                            qra.value_decimal,
+                            CAST(qra.value_integer AS NUMERIC)
+                        )
+                    END                                 AS value_number,
+                    CASE WHEN qra.ignore = 1 THEN NULL
+                         ELSE CAST(qra.value_boolean AS INT64)
+                    END                                 AS value_boolean,
+                    CASE WHEN qra.ignore = 1 THEN NULL
+                         ELSE COALESCE(
+                             CAST(qra.value_date AS DATETIME),
+                             qra.value_datetime
+                         )
+                    END                                 AS value_date,
+                    -- value_string: cascade through multiple fallbacks, re-map zip-code
+                    -- integers to string for zip-code question codes
+                    CASE
+                        WHEN qra.ignore = 1 THEN NULL
+                        ELSE COALESCE(
+                            LEFT(qra.value_string, 1024),
+                            CAST(qra.value_date AS STRING),
+                            CAST(qra.value_datetime AS STRING),
+                            ac.display,
+                            CASE WHEN qc_code.value IN (
+                                     'EmploymentWorkAddress_ZipCode', 'StreetAddress_PIIZIP'
+                                 )
+                                 THEN CAST(qra.value_integer AS STRING)
+                                 ELSE NULL
+                            END
+                        )
+                    END                                 AS value_string,
+                    qr.questionnaire_response_id,
+                    CONCAT('cln.', CASE
+                        WHEN qra.value_code_id   IS NOT NULL THEN 'code'
+                        WHEN qra.value_integer   IS NOT NULL THEN 'int'
+                        WHEN qra.value_decimal   IS NOT NULL THEN 'dec'
+                        WHEN qra.value_boolean   IS NOT NULL THEN 'bool'
+                        WHEN qra.value_date      IS NOT NULL THEN 'date'
+                        WHEN qra.value_datetime  IS NOT NULL THEN 'dtime'
+                        WHEN qra.value_string    IS NOT NULL THEN 'str'
+                        ELSE ''
+                    END)                                AS unit_id,
+                    0                                   AS filter,
+                    CASE
+                        WHEN p.participant_origin = 'careevolution' THEN 'ce'
+                        WHEN p.participant_origin = 'vibrent'       THEN 'vibrent'
+                        ELSE p.participant_origin
+                    END                                 AS src_id,
+                    -- Internal columns used for CTE joins only (not selected in output)
+                    mc.value    AS _module_value,
+                    qr.authored AS _authored,
+                    qr.created  AS _created
+                FROM `{rdr_dataset}.rdr_participant` p
+                JOIN `{rdr_dataset}.rdr_questionnaire_response` qr
+                    ON qr.participant_id = p.participant_id
+                JOIN `{rdr_dataset}.rdr_questionnaire_response_answer` qra
+                    ON qra.questionnaire_response_id = qr.questionnaire_response_id
+                JOIN `{rdr_dataset}.rdr_questionnaire_question` qq
+                    ON qq.questionnaire_question_id = qra.question_id
+                JOIN `{rdr_dataset}.rdr_questionnaire_concept` qc
+                    ON qc.questionnaire_id  = qr.questionnaire_id
+                    AND qc.questionnaire_version = qr.questionnaire_version
+                JOIN `{rdr_dataset}.rdr_questionnaire_history` qh
+                    ON qh.questionnaire_id = qr.questionnaire_id
+                    AND qh.version         = qr.questionnaire_version
+                JOIN `{rdr_dataset}.rdr_code` mc
+                    ON mc.code_id = qc.code_id
+                JOIN `{rdr_dataset}.rdr_code` qc_code
+                    ON qc_code.code_id = qq.code_id
+                LEFT JOIN `{rdr_dataset}.rdr_code` ac
+                    ON ac.code_id = qra.value_code_id
+                WHERE (
+                    -- At least one answer value must be present
+                    (qra.value_code_id IS NOT NULL AND ac.code_id IS NOT NULL)
+                    OR qra.value_integer  IS NOT NULL
+                    OR qra.value_decimal  IS NOT NULL
+                    OR qra.value_boolean  IS NOT NULL
+                    OR qra.value_date     IS NOT NULL
+                    OR qra.value_datetime IS NOT NULL
+                    OR qra.value_string   IS NOT NULL
+                )
+                AND qr.status != 0
+                AND qr.classification_type NOT IN (1, 6, 2)
+                -- Exclude module / question / answer codes flagged in cdr_excluded_code
+                AND qc.code_id NOT IN (
+                    SELECT code_id FROM `{rdr_dataset}.rdr_cdr_excluded_code` WHERE code_type = 1
+                )
+                AND qq.code_id NOT IN (
+                    SELECT code_id FROM `{rdr_dataset}.rdr_cdr_excluded_code` WHERE code_type = 2
+                )
+                AND (
+                    qra.value_code_id IS NULL
+                    OR qra.value_code_id NOT IN (
+                        SELECT code_id FROM `{rdr_dataset}.rdr_cdr_excluded_code` WHERE code_type = 3
+                    )
+                )
+                AND mc.system = 'http://terminology.pmi-ops.org/CodeSystem/ppi'
+                AND p.participant_id IN (
+                    SELECT participant_id FROM `{dataset_id}.participant_filter`
+                )
+                {cutoff_authored_filter}
+                {survey_filter}
+            ),
+            -- ------------------------------------------------------------------
+            -- Part 1 helper: latest response per participant+module
+            -- (used for all modules except ConsentPII)
+            -- ------------------------------------------------------------------
+            latest_response_per_module AS (
+                SELECT participant_id, survey, response_id
+                FROM (
+                    SELECT
+                        participant_id,
+                        survey,
+                        response_id,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY participant_id, survey
+                            ORDER BY authored DESC, created DESC
+                        ) AS rn
+                    FROM `{dataset_id}.questionnaire_answers_by_module`
+                )
+                WHERE rn = 1
+            ),
+            -- ------------------------------------------------------------------
+            -- Part 2 helpers for ConsentPII rolled-up logic
+            -- ------------------------------------------------------------------
+            -- For non-StreetAddress2 ConsentPII questions: latest answer per question
+            rolled_up_latest_per_question AS (
+                SELECT participant_id, survey, question_code_id, response_id
+                FROM (
+                    SELECT
+                        participant_id,
+                        survey,
+                        question_code_id,
+                        response_id,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY participant_id, survey, question_code_id
+                            ORDER BY authored DESC, created DESC
+                        ) AS rn
+                    FROM `{dataset_id}.questionnaire_answers_by_module`
+                    WHERE survey = 'ConsentPII'
+                    AND question_code_id NOT IN (
+                        SELECT code_id
+                        FROM `{rdr_dataset}.rdr_code`
+                        WHERE value = 'PIIAddress_StreetAddress2'
+                    )
+                )
+                WHERE rn = 1
+            ),
+            -- StreetAddress2 is stale when a newer StreetAddress1 response exists.
+            -- Find the most-recent ConsentPII response that answered SA1 or SA2.
+            latest_sa_response AS (
+                SELECT participant_id, response_id
+                FROM (
+                    SELECT DISTINCT participant_id, response_id, authored, created,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY participant_id
+                            ORDER BY authored DESC, created DESC
+                        ) AS rn
+                    FROM `{dataset_id}.questionnaire_answers_by_module`
+                    WHERE survey = 'ConsentPII'
+                    AND question_code_id IN (
+                        SELECT code_id
+                        FROM `{rdr_dataset}.rdr_code`
+                        WHERE value IN (
+                            'PIIAddress_StreetAddress',
+                            'PIIAddress_StreetAddress2'
+                        )
+                    )
+                )
+                WHERE rn = 1
+            ),
+            sa2_latest AS (
+                SELECT qabm.participant_id, qabm.survey,
+                       qabm.question_code_id, qabm.response_id
+                FROM `{dataset_id}.questionnaire_answers_by_module` qabm
+                JOIN latest_sa_response lsr
+                    ON qabm.participant_id = lsr.participant_id
+                    AND qabm.response_id   = lsr.response_id
+                WHERE qabm.survey = 'ConsentPII'
+                AND qabm.question_code_id IN (
+                    SELECT code_id
+                    FROM `{rdr_dataset}.rdr_code`
+                    WHERE value = 'PIIAddress_StreetAddress2'
+                )
+            ),
+            -- Combined ConsentPII latest response per question (regular + SA2)
+            latest_consent_per_question AS (
+                SELECT participant_id, survey, question_code_id, response_id
+                FROM rolled_up_latest_per_question
+                UNION ALL
+                SELECT participant_id, survey, question_code_id, response_id
+                FROM sa2_latest
+            )
+            -- ==================================================================
+            -- Part 1: answers from the latest response for each non-ConsentPII module
+            -- ==================================================================
+            SELECT
+                ba.participant_id, research_id, external_id,
+                survey_name, date_of_survey, question_ppi_code, question_code_id,
+                value_ppi_code, topic_value, is_invalid, value_code_id,
+                value_number, value_boolean, value_date, value_string,
+                questionnaire_response_id, unit_id, filter, src_id
+            FROM base_answers ba
+            JOIN latest_response_per_module lr
+                ON ba.participant_id              = lr.participant_id
+                AND ba.survey_name                = lr.survey
+                AND ba.questionnaire_response_id  = lr.response_id
+            WHERE ba._module_value != 'ConsentPII'
+
+            UNION ALL
+
+            -- ==================================================================
+            -- Part 2: rolled-up latest answers per question for ConsentPII
+            -- ==================================================================
+            SELECT
+                ba.participant_id, research_id, external_id,
+                survey_name, date_of_survey, question_ppi_code, ba.question_code_id,
+                value_ppi_code, topic_value, is_invalid, value_code_id,
+                value_number, value_boolean, value_date, value_string,
+                questionnaire_response_id, unit_id, filter, src_id
+            FROM base_answers ba
+            JOIN latest_consent_per_question lcq
+                ON ba.participant_id              = lcq.participant_id
+                AND ba.survey_name                = lcq.survey
+                AND ba.question_code_id           = lcq.question_code_id
+                AND ba.questionnaire_response_id  = lcq.response_id
+            WHERE ba._module_value = 'ConsentPII'
+        """,
+    },
+    "src_meas": {
+        # Replicates _populate_measurements() from curation.py.
+        # Reads physical measurements from the replicated RDR tables.
+        # Physical measurement status NO_USE = 2; collect_type REMOTE = 2.
+        "destination": "src_meas",
+        "append": False,
+        "query": """
+            SELECT
+                CAST(
+                    ROW_NUMBER() OVER (
+                        ORDER BY pm.participant_id, pm.physical_measurements_id, meas.measurement_id
+                    ) AS INT64
+                )                               AS id,
+                pm.participant_id               AS participant_id,
+                pm.finalized_site_id            AS finalized_site_id,
+                meas.code_value                 AS code_value,
+                meas.measurement_time           AS measurement_time,
+                meas.value_decimal              AS value_decimal,
+                meas.value_unit                 AS value_unit,
+                meas.value_code_value           AS value_code_value,
+                LEFT(meas.value_string, 1024)   AS value_string,
+                meas.measurement_id             AS measurement_id,
+                pm.physical_measurements_id     AS physical_measurements_id,
+                meas.parent_id                  AS parent_id,
+                CASE
+                    WHEN pm.origin = 'hpro'         THEN 'healthpro'
+                    WHEN pm.origin = 'vibrent'       THEN 'vibrent'
+                    WHEN pm.origin = 'careevolution' THEN 'ce'
+                    ELSE pm.origin
+                END                             AS src_id,
+                pm.collect_type                 AS collect_type
+            FROM `{rdr_dataset}.rdr_measurement` meas
+            JOIN `{rdr_dataset}.rdr_physical_measurements` pm
+                ON meas.physical_measurements_id = pm.physical_measurements_id
+                AND pm.final = 1
+                AND (pm.status != 2 OR pm.status IS NULL)
+                {pm_collect_type_filter}
+                {cutoff_finalized_filter}
+            WHERE pm.participant_id IN (
+                SELECT participant_id FROM `{dataset_id}.participant_filter`
+            )
+        """,
+    },
+    # ---------------------------------------------------------------------------
+    # Phase 2 – Replace EXTERNAL_QUERY bridges with native BQ SQL
+    # ---------------------------------------------------------------------------
     "fact_relationship": {
         "query": """
             SELECT 21 AS domain_concept_id_1,
@@ -73,7 +470,7 @@ queries = {
                 -- Observation to Measurement
                 cdm_obs.src_id AS src_id
             FROM `{dataset_id}.observation` cdm_obs
-                INNER JOIN `{dataset_id}.measurement_to_qualifier` mtq ON mtq.qualifier_id = cdm_obs.meas_id
+                INNER JOIN `{dataset_id}.rdr_measurement_to_qualifier` mtq ON mtq.qualifier_id = cdm_obs.meas_id
             UNION ALL
             SELECT 21 AS domain_concept_id_1,
                 -- Measurement
@@ -85,7 +482,7 @@ queries = {
                 -- Measurement to Observation
                 cdm_obs.src_id AS src_id
             FROM `{dataset_id}.observation` cdm_obs
-                INNER JOIN `{dataset_id}.measurement_to_qualifier` mtq ON mtq.qualifier_id = cdm_obs.meas_id""",
+                INNER JOIN `{dataset_id}.rdr_measurement_to_qualifier` mtq ON mtq.qualifier_id = cdm_obs.meas_id""",
         "destination": "fact_relationship",
         "append": False,
     },
@@ -205,7 +602,7 @@ queries = {
               CAST(NULL AS STRING) AS place_of_service_source_value,
               'vibrent' AS src_id
             FROM
-              `{dataset_id}.site` site""",
+              `{dataset_id}.rdr_site` site""",
         "destination": "care_site",
         "append": False,
     },
@@ -528,6 +925,12 @@ queries = {
     },
     "src_person_location": {
         "query": """
+            WITH latest_address AS (
+              SELECT participant_id, date_of_survey,
+                     ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY date_of_survey DESC) AS rn
+              FROM `{dataset_id}.src_mapped`
+              WHERE question_ppi_code = 'PIIAddress_StreetAddress'
+            )
             SELECT
               p.participant_id AS participant_id,
               MAX(m_address_1.value_string) AS address_1,
@@ -565,15 +968,8 @@ queries = {
             ON
               m_address_1.questionnaire_response_id = m_state.questionnaire_response_id
               AND m_state.question_ppi_code = 'StreetAddress_PIIState'
-            WHERE
-              m_address_1.date_of_survey = (
-              SELECT
-                MAX(date_of_survey)
-              FROM
-                `{dataset_id}.src_mapped` m_address_1_2
-              WHERE
-                m_address_1_2.participant_id = m_address_1.participant_id
-                AND m_address_1_2.question_ppi_code = 'PIIAddress_StreetAddress')
+            JOIN latest_address la ON m_address_1.participant_id = la.participant_id AND la.rn = 1
+            WHERE m_address_1.date_of_survey = la.date_of_survey
             GROUP BY
               p.participant_id, p.src_id;""",
         "destination": "src_person_location",
@@ -877,28 +1273,38 @@ queries = {
               CAST(NULL AS INT64) AS cause_source_concept_id,
               'healthpro' AS src_id
             FROM
-              `{dataset_id}.deceased_report` dr
+              `{dataset_id}.rdr_deceased_report` dr
             JOIN
               `{dataset_id}.person` per
             ON
               dr.participant_id = per.person_id
             WHERE
               dr.status = 2
-            AND dr.authored < '{cutoff}'""",
+            {cutoff_authored_filter}""",
     },
     "ehr_consent_temp_table": {
+        # Replaces EXTERNAL_QUERY against Cloud SQL with native BQ SQL on replicated tables.
+        # ConsentSyncStatus: READY_FOR_SYNC=2, SYNC_COMPLETE=4
         "destination": "tmp_ehr_consent",
         "append": False,
         "query": """
-            SELECT * FROM
-              EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
-                "SELECT sc.participant_id, sc.research_id, sc.value_ppi_code, sc.date_of_survey, sc.src_id, """
-                    """consent_file.created AS cf_created, consent_file.sync_status, consent_response.created AS """
-                    """cr_created FROM cdm.src_clean sc LEFT JOIN rdr.consent_response ON """
-                    """sc.questionnaire_response_id = consent_response.questionnaire_response_id LEFT JOIN """
-                    """rdr.consent_file ON consent_response.id = consent_file.consent_response_id WHERE """
-                    """sc.survey_name = 'EHRConsentPII' AND sc.question_ppi_code = """
-                    """'EHRConsentPII_ConsentPermission'");""",
+            SELECT
+                sc.participant_id,
+                sc.research_id,
+                sc.value_ppi_code,
+                sc.date_of_survey,
+                sc.src_id,
+                cf.created  AS cf_created,
+                cf.sync_status,
+                cr.created  AS cr_created
+            FROM `{dataset_id}.src_clean` sc
+            LEFT JOIN `{rdr_dataset}.rdr_consent_response` cr
+                ON cr.questionnaire_response_id = sc.questionnaire_response_id
+            LEFT JOIN `{rdr_dataset}.rdr_consent_file` cf
+                ON cf.consent_response_id = cr.id
+            WHERE sc.survey_name      = 'EHRConsentPII'
+            AND   sc.question_ppi_code = 'EHRConsentPII_ConsentPermission'
+        """,
     },
     "ehr_consent": {
         "destination": "consent",
@@ -907,54 +1313,95 @@ queries = {
             SELECT ec.participant_id AS person_id,
                 ec.research_id,
                 CASE
-                    WHEN ec.value_ppi_code IN ('No', 'ConsentPermission_No') THEN 'SUBMITTED_NO'
+                    WHEN ec.value_ppi_code IN ('No', 'ConsentPermission_No')
+                        THEN 'SUBMITTED_NO'
                     WHEN ec.value_ppi_code IN ('Yes', 'ConsentPermission_Yes')
-                    AND cr_created IS NULL THEN 'SUBMITTED'
+                         AND ec.cr_created IS NULL
+                        THEN 'SUBMITTED'
                     WHEN ec.value_ppi_code IN ('Yes', 'ConsentPermission_Yes')
-                    AND ec.cr_created IS NOT NULL
-                    AND ec.cf_created IS NULL THEN 'SUBMITTED_NOT_VALIDATED'
+                         AND ec.cr_created IS NOT NULL
+                         AND ec.cf_created IS NULL
+                        THEN 'SUBMITTED_NOT_VALIDATED'
                     WHEN ec.value_ppi_code IN ('Yes', 'ConsentPermission_Yes')
-                    AND ec.cf_created > '{cutoff}' THEN 'SUBMITTED_NOT_VALIDATED'
+                         AND SAFE_CAST(ec.cf_created AS TIMESTAMP) > TIMESTAMP('{cutoff}')
+                        THEN 'SUBMITTED_NOT_VALIDATED'
                     WHEN ec.value_ppi_code IN ('Yes', 'ConsentPermission_Yes')
-                    AND ec.sync_status IN (2, 4) THEN 'SUBMITTED'
+                         AND ec.sync_status IN (2, 4)
+                        THEN 'SUBMITTED'
                     WHEN ec.value_ppi_code IN ('Yes', 'ConsentPermission_Yes')
-                    AND ec.sync_status NOT IN (2, 4) THEN 'SUBMITTED_INVALID'
-                END consent_for_electronic_health_records,
+                         AND ec.sync_status NOT IN (2, 4)
+                        THEN 'SUBMITTED_INVALID'
+                END AS consent_for_electronic_health_records,
                 ec.date_of_survey AS consent_for_electronic_health_records_authored,
                 ec.src_id
-            FROM `{dataset_id}.tmp_ehr_consent` ec""",
+            FROM `{dataset_id}.tmp_ehr_consent` ec
+        """,
     },
     "wear_consent": {
+        # Replaces EXTERNAL_QUERY against Cloud SQL with native BQ SQL on replicated tables.
         "destination": "wear_consent",
         "append": False,
-        "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
-                    "SELECT pa.participant_id AS person_id, pa.research_id, qr.authored, ac.value AS """
-                    """consent_status, pa.participant_origin AS src_id"""
-                    """ FROM rdr.participant pa JOIN rdr.questionnaire_response qr ON """
-                    """pa.participant_id = qr.participant_id JOIN rdr.questionnaire_response_answer qra ON """
-                    """qr.questionnaire_response_id = qra.questionnaire_response_id JOIN """
-                    """rdr.questionnaire_question qq ON qra.question_id = qq.questionnaire_question_id """
-                    """JOIN rdr.code qcd ON qq.code_id = qcd.code_id """
-                    """LEFT JOIN rdr.code ac ON qra.value_code_id = ac.code_id JOIN """
-                    """rdr.questionnaire q ON qr.questionnaire_id = q.questionnaire_id JOIN """
-                    """rdr.questionnaire_concept qc ON q.questionnaire_id = qc.questionnaire_id AND """
-                    """q.version = qc.questionnaire_version JOIN rdr.code cc ON qc.code_id = cc.code_id WHERE """
-                    """ac.value IS NOT NULL AND cc.value = 'wear_consent' AND qcd.value = 'resultsconsent_wear' """
-                    """AND pa.participant_id IN (SELECT DISTINCT participant_id FROM cdm.src_clean) ORDER BY """
-                    """pa.participant_id, qr.authored;");""",
+        "query": """
+            SELECT
+                pa.participant_id AS person_id,
+                pa.research_id,
+                qr.authored,
+                ac.value          AS consent_status,
+                CASE
+                    WHEN pa.participant_origin = 'careevolution' THEN 'ce'
+                    ELSE pa.participant_origin
+                END               AS src_id
+            FROM `{rdr_dataset}.rdr_participant` pa
+            JOIN `{rdr_dataset}.rdr_questionnaire_response` qr
+                ON pa.participant_id = qr.participant_id
+            JOIN `{rdr_dataset}.rdr_questionnaire_response_answer` qra
+                ON qr.questionnaire_response_id = qra.questionnaire_response_id
+            JOIN `{rdr_dataset}.rdr_questionnaire_question` qq
+                ON qra.question_id = qq.questionnaire_question_id
+            JOIN `{rdr_dataset}.rdr_code` qcd
+                ON qq.code_id = qcd.code_id
+            LEFT JOIN `{rdr_dataset}.rdr_code` ac
+                ON qra.value_code_id = ac.code_id
+            JOIN `{rdr_dataset}.rdr_questionnaire` q
+                ON qr.questionnaire_id = q.questionnaire_id
+            JOIN `{rdr_dataset}.rdr_questionnaire_concept` qc
+                ON q.questionnaire_id = qc.questionnaire_id
+                AND q.version         = qc.questionnaire_version
+            JOIN `{rdr_dataset}.rdr_code` cc
+                ON qc.code_id = cc.code_id
+            WHERE ac.value IS NOT NULL
+            AND   cc.value   = 'wear_consent'
+            AND   qcd.value  = 'resultsconsent_wear'
+            AND pa.participant_id IN (
+                SELECT DISTINCT participant_id FROM `{dataset_id}.src_clean`
+            )
+            ORDER BY pa.participant_id, qr.authored
+        """,
     },
     "participant_id_mapping": {
+        # Replaces EXTERNAL_QUERY against Cloud SQL with native BQ SQL on replicated tables.
         "destination": "participant_id_mapping",
         "append": False,
-        "query": """SELECT * FROM EXTERNAL_QUERY(
-                                   "all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
-                        "SELECT  pid_map.p_id,  pid_map.id_source,  pid_map.id_value,  pid_map.src_id  """
-                        """FROM (SELECT participant.participant_id AS p_id, 'r_id' AS id_source, """
-                        """participant.research_id AS id_value, participant.participant_origin AS src_id  """
-                        """FROM rdr.participant UNION SELECT participant.participant_id AS p_id, 'vibrent_id' """
-                        """AS id_source, participant.external_id AS id_value, participant.participant_origin """
-                        """AS src_id  FROM rdr.participant) AS  pid_map  WHERE  pid_map.id_value """
-                        """IS NOT NULL;");""",
+        "query": """
+            SELECT pid_map.p_id, pid_map.id_source, pid_map.id_value, pid_map.src_id
+            FROM (
+                SELECT
+                    participant_id  AS p_id,
+                    'r_id'          AS id_source,
+                    research_id     AS id_value,
+                    participant_origin AS src_id
+                FROM `{rdr_dataset}.rdr_participant`
+                WHERE research_id IS NOT NULL
+                UNION ALL
+                SELECT
+                    participant_id  AS p_id,
+                    'vibrent_id'    AS id_source,
+                    external_id     AS id_value,
+                    participant_origin AS src_id
+                FROM `{rdr_dataset}.rdr_participant`
+                WHERE external_id IS NOT NULL
+            ) AS pid_map
+        """,
     },
     "finalize": {
         "destination": None,
@@ -966,55 +1413,104 @@ queries = {
         """
     },
     "qrai_author": {
+        # Replaces EXTERNAL_QUERY against Cloud SQL with native BQ SQL on replicated tables.
         "destination": "questionnaire_response_additional_info",
         "append": False,
-        "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
-                       "SELECT DISTINCT 0 AS id, """
-                       """qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, """
-                       """qr.non_participant_author as value, CASE WHEN p.participant_origin = 'careevolution' """
-                       """THEN 'ce' ELSE p.participant_origin END src_id from """
-                       """rdr.questionnaire_response qr JOIN (SELECT DISTINCT questionnaire_response_id from """
-                       """cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id JOIN """
-                       """rdr.participant p ON qr.participant_id = p.participant_id where qr.non_participant_author """
-                       """is not null and qr.questionnaire_response_id=qri.questionnaire_response_id;")"""
+        "query": """
+            SELECT DISTINCT
+                0 AS id,
+                qr.questionnaire_response_id,
+                'NON_PARTICIPANT_AUTHOR_INDICATOR' AS type,
+                qr.non_participant_author          AS value,
+                CASE
+                    WHEN p.participant_origin = 'careevolution' THEN 'ce'
+                    ELSE p.participant_origin
+                END AS src_id
+            FROM `{rdr_dataset}.rdr_questionnaire_response` qr
+            JOIN (
+                SELECT DISTINCT questionnaire_response_id
+                FROM `{dataset_id}.src_clean`
+            ) qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
+            JOIN `{rdr_dataset}.rdr_participant` p
+                ON qr.participant_id = p.participant_id
+            WHERE qr.non_participant_author IS NOT NULL
+        """,
     },
     "qrai_language": {
+        # Replaces EXTERNAL_QUERY against Cloud SQL with native BQ SQL on replicated tables.
         "destination": "questionnaire_response_additional_info",
         "append": True,
-        "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
-                   "SELECT DISTINCT 0 AS id, """
-                 """qr.questionnaire_response_id, 'LANGUAGE' as type, """
-                 """qr.language as value, CASE WHEN p.participant_origin = 'careevolution' THEN 'ce' ELSE """
-                 """p.participant_origin END src_id from """
-                 """rdr.questionnaire_response qr JOIN (SELECT DISTINCT questionnaire_response_id from """
-                 """cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id JOIN """
-                 """rdr.participant p ON qr.participant_id = p.participant_id where qr.language """
-                 """is not null and qr.questionnaire_response_id=qri.questionnaire_response_id;")"""
+        "query": """
+            SELECT DISTINCT
+                0 AS id,
+                qr.questionnaire_response_id,
+                'LANGUAGE'    AS type,
+                qr.language   AS value,
+                CASE
+                    WHEN p.participant_origin = 'careevolution' THEN 'ce'
+                    ELSE p.participant_origin
+                END AS src_id
+            FROM `{rdr_dataset}.rdr_questionnaire_response` qr
+            JOIN (
+                SELECT DISTINCT questionnaire_response_id
+                FROM `{dataset_id}.src_clean`
+            ) qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
+            JOIN `{rdr_dataset}.rdr_participant` p
+                ON qr.participant_id = p.participant_id
+            WHERE qr.language IS NOT NULL
+        """,
     },
     "qrai_code": {
+        # Replaces EXTERNAL_QUERY against Cloud SQL with native BQ SQL on replicated tables.
         "destination": "questionnaire_response_additional_info",
         "append": True,
-        "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
-                   "SELECT DISTINCT 0 AS id, """
-                   """qr.questionnaire_response_id, 'CODE' as type, c.value as value, CASE WHEN p.participant_origin """
-                   """= 'careevolution' THEN 'ce' ELSE p.participant_origin END src_id """
-                   """from rdr.questionnaire_response qr JOIN rdr.questionnaire_concept qc ON qr.questionnaire_id = """
-                   """qc.questionnaire_id AND qr.questionnaire_version = qc.questionnaire_version JOIN rdr.code c ON """
-                   """qc.code_id = c.code_id JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as """
-                   """qri ON qr.questionnaire_response_id = qri.questionnaire_response_id JOIN rdr.participant p ON """
-                   """qr.participant_id = p.participant_id where qr.questionnaire_id=qc.questionnaire_id and """
-                   """qc.code_id=c.code_id and qr.questionnaire_response_id=qri.questionnaire_response_id;")"""
+        "query": """
+            SELECT DISTINCT
+                0 AS id,
+                qr.questionnaire_response_id,
+                'CODE'  AS type,
+                c.value AS value,
+                CASE
+                    WHEN p.participant_origin = 'careevolution' THEN 'ce'
+                    ELSE p.participant_origin
+                END AS src_id
+            FROM `{rdr_dataset}.rdr_questionnaire_response` qr
+            JOIN `{rdr_dataset}.rdr_questionnaire_concept` qc
+                ON qr.questionnaire_id      = qc.questionnaire_id
+                AND qr.questionnaire_version = qc.questionnaire_version
+            JOIN `{rdr_dataset}.rdr_code` c
+                ON qc.code_id = c.code_id
+            JOIN (
+                SELECT DISTINCT questionnaire_response_id
+                FROM `{dataset_id}.src_clean`
+            ) qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
+            JOIN `{rdr_dataset}.rdr_participant` p
+                ON qr.participant_id = p.participant_id
+        """,
     },
     "tmp_survey_conduct": {
+        # Replaces EXTERNAL_QUERY against Cloud SQL with native BQ SQL on replicated tables.
         "destination": "tmp_survey_conduct",
         "append": False,
-        "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
-                    "SELECT qr.questionnaire_response_id, qr.non_participant_author, qr.authored, qr.participant_id, """
-                    """mc.value, mc.code_id FROM """
-                    """rdr.questionnaire_response qr JOIN rdr.questionnaire_concept qc ON qc.questionnaire_id = """
-                    """qr.questionnaire_id AND qc.questionnaire_version = qr.questionnaire_version JOIN rdr.code mc """
-                    """ON mc.code_id = qc.code_id WHERE qr.questionnaire_response_id IN (SELECT DISTINCT """
-                    """sc.questionnaire_response_id FROM cdm.src_clean sc);")"""
+        "query": """
+            SELECT
+                qr.questionnaire_response_id,
+                qr.non_participant_author,
+                qr.authored,
+                qr.participant_id,
+                mc.value,
+                mc.code_id
+            FROM `{rdr_dataset}.rdr_questionnaire_response` qr
+            JOIN `{rdr_dataset}.rdr_questionnaire_concept` qc
+                ON qc.questionnaire_id      = qr.questionnaire_id
+                AND qc.questionnaire_version = qr.questionnaire_version
+            JOIN `{rdr_dataset}.rdr_code` mc
+                ON mc.code_id = qc.code_id
+            WHERE qr.questionnaire_response_id IN (
+                SELECT DISTINCT sc.questionnaire_response_id
+                FROM `{dataset_id}.src_clean` sc
+            )
+        """,
     },
     "survey_conduct": {
         "destination": "survey_conduct",
@@ -1337,31 +1833,59 @@ queries = {
                             join `{dataset_id}.person` p on sc.participant_id=p.person_id"""
     },
 "cope_survey_semantic_version_map": {
+        # Replaces EXTERNAL_QUERY against Cloud SQL with native BQ SQL on replicated tables.
         "destination": "cope_survey_semantic_version_map",
         "append": False,
-        "query": """SELECT * FROM EXTERNAL_QUERY("all-of-us-rdr-prod.us-central1.bq-rdr-preprod-curation",
-              "SELECT participant_id, questionnaire_response_id, semantic_version, cope_month, CASE WHEN src_id """
-              """= 'careevolution' THEN 'ce' ELSE src_id END src_id FROM ( """
-              """( SELECT 1 as sort_col, participant_id,"""
-              """questionnaire_response_id, semantic_version, cope_month,src_id FROM ( SELECT qr.participant_id, """
-              """questionnaire_response_id, semantic_version, CASE when qh.external_id in ('Vibrent_FORM_ID_1413',"""
-              """'COPE Survey') then 'may' when qh.external_id in ('June COPE Survey','Vibrent_FORM_ID_1416') then """
-              """'june' when qh.external_id in ('July COPE Survey','Vibrent_FORM_ID_1424') then 'july' when """
-              """qh.external_id in ('October COPE Survey','Vibrent_FORM_ID_1442') then 'nov' when qh.external_id in """
-              """('December COPE Survey','Vibrent_FORM_ID_1453') then 'dec' when qh.external_id in ('February """
-              """COPE Survey','Vibrent_FORM_ID_1456') then 'feb' when qh.external_id in ('cope_vaccine1',"""
-              """'Vibrent_FORM_ID_1502') then 'vaccine1' when qh.external_id in ('cope_vaccine2',"""
-              """'Vibrent_FORM_ID_1513') then 'vaccine2' when qh.external_id in ('cope_vaccine3',"""
-              """'Vibrent_FORM_ID_1535') then 'vaccine3' when qh.external_id in ('cope_vaccine4',"""
-              """'Vibrent_FORM_ID_1545') then 'vaccine4' END AS 'cope_month', p.participant_origin AS src_id FROM """
-              """rdr.questionnaire_history qh INNER JOIN rdr.questionnaire_response qr ON qr.questionnaire_id = """
-              """qh.questionnaire_id AND qr.questionnaire_version = qh.version JOIN rdr.participant p on """
-              """qr.participant_id = p.participant_id WHERE qh.external_id IN ('Vibrent_FORM_ID_1413','COPE Survey',"""
-              """'June COPE Survey','Vibrent_FORM_ID_1416','July COPE Survey','Vibrent_FORM_ID_1424',"""
-              """'October COPE Survey','Vibrent_FORM_ID_1442','December COPE Survey','Vibrent_FORM_ID_1453',"""
-              """'February COPE Survey','Vibrent_FORM_ID_1456','cope_vaccine1','Vibrent_FORM_ID_1502',"""
-              """'cope_vaccine2','Vibrent_FORM_ID_1513','cope_vaccine3','Vibrent_FORM_ID_1535','cope_vaccine4',"""
-              """'Vibrent_FORM_ID_1545') ) as data ) ) a ORDER BY a.sort_col ASC;"); """
+        "query": """
+            SELECT
+                qr.participant_id,
+                qr.questionnaire_response_id,
+                qh.semantic_version,
+                CASE
+                    WHEN qh.external_id IN ('Vibrent_FORM_ID_1413', 'COPE Survey')
+                        THEN 'may'
+                    WHEN qh.external_id IN ('June COPE Survey', 'Vibrent_FORM_ID_1416')
+                        THEN 'june'
+                    WHEN qh.external_id IN ('July COPE Survey', 'Vibrent_FORM_ID_1424')
+                        THEN 'july'
+                    WHEN qh.external_id IN ('October COPE Survey', 'Vibrent_FORM_ID_1442')
+                        THEN 'nov'
+                    WHEN qh.external_id IN ('December COPE Survey', 'Vibrent_FORM_ID_1453')
+                        THEN 'dec'
+                    WHEN qh.external_id IN ('February COPE Survey', 'Vibrent_FORM_ID_1456')
+                        THEN 'feb'
+                    WHEN qh.external_id IN ('cope_vaccine1', 'Vibrent_FORM_ID_1502')
+                        THEN 'vaccine1'
+                    WHEN qh.external_id IN ('cope_vaccine2', 'Vibrent_FORM_ID_1513')
+                        THEN 'vaccine2'
+                    WHEN qh.external_id IN ('cope_vaccine3', 'Vibrent_FORM_ID_1535')
+                        THEN 'vaccine3'
+                    WHEN qh.external_id IN ('cope_vaccine4', 'Vibrent_FORM_ID_1545')
+                        THEN 'vaccine4'
+                END AS cope_month,
+                CASE
+                    WHEN p.participant_origin = 'careevolution' THEN 'ce'
+                    ELSE p.participant_origin
+                END AS src_id
+            FROM `{rdr_dataset}.rdr_questionnaire_history` qh
+            INNER JOIN `{rdr_dataset}.rdr_questionnaire_response` qr
+                ON qr.questionnaire_id      = qh.questionnaire_id
+                AND qr.questionnaire_version = qh.version
+            JOIN `{rdr_dataset}.rdr_participant` p
+                ON qr.participant_id = p.participant_id
+            WHERE qh.external_id IN (
+                'Vibrent_FORM_ID_1413', 'COPE Survey',
+                'June COPE Survey',    'Vibrent_FORM_ID_1416',
+                'July COPE Survey',    'Vibrent_FORM_ID_1424',
+                'October COPE Survey', 'Vibrent_FORM_ID_1442',
+                'December COPE Survey','Vibrent_FORM_ID_1453',
+                'February COPE Survey','Vibrent_FORM_ID_1456',
+                'cope_vaccine1',       'Vibrent_FORM_ID_1502',
+                'cope_vaccine2',       'Vibrent_FORM_ID_1513',
+                'cope_vaccine3',       'Vibrent_FORM_ID_1535',
+                'cope_vaccine4',       'Vibrent_FORM_ID_1545'
+            )
+        """,
     },
     "procedure_occurrence": {
         "destination": "procedure_occurrence",
