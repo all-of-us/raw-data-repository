@@ -1,4 +1,5 @@
 import tempfile
+import logging
 from datetime import datetime
 from google.cloud import storage
 from airflow import DAG
@@ -7,7 +8,6 @@ from airflow.models.param import Param
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.providers.google.cloud.transfers.bigquery_to_gcs import BigQueryToGCSOperator
 from airflow.operators.python import PythonOperator
-
 
 PROJECT_ID = Variable.get("gcp_project_id", default_var="my-project")
 BUCKET_NAME = Variable.get(
@@ -64,15 +64,14 @@ def convert_gcs_lf_to_crlf(input_uri: str, output_uri: str, **context) -> None:
         out_blob = out_bucket.blob(out_blob_name)
         out_blob.upload_from_string(crlf_data, content_type="text/csv")
 
-
 BQ_SQL = """
 DECLARE batch_id STRING DEFAULT GENERATE_UUID();
 
 CREATE OR REPLACE TABLE `{{ params.project_id }}.{{ params.dataset }}.{{ params.export_table_id }}` AS
 WITH source_rows AS (
-  SELECT
-    collection_tube_id,
-    biobank_id,
+SELECT
+  collection_tube_id,
+    aw0tmp.biobank_id,
     sex_at_birth,
     genome_type,
     CASE
@@ -80,23 +79,27 @@ WITH source_rows AS (
       WHEN ny_flag = "1" THEN "Y"
       ELSE ny_flag
     END as ny_flag,
-    validation_passed,
+    case when ai.withdrawal_status = 'not_withdrawn' then 'Y' else 'N' end as validation_passed,
     ai_an,
     pediatric,
     finalized,
-    created,
+    aw0tmp.created,
     file_path,
     ROW_NUMBER() OVER (
       PARTITION BY collection_tube_id, genome_type
-      ORDER BY created DESC
+      ORDER BY aw0tmp.created DESC
     ) AS rn
   FROM `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_aw0_tmp`
-      WHERE validation_passed = "Y"
+    JOIN `{{ params.project_id }}.{{ params.dataset }}.rdr_biobank_stored_sample` ss
+        on concat('A', SAFE_CAST(ss.biobank_id as STRING)) = aw0tmp.biobank_id
+    JOIN  `{{ params.project_id }}.{{ params.dataset }}.ppsc_participant` p ON ss.biobank_id = p.biobank_id
+    JOIN` {{params.project_id }}.{{ params.dataset }}.ppsc_awardee_insite` ai on p.id = ai.participant_id
+    WHERE validation_passed = "Y"
       AND collection_tube_id IN UNNEST([
        {% for id in params.collection_tube_ids %}
          '{{ id }}'{% if not loop.last %},{% endif %}
        {% endfor %}
-     ])
+    ])
 ),
 latest_aw0 AS (
   SELECT
@@ -190,7 +193,7 @@ with DAG(
     },
     tags=["genomics", "aw0"],
 ) as dag:
-
+    logger = logging.getLogger("airflow.task")
     run_aw0_query = BigQueryInsertJobOperator(
         task_id="run_aw0_query",
         gcp_conn_id=GCP_CONN_ID,
