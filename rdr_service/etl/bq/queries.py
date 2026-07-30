@@ -681,7 +681,6 @@ queries = {
         "query": """
             SELECT
               meas.id as note_id,
-              -- NULL AS note_id, -- note_id cant be null EAS
               meas.participant_id AS person_id,
               DATE(meas.measurement_time) AS note_date,
               CAST(meas.measurement_time AS TIMESTAMP) AS note_datetime,
@@ -1280,7 +1279,7 @@ queries = {
               dr.participant_id = per.person_id
             WHERE
               dr.status = 2
-            {cutoff_authored_filter}""",
+            {cutoff_death_filter}""",
     },
     "ehr_consent_temp_table": {
         # Replaces EXTERNAL_QUERY against Cloud SQL with native BQ SQL on replicated tables.
@@ -1577,7 +1576,7 @@ queries = {
     "create_empty_tables": {
         "destination": None,
         "append": False,
-        "query": """CREATE TABLE `{dataset_id}.drug_era`
+        "query": """CREATE TABLE IF NOT EXISTS `{dataset_id}.drug_era`
                     (
                       drug_era_id INT64,
                       person_id INT64,
@@ -1589,7 +1588,7 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.condition_era`
+                    CREATE TABLE IF NOT EXISTS `{dataset_id}.condition_era`
                     (
                       condition_era_id INT64,
                       person_id INT64,
@@ -1600,7 +1599,7 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.note_nlp`
+                    CREATE TABLE IF NOT EXISTS `{dataset_id}.note_nlp`
                     (
                       note_nlp_id INT64,
                       note_id INT64,
@@ -1619,7 +1618,7 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.metadata`
+                    CREATE TABLE IF NOT EXISTS `{dataset_id}.metadata`
                     (
                       metadata_concept_id INT64,
                       metadata_type_concept_id INT64,
@@ -1631,7 +1630,7 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.provider`
+                    CREATE TABLE IF NOT EXISTS `{dataset_id}.provider`
                     (
                       provider_id INT64,
                       provider_name STRING,
@@ -1649,7 +1648,7 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.device_exposure`
+                    CREATE TABLE IF NOT EXISTS `{dataset_id}.device_exposure`
                     (
                       device_exposure_id INT64,
                       person_id INT64,
@@ -1669,7 +1668,7 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.payer_plan_period`
+                    CREATE TABLE IF NOT EXISTS `{dataset_id}.payer_plan_period`
                     (
                       payer_plan_period_id INT64,
                       person_id INT64,
@@ -1691,7 +1690,7 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.condition_occurrence`
+                    CREATE TABLE IF NOT EXISTS `{dataset_id}.condition_occurrence`
                     (
                       condition_occurrence_id INT64,
                       person_id INT64,
@@ -1712,7 +1711,7 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.drug_exposure`
+                    CREATE TABLE IF NOT EXISTS `{dataset_id}.drug_exposure`
                     (
                       drug_exposure_id INT64,
                       person_id INT64,
@@ -1739,7 +1738,7 @@ queries = {
                       dose_unit_source_value STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.cost`
+                    CREATE TABLE IF NOT EXISTS `{dataset_id}.cost`
                     (
                       cost_id INT64,
                       cost_event_id INT64,
@@ -1766,7 +1765,7 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.dose_era`
+                    CREATE TABLE IF NOT EXISTS `{dataset_id}.dose_era`
                     (
                       dose_era_id INT64,
                       person_id INT64,
@@ -1778,7 +1777,7 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.visit_detail`
+                    CREATE TABLE IF NOT EXISTS `{dataset_id}.visit_detail`
                     (
                       visit_detail_id INT64,
                       person_id INT64,
@@ -1802,7 +1801,7 @@ queries = {
                       src_id STRING
                     )
                     DEFAULT COLLATE 'und:ci';
-                    CREATE TABLE `{dataset_id}.specimen`
+                    CREATE TABLE IF NOT EXISTS `{dataset_id}.specimen`
                     (
                       specimen_id INT64,
                       person_id INT64,
