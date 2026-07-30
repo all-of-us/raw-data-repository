@@ -2622,20 +2622,25 @@ class CurationExportClass(ToolBase):
         session.execute(
             """INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
                             0 AS id,
-                            qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, qr.non_participant_author as value,
+                            qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type,
+                            qr.non_participant_author as value,
                             p.participant_origin src_id
                             from rdr.questionnaire_response qr
-                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
+                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+                            ON qr.questionnaire_response_id = qri.questionnaire_response_id
                             JOIN rdr.participant p ON qr.participant_id = p.participant_id
-                            where qr.non_participant_author is not null and qr.questionnaire_response_id=qri.questionnaire_response_id
+                            where qr.non_participant_author is not null
+                              and qr.questionnaire_response_id=qri.questionnaire_response_id
                                     """
         )
         session.execute(
             """INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
                             0 AS id,
-                            qr.questionnaire_response_id, 'LANGUAGE' as type, qr.language as value, p.participant_origin src_id
+                            qr.questionnaire_response_id, 'LANGUAGE' as type, qr.language as value,
+                            p.participant_origin src_id
                             from rdr.questionnaire_response qr
-                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
+                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+                                ON qr.questionnaire_response_id = qri.questionnaire_response_id
                             JOIN rdr.participant p ON qr.participant_id = p.participant_id
                             where qr.language is not null and qr.questionnaire_response_id=qri.questionnaire_response_id
                                     """
@@ -2645,9 +2650,11 @@ class CurationExportClass(ToolBase):
                             0 AS id,
                             qr.questionnaire_response_id, 'CODE' as type, c.value as value, p.participant_origin src_id
                             from rdr.questionnaire_response qr
-                            JOIN rdr.questionnaire_concept qc ON qr.questionnaire_id = qc.questionnaire_id AND qr.questionnaire_version = qc.questionnaire_version
+                            JOIN rdr.questionnaire_concept qc ON qr.questionnaire_id = qc.questionnaire_id
+                                AND qr.questionnaire_version = qc.questionnaire_version
                             JOIN rdr.code c ON qc.code_id = c.code_id
-                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
+                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+                                ON qr.questionnaire_response_id = qri.questionnaire_response_id
                             JOIN rdr.participant p ON qr.participant_id = p.participant_id
                             where qr.questionnaire_id=qc.questionnaire_id
                             and qc.code_id=c.code_id
@@ -2696,7 +2703,8 @@ class CurationExportClass(ToolBase):
                         "SUBMITTED_NOT_VALIDATED",
                     ),
                     # If ConsentFile hasn't been created then the consent has not been validated
-                    case_cutoff,  # If ConsentFile was created after cutoff date then status at the cutoff is unvalidated
+                    case_cutoff,  # If ConsentFile was created after cutoff date
+                                  # then status at the cutoff is unvalidated
                     (
                         and_(
                             SrcClean.value_ppi_code == "Yes",
