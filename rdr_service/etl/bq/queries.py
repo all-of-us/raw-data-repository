@@ -16,7 +16,7 @@ queries = {
             JOIN `{rdr_dataset}.rdr_hpo` h
                 ON p.hpo_id = h.hpo_id
             WHERE (
-                p.is_ghost_id != 1
+                IFNULL(p.is_ghost_id, 0) != 1
                 OR (
                     ps.participant_id IS NOT NULL
                     AND SAFE_CAST(p.date_added_ghost AS TIMESTAMP) > TIMESTAMP('2022-03-18')
@@ -49,15 +49,15 @@ queries = {
                 qr.participant_id,
                 qr.authored,
                 qr.created,
-                CASE WHEN c.value = 'COPE' THEN qh.external_id ELSE c.value END AS survey,
+                CASE WHEN mc.value = 'COPE' THEN qh.external_id ELSE mc.value END AS survey,
                 qr.questionnaire_response_id AS response_id,
                 qq.code_id AS question_code_id
             FROM `{rdr_dataset}.rdr_questionnaire_response` qr
             JOIN `{rdr_dataset}.rdr_questionnaire_concept` qc
                 ON qc.questionnaire_id = qr.questionnaire_id
                 AND qc.questionnaire_version = qr.questionnaire_version
-            JOIN `{rdr_dataset}.rdr_code` c
-                ON c.code_id = qc.code_id
+            JOIN `{rdr_dataset}.rdr_code` mc
+                ON mc.code_id = qc.code_id
             JOIN `{rdr_dataset}.rdr_questionnaire_history` qh
                 ON qh.questionnaire_id = qr.questionnaire_id
                 AND qh.version = qr.questionnaire_version
