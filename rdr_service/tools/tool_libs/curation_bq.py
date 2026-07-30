@@ -259,7 +259,7 @@ class CurationBQ(ToolBase):
             cutoff_authored_filter = (
                 f"AND SAFE_CAST(COALESCE(qr.authored, qr.created) AS TIMESTAMP) < TIMESTAMP('{cutoff}')"
             )
-            cutoff_finalized_filter = (f"AND SAFE_CAST(pm.finalized AS TIMESTAMP) < TIMESTAMP('{cutoff}')")
+            cutoff_finalized_filter = f"AND SAFE_CAST(pm.finalized AS TIMESTAMP) < TIMESTAMP('{cutoff}')"
             cutoff_death_filter = f"AND SAFE_CAST(dr.authored AS TIMESTAMP) < TIMESTAMP('{cutoff}')"
         else:
             withdrawal_filter = "AND ps.withdrawal_status != 2"  # NOT NO_USE
