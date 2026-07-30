@@ -385,9 +385,9 @@ class CurationBQ(ToolBase):
 
         for table in self.export_tables:
             _logger.info("Exporting table: %s", table)
-            source = f"{self.args.project}.{self.args.dataset}.{table}"
-            destination = f"{self.args.destination}.{table}"
-            client.copy_table(source, destination)
+            source = f"{self.dataset_id}.{table}"
+            destination = f"{export_dataset_id}.{table}"
+            client.copy_table(source, destination).result()
 
 
 # ---------------------------------------------------------------------------
