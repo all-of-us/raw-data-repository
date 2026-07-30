@@ -13,9 +13,6 @@ _logger = logging.getLogger("rdr_logger")
 tool_cmd = "curation-bq"
 tool_desc = "Run Curation ETL process in BigQuery using replicated MySQL tables"
 
-# Ghost-participant eligibility was only enforced after this date.
-_GHOST_DATE_CUTOFF = "2022-03-18"
-
 
 class CurationBQ(ToolBase):
     """Orchestrates the full Curation CDM ETL pipeline in BigQuery.
@@ -29,7 +26,7 @@ class CurationBQ(ToolBase):
         2. Run with ``--load-data`` to copy vocabulary / RDR lookup tables from the
            replicated datasets into the working ETL dataset.
         3. Run with ``--run-etl`` to execute the full CDM transformation pipeline.
-        4. Run with ``--export`` to push final tables to GCS or another BQ dataset.
+        4. Run with ``--export`` to push final tables to a BQ dataset.
     """
 
     # Tables imported from the vocabulary replicated dataset into the working dataset.
@@ -285,12 +282,16 @@ class CurationBQ(ToolBase):
         # ── survey include / exclude filter ────────────────────────────
         include_surveys: str = getattr(args, "include_surveys", "") or ""
         exclude_surveys: str = getattr(args, "exclude_surveys", "") or ""
+        if include_surveys and exclude_surveys:
+            _logger.error("Only one of --include-surveys and --exclude-surveys may be specified")
+            return
+
         if include_surveys:
             quoted = ", ".join(f"'{s}'" for s in include_surveys.split(","))
-            survey_filter = f"AND c.value IN ({quoted})"
+            survey_filter = f"AND mc.value IN ({quoted})"
         elif exclude_surveys:
             quoted = ", ".join(f"'{s}'" for s in exclude_surveys.split(","))
-            survey_filter = f"AND c.value NOT IN ({quoted})"
+            survey_filter = f"AND mc.value NOT IN ({quoted})"
         else:
             survey_filter = ""
 
@@ -403,14 +404,14 @@ def add_additional_arguments(parser) -> None:
     # ── required ────────────────────────────────────────────────────────
     parser.add_argument(
         "--dataset",
-        help="Working BigQuery dataset for the ETL run (e.g. my_project.etl_20260101)",
+        help="Working BigQuery dataset for the ETL run (e.g. etl_20260101)",
         required=True,
     )
     parser.add_argument(
         "--rdr-dataset",
         help=(
-            "Fully-qualified BigQuery dataset containing MySQL-replicated RDR tables "
-            "(e.g. my_project.rdr_replica).  Used as the source for participant, "
+            "BigQuery dataset containing MySQL-replicated RDR tables "
+            "(e.g. rdr_replica).  Used as the source for participant, "
             "questionnaire_response, physical_measurements, etc."
         ),
         required=True,
@@ -420,7 +421,7 @@ def add_additional_arguments(parser) -> None:
     parser.add_argument(
         "--voc-dataset",
         help=(
-            "Fully-qualified BigQuery dataset containing vocabulary tables "
+            "BigQuery dataset containing vocabulary tables "
             "(concept, concept_relationship).  Defaults to --rdr-dataset if omitted."
         ),
         default=None,
@@ -448,7 +449,7 @@ def add_additional_arguments(parser) -> None:
     )
     parser.add_argument(
         "--export",
-        help="Export finalised CDM tables to GCS or another BQ dataset",
+        help="Export finalised CDM tables to BQ dataset specified in --destination",
         default=False, action="store_true",
     )
 
@@ -508,7 +509,7 @@ def add_additional_arguments(parser) -> None:
     # ── export options ──────────────────────────────────────────────────
     parser.add_argument(
         "--destination",
-        help="BQ dataset (project.dataset) for export",
+        help="BQ dataset for export",
     )
 
     # ── development helpers ─────────────────────────────────────────────
