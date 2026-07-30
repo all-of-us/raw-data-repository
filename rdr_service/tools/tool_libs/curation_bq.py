@@ -359,14 +359,7 @@ class CurationBQ(ToolBase):
                     write_disposition=write_disp,
                 )
 
-            # Use cutoff_authored_filter for the death step (field is 'authored' not
-            # 'qr.authored'), so substitute it via the death-specific placeholder.
-            if step == "death":
-                fmt_step = dict(fmt, cutoff_authored_filter=fmt["cutoff_death_filter"])
-            else:
-                fmt_step = fmt
-
-            self.run_query(query.format(**fmt_step), job_config)
+            self.run_query(query.format(**fmt), job_config)
 
     # ------------------------------------------------------------------
     # Export
