@@ -1200,17 +1200,6 @@ queries = {
         "destination": "observation",
         "append": False,
     },
-    "src_clean_qrids": {
-        "query": """
-            SELECT
-              DISTINCT questionnaire_response_id
-            FROM
-              `{dataset_id}.src_clean`
-            WHERE
-              FILTER = 0""",
-        "destination": "src_clean_qrids",
-        "append": False,
-    },
     "filter_questions": {
         "query": """
             UPDATE
@@ -1322,7 +1311,7 @@ queries = {
                          AND ec.cf_created IS NULL
                         THEN 'SUBMITTED_NOT_VALIDATED'
                     WHEN ec.value_ppi_code IN ('Yes', 'ConsentPermission_Yes')
-                         AND SAFE_CAST(ec.cf_created AS TIMESTAMP) > SAFE_CAST('{cutoff}' AS TIMESTAMP)
+                         {ehr_consent_cutoff_not_validated_filter}
                         THEN 'SUBMITTED_NOT_VALIDATED'
                     WHEN ec.value_ppi_code IN ('Yes', 'ConsentPermission_Yes')
                          AND ec.sync_status IN (2, 4)
@@ -2024,26 +2013,25 @@ queries = {
         """
     },
     "empty_src_meas": {
-        "destination": None,
+        "destination": "src_meas",
         "append": False,
         "query": """
-                CREATE TABLE IF NOT EXISTS `{dataset_id}.src_meas`
-                    (
-                      id INT64,
-                      participant_id INT64,
-                      finalized_site_id INT64,
-                      code_value STRING,
-                      measurement_time DATETIME,
-                      value_decimal FLOAT64,
-                      value_unit STRING,
-                      value_code_value STRING,
-                      value_string STRING,
-                      measurement_id INT64,
-                      physical_measurements_id INT64,
-                      parent_id INT64,
-                      src_id STRING,
-                      collect_type INT64
-                    )
+            SELECT
+                CAST(NULL AS INT64) AS id,
+                CAST(NULL AS INT64) AS participant_id,
+                CAST(NULL AS INT64) AS finalized_site_id,
+                CAST(NULL AS STRING) AS code_value,
+                CAST(NULL AS DATETIME) AS measurement_time,
+                CAST(NULL AS FLOAT64) AS value_decimal,
+                CAST(NULL AS STRING) AS value_unit,
+                CAST(NULL AS STRING) AS value_code_value,
+                CAST(NULL AS STRING) AS value_string,
+                CAST(NULL AS INT64) AS measurement_id,
+                CAST(NULL AS INT64) AS physical_measurements_id,
+                CAST(NULL AS INT64) AS parent_id,
+                CAST(NULL AS STRING) AS src_id,
+                CAST(NULL AS INT64) AS collect_type
+            WHERE 1 = 0
         """
     }
 }

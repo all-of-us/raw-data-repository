@@ -255,11 +255,16 @@ class CurationBQ(ToolBase):
             )
             cutoff_finalized_filter = f"AND SAFE_CAST(pm.finalized AS TIMESTAMP) < TIMESTAMP('{cutoff}')"
             cutoff_death_filter = f"AND SAFE_CAST(dr.authored AS TIMESTAMP) < TIMESTAMP('{cutoff}')"
+            ehr_consent_cutoff_not_validated_filter = (
+                f"AND SAFE_CAST(ec.cf_created AS TIMESTAMP) > TIMESTAMP('{cutoff}')"
+            )
         else:
             withdrawal_filter = "AND ps.withdrawal_status != 2"  # NOT NO_USE
             cutoff_authored_filter = ""
             cutoff_finalized_filter = ""
             cutoff_death_filter = ""
+            # Disable cutoff-specific branch when no cutoff is supplied.
+            ehr_consent_cutoff_not_validated_filter = "AND FALSE"
 
         # ── participant origin filter ───────────────────────────────────
         origin: Optional[str] = getattr(args, "origin", None)
@@ -286,10 +291,10 @@ class CurationBQ(ToolBase):
             )
 
         if include_surveys:
-            quoted = ", ".join(f"'{s}'" for s in include_surveys.split(","))
+            quoted = ", ".join(f"'{s.strip()}'" for s in include_surveys.split(","))
             survey_filter = f"AND mc.value IN ({quoted})"
         elif exclude_surveys:
-            quoted = ", ".join(f"'{s}'" for s in exclude_surveys.split(","))
+            quoted = ", ".join(f"'{s.strip()}'" for s in exclude_surveys.split(","))
             survey_filter = f"AND mc.value NOT IN ({quoted})"
         else:
             survey_filter = ""
@@ -297,6 +302,13 @@ class CurationBQ(ToolBase):
         # ── physical measurement collect-type filter ────────────────────
         include_in_person: bool = not getattr(args, "exclude_in_person_pm", False)
         include_remote: bool = not getattr(args, "exclude_remote_pm", False)
+        if not include_in_person and not include_remote:
+            _logger.error(
+                "Cannot exclude both in-person and remote physical measurements at the same time"
+            )
+            raise ValueError(
+                "--exclude-in-person-pm and --exclude-remote-pm cannot both be specified"
+            )
         if include_in_person and include_remote:
             pm_collect_type_filter = ""
         elif include_in_person:
@@ -316,6 +328,7 @@ class CurationBQ(ToolBase):
             cutoff_authored_filter=cutoff_authored_filter,
             cutoff_finalized_filter=cutoff_finalized_filter,
             cutoff_death_filter=cutoff_death_filter,
+            ehr_consent_cutoff_not_validated_filter=ehr_consent_cutoff_not_validated_filter,
             survey_filter=survey_filter,
             pm_collect_type_filter=pm_collect_type_filter,
         )
@@ -369,7 +382,7 @@ class CurationBQ(ToolBase):
     # ------------------------------------------------------------------
 
     def export(self) -> None:
-        """Export finalised CDM tables to GCS or another BigQuery dataset.
+        """Export finalised CDM tables to a BigQuery dataset.
 
         Args are consumed from ``self.args``:
             destination: ``project.dataset`` string.
