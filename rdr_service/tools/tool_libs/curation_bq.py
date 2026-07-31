@@ -40,10 +40,7 @@ class CurationBQ(ToolBase):
         "rdr_deceased_report",
     ]
 
-    _MEASUREMENT_STEPS = {"src_meas", "tmp_cv_concept_lk", "tmp_vcv_concept_lk",
-                          "src_meas_mapped", "tmp_visits_src", "visit_occurrence",
-                          "care_site", "measurement", "note", "tmp_fact_rel_sd",
-                          "fact_relationship"}
+    _MEASUREMENT_STEPS = {"src_meas", "measurement"}
     _SURVEY_STEPS = {"observation", "qrai_author", "qrai_language", "qrai_code"}
 
     # ETL pipeline step order.  Each key maps to an entry in queries.queries.
@@ -284,7 +281,9 @@ class CurationBQ(ToolBase):
         exclude_surveys: str = getattr(args, "exclude_surveys", "") or ""
         if include_surveys and exclude_surveys:
             _logger.error("Only one of --include-surveys and --exclude-surveys may be specified")
-            return
+            raise ValueError(
+                "Only one of --include-surveys and --exclude-surveys may be specified"
+            )
 
         if include_surveys:
             quoted = ", ".join(f"'{s}'" for s in include_surveys.split(","))
@@ -335,7 +334,10 @@ class CurationBQ(ToolBase):
         for step in self.etl_process_steps:
             if omit_measurements and step in self._MEASUREMENT_STEPS:
                 _logger.debug("Skipping measurement step: %s", step)
-                continue
+                if step == "src_meas":
+                    step = "empty_src_meas"
+                else:
+                    continue
             if omit_surveys and step in self._SURVEY_STEPS:
                 _logger.debug("Skipping survey step: %s", step)
                 continue

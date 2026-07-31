@@ -1322,7 +1322,7 @@ queries = {
                          AND ec.cf_created IS NULL
                         THEN 'SUBMITTED_NOT_VALIDATED'
                     WHEN ec.value_ppi_code IN ('Yes', 'ConsentPermission_Yes')
-                         AND SAFE_CAST(ec.cf_created AS TIMESTAMP) > TIMESTAMP('{cutoff}')
+                         AND SAFE_CAST(ec.cf_created AS TIMESTAMP) > SAFE_CAST('{cutoff}' AS TIMESTAMP)
                         THEN 'SUBMITTED_NOT_VALIDATED'
                     WHEN ec.value_ppi_code IN ('Yes', 'ConsentPermission_Yes')
                          AND ec.sync_status IN (2, 4)
@@ -2021,6 +2021,29 @@ queries = {
               person_id,
               observation_end_date,
               src_id
+        """
+    },
+    "empty_src_meas": {
+        "destination": None,
+        "append": False,
+        "query": """
+                CREATE TABLE IF NOT EXISTS `{dataset_id}.src_meas`
+                    (
+                      id INT64,
+                      participant_id INT64,
+                      finalized_site_id INT64,
+                      code_value STRING,
+                      measurement_time DATETIME,
+                      value_decimal FLOAT64,
+                      value_unit STRING,
+                      value_code_value STRING,
+                      value_string STRING,
+                      measurement_id INT64,
+                      physical_measurements_id INT64,
+                      parent_id INT64,
+                      src_id STRING,
+                      collect_type INT64
+                    )
         """
     }
 }
