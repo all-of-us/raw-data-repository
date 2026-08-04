@@ -69,12 +69,18 @@ class G2pConsentClient:
 
         passed_validation = []
         all_passed = True
+
+        total_count = 0
+        already_validated_count = 0
         for record_id, metadata in record_data.items():
             if (
                 metadata['completion_status'] != '2'  # skip any records not set as complete
                 or metadata['consent_status'] != '1'  # skip any records that don't provide consent
-                or metadata['validation_status'] == '1'  # skip any that have already been validated
             ):
+                continue
+            total_count += 1
+            if metadata['validation_status'] == '1':  # skip any that have already been validated
+                already_validated_count += 1
                 continue
 
             logging.info(f'validating consent for {record_id}...')
@@ -101,6 +107,8 @@ class G2pConsentClient:
                         'record_id': record_id,
                         'consent_validation': 1
                     })
+
+        logging.info(f'found {total_count} records ({already_validated_count} were already validated)')
 
     def _validate_consent_pdf(self, record_id, expected_data: G2pConsentExpectedData):
         # pdf_response = self._redcap_client.get_pdf(
