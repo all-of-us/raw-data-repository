@@ -293,7 +293,10 @@ class AwardeeInSiteFeed(PPSCBigQueryDatafeedBase):
         "questionnaire_on_behavioral_health": "questionnaireOnBehavioralHealthAndPersonality",
         "questionnaire_on_behavioral_health_authored": "questionnaireOnBehavioralHealthAndPersonalityAuthored",
         "questionnaire_on_emotional_health": "questionnaireOnEmotionalHealthHistoryAndWellBeing",
-        "questionnaire_on_emotional_health_authored": "questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored"
+        "questionnaire_on_emotional_health_authored": "questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored",
+        "questionnaire_on_family_health_history_update": "questionnaireOnPersonalAndFamilyHealthHistoryUpdate",
+        "questionnaire_on_family_health_history_update_authored":
+            "questionnaireOnPersonalAndFamilyHealthHistoryUpdateAuthored"
     }
 
     def __init__(self, project='test'):

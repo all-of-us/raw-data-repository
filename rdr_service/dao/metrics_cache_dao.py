@@ -92,6 +92,12 @@ race_answers_table = config.getSettingJson(config.PUBLIC_METRICS_RACE_ANSWERS_TA
                                            'rdr_operational_datastream.rdr_participant_race_answers')
 participant_status_event_table = config.getSettingJson(config.PUBLIC_METRICS_PARTICIPANT_STATUS_EVENT_TABLE,
                                            'rdr_operational_datastream.ppsc_participant_status_event')
+withdrawal_event_table = config.getSettingJson(config.PUBLIC_METRICS_WITHDRAWAL_EVENT_TABLE,
+                                           'rdr_operational_datastream.ppsc_withdrawal_event')
+awardee_insite_table = config.getSettingJson(config.PUBLIC_METRICS_AWARDEE_INSITE_TABLE,
+                                           'rdr_operational_datastream.ppsc_awardee_insite')
+deactivation_event_table = config.getSettingJson(config.PUBLIC_METRICS_DEACTIVATION_EVENT_TABLE,
+                                           'rdr_operational_datastream.ppsc_deactivation_event')
 
 class MetricsDaoMixin:
     def insert_bulk(self, batch: List[Dict]) -> None:
@@ -238,19 +244,56 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
                                 p.hpo_id AS hpo_id,
                                 COUNT(DISTINCT pse.participant_id) AS enrollment_count
                             FROM (
-                                SELECT
-                                    participant_id,
-                                    MIN(data_element_value) AS data_element_value
-                                FROM `{participant_status_event}` pse
-                                WHERE pse.data_element_name = 'registered_date_time'
-                                    AND pse.event_type_name = 'Enrollment Status'
-                                    AND pse.data_element_value IS NOT NULL
-                                    AND pse.ignore_flag = 0
+                                SELECT DISTINCT participant_id, MIN(data_element_value) AS data_element_value
+                                FROM `{participant_status_event}`
+                                WHERE data_element_name = 'registered_date_time'
+                                AND event_type_name = 'Enrollment Status'
+                                AND data_element_value IS NOT NULL
+                                AND (ignore_flag = 0 or ignore_flag is null)
+                                GROUP BY participant_id
+                                UNION ALL
+                                # Get count of PIDs that have an enrollment_status past registered in awardee insite, but no registered event in the event status table
+                                SELECT DISTINCT participant_id, MIN(data_element_value) AS data_element_value
+                                FROM `{participant_status_event}`
+                                WHERE data_element_name IN ('core_participant_date_time', 'participant_ehr_consent_date_time', 'pmb_eligible_date_time', 'participant_date_time', 'core_minus_pm_date_time', 'enrolled_date_time')
+                                AND data_element_value IS NOT NULL
+                                AND event_type_name LIKE 'Enrollment Status'
+                                AND (ignore_flag = 0 or ignore_flag is null)
+                                AND participant_id NOT IN (
+                                    SELECT DISTINCT participant_id
+                                    FROM `{participant_status_event}`
+                                    WHERE data_element_name = 'registered'
+                                    AND data_element_value = 'yes'
+                                    AND event_type_name LIKE 'Enrollment Status'
+                                    AND (ignore_flag = 0 or ignore_flag is null)
+                                )
                                 GROUP BY participant_id
                             ) AS pse
+                            LEFT JOIN `{awardee_insite}` ai ON ai.participant_id = pse.participant_id
                             LEFT JOIN `{participant}` p ON p.participant_id = pse.participant_id
-                            WHERE (p.is_test_participant != 1 OR p.is_test_participant IS NULL)
-                                AND (p.is_ghost_id != 1 OR p.is_ghost_id IS NULL)
+                            # Filter out duplicate accounts
+                            WHERE (ai.duplicate_account_status != 'yes' OR ai.duplicate_account_status IS NULL)
+                            # Filter out test & ghost accounts
+                            AND (p.is_test_participant != 1 OR p.is_test_participant IS NULL)
+                            AND (p.is_ghost_id != 1 OR p.is_ghost_id IS NULL)
+                            # Filter out withdrawn accounts
+                            AND pse.participant_id not in (
+                                SELECT distinct we.participant_id
+                                FROM `{withdrawal_event}` we
+                                WHERE we.data_element_name = 'activity_status'
+                                AND we.event_type_name = 'Withdrawal'
+                                AND we.data_element_value = 'withdrawn'
+                                AND (ignore_flag = 0 or ignore_flag is null)
+                                AND we.participant_id NOT IN (
+                                    # Get all deactivated PIDs
+                                    SELECT DISTINCT we.participant_id
+                                    FROM `{deactivation_event}` we
+                                    WHERE we.data_element_name = 'activity_status'
+                                    AND we.event_type_name = 'Deactivation'
+                                    AND we.data_element_value = 'deactivated'
+                                    AND (ignore_flag = 0 or ignore_flag is null)
+                                )
+                            )
                             GROUP BY DATE(pse.data_element_value), p.hpo_id
                         ) AS results
                         WHERE registered_date IS NOT NULL AND c.day>=DATE(registered_date)
@@ -271,6 +314,14 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
                                 AND pse.ignore_flag = 0
                                 AND (p.is_test_participant != 1 OR p.is_test_participant IS NULL)
                                 AND (p.is_ghost_id != 1 OR p.is_ghost_id IS NULL)
+                                AND pse.participant_id NOT IN (
+                                    SELECT DISTINCT we.participant_id
+                                    FROM `{withdrawal_event}` we
+                                    WHERE we.data_element_name = 'activity_status'
+                                    AND we.data_element_value = 'withdrawn'
+                                    AND we.event_type_name = 'Withdrawal'
+                                    AND (ignore_flag = 0 or ignore_flag is null)
+                                )
                             GROUP BY DATE(pse.data_element_value), p.hpo_id
                         ) AS results
                         WHERE core_date IS NOT NULL AND c.day>=DATE(core_date)
@@ -282,7 +333,9 @@ class MetricsEnrollmentStatusCacheDao(BaseDao, MetricsDaoMixin):
                 ;
                 """.format(calendar=f"{bq_project}.{calendar_table}", participant=f"{bq_project}.{participant_table}",
                            participant_status_event=f"{bq_project}.{participant_status_event_table}",
-                           hpo_filter=hpo_id_params)
+                           hpo_filter=hpo_id_params, withdrawal_event=f"{bq_project}.{withdrawal_event_table}",
+                           awardee_insite=f"{bq_project}.{awardee_insite_table}",
+                           deactivation_event=f"{bq_project}.{deactivation_event_table}")
 
         params = [
             bigquery.ScalarQueryParameter("start_date", "DATE", start_date),

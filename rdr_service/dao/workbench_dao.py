@@ -21,7 +21,8 @@ from rdr_service.model.workbench_researcher import (
     WorkbenchResearcher,
     WorkbenchResearcherHistory,
     WorkbenchInstitutionalAffiliations,
-    WorkbenchInstitutionalAffiliationsHistory
+    WorkbenchInstitutionalAffiliationsHistory,
+    WorkbenchInstitutionalDura
 )
 from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWorkspaceUserRole, \
     WorkbenchInstitutionNonAcademic, WorkbenchResearcherEthnicity, WorkbenchResearcherSexAtBirth, \
@@ -33,14 +34,22 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType, WorkbenchWorkspaceAccessTier, \
     WorkbenchResearcherAccessTierShortName, WorkbenchResearcherEthnicCategory, WorkbenchResearcherSexualOrientationV2, \
     WorkbenchResearcherGenderIdentity, WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2, \
-    WorkbenchResearcherEducationV2, WorkbenchWorkspaceAianResearchType
+    WorkbenchResearcherEducationV2, WorkbenchWorkspaceAianResearchType, WorkbenchWorkspaceSourcePlatform
 
 WORKSPACE_ENUM_FIELDS = ['status', 'sex_at_birth', 'gender_identity', 'sexual_orientation', 'geography',
                          'disability_status', 'access_to_care', 'education_level', 'income_level', 'aian_research_type',
-                         'access_tier', 'workspace_users', 'creator', 'resource', 'race_ethnicity', 'age']
+                         'access_tier', 'workspace_users', 'creator', 'resource', 'race_ethnicity', 'age',
+                         'source_platform']
 
 RESEARCHER_ENUM_FIELDS = ['ethnicity', 'education', 'disability', 'user_id', 'verified_institutional_affiliation',
                           'demographicSurveyV2', 'gender', 'race', 'sex_at_birth', 'degree', 'access_tier_short_names']
+
+DURA_TIMESTAMP_FIELDS = ['agreement_end_date', 'agreement_start_date', 'ct_requester_date',
+                         'ein_and_uei_number_timestamp', 'finalization_formdate', 'ocmsubmissiondate_ct',
+                         'peerconfirmationdate', 'peersubmissionstatusdate', 'preapproval_discussion_date',
+                         'preapproval_projectcreation_date', 'preapproval_requestform_date', 'presentation_date',
+                         'reviewconfirmationdate', 'reviewrequestdate_ct', 'reviewrequestdate_ct_2',
+                         'signedriderdate_ct', 'signing_official_contact_date']
 
 class WorkbenchWorkspaceDao(UpdatableDao):
     def __init__(self):
@@ -262,7 +271,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 aianResearchDetails=item.get('aianResearchDetails'),
                 accessTier=WorkbenchWorkspaceAccessTier(item.get('accessTier', 'UNSET')),
                 resource=json.dumps(item),
-                isDataCollection=item.get('isDataCollection')
+                isDataCollection=item.get('isDataCollection'),
+                sourcePlatform=WorkbenchWorkspaceSourcePlatform(item.get('sourcePlatform', 'UNSET')),
+                migrationState=item.get('migrationState')
             )
 
             workspaces.append(workspace)
@@ -294,6 +305,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         row_dict['aianResearchType'] = WorkbenchWorkspaceAianResearchType(row.get('aian_research_type', 'UNSET'))
         row_dict['accessTier'] = WorkbenchWorkspaceAccessTier(row.get('access_Tier', 'UNSET'))
         row_dict['workbenchWorkspaceUser'] = self._get_users(row.get('workspace_users'), row.get('creator'))
+        row_dict['sourcePlatform'] = WorkbenchWorkspaceSourcePlatform(row.get('source_platform', 'UNSET'))
         row_dict['resource'] = "No resource payload. Data from VWB 2.0"
         return row_dict
 
@@ -1474,3 +1486,26 @@ class WorkbenchWorkspaceAuditDao(UpdatableDao):
         workspace_snapshot.excludeFromPublicDirectory = False
         workspace_snapshot.isReviewed = True
         self.workspace_dao.add_approved_workspace_with_session(session, workspace_snapshot, is_reviewed=True)
+
+
+class WorkbenchInstitutionalDuraDao(UpdatableDao):
+    def __init__(self):
+        super().__init__(WorkbenchInstitutionalDura, order_by_ending=["id"])
+
+    @staticmethod
+    def transform_rows(resource):
+        # Support setting null column values.
+        for key in resource:
+            value = resource.get(key)
+            if isinstance(value, str) and value.lower() in ('', 'null'):
+                resource[key] = None
+
+            # Parse all timestamp fields
+            if key in DURA_TIMESTAMP_FIELDS and resource[key] is not None:
+                resource[key] = parse(value)
+
+        return resource
+
+    def insert_with_session(self, session, obj: WorkbenchInstitutionalDura):
+        insert_result = super(WorkbenchInstitutionalDuraDao, self).insert_with_session(session, obj)
+        return insert_result

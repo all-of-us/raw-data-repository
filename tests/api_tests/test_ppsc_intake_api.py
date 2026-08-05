@@ -46,7 +46,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 name=activity
             )
 
-    def send_valid_primary_consent(self, participant, consent_type="Primary Consent", status="yes"):
+    def send_valid_primary_consent(self, participant, consent_type="Primary Consent", status="yes", age_group=None):
         payload = {
             "activity": "Consent",
             "eventType": consent_type,
@@ -62,10 +62,38 @@ class PPSCIntakeAPITest(BaseTestCase):
                 },
             ]
         }
+        if age_group:
+            payload['dataElements'].append({
+                'dataElementName': 'age_group',
+                'dataElementValue': age_group
+            })
 
         test_time = datetime(2024, 6, 25, 12, 1)
         with clock.FakeClock(test_time):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+    def send_pediatric_assent(self, participant, status, age_group='7-12', authored_timestamp=datetime(2024, 6, 25, 12, 1)):
+        payload = {
+            "activity": "Survey Completion",
+            "eventType": 'Pediatric Assent',
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": status
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": authored_timestamp.isoformat() + 'Z'
+                },
+                {
+                    'dataElementName': 'age_group',
+                    'dataElementValue': age_group
+                }
+            ]
+        }
+
+        self.send_post('Intake', request_data=payload)
 
     def filter_events_by_type(self, events, activity_id):
         for event in events:
@@ -372,7 +400,7 @@ class PPSCIntakeAPITest(BaseTestCase):
                 {
                     "dataElementName": "activity_date_time",
                     "dataElementValue": "2024-05-20T14:30:00.000Z"
-                },
+                }
             ]
         }
 
@@ -1357,6 +1385,198 @@ class PPSCIntakeAPITest(BaseTestCase):
         test_time = datetime(2024, 6, 25, 12, 1)
         with clock.FakeClock(test_time):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+    def test_pediatric_survey_with_missing_age_group_permission(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(
+            participant,
+            consent_type="Pediatric Permission",
+            status="submitted_yes",
+            age_group='0-6'
+        )
+
+        payload = {
+            "activity": "Survey Completion",
+            "eventType": "Overall Health",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "submitted_complete"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
+                },
+                {
+                    "dataElementName": "age_group",
+                    "dataElementValue": "7-12"
+                }
+            ]
+        }
+
+        self.send_post('Intake', request_data=payload, expected_status=422)
+
+    def test_pediatric_survey_with_correct_age_group_permission(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(
+            participant,
+            consent_type="Pediatric Permission",
+            status="Yes",
+            age_group='7-12'
+        )
+
+        payload = {
+            "activity": "Survey Completion",
+            "eventType": "Overall Health",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "submitted_complete"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
+                },
+                {
+                    "dataElementName": "age_group",
+                    "dataElementValue": "7-12"
+                }
+            ]
+        }
+
+        self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+    def test_pediatric_survey_with_na_assent(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(
+            participant,
+            consent_type="Pediatric Permission",
+            status="Yes",
+            age_group='7-12'
+        )
+        self.send_pediatric_assent(participant, 'N/A')
+
+        payload = {
+            "activity": "Survey Completion",
+            "eventType": "Overall Health",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "submitted_complete"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
+                },
+                {
+                    "dataElementName": "age_group",
+                    "dataElementValue": "7-12"
+                }
+            ]
+        }
+
+        self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
+
+    def test_pediatric_survey_with_no_assent(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(
+            participant,
+            consent_type="Pediatric Permission",
+            status="Yes",
+            age_group='7-12'
+        )
+        self.send_pediatric_assent(participant, 'No')
+
+        payload = {
+            "activity": "Survey Completion",
+            "eventType": "Overall Health",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "submitted_complete"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
+                },
+                {
+                    "dataElementName": "age_group",
+                    "dataElementValue": "7-12"
+                }
+            ]
+        }
+
+        self.send_post('Intake', request_data=payload, expected_status=422)
+
+    def test_pediatric_survey_with_yes_assent_followed_by_no(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(
+            participant,
+            consent_type="Pediatric Permission",
+            status="Yes",
+            age_group='7-12'
+        )
+        self.send_pediatric_assent(participant, 'No', authored_timestamp=datetime(2020, 1, 7))
+        self.send_pediatric_assent(participant, 'Yes', authored_timestamp=datetime(2020, 1, 5))
+
+        payload = {
+            "activity": "Survey Completion",
+            "eventType": "Overall Health",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "submitted_complete"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
+                },
+                {
+                    "dataElementName": "age_group",
+                    "dataElementValue": "7-12"
+                }
+            ]
+        }
+
+        self.send_post('Intake', request_data=payload, expected_status=422)
+
+    def test_pediatric_survey_with_no_assent_followed_by_yes(self):
+        participant = self.ppsc_data_gen.create_database_participant()
+        self.send_valid_primary_consent(
+            participant,
+            consent_type="Pediatric Permission",
+            status="Yes",
+            age_group='7-12'
+        )
+        self.send_pediatric_assent(participant, 'Yes', authored_timestamp=datetime(2020, 1, 7))
+        self.send_pediatric_assent(participant, 'No', authored_timestamp=datetime(2020, 1, 5))
+
+        payload = {
+            "activity": "Survey Completion",
+            "eventType": "Overall Health",
+            "participantId": f"P{participant.id}",
+            "dataElements": [
+                {
+                    "dataElementName": "activity_status",
+                    "dataElementValue": "submitted_complete"
+                },
+                {
+                    "dataElementName": "activity_date_time",
+                    "dataElementValue": "2024-05-20T14:30:00.000Z"
+                },
+                {
+                    "dataElementName": "age_group",
+                    "dataElementValue": "7-12"
+                }
+            ]
+        }
+
+        self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
     def test_intake_test_account_allowed(self):
         participant = self.ppsc_data_gen.create_database_participant()
