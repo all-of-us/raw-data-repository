@@ -3,7 +3,7 @@ import csv
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import auto, Enum
-from typing import Collection, Dict, List, Optional
+from typing import Collection, Dict, List, Optional, Set
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
@@ -13,6 +13,7 @@ from rdr_service.model.awardee_insite import AwardeeInSite
 from rdr_service.model.biobank_order import (
     BiobankAliquot, BiobankAliquotDataset, BiobankAliquotDatasetItem, BiobankSpecimen, BiobankAliquotTreatment
 )
+from rdr_service.model.biospecimen_flags import BiospecimenFlags
 from rdr_service.model.participant import Participant
 from rdr_service.services.bigquery import BigQueryTable
 from rdr_service.services.system_utils import list_chunks
@@ -117,6 +118,7 @@ class ParticipantData:
     urine_availability: Availability = field(default_factory=Availability)
     rna_availability: Availability = field(default_factory=Availability)
     whole_blood_dmso_availability: Availability = field(default_factory=Availability)
+    bone_marrow_transplant_flag: bool = False
 
     array_status: bool = False
     array_source_blood: bool = False
@@ -201,6 +203,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
             self.process_dataset_info(session, aliquot_list)
             self.load_treatment_data(session, aliquot_list)
             self.load_sequencing_data(session, aliquot_list)
+            bmt_ids = self._load_bmt_ids(session)
 
             eligible_participant_id_list = sorted(self.retrieve_eligible_participant_ids(session))
 
@@ -273,6 +276,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 if collection_date:
                     if participant_export_data is None:
                         participant_export_data = ParticipantData(participant_id)
+                        participant_export_data.bone_marrow_transplant_flag = participant_id in bmt_ids
                         participant_data_to_export.append(participant_export_data)
 
                     participant_export_data.set_type_as_available(sample_type, collection_date)
@@ -294,6 +298,12 @@ class SampleAvailabilityDatasetTool(ToolBase):
         print()
         print('dna sources:')
         print(distinct_sequence_sources)
+
+    def _load_bmt_ids(self, session: Session) -> Set[int]:
+        flags: Collection[BiospecimenFlags] = session.query(BiospecimenFlags).filter(
+            BiospecimenFlags.bmt
+        ).all()
+        return {flag.participant_id for flag in flags}
 
     @classmethod
     def _export_participant_3a_data_as_csv(cls, data_to_export: List[ParticipantData]):
@@ -356,7 +366,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 'array_dna_source',
                 'wgs_sequencing_status',
                 'wgs_dna_source',
-                'src_id'
+                'bone_marrow_transplant_flag'
             ])
             writer.writeheader()
             for data in data_to_export:
@@ -393,7 +403,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
                     'array_dna_source': array_source,
                     'wgs_sequencing_status': 'Y' if data.wgs_status else 'N',
                     'wgs_dna_source': wgs_source,
-                    'src_id': 'Staff Portal: LIMS'
+                    'bone_marrow_transplant_flag': 'Y' if data.bone_marrow_transplant_flag else 'N'
                 })
 
     @classmethod
@@ -421,8 +431,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 'treatment_date',
                 'extraction_method',
                 'extraction_date',
-                'first_freeze_date',
-                'src_id'
+                'first_freeze_date'
             ])
             writer.writeheader()
             for data in data_to_export:
@@ -448,8 +457,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
                     'treatment_date': data.treatment_date,
                     'extraction_method': data.extraction_method,
                     'extraction_date': data.extraction_date,
-                    'first_freeze_date': data.first_freeze_date,
-                    'src_id': 'Staff Portal: LIMS'
+                    'first_freeze_date': data.first_freeze_date
                 })
 
     @classmethod
