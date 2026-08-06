@@ -4,7 +4,9 @@ from datetime import datetime
 from io import BytesIO
 
 from dateutil.parser import parse
+from sqlalchemy.orm import Session
 
+from rdr_service.model.prs_consent import PrsConsentResponse, PrsConsentValidationResult, PrsConsentValidationError
 from rdr_service.services.prs_consent.validation import G2pConsentValidator, G2pConsentExpectedData, PdfParsingError
 from rdr_service.services.redcap_client import RedcapClient
 
@@ -41,8 +43,7 @@ class G2pConsentClient:
         self._redcap_client = RedcapClient()
         self._api_key = redcap_api_key
 
-    def sync_new_consents(self):
-        # todo: find latest date using the database
+    def sync_new_consents(self, session: Session):
         since_datetime = datetime(2026, 1, 1)
 
         recent_records = self._redcap_client.get_records(
@@ -50,6 +51,7 @@ class G2pConsentClient:
         )
 
         field_name_map = {
+            'participant_id': 'record_id',
             'date': 'date',
             'received_help': 'please_check_the_box_below___1',
             'helper_name': 'name_of_the_person_who_hel',
@@ -64,6 +66,8 @@ class G2pConsentClient:
             for mapped_name, redcap_name in field_name_map.items():
                 if redcap_name in record:
                     mapped_data[mapped_name] = record[redcap_name]
+            if mapped_data['date']:
+                mapped_data['date'] = parse(mapped_data['date']).date()
 
             record_data[record['record_id']] = mapped_data
 
@@ -85,11 +89,13 @@ class G2pConsentClient:
 
             logging.info(f'validating consent for {record_id}...')
             expected_values = G2pConsentExpectedData(
-                signed_date=parse(metadata['date']).date(),
+                signed_date=metadata['date'],
                 received_help=metadata['received_help'] == '1',
                 helper_name=metadata['helper_name'] or None
             )
             error_list = self._validate_consent_pdf(record_id, expected_values)
+            self._record_result(metadata, error_list, session)
+
             if error_list:
                 all_passed = False
             else:
@@ -109,6 +115,26 @@ class G2pConsentClient:
                     })
 
         logging.info(f'found {total_count} records ({already_validated_count} were already validated)')
+
+    def _record_result(self, data, error_message_list, session: Session):
+        consent_record = PrsConsentResponse(
+            participant_id=data['participant_id'],
+            signed_date=data['date'],
+            consent_type='G2P'
+        )
+        session.add(consent_record)
+
+        validation_result = PrsConsentValidationResult(
+            consent_response=consent_record,
+            is_valid=len(error_message_list) == 0
+        )
+        session.add(validation_result)
+
+        for error in error_message_list:
+            session.add(PrsConsentValidationError(
+                validation_result=validation_result,
+                error_message=error
+            ))
 
     def _validate_consent_pdf(self, record_id, expected_data: G2pConsentExpectedData):
         # pdf_response = self._redcap_client.get_pdf(

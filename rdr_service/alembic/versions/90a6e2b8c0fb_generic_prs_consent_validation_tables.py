@@ -60,8 +60,6 @@ def upgrade_rdr():
         sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
         sa.Column('prs_consent_validation_result_id', sa.Integer(), nullable=True),
         sa.Column('error_message', sa.String(length=256), nullable=True),
-        sa.Column('expected_data', sa.String(length=512), nullable=True),
-        sa.Column('pdf_data', sa.String(length=512), nullable=True),
         sa.ForeignKeyConstraint(['prs_consent_validation_result_id'], ['prs_consent_validation_result.id'], ),
         sa.PrimaryKeyConstraint('id')
     )

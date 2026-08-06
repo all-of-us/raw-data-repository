@@ -1,5 +1,6 @@
 
 import sqlalchemy as sa
+from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base
 from rdr_service.model.utils import UTCDateTime
@@ -22,11 +23,13 @@ class PrsConsentValidationResult(Base):
     is_valid = sa.Column(sa.Boolean)
     ignore = sa.Column(sa.Boolean, server_default=sa.text('0'))
 
+    consent_response = relationship(PrsConsentResponse, foreign_keys=prs_consent_response_id)
+
 
 class PrsConsentValidationError(Base):
     __tablename__ = 'prs_consent_validation_error'
     id = sa.Column(sa.BigInteger, primary_key=True, autoincrement=True, nullable=False)
     prs_consent_validation_result_id = sa.Column(sa.Integer, sa.ForeignKey(PrsConsentValidationResult.id))
     error_message = sa.Column(sa.String(256))
-    expected_data = sa.Column(sa.String(512))
-    pdf_data = sa.Column(sa.String(512))
+
+    validation_result = relationship(PrsConsentValidationResult, foreign_keys=prs_consent_validation_result_id)
