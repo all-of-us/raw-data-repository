@@ -37,6 +37,7 @@ def awardee_insite_input_feed():
     input_feed.run_datafeed(datafeed)
     return '{ "success": "true" }'
 
+
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_input_feed():
     datafeed = request.get_json().get("datafeed")
@@ -104,11 +105,11 @@ def copy_from_gcs_to_s3():
     gcs_bucket = request.get_json().get("gcs_bucket")
     s3_bucket = request.get_json().get("s3_bucket")
     copier = GCSFileCopierToS3(gcs_bucket=gcs_bucket, s3_bucket=s3_bucket)
-    gcs_to_ppsc_directories_map = {
+    gcs_to_ppsc_directories_map = request.get_json().get("gcs_to_ppsc_directories_map", {
         "ehr_exports": "ehr-updates",
         "core_data": "core-data",
         "health_sharing_status": "health-sharing"
-    }
+    })
     copier.run(gcs_to_ppsc_directories_map)
     return '{ "success": "true" }'
 

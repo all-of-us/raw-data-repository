@@ -75,7 +75,11 @@ WITH source_rows AS (
     biobank_id,
     sex_at_birth,
     genome_type,
-    ny_flag,
+    CASE
+      WHEN ny_flag = "0" THEN "N"
+      WHEN ny_flag = "1" THEN "Y"
+      ELSE ny_flag
+    END as ny_flag,
     validation_passed,
     ai_an,
     pediatric,
@@ -140,10 +144,7 @@ SELECT
   ny_flag,
   validation_passed,
   ai_an,
-  pediatric,
-  finalized,
-  created,
-  file_path
+  pediatric
 FROM delta
 ;
 
@@ -155,9 +156,6 @@ INSERT INTO `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_a
   ny_flag,
   validation_passed,
   ai_an,
-  pediatric,
-  finalized,
-  created,
   file_path,
   batch_id,
   export_timestamp
@@ -170,9 +168,6 @@ SELECT
   ny_flag,
   validation_passed,
   ai_an,
-  pediatric,
-  finalized,
-  CAST(created AS TIMESTAMP),
   'gs://{{ params.bucket_name }}/genomic_samples_manifests/plating/Genomic-Manifest-AoU-{{ ds }}_C3-{{ ts_nodash | truncate(12, False, '') }}pl.csv' AS file_path,
   batch_id,
   CURRENT_TIMESTAMP()

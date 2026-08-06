@@ -638,6 +638,13 @@ def insert_awardee_insite_data(
             )
             WHERE rn = 1
           ),
+          ehr_first_yes_submitted AS (
+              SELECT participant_id
+                , MIN(activity_date_time) AS consent_for_electronic_health_records_first_yes_authored
+              FROM ehr_cte
+              WHERE LOWER(activity_status) IN ('yes', 'submitted_yes', 'submitted_complete')
+              GROUP BY 1
+          ),
           primary_consent_cte AS (
             SELECT participant_id
                 , event_id
@@ -818,7 +825,6 @@ def insert_awardee_insite_data(
             SELECT
               participant_id
               , ehr_receipt_time AS first_ehr_receipt_time
-              , consent_for_electronic_health_records_first_yes_authored
               , consent_for_study_enrollment_authored
               , patient_status
               , s2.google_group AS biospecimen_source_site
@@ -852,7 +858,7 @@ def insert_awardee_insite_data(
             SELECT DISTINCT participant_id
                 , 'yes' AS aian
             FROM `{project}.{src_operational_dataset}.ppsc_survey_completion_event`
-            WHERE LOWER(data_element_name) = 'race_whatraceethnicity'
+            WHERE LOWER(data_element_name) IN ('race_whatraceethnicity', 'race_whatraceethnicity_ped')
               AND LOWER(data_element_value) = 'whatraceethnicity_aian'
               AND ignore_flag = 0
           ),
@@ -1170,6 +1176,8 @@ def insert_awardee_insite_data(
             LEFT JOIN latest_deceased
             USING (participant_id)
             LEFT JOIN ehr_latest_submitted
+            USING (participant_id)
+            LEFT JOIN ehr_first_yes_submitted
             USING (participant_id)
             LEFT JOIN primary_consent_latest_submitted
             USING (participant_id)
