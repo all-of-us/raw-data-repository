@@ -1,5 +1,7 @@
 import logging
+from datetime import datetime, timezone
 from typing import Optional, Union
+from uuid import uuid4
 
 import google.cloud.bigquery
 from google.cloud import bigquery
@@ -42,6 +44,11 @@ class CurationBQ(ToolBase):
 
     _MEASUREMENT_STEPS = {"src_meas", "measurement"}
     _SURVEY_STEPS = {"observation", "qrai_author", "qrai_language", "qrai_code"}
+    _AUDIT_SNAPSHOT_SOURCE_TABLES: list[str] = [
+        "participant_filter",
+        "observation",
+        "measurement",
+    ]
 
     # ETL pipeline step order.  Each key maps to an entry in queries.queries.
     etl_process_steps: list[str] = [
@@ -147,15 +154,44 @@ class CurationBQ(ToolBase):
             _logger.error("No dataset specified")
             return 1
 
+        try:
+            self._validate_mode_selection()
+        except ValueError as exc:
+            _logger.error(str(exc))
+            return 1
+
         if self.args.load_data:
             self.import_tables_to_bq()
         elif self.args.run_etl:
             self.run_etl()
         elif self.args.export:
             self.export()
-        else:
-            _logger.error("One of --load-data, --run-etl, or --export must be set")
+        elif self.args.snapshot_audit:
+            self.snapshot_audit_tables()
         return None
+
+    def _validate_mode_selection(self) -> None:
+        """Validate that exactly one mode is selected and required args are present."""
+        selected_modes: list[str] = []
+        if self.args.load_data:
+            selected_modes.append("--load-data")
+        if self.args.run_etl:
+            selected_modes.append("--run-etl")
+        if self.args.export:
+            selected_modes.append("--export")
+        if getattr(self.args, "snapshot_audit", False):
+            selected_modes.append("--snapshot-audit")
+
+        if not selected_modes:
+            raise ValueError(
+                "One of --load-data, --run-etl, --export, or --snapshot-audit must be set"
+            )
+        if len(selected_modes) > 1:
+            raise ValueError(
+                "Only one mode may be set: --load-data, --run-etl, --export, --snapshot-audit"
+            )
+        if getattr(self.args, "snapshot_audit", False) and not getattr(self.args, "audit_dataset", None):
+            raise ValueError("--snapshot-audit requires --audit-dataset")
 
     # ------------------------------------------------------------------
     # Query execution helpers
@@ -165,7 +201,7 @@ class CurationBQ(ToolBase):
         self,
         sql: str,
         job_config: Union[None, google.cloud.bigquery.QueryJobConfig],
-    ) -> None:
+    ) -> Optional[int]:
         """Execute a BigQuery SQL statement, optionally writing to a destination table.
 
         Args:
@@ -174,10 +210,98 @@ class CurationBQ(ToolBase):
         """
         if self.args.dry_run:
             _logger.info(sql)
-            return
+            return None
         query_job = self.client.query(sql, job_config=job_config)
         result = query_job.result()
-        _logger.debug("Rows affected: %s", result.total_rows)
+        rows_affected = query_job.num_dml_affected_rows
+        _logger.debug("Rows affected: %s", rows_affected if rows_affected is not None else result.total_rows)
+        return rows_affected if rows_affected is not None else result.total_rows
+
+    def _sql_literal(self, value: Optional[str]) -> str:
+        """Return a SQL literal suitable for inlined BigQuery templating."""
+        if value is None:
+            return "NULL"
+        escaped = value.replace("'", "''")
+        return f"'{escaped}'"
+
+    def _resolve_audit_dataset_id(self) -> str:
+        """Resolve audit dataset argument to project.dataset form."""
+        audit_dataset = self.args.audit_dataset.strip()
+        if "." in audit_dataset:
+            return audit_dataset
+        return f"{self.args.project}.{audit_dataset}"
+
+    def _build_audit_metadata(self) -> dict[str, str]:
+        """Build metadata values used across all snapshot table inserts."""
+        snapshot_ts = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        audit_run_id = getattr(self.args, "audit_run_id", None) or f"audit_{uuid4().hex}"
+        snapshot_label = getattr(self.args, "snapshot_label", None)
+        etl_cutoff = getattr(self.args, "cutoff", None)
+        return {
+            "audit_run_id_sql": self._sql_literal(audit_run_id),
+            "snapshot_ts_expr": f"TIMESTAMP({self._sql_literal(snapshot_ts)})",
+            "source_project_sql": self._sql_literal(self.args.project),
+            "source_dataset_sql": self._sql_literal(self.args.dataset),
+            "snapshot_label_sql": self._sql_literal(snapshot_label),
+            "etl_cutoff_sql": self._sql_literal(etl_cutoff),
+            "audit_run_id": audit_run_id,
+        }
+
+    def _ensure_audit_snapshot_table(self, audit_dataset_id: str, source_table: str) -> None:
+        """Create a snapshot table if it does not already exist."""
+        snapshot_table = f"{source_table}_snapshot"
+        sql = queries.queries["audit_snapshot_create_table"]["query"].format(
+            audit_dataset_id=audit_dataset_id,
+            snapshot_table=snapshot_table,
+            dataset_id=self.dataset_id,
+            source_table=source_table,
+        )
+        self.run_query(sql, None)
+
+    def _insert_snapshot_rows(
+        self,
+        audit_dataset_id: str,
+        source_table: str,
+        metadata: dict[str, str],
+    ) -> Optional[int]:
+        """Insert ETL source rows into a snapshot table with run metadata."""
+        snapshot_table = f"{source_table}_snapshot"
+        sql = queries.queries["audit_snapshot_insert_rows"]["query"].format(
+            audit_dataset_id=audit_dataset_id,
+            snapshot_table=snapshot_table,
+            dataset_id=self.dataset_id,
+            source_table=source_table,
+            audit_run_id_sql=metadata["audit_run_id_sql"],
+            snapshot_ts_expr=metadata["snapshot_ts_expr"],
+            source_project_sql=metadata["source_project_sql"],
+            source_dataset_sql=metadata["source_dataset_sql"],
+            snapshot_label_sql=metadata["snapshot_label_sql"],
+            etl_cutoff_sql=metadata["etl_cutoff_sql"],
+        )
+        return self.run_query(sql, None)
+
+    def snapshot_audit_tables(self) -> None:
+        """Snapshot participant_filter, observation, and measurement into the audit dataset."""
+        audit_dataset_id = self._resolve_audit_dataset_id()
+        metadata = self._build_audit_metadata()
+
+        _logger.info(
+            "Starting snapshot-audit mode: source=%s destination=%s run_id=%s",
+            self.dataset_id,
+            audit_dataset_id,
+            metadata["audit_run_id"],
+        )
+
+        for source_table in self._AUDIT_SNAPSHOT_SOURCE_TABLES:
+            self._ensure_audit_snapshot_table(audit_dataset_id, source_table)
+            inserted_rows = self._insert_snapshot_rows(audit_dataset_id, source_table, metadata)
+            _logger.info(
+                "Snapshot completed for %s: destination=%s.%s_snapshot rows=%s",
+                source_table,
+                audit_dataset_id,
+                source_table,
+                inserted_rows,
+            )
 
     # ------------------------------------------------------------------
     # Data loading
@@ -466,6 +590,32 @@ def add_additional_arguments(parser) -> None:
         "--export",
         help="Export finalised CDM tables to BQ dataset specified in --destination",
         default=False, action="store_true",
+    )
+    parser.add_argument(
+        "--snapshot-audit",
+        help=(
+            "Write ETL audit snapshots for participant_filter, observation, and measurement "
+            "into the dataset specified by --audit-dataset"
+        ),
+        default=False, action="store_true",
+    )
+    parser.add_argument(
+        "--audit-dataset",
+        help=(
+            "Destination dataset for snapshot-audit mode. Supports either dataset name "
+            "or fully qualified project.dataset"
+        ),
+        default=None,
+    )
+    parser.add_argument(
+        "--audit-run-id",
+        help="Optional external run id to stamp all snapshot rows",
+        default=None,
+    )
+    parser.add_argument(
+        "--snapshot-label",
+        help="Optional free-form label to annotate snapshot rows",
+        default=None,
     )
 
     # ── ETL filters ─────────────────────────────────────────────────────
