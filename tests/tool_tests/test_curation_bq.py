@@ -29,6 +29,10 @@ def _build_args(**overrides):
         "load_data": False,
         "run_etl": False,
         "export": False,
+        "snapshot_audit": False,
+        "audit_dataset": None,
+        "audit_run_id": None,
+        "snapshot_label": None,
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -84,8 +88,65 @@ class CurationBQTest(unittest.TestCase):
             job_config.write_disposition,
         )
 
+    def test_snapshot_audit_mode_dispatch(self):
+        tool = self._create_tool(
+            _build_args(snapshot_audit=True, audit_dataset="audit_dataset")
+        )
+
+        with mock.patch("rdr_service.tools.tool_libs.curation_bq.ToolBase.run"):
+            with mock.patch.object(tool, "snapshot_audit_tables") as snapshot_mock:
+                result = tool.run()
+
+        self.assertIsNone(result)
+        snapshot_mock.assert_called_once_with()
+
+    def test_snapshot_audit_requires_audit_dataset(self):
+        tool = self._create_tool(_build_args(snapshot_audit=True, audit_dataset=None))
+
+        with mock.patch("rdr_service.tools.tool_libs.curation_bq.ToolBase.run"):
+            result = tool.run()
+
+        self.assertEqual(1, result)
+
+    def test_snapshot_audit_conflicts_with_other_modes(self):
+        tool = self._create_tool(
+            _build_args(snapshot_audit=True, audit_dataset="audit_dataset", run_etl=True)
+        )
+
+        with mock.patch("rdr_service.tools.tool_libs.curation_bq.ToolBase.run"):
+            result = tool.run()
+
+        self.assertEqual(1, result)
+
+    def test_snapshot_audit_generates_expected_sql(self):
+        tool = self._create_tool(
+            _build_args(
+                snapshot_audit=True,
+                audit_dataset="audit_dataset",
+                audit_run_id="run-123",
+                snapshot_label="manual",
+                cutoff="2026-01-01",
+            )
+        )
+
+        with mock.patch.object(tool, "run_query", return_value=10) as run_query_mock:
+            tool.snapshot_audit_tables()
+
+        self.assertEqual(6, run_query_mock.call_count)
+        sql_calls = [call.args[0] for call in run_query_mock.call_args_list]
+
+        self.assertTrue(any("participant_filter_snapshot" in sql for sql in sql_calls))
+        self.assertTrue(any("observation_snapshot" in sql for sql in sql_calls))
+        self.assertTrue(any("measurement_snapshot" in sql for sql in sql_calls))
+        self.assertTrue(any("'run-123' AS audit_run_id" in sql for sql in sql_calls))
+        self.assertTrue(any("'manual' AS snapshot_label" in sql for sql in sql_calls))
+        self.assertTrue(any("'2026-01-01' AS etl_cutoff" in sql for sql in sql_calls))
+        self.assertTrue(any("`test-project.audit_dataset.participant_filter_snapshot`" in sql for sql in sql_calls))
+
 
 if __name__ == "__main__":
     unittest.main()
+
+
 
 

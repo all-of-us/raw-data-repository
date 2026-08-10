@@ -1,4 +1,37 @@
 queries = {
+    "audit_snapshot_create_table": {
+        "destination": None,
+        "append": False,
+        "query": """
+            CREATE TABLE IF NOT EXISTS `{audit_dataset_id}.{snapshot_table}` AS
+            SELECT
+                CAST(NULL AS STRING) AS audit_run_id,
+                CAST(NULL AS TIMESTAMP) AS snapshot_ts,
+                CAST(NULL AS STRING) AS source_project,
+                CAST(NULL AS STRING) AS source_dataset,
+                CAST(NULL AS STRING) AS snapshot_label,
+                CAST(NULL AS STRING) AS etl_cutoff,
+                src.*
+            FROM `{dataset_id}.{source_table}` src
+            WHERE 1 = 0
+        """,
+    },
+    "audit_snapshot_insert_rows": {
+        "destination": None,
+        "append": False,
+        "query": """
+            INSERT INTO `{audit_dataset_id}.{snapshot_table}`
+            SELECT
+                {audit_run_id_sql} AS audit_run_id,
+                {snapshot_ts_expr} AS snapshot_ts,
+                {source_project_sql} AS source_project,
+                {source_dataset_sql} AS source_dataset,
+                {snapshot_label_sql} AS snapshot_label,
+                {etl_cutoff_sql} AS etl_cutoff,
+                src.*
+            FROM `{dataset_id}.{source_table}` src
+        """,
+    },
     # ---------------------------------------------------------------------------
     # Phase 1 – Source data generation (replaces SQLAlchemy ORM in curation.py)
     # Reads from BigQuery tables replicated from MySQL via {rdr_dataset}.rdr_
