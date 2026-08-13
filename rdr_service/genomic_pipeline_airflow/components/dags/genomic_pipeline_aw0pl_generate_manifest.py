@@ -1,4 +1,5 @@
 import tempfile
+import logging
 from datetime import datetime
 from google.cloud import storage
 from airflow import DAG
@@ -70,9 +71,20 @@ DECLARE batch_id STRING DEFAULT GENERATE_UUID();
 
 CREATE OR REPLACE TABLE `{{ params.project_id }}.{{ params.dataset }}.{{ params.export_table_id }}` AS
 WITH source_rows AS (
-  SELECT
+  with ranked_withdrawal_history as
+(
+  select biobank_id,
+  withdrawal_status,
+  RANK() OVER (PARTITION BY biobank_id
+                                ORDER BY withdrawal_time DESC)  as withdrawal_rank
+   from
+  `all-of-us-rdr-prod.rdr_operational_datastream.rdr_genomic_pipeline_gsm_validation_history`
+
+    )
+
+SELECT
     collection_tube_id,
-    biobank_id,
+    aw0tmp.biobank_id,
     sex_at_birth,
     genome_type,
     CASE
@@ -80,18 +92,15 @@ WITH source_rows AS (
       WHEN ny_flag = "1" THEN "Y"
       ELSE ny_flag
     END as ny_flag,
-    validation_passed,
+    case when (rwh.withdrawal_status = 'not_withdrawn' or rwh.biobank_id is null) then 'Y' else 'N' end as validation_passed,
     ai_an,
     pediatric,
     finalized,
-    created,
-    file_path,
-    ROW_NUMBER() OVER (
-      PARTITION BY collection_tube_id, genome_type
-      ORDER BY created DESC
-    ) AS rn
-  FROM `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_aw0_tmp`
-      WHERE validation_passed = "Y"
+    aw0tmp.created,
+    file_path
+   FROM `all-of-us-rdr-prod.rdr_operational_datastream.rdr_genomic_pipeline_aw0_tmp` aw0tmp
+   LEFT JOIN ranked_withdrawal_history rwh on rwh.biobank_id = aw0tmp.biobank_id and rwh.withdrawal_rank = 1
+    WHERE validation_passed = "Y"
       AND collection_tube_id IN UNNEST([
        {% for id in params.collection_tube_ids %}
          '{{ id }}'{% if not loop.last %},{% endif %}
@@ -190,7 +199,7 @@ with DAG(
     },
     tags=["genomics", "aw0"],
 ) as dag:
-
+    logger = logging.getLogger("airflow.task")
     run_aw0_query = BigQueryInsertJobOperator(
         task_id="run_aw0_query",
         gcp_conn_id=GCP_CONN_ID,
