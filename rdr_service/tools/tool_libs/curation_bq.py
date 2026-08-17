@@ -193,6 +193,18 @@ class CurationBQ(ToolBase):
         if getattr(self.args, "snapshot_audit", False) and not getattr(self.args, "audit_dataset", None):
             raise ValueError("--snapshot-audit requires --audit-dataset")
 
+        # The processes these flags execute do not work correctly on BigQuery. Disable them for now.
+        if getattr(self.args, "omit_surveys", False):
+            raise ValueError(
+                "--omit-surveys is not currently supported and has been disabled. "
+                "Remove this flag before running the ETL."
+            )
+        if getattr(self.args, "omit_measurements", False):
+            raise ValueError(
+                "--omit-measurements is not currently supported and has been disabled. "
+                "Remove this flag before running the ETL."
+            )
+
     # ------------------------------------------------------------------
     # Query execution helpers
     # ------------------------------------------------------------------
