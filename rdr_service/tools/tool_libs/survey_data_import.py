@@ -385,7 +385,11 @@ class ResponseFileParser:
     def get_module_name(self) -> str:
         file_name = self.blob.name.split('/')[-1]
         module_identifier = file_name[:4]
-        return SURVEY_CODE_MAP[module_identifier].lower()
+        module_code = SURVEY_CODE_MAP.get(module_identifier)
+        if module_code:
+            return module_code.lower()
+        else:
+            return None
 
     def generate_responses(self, questionnaire_proxy: 'QuestionnaireProxy') -> List[QuestionnaireResponse]:
         result = []
@@ -480,6 +484,10 @@ class SurveyDataImport(ToolBase):
     @classmethod
     def _process_response_blob(cls, blob: Blob, db_codes: Dict[str, Code], session: Session):
         parser = ResponseFileParser(blob)
+        if not parser.get_module_name():
+            logger.info(f'skipping {blob.name}')
+            return
+
         logger.info(f'Module name: {parser.get_module_name()}\n')
         logger.info(f'Question codes:\n{sorted(parser.question_codes)}\n')
 
