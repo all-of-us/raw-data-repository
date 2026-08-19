@@ -76,6 +76,7 @@ class QuestionnaireResponse(Base):
         "QuestionnaireResponseAnswer", cascade="all, delete-orphan"
     )
     extensions = relationship('QuestionnaireResponseExtension')
+    import_batch_id = Column(Integer)
 
     __table_args__ = (
         ForeignKeyConstraint(
