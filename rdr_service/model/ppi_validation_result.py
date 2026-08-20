@@ -20,6 +20,7 @@ class PpiValidationResults(Base):
     survey_id = sa.Column(sa.Integer, sa.ForeignKey('survey.id'), nullable=False)
     obsoletion_timestamp = sa.Column(UTCDateTime, nullable=True)
     obsoletion_reason = sa.Column(sa.String(512), nullable=True)
+    import_batch_id = sa.Column(sa.Integer, index=True)
 
     errors: List['PpiValidationErrors'] = sa.orm.relationship('PpiValidationErrors', back_populates='result')
 
