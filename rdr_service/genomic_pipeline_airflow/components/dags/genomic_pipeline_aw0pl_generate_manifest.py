@@ -8,7 +8,7 @@ from airflow.models.param import Param
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.providers.google.cloud.transfers.bigquery_to_gcs import BigQueryToGCSOperator
 from airflow.operators.python import PythonOperator
-
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 PROJECT_ID = Variable.get("gcp_project_id", default_var="my-project")
 BUCKET_NAME = Variable.get(
@@ -65,25 +65,20 @@ def convert_gcs_lf_to_crlf(input_uri: str, output_uri: str, **context) -> None:
         out_blob = out_bucket.blob(out_blob_name)
         out_blob.upload_from_string(crlf_data, content_type="text/csv")
 
-
 BQ_SQL = """
 DECLARE batch_id STRING DEFAULT GENERATE_UUID();
 
 CREATE OR REPLACE TABLE `{{ params.project_id }}.{{ params.dataset }}.{{ params.export_table_id }}` AS
+WITH max_date_table AS (
+  SELECT
+    biobank_id, withdrawal_status ,
+    MAX(withdrawal_time) as max_status_date,
+  FROM `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_gsm_validation_history`
+  GROUP BY biobank_id, withdrawal_status
+),
 WITH source_rows AS (
-  with ranked_withdrawal_history as
-(
-  select biobank_id,
-  withdrawal_status,
-  RANK() OVER (PARTITION BY biobank_id
-                                ORDER BY withdrawal_time DESC)  as withdrawal_rank
-   from
-  `all-of-us-rdr-prod.rdr_operational_datastream.rdr_genomic_pipeline_gsm_validation_history`
-
-    )
-
 SELECT
-    collection_tube_id,
+  collection_tube_id,
     aw0tmp.biobank_id,
     sex_at_birth,
     genome_type,
@@ -92,20 +87,21 @@ SELECT
       WHEN ny_flag = "1" THEN "Y"
       ELSE ny_flag
     END as ny_flag,
-    case when (rwh.withdrawal_status = 'not_withdrawn' or rwh.biobank_id is null) then 'Y' else 'N' end as validation_passed,
+    'Y'  as validation_passed,
     ai_an,
     pediatric,
     finalized,
     aw0tmp.created,
-    file_path
-   FROM `all-of-us-rdr-prod.rdr_operational_datastream.rdr_genomic_pipeline_aw0_tmp` aw0tmp
-   LEFT JOIN ranked_withdrawal_history rwh on rwh.biobank_id = aw0tmp.biobank_id and rwh.withdrawal_rank = 1
-    WHERE validation_passed = "Y"
+    file_path,
+FROM `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_aw0_tmp` aw0tmp
+    LEFT JOIN  max_date_table m on
+        m.biobank_id = aw0tmp.biobank_id
+    WHERE   (m.biobank_id is null or m.withdrawal_status <> 'withdrawn')
       AND collection_tube_id IN UNNEST([
        {% for id in params.collection_tube_ids %}
          '{{ id }}'{% if not loop.last %},{% endif %}
        {% endfor %}
-     ])
+    ])
 ),
 latest_aw0 AS (
   SELECT
@@ -238,4 +234,11 @@ with DAG(
         },
     )
 
-    run_aw0_query >> export_aw0_to_gcs >> convert_csv_to_crlf
+    trigger_child = TriggerDagRunOperator(
+        task_id="trigger_update_validation_dag",
+        trigger_dag_id="genomic_pipeline_aw0_update_validation_history",  # Must match the child's dag_id
+        conf={"message": "Triggered from aw0pl generate manifest"},  # Optional configuration payload
+        wait_for_completion=False,  # If True, parent waits for child to finish
+    )
+
+    run_aw0_query >> export_aw0_to_gcs >> convert_csv_to_crlf >> trigger_child
