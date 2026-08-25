@@ -13,6 +13,7 @@ from rdr_service.model.base import Base, MetricsBase, RexBase, NphBase, VocBase,
 # All tables in the schema should be imported below here.
 # pylint: disable=unused-import
 from rdr_service.model.api_user import ApiUser
+from rdr_service.model.biospecimen_flags import BiospecimenFlags
 from rdr_service.model.etm import EtmQuestionnaire, EtmQuestionnaireResponse, EtmQuestionnaireResponseAnswer, \
     EtmQuestionnaireResponseMetadata
 from rdr_service.model.participant import Participant, ParticipantHistory
@@ -89,6 +90,7 @@ from rdr_service.etl.model.etl_vocabulary import Concept, ConceptRelationship, C
     CombinedSurveyFilter, SourceToConceptMap
 from rdr_service.model.exposomics import ExposomicsM0
 from rdr_service.model.participant_research_ids import ParticipantResearchIds
+from rdr_service.model.prs_consent import *
 
 RETRY_CONNECTION_LIMIT = 10
 

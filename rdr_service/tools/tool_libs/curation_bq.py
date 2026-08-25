@@ -116,6 +116,7 @@ class CurationBQ(ToolBase):
         super().__init__(args, gcp_env, tool_name, replica)
         self.client = bigquery.Client()
         self.dataset_id = f"{args.project}.{args.dataset}"
+        self.etl_filters = 'etl_filters'
 
     def run(self):
         super().run()
@@ -169,12 +170,16 @@ class CurationBQ(ToolBase):
                     write_disposition = bigquery.job.WriteDisposition.WRITE_TRUNCATE
                 job_config = bigquery.QueryJobConfig(destination=f"{self.dataset_id}.{table_name}",
                                                      write_disposition=write_disposition)
-            self.run_query(query.format(dataset_id=self.dataset_id, cutoff=self.args.cutoff), job_config)
+            self.run_query(
+                query.format(dataset_id=self.dataset_id, cutoff=self.args.cutoff, etl_filters=self.etl_filters),
+                job_config)
 
     def filter_src_clean(self):
-        self.run_query(sql=queries.queries['filter_questions']['query'].format(dataset_id=self.dataset_id),
+        self.run_query(sql=queries.queries['filter_questions']['query'].format(dataset_id=self.dataset_id,
+                                                                               etl_filters=self.etl_filters),
                        job_config=None)
-        self.run_query(sql=queries.queries['filter_surveys']['query'].format(dataset_id=self.dataset_id),
+        self.run_query(sql=queries.queries['filter_surveys']['query'].format(dataset_id=self.dataset_id,
+                                                                             etl_filters=self.etl_filters),
                        job_config=None)
 
     def export(self):

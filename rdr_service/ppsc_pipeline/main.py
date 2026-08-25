@@ -37,6 +37,7 @@ def awardee_insite_input_feed():
     input_feed.run_datafeed(datafeed)
     return '{ "success": "true" }'
 
+
 @app_util.auth_required_scheduler
 def ppsc_data_transfer_input_feed():
     datafeed = request.get_json().get("datafeed")

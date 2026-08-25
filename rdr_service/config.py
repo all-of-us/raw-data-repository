@@ -321,6 +321,8 @@ PUBLIC_METRICS_GENDER_ANSWERS_TABLE = "public_metrics_gender_answers_table"
 PUBLIC_METRICS_RACE_ANSWERS_TABLE = "public_metrics_race_answers_table"
 PUBLIC_METRICS_PARTICIPANT_STATUS_EVENT_TABLE = "public_metrics_participant_status_event_table"
 PUBLIC_METRICS_WITHDRAWAL_EVENT_TABLE = "public_metrics_withdrawal_event_table"
+PUBLIC_METRICS_AWARDEE_INSITE_TABLE = "public_metrics_awardee_insite_table"
+PUBLIC_METRICS_DEACTIVATION_EVENT_TABLE = "public_metrics_deactivation_event_table"
 
 PPSC_AWS_CREDS = "ppsc_aws_creds"
 

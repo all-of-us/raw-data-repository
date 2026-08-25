@@ -125,7 +125,7 @@ class PPSCIntakeAPI(BaseApi):
                 raise BadRequest("Profile Data payload missing Date of Birth")
 
         # Verify if pediatric assent is needed
-        if req_data['activity'] == 'Survey Completion' and req_data['eventType'] != 'Pediatrics Assent':
+        if req_data['activity'] == 'Survey Completion' and req_data['eventType'] != 'Pediatric Assent':
             age_group = None
             for element in req_data['dataElements']:
                 if element['dataElementName'] == 'age_group':
@@ -214,7 +214,7 @@ class PPSCIntakeAPI(BaseApi):
     def get_pediatric_assent(self, participant_id):
         with self.dao.session() as session:
             permission_event_name = 'Pediatric Permission'
-            assent_event_name = 'Pediatrics Assent'
+            assent_event_name = 'Pediatric Assent'
             age_group_element_name = 'age_group'
             status_element_name = 'activity_status'
 
