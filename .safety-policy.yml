@@ -20,6 +20,9 @@ security: # configuration for the `safety check` command
         85151:
             reason: protobuf version 3.20.3 has a vulnerability
             expires: '2027-07-31'
+        SFTY-20260721-58460:
+            reason: RDR code not deployed to MacOS
+            expires: '2027-07-31'
     continue-on-vulnerability-error: False # Suppress non-zero exit codes when vulnerabilities are found. Enable this in pipelines and CI/CD processes if you want to pass builds that have vulnerabilities. We recommend you set this to False.
 alert: # configuration for the `safety alert` command
     security:
