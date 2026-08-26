@@ -76,9 +76,9 @@ WITH max_date_table AS (
   FROM `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_gsm_validation_history`
   GROUP BY biobank_id, withdrawal_status
 ),
-WITH source_rows AS (
+source_rows AS (
 SELECT
-  collection_tube_id,
+  aw0tmp.collection_tube_id,
     aw0tmp.biobank_id,
     sex_at_birth,
     genome_type,
@@ -93,16 +93,19 @@ SELECT
     finalized,
     aw0tmp.created,
     file_path,
+     ROW_NUMBER() OVER (
+      PARTITION BY aw0tmp.collection_tube_id, genome_type
+      ORDER BY created DESC
+    ) AS rn
 FROM `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_aw0_tmp` aw0tmp
+    join `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_collection_tube_ids_aw0_plating` aw0pl on
+    aw0pl.collection_tube_id = aw0tmp.collection_tube_id
     LEFT JOIN  max_date_table m on
         m.biobank_id = aw0tmp.biobank_id
     WHERE   (m.biobank_id is null or m.withdrawal_status <> 'withdrawn')
-      AND collection_tube_id IN UNNEST([
-       {% for id in params.collection_tube_ids %}
-         '{{ id }}'{% if not loop.last %},{% endif %}
-       {% endfor %}
-    ])
-),
+
+    )
+,
 latest_aw0 AS (
   SELECT
     collection_tube_id,
