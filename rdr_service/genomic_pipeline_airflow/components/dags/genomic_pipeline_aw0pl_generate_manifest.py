@@ -98,11 +98,14 @@ SELECT
       ORDER BY created DESC
     ) AS rn
 FROM `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_aw0_tmp` aw0tmp
-    join `{{ params.project_id }}.{{ params.dataset }}.rdr_genomic_pipeline_collection_tube_ids_aw0_plating` aw0pl on
-    aw0pl.collection_tube_id = aw0tmp.collection_tube_id
     LEFT JOIN  max_date_table m on
         m.biobank_id = aw0tmp.biobank_id
     WHERE   (m.biobank_id is null or m.withdrawal_status <> 'withdrawn')
+    AND collection_tube_id IN UNNEST([
+       {% for id in params.collection_tube_ids %}
+         '{{ id }}'{% if not loop.last %},{% endif %}
+       {% endfor %}
+     ])
 
     )
 ,
