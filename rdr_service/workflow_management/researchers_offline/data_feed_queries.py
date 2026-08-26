@@ -22,9 +22,9 @@ def create_workspace_source_id_mapping(project: str, dataset: str, mapping_table
         )
         AND wdte.workspace_source_id NOT IN (
             # If the string ID doesn't already exist in the legacy table
-            SELECT DISTINCT migrated_vwb_workspace_id
+            SELECT DISTINCT workspace_source_id_v2
             FROM `{project}.{dataset}.{wb_source_table}` lwb
-            WHERE migrated_vwb_workspace_id IS NOT NULL
+            WHERE workspace_source_id_v2 IS NOT NULL
         )
     """
 
@@ -47,11 +47,11 @@ def get_workbench_workspaces_data_to_stream(project: str, dataset: str, mapping_
         LEFT JOIN `{project}.{dataset}.{mapping_table}` mt ON (mt.workspace_source_id = st.workspace_source_id
                                                               AND mt.ignore_flag = false)
         LEFT JOIN (
-            SELECT workspace_source_id, migrated_vwb_workspace_id
+            SELECT workspace_source_id, workspace_source_id_v2
             FROM `{project}.{dataset}.{wb_source_table}`
-            WHERE migrated_vwb_workspace_id IS NOT NULL
-            AND migration_state = 'FINISHED'
-        ) AS lwb ON lwb.migrated_vwb_workspace_id = st.workspace_source_id
+            WHERE workspace_source_id_v2 IS NOT NULL
+            AND (migration_state = 'FINISHED' OR recovery_state = 'RECOVERED')
+        ) AS lwb ON lwb.workspace_source_id_v2 = st.workspace_source_id
         WHERE NOT EXISTS (
             SELECT 1
             FROM `rdr_operational_datastream.rdr_workbench_workspace_snapshot` rwws
@@ -83,7 +83,7 @@ def get_workbench_researchers_data_to_stream(project: str, dataset: str, source_
 
 def get_legacy_workbench_workspaces_data_to_stream(project: str, dataset: str, wb_source_table: str) -> str:
     """Get legacy 1.0 data for Workbench Workspaces to stream to MySQL. The SQL will return any new or modified records
-    in the Workbench 1.0 workspaces table that has not been migrated to 2.0
+    in the Workbench 1.0 workspaces table that have not been migrated to 2.0
     """
     return f"""
         SELECT *
@@ -94,6 +94,8 @@ def get_legacy_workbench_workspaces_data_to_stream(project: str, dataset: str, w
             WHERE rwws.workspace_source_id = ws.workspace_source_id
             AND rwws.modified_time = DATETIME(ws.modified_time, 'UTC')
         )
-        AND migrated_vwb_workspace_id IS NULL
+        AND workspace_source_id_v2 IS NULL
         AND migration_state != 'FINISHED'
+        AND recovery_state != 'RECOVERED'
+        AND status != 'INACTIVE'
         """

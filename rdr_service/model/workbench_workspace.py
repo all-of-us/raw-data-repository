@@ -89,6 +89,14 @@ class WorkbenchWorkspaceBase(object):
     """Signifies if the workspace snapshot was sourced from Researcher Workbench (1.0) or Verily Workbench (2.0)"""
     migrationState = Column("migration_state", String(200))
     """The migration state of the record for the 2.0 Workbench migration if it is a Researcher Workbench (1.0) record"""
+    workspaceSourceIdV2 = Column("workspace_source_id_v2", String(200))
+    """Verily Workbench 2.0 unique identifier for a workspace"""
+    workspaceNamespace = Column("workspace_namespace", String(200))
+    """1.0 workbench workspace identifier"""
+    recoveryState = Column("recovery_state", String(200))
+    """The archive retrieval state of a Researcher Workbench (1.0) record"""
+    dataCollections = Column("data_collections", JSON, nullable=True, default=list())
+    """A list of all data collections associated with a workspace"""
 
 
 class WorkbenchWorkspaceApproved(WorkbenchWorkspaceBase, Base):
