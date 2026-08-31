@@ -273,7 +273,11 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 resource=json.dumps(item),
                 isDataCollection=item.get('isDataCollection'),
                 sourcePlatform=WorkbenchWorkspaceSourcePlatform(item.get('sourcePlatform', 'UNSET')),
-                migrationState=item.get('migrationState')
+                migrationState=item.get('migrationState'),
+                workspaceSourceIdV2=item.get('workspaceSourceIdV2'),
+                workspaceNamespace=item.get('workspaceNamespace'),
+                recoveryState=item.get('recoveryState'),
+                dataCollections=item.get('dataCollections', [])
             )
 
             workspaces.append(workspace)
@@ -303,10 +307,11 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         row_dict['educationLevel'] = WorkbenchWorkspaceEducationLevel(row.get('education_level', 'UNSET'))
         row_dict['incomeLevel'] = WorkbenchWorkspaceIncomeLevel(row.get('income_level', 'UNSET'))
         row_dict['aianResearchType'] = WorkbenchWorkspaceAianResearchType(row.get('aian_research_type', 'UNSET'))
-        row_dict['accessTier'] = WorkbenchWorkspaceAccessTier(row.get('access_Tier', 'UNSET'))
+        row_dict['accessTier'] = WorkbenchWorkspaceAccessTier(row.get('access_tier', 'UNSET'))
         row_dict['workbenchWorkspaceUser'] = self._get_users(row.get('workspace_users'), row.get('creator'))
         row_dict['sourcePlatform'] = WorkbenchWorkspaceSourcePlatform(row.get('source_platform', 'UNSET'))
         row_dict['resource'] = "No resource payload. Data from VWB 2.0"
+        row_dict['dataCollections'] = [x for x in row.get('data_collections')]
         return row_dict
 
     def _get_users(self, workspace_users_json, creator_json):
@@ -528,7 +533,15 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     "cdrVersion": workspace.cdrVersion,
                     "aianResearchType": str(WorkbenchWorkspaceAianResearchType(workspace.aianResearchType))
                     if workspace.aianResearchType else None,
-                    "aianResearchDetails": workspace.aianResearchDetails
+                    "aianResearchDetails": workspace.aianResearchDetails,
+                    "sourcePlatform": str(WorkbenchWorkspaceSourcePlatform(workspace.sourcePlatform))
+                    if workspace.sourcePlatform else None,
+                    "migrationState": workspace.migrationState,
+                    "workspaceSourceIdV2": workspace.workspaceSourceIdV2,
+                    "workspaceNamespace": workspace.workspaceNamespace,
+                    "recoveryState": workspace.recoveryState,
+                    "dataCollections": [str(value) for value in workspace.dataCollections]
+                    if workspace.dataCollections else []
                 }
                 results.append(record)
 
@@ -736,7 +749,15 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         "cdrVersion": workspace.cdrVersion,
                         "aianResearchType": str(WorkbenchWorkspaceAianResearchType(workspace.aianResearchType))
                         if workspace.aianResearchType else None,
-                        "aianResearchDetails": workspace.aianResearchDetails
+                        "aianResearchDetails": workspace.aianResearchDetails,
+                        "sourcePlatform": str(WorkbenchWorkspaceSourcePlatform(workspace.sourcePlatform))
+                        if workspace.sourcePlatform else None,
+                        "migrationState": workspace.migrationState,
+                        "workspaceSourceIdV2": workspace.workspaceSourceIdV2,
+                        "workspaceNamespace": workspace.workspaceNamespace,
+                        "recoveryState": workspace.recoveryState,
+                        "dataCollections": [str(value) for value in workspace.dataCollections]
+                        if workspace.dataCollections else []
                     }
 
                 affiliations = []
