@@ -16,35 +16,101 @@ from typing import Type, List, Callable, Union
 
 from rdr_service import config
 from rdr_service import api_util
-from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, PMI_SKIP_CODE, \
-    EMPLOYMENT_ZIPCODE_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, \
-    ZIPCODE_QUESTION_CODE, CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, EHR_CONSENT_QUESTION_CODE, \
-    WEAR_CONSENT_QUESTION_CODE, WEAR_CONSENT_MODULE
+from rdr_service.code_constants import (
+    PPI_SYSTEM,
+    CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
+    PMI_SKIP_CODE,
+    EMPLOYMENT_ZIPCODE_QUESTION_CODE,
+    STREET_ADDRESS_QUESTION_CODE,
+    STREET_ADDRESS2_QUESTION_CODE,
+    ZIPCODE_QUESTION_CODE,
+    CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
+    EHR_CONSENT_QUESTION_CODE,
+    WEAR_CONSENT_QUESTION_CODE,
+    WEAR_CONSENT_MODULE,
+)
 from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean, Location, CareSite, Provider, \
-    Person, Death, ObservationPeriod, PayerPlanPeriod, VisitOccurrence, ConditionOccurrence, ProcedureOccurrence, \
-    Observation, Measurement, Note, DrugExposure, DeviceExposure, Cost, FactRelationship, ConditionEra, DrugEra, \
-    DoseEra, Metadata, NoteNlp, VisitDetail, SrcParticipant, SrcMapped, SrcPersonLocation, SrcGender, SrcRace, \
-    SrcEthnicity, SrcMeas, MeasurementCodeMap, MeasurementValueCodeMap, SrcMeasMapped, SrcVisits, TempObsTarget, \
-    TempObsEndUnion, TempObsEndUnionPart, TempObsEnd, TempObs, TempFactRelSd, PidRidMapping, \
-    QuestionnaireResponseAdditionalInfo, EHRConsentStatus, WearConsent
+from rdr_service.etl.model.src_clean import (
+    QuestionnaireAnswersByModule,
+    SrcClean,
+    Location,
+    CareSite,
+    Provider,
+    Person,
+    Death,
+    ObservationPeriod,
+    PayerPlanPeriod,
+    VisitOccurrence,
+    ConditionOccurrence,
+    ProcedureOccurrence,
+    Observation,
+    Measurement,
+    Note,
+    DrugExposure,
+    DeviceExposure,
+    Cost,
+    FactRelationship,
+    ConditionEra,
+    DrugEra,
+    DoseEra,
+    Metadata,
+    NoteNlp,
+    VisitDetail,
+    SrcParticipant,
+    SrcMapped,
+    SrcPersonLocation,
+    SrcGender,
+    SrcRace,
+    SrcEthnicity,
+    SrcMeas,
+    MeasurementCodeMap,
+    MeasurementValueCodeMap,
+    SrcMeasMapped,
+    SrcVisits,
+    TempObsTarget,
+    TempObsEndUnion,
+    TempObsEndUnionPart,
+    TempObsEnd,
+    TempObs,
+    TempFactRelSd,
+    PidRidMapping,
+    QuestionnaireResponseAdditionalInfo,
+    EHRConsentStatus,
+    WearConsent,
+)
 from rdr_service.model.code import Code
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
 from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion, \
-    Questionnaire
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
-    QuestionnaireResponseClassificationType
+from rdr_service.model.questionnaire import (
+    QuestionnaireConcept,
+    QuestionnaireHistory,
+    QuestionnaireQuestion,
+    Questionnaire,
+)
+from rdr_service.model.questionnaire_response import (
+    QuestionnaireResponse,
+    QuestionnaireResponseAnswer,
+    QuestionnaireResponseClassificationType,
+)
 from rdr_service.model.curation_etl import CdrExcludedCode
 from rdr_service.model.deceased_report import DeceasedReport
-from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus, CdrEtlCodeType,\
-    QuestionnaireStatus, DeceasedReportStatus
+from rdr_service.participant_enums import (
+    QuestionnaireResponseStatus,
+    WithdrawalStatus,
+    CdrEtlCodeType,
+    QuestionnaireStatus,
+    DeceasedReportStatus,
+)
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
-from rdr_service.dao.curation_etl_dao import CdrEtlRunHistoryDao, CdrEtlSurveyHistoryDao, CdrExcludedCodeDao
+from rdr_service.dao.curation_etl_dao import (
+    CdrEtlRunHistoryDao,
+    CdrEtlSurveyHistoryDao,
+    CdrExcludedCodeDao,
+)
 from rdr_service.services.system_utils import list_chunks
 
 _logger = logging.getLogger("rdr_logger")
@@ -65,17 +131,40 @@ class CurationExportClass(ToolBase):
     """
     Export the data from the Curation ETL process.
     """
-    tables = ['pid_rid_mapping', 'care_site', 'condition_era', 'condition_occurrence', 'cost', 'death',
-              'device_exposure', 'dose_era', 'drug_era', 'drug_exposure', 'fact_relationship',
-              'location', 'measurement', 'observation_period', 'payer_plan_period', 'visit_detail',
-              'person', 'procedure_occurrence', 'provider', 'visit_occurrence', 'metadata', 'note_nlp',
-              'questionnaire_response_additional_info', 'consent', 'wear_consent']
+
+    tables = [
+        "pid_rid_mapping",
+        "care_site",
+        "condition_era",
+        "condition_occurrence",
+        "cost",
+        "death",
+        "device_exposure",
+        "dose_era",
+        "drug_era",
+        "drug_exposure",
+        "fact_relationship",
+        "location",
+        "measurement",
+        "observation_period",
+        "payer_plan_period",
+        "visit_detail",
+        "person",
+        "procedure_occurrence",
+        "provider",
+        "visit_occurrence",
+        "metadata",
+        "note_nlp",
+        "questionnaire_response_additional_info",
+        "consent",
+        "wear_consent",
+    ]
 
     # Observation takes a while and ends up timing the client out. The server will continue to process and the client
     # will print out a message describing how to continue to track it, but for now it crashes the script so it has
     # to be last. Breaking it out into it's own list to allow for custom processing before 'finishing' the script
     # TODO: gracefully handle observation's timeout
-    problematic_tables = ['observation']
+    problematic_tables = ["observation"]
 
     def __init__(self, args, gcp_env=None, tool_name=None, replica=False):
         super(CurationExportClass, self).__init__(args, gcp_env, tool_name, replica)
@@ -99,7 +188,7 @@ class CurationExportClass(ToolBase):
         # And whitespace was trimmed before so that's moved into the SQL as well
         # Newlines and double-quotes are also replaced with spaces and single-quotes, respectively
         data_select_list = [
-            f"TRIM(REPLACE(REPLACE(REPLACE(COALESCE({name}, ''), '\\0', ''), '\n', ' '), '\\\"', '\\\''))"
+            f"TRIM(REPLACE(REPLACE(REPLACE(COALESCE({name}, ''), '\\0', ''), '\n', ' '), '\\\"', '\\''))"
             for name in column_name_list
         ]
 
@@ -149,23 +238,27 @@ class CurationExportClass(ToolBase):
         """
         sql_string = self._render_export_select(
             export_sql=f"SELECT * FROM {table}",
-            column_name_list=self.get_field_names(table, exclude=['id'])
+            column_name_list=self.get_field_names(table, exclude=["id"]),
         )
 
-        _logger.info(f'exporting {table}')
-        cloud_file = f'gs://{self.args.export_path}/{table}.csv'
-        gcp_sql_export_csv(self.args.project, sql_string, cloud_file, database='cdm')
+        _logger.info(f"exporting {table}")
+        cloud_file = f"gs://{self.args.export_path}/{table}.csv"
+        gcp_sql_export_csv(self.args.project, sql_string, cloud_file, database="cdm")
 
     def export_cope_map(self):
         cope_map = self.get_server_config()[config.COPE_FORM_ID_MAP]
         cope_external_id_flat_list = []
         external_id_to_month_cases = []
         for external_ids_str, month in cope_map.items():
-            quoted_ids = [f"'{external_id}'" for external_id in external_ids_str.split(',')]
+            quoted_ids = [
+                f"'{external_id}'" for external_id in external_ids_str.split(",")
+            ]
             for quoted_id in quoted_ids:
                 cope_external_id_flat_list.append(quoted_id)
 
-            external_id_to_month_cases.append(f"when qh.external_id in ({','.join(quoted_ids)}) then '{month.lower()}'")
+            external_id_to_month_cases.append(
+                f"when qh.external_id in ({','.join(quoted_ids)}) then '{month.lower()}'"
+            )
 
         export_sql = self._render_export_select(
             export_sql=f"""
@@ -180,39 +273,55 @@ class CurationExportClass(ToolBase):
                 JOIN participant p on qr.participant_id = p.participant_id
                 WHERE qh.external_id IN ({','.join(cope_external_id_flat_list)})
             """,
-            column_name_list=['participant_id', 'questionnaire_response_id', 'semantic_version', 'cope_month', 'src_id']
+            column_name_list=[
+                "participant_id",
+                "questionnaire_response_id",
+                "semantic_version",
+                "cope_month",
+                "src_id",
+            ],
         )
-        export_name = 'cope_survey_semantic_version_map'
-        cloud_file = f'gs://{self.args.export_path}/{export_name}.csv'
+        export_name = "cope_survey_semantic_version_map"
+        cloud_file = f"gs://{self.args.export_path}/{export_name}.csv"
 
-        _logger.info(f'exporting {export_name}')
-        gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
+        _logger.info(f"exporting {export_name}")
+        gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database="rdr")
 
     def export_participant_id_map(self):
         dao = ParticipantDao()
         export_sql = dao.get_participant_id_mapping(is_sql=True)
 
-        export_name = 'participant_id_mapping'
-        cloud_file = f'gs://{self.args.export_path}/{export_name}.csv'
+        export_name = "participant_id_mapping"
+        cloud_file = f"gs://{self.args.export_path}/{export_name}.csv"
 
-        _logger.info(f'exporting {export_name}')
-        gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
+        _logger.info(f"exporting {export_name}")
+        gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database="rdr")
 
     def export_etl_run_info(self):
         with self.get_session() as session:
-            etl_run_info_sql = self.cdr_etl_run_history_dao.get_last_etl_run_info(session, is_sql=True)
-            etl_run_code_info = self.cdr_etl_survey_history_dao.get_last_etl_run_code_history(session, is_sql=True)
+            etl_run_info_sql = self.cdr_etl_run_history_dao.get_last_etl_run_info(
+                session, is_sql=True
+            )
+            etl_run_code_info = (
+                self.cdr_etl_survey_history_dao.get_last_etl_run_code_history(
+                    session, is_sql=True
+                )
+            )
 
-        run_info_export_name = 'cdr_etl_run_info'
-        code_info_export_name = 'cdr_etl_run_code_info'
+        run_info_export_name = "cdr_etl_run_info"
+        code_info_export_name = "cdr_etl_run_code_info"
 
-        cloud_file = f'gs://{self.args.export_path}/{run_info_export_name}.csv'
-        _logger.info(f'exporting {run_info_export_name}')
-        gcp_sql_export_csv(self.args.project, etl_run_info_sql, cloud_file, database='rdr')
+        cloud_file = f"gs://{self.args.export_path}/{run_info_export_name}.csv"
+        _logger.info(f"exporting {run_info_export_name}")
+        gcp_sql_export_csv(
+            self.args.project, etl_run_info_sql, cloud_file, database="rdr"
+        )
 
-        cloud_file = f'gs://{self.args.export_path}/{code_info_export_name}.csv'
-        _logger.info(f'exporting {code_info_export_name}')
-        gcp_sql_export_csv(self.args.project, etl_run_code_info, cloud_file, database='rdr')
+        cloud_file = f"gs://{self.args.export_path}/{code_info_export_name}.csv"
+        _logger.info(f"exporting {code_info_export_name}")
+        gcp_sql_export_csv(
+            self.args.project, etl_run_code_info, cloud_file, database="rdr"
+        )
 
     def export_survey_conduct(self):
         export_sql = self._render_export_select(
@@ -269,49 +378,57 @@ class CurationExportClass(ToolBase):
                 )
             """,
             column_name_list=[
-                'survey_conduct_id',
-                'person_id',
-                'survey_concept_id',
-                'survey_start_date',
-                'survey_start_datetime',
-                'survey_end_date',
-                'survey_end_datetime',
-                'provider_id',
-                'assisted_concept_id',
-                'respondent_type_concept_id',
-                'timing_concept_id',
-                'collection_method_concept_id',
-                'assisted_source_value',
-                'respondent_type_source_value',
-                'timing_source_value',
-                'collection_method_source_value',
-                'survey_source_value',
-                'survey_source_concept_id',
-                'survey_source_identifier',
-                'validated_survey_concept_id',
-                'validated_survey_source_value',
-                'survey_version_number',
-                'visit_occurrence_id',
-                'response_visit_occurrence_id',
-                'src_id'
-            ]
+                "survey_conduct_id",
+                "person_id",
+                "survey_concept_id",
+                "survey_start_date",
+                "survey_start_datetime",
+                "survey_end_date",
+                "survey_end_datetime",
+                "provider_id",
+                "assisted_concept_id",
+                "respondent_type_concept_id",
+                "timing_concept_id",
+                "collection_method_concept_id",
+                "assisted_source_value",
+                "respondent_type_source_value",
+                "timing_source_value",
+                "collection_method_source_value",
+                "survey_source_value",
+                "survey_source_concept_id",
+                "survey_source_identifier",
+                "validated_survey_concept_id",
+                "validated_survey_source_value",
+                "survey_version_number",
+                "visit_occurrence_id",
+                "response_visit_occurrence_id",
+                "src_id",
+            ],
         )
-        export_name = 'survey_conduct'
-        cloud_file = f'gs://{self.args.export_path}/{export_name}.csv'
+        export_name = "survey_conduct"
+        cloud_file = f"gs://{self.args.export_path}/{export_name}.csv"
 
-        _logger.info(f'exporting {export_name}')
-        gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
+        _logger.info(f"exporting {export_name}")
+        gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database="rdr")
 
     def run_curation_export(self):
         # Because there are no models for the data stored in the 'cdm' database, we'll
         # just use a standard MySQLDB connection.
-        self.db_conn = self.gcp_env.make_mysqldb_connection(user='alembic', database='cdm')
+        self.db_conn = self.gcp_env.make_mysqldb_connection(
+            user="alembic", database="cdm"
+        )
 
-        if not any((self.args.export_path.startswith('gs://all-of-us-rdr-prod-cdm/'),
-                    self.args.export_path.startswith('gs://all-of-us-rdr-stable-cdm'))):
-            raise NameError("Export path must start with 'gs://all-of-us-rdr-prod-cdm/'"
-                            "or 'gs://all-of-us-rdr-stable-cdm/'.")
-        if self.args.export_path.endswith('/'):  # Remove trailing slash if present.
+        if not any(
+            (
+                self.args.export_path.startswith("gs://all-of-us-rdr-prod-cdm/"),
+                self.args.export_path.startswith("gs://all-of-us-rdr-stable-cdm"),
+            )
+        ):
+            raise NameError(
+                "Export path must start with 'gs://all-of-us-rdr-prod-cdm/'"
+                "or 'gs://all-of-us-rdr-stable-cdm/'."
+            )
+        if self.args.export_path.endswith("/"):  # Remove trailing slash if present.
             self.args.export_path = self.args.export_path[5:-1]
 
         if self.args.table:
@@ -351,55 +468,79 @@ class CurationExportClass(ToolBase):
         to "rdr.questionnaire_response" in the sql generated).
         """
         for rdr_model_class in model_class_list:
-            rdr_model_class.__table__.schema = 'rdr'
+            rdr_model_class.__table__.schema = "rdr"
 
     @staticmethod
     def _module_code_or_external_id_if_cope(code_reference: Type[Code]):
         return case(
-            [(code_reference.value == 'COPE', QuestionnaireHistory.externalId)],
-            else_=code_reference.value
+            [(code_reference.value == "COPE", QuestionnaireHistory.externalId)],
+            else_=code_reference.value,
         )
 
-    def _populate_questionnaire_answers_by_module(self, session, pid_list:List[int], cutoff_date=None):
+    def _populate_questionnaire_answers_by_module(
+        self, session, pid_list: List[int], cutoff_date=None
+    ):
         session.execute("TRUNCATE TABLE questionnaire_answers_by_module")
-        self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept, QuestionnaireHistory,
-                                    QuestionnaireQuestion, QuestionnaireResponseAnswer, CdrExcludedCode])
+        self._set_rdr_model_schema(
+            [
+                Code,
+                QuestionnaireResponse,
+                QuestionnaireConcept,
+                QuestionnaireHistory,
+                QuestionnaireQuestion,
+                QuestionnaireResponseAnswer,
+                CdrExcludedCode,
+            ]
+        )
         column_map = {
             QuestionnaireAnswersByModule.participant_id: QuestionnaireResponse.participantId,
             QuestionnaireAnswersByModule.authored: QuestionnaireResponse.authored,
             QuestionnaireAnswersByModule.created: QuestionnaireResponse.created,
-            QuestionnaireAnswersByModule.survey: self._module_code_or_external_id_if_cope(Code),
+            QuestionnaireAnswersByModule.survey: self._module_code_or_external_id_if_cope(
+                Code
+            ),
             QuestionnaireAnswersByModule.response_id: QuestionnaireResponse.questionnaireResponseId,
-            QuestionnaireAnswersByModule.question_code_id: QuestionnaireQuestion.codeId
+            QuestionnaireAnswersByModule.question_code_id: QuestionnaireQuestion.codeId,
         }
 
         # QuestionnaireResponse is implicitly the first table, others are joined
-        answers_by_module_select = session.query(*column_map.values()).join(
-            QuestionnaireConcept,
-            and_(
-                QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
-                QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
+        answers_by_module_select = (
+            session.query(*column_map.values())
+            .join(
+                QuestionnaireConcept,
+                and_(
+                    QuestionnaireConcept.questionnaireId
+                    == QuestionnaireResponse.questionnaireId,
+                    QuestionnaireConcept.questionnaireVersion
+                    == QuestionnaireResponse.questionnaireVersion,
+                ),
             )
-        ).join(
-            Code,
-            Code.codeId == QuestionnaireConcept.codeId
-        ).join(
-            QuestionnaireHistory,
-            and_(
-                QuestionnaireHistory.questionnaireId == QuestionnaireResponse.questionnaireId,
-                QuestionnaireHistory.version == QuestionnaireResponse.questionnaireVersion
+            .join(Code, Code.codeId == QuestionnaireConcept.codeId)
+            .join(
+                QuestionnaireHistory,
+                and_(
+                    QuestionnaireHistory.questionnaireId
+                    == QuestionnaireResponse.questionnaireId,
+                    QuestionnaireHistory.version
+                    == QuestionnaireResponse.questionnaireVersion,
+                ),
             )
-        ).join(
-            QuestionnaireResponseAnswer,
-            QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
-        ).join(
-            QuestionnaireQuestion
-        ).filter(
-            QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
-            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.INVALID,
-            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.PROFILE_UPDATE,
-            QuestionnaireResponse.participantId.in_(pid_list)
+            .join(
+                QuestionnaireResponseAnswer,
+                QuestionnaireResponseAnswer.questionnaireResponseId
+                == QuestionnaireResponse.questionnaireResponseId,
+            )
+            .join(QuestionnaireQuestion)
+            .filter(
+                QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
+                QuestionnaireResponse.classificationType
+                != QuestionnaireResponseClassificationType.DUPLICATE,
+                QuestionnaireResponse.classificationType
+                != QuestionnaireResponseClassificationType.INVALID,
+                QuestionnaireResponse.classificationType
+                != QuestionnaireResponseClassificationType.PROFILE_UPDATE,
+                QuestionnaireResponse.participantId.in_(pid_list),
+            )
         )
         if cutoff_date:
             answers_by_module_select = answers_by_module_select.filter(
@@ -414,149 +555,205 @@ class CurationExportClass(ToolBase):
                 Code.value.notin_(self.exclude_surveys)
             )
 
-        insert_query = insert(QuestionnaireAnswersByModule).from_select(column_map.keys(), answers_by_module_select)
+        insert_query = insert(QuestionnaireAnswersByModule).from_select(
+            column_map.keys(), answers_by_module_select
+        )
         session.execute(insert_query)
 
     @classmethod
     def _null_if_answer_ignored(cls, else_value):
         return case(
-            [
-                (QuestionnaireResponseAnswer.ignore.is_(True), None)
-            ],
-            else_=else_value
+            [(QuestionnaireResponseAnswer.ignore.is_(True), None)], else_=else_value
         )
 
     @classmethod
-    def _get_base_src_clean_answers_select(cls, session, pid_list:List[int], cutoff_date=None, include_surveys=None,
-                                           exclude_surveys=None):
+    def _get_base_src_clean_answers_select(
+        cls,
+        session,
+        pid_list: List[int],
+        cutoff_date=None,
+        include_surveys=None,
+        exclude_surveys=None,
+    ):
         module_code = aliased(Code)
         question_code = aliased(Code)
         answer_code = aliased(Code)
 
         # TODO: when the responses with these answers in the valueInteger field are cleaned up, we can remove this
-        zipcode_question_codes_to_remap = [EMPLOYMENT_ZIPCODE_QUESTION_CODE, ZIPCODE_QUESTION_CODE]
+        zipcode_question_codes_to_remap = [
+            EMPLOYMENT_ZIPCODE_QUESTION_CODE,
+            ZIPCODE_QUESTION_CODE,
+        ]
 
         column_map = {
             SrcClean.participant_id: Participant.participantId,
             SrcClean.research_id: Participant.researchId,
             SrcClean.external_id: Participant.externalId,
             SrcClean.survey_name: module_code.value,
-            SrcClean.date_of_survey: coalesce(QuestionnaireResponse.authored, QuestionnaireResponse.created),
+            SrcClean.date_of_survey: coalesce(
+                QuestionnaireResponse.authored, QuestionnaireResponse.created
+            ),
             SrcClean.question_ppi_code: question_code.value,
             SrcClean.question_code_id: QuestionnaireQuestion.codeId,
             SrcClean.value_ppi_code: case(
-                [
-                    (QuestionnaireResponseAnswer.ignore.is_(True), PMI_SKIP_CODE)
-                ],
-                else_=answer_code.value
+                [(QuestionnaireResponseAnswer.ignore.is_(True), PMI_SKIP_CODE)],
+                else_=answer_code.value,
             ),
             SrcClean.topic_value: answer_code.topic,
             SrcClean.is_invalid: QuestionnaireResponseAnswer.ignore.is_(True),
-            SrcClean.value_code_id: cls._null_if_answer_ignored(else_value=QuestionnaireResponseAnswer.valueCodeId),
-            SrcClean.value_number: cls._null_if_answer_ignored(else_value=case([(
-                # Only set value number if the question code is not one of the zip codes to re-map
-                question_code.value.notin_(zipcode_question_codes_to_remap),
-                coalesce(QuestionnaireResponseAnswer.valueDecimal, QuestionnaireResponseAnswer.valueInteger)
-            )])),
-            SrcClean.value_boolean: cls._null_if_answer_ignored(else_value=QuestionnaireResponseAnswer.valueBoolean),
-            SrcClean.value_date: cls._null_if_answer_ignored(else_value=coalesce(
-                QuestionnaireResponseAnswer.valueDate,
-                QuestionnaireResponseAnswer.valueDateTime
-            )),
-            SrcClean.value_string: cls._null_if_answer_ignored(else_value=coalesce(
-                func.left(QuestionnaireResponseAnswer.valueString, 1024),
-                QuestionnaireResponseAnswer.valueDate,
-                QuestionnaireResponseAnswer.valueDateTime,
-                answer_code.display,
-                case([  # Use valueInteger if the question code should be re-mapped
-                    (question_code.value.in_(zipcode_question_codes_to_remap),
-                     QuestionnaireResponseAnswer.valueInteger)
-                ])
-            )),
-            SrcClean.questionnaire_response_id: QuestionnaireResponse.questionnaireResponseId,
-            SrcClean.unit_id: concat(
-                'cln.',
-                case(
+            SrcClean.value_code_id: cls._null_if_answer_ignored(
+                else_value=QuestionnaireResponseAnswer.valueCodeId
+            ),
+            SrcClean.value_number: cls._null_if_answer_ignored(
+                else_value=case(
                     [
-                        (QuestionnaireResponseAnswer.valueCodeId.isnot(None), 'code'),
-                        (QuestionnaireResponseAnswer.valueInteger.isnot(None), 'int'),
-                        (QuestionnaireResponseAnswer.valueDecimal.isnot(None), 'dec'),
-                        (QuestionnaireResponseAnswer.valueBoolean.isnot(None), 'bool'),
-                        (QuestionnaireResponseAnswer.valueDate.isnot(None), 'date'),
-                        (QuestionnaireResponseAnswer.valueDateTime.isnot(None), 'dtime'),
-                        (QuestionnaireResponseAnswer.valueString.isnot(None), 'str'),
-                    ],
-                    else_=''
+                        (
+                            # Only set value number if the question code is not one of the zip codes to re-map
+                            question_code.value.notin_(zipcode_question_codes_to_remap),
+                            coalesce(
+                                QuestionnaireResponseAnswer.valueDecimal,
+                                QuestionnaireResponseAnswer.valueInteger,
+                            ),
+                        )
+                    ]
                 )
             ),
-            SrcClean.filter: literal_column('0'),
+            SrcClean.value_boolean: cls._null_if_answer_ignored(
+                else_value=QuestionnaireResponseAnswer.valueBoolean
+            ),
+            SrcClean.value_date: cls._null_if_answer_ignored(
+                else_value=coalesce(
+                    QuestionnaireResponseAnswer.valueDate,
+                    QuestionnaireResponseAnswer.valueDateTime,
+                )
+            ),
+            SrcClean.value_string: cls._null_if_answer_ignored(
+                else_value=coalesce(
+                    func.left(QuestionnaireResponseAnswer.valueString, 1024),
+                    QuestionnaireResponseAnswer.valueDate,
+                    QuestionnaireResponseAnswer.valueDateTime,
+                    answer_code.display,
+                    case(
+                        [  # Use valueInteger if the question code should be re-mapped
+                            (
+                                question_code.value.in_(
+                                    zipcode_question_codes_to_remap
+                                ),
+                                QuestionnaireResponseAnswer.valueInteger,
+                            )
+                        ]
+                    ),
+                )
+            ),
+            SrcClean.questionnaire_response_id: QuestionnaireResponse.questionnaireResponseId,
+            SrcClean.unit_id: concat(
+                "cln.",
+                case(
+                    [
+                        (QuestionnaireResponseAnswer.valueCodeId.isnot(None), "code"),
+                        (QuestionnaireResponseAnswer.valueInteger.isnot(None), "int"),
+                        (QuestionnaireResponseAnswer.valueDecimal.isnot(None), "dec"),
+                        (QuestionnaireResponseAnswer.valueBoolean.isnot(None), "bool"),
+                        (QuestionnaireResponseAnswer.valueDate.isnot(None), "date"),
+                        (
+                            QuestionnaireResponseAnswer.valueDateTime.isnot(None),
+                            "dtime",
+                        ),
+                        (QuestionnaireResponseAnswer.valueString.isnot(None), "str"),
+                    ],
+                    else_="",
+                ),
+            ),
+            SrcClean.filter: literal_column("0"),
             SrcClean.src_id: case(
                 [
-                    (Participant.participantOrigin == 'careevolution', 'ce'),
-                    (Participant.participantOrigin == 'vibrent', 'vibrent'),
+                    (Participant.participantOrigin == "careevolution", "ce"),
+                    (Participant.participantOrigin == "vibrent", "vibrent"),
                 ],
-                else_=Participant.participantOrigin
-            )
+                else_=Participant.participantOrigin,
+            ),
         }
 
-        questionnaire_answers_select = session.query(*column_map.values()).select_from(
-            Participant
-        ).join(
-            QuestionnaireResponse
-        ).join(
-            QuestionnaireConcept,
-            and_(
-                QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
-                QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
+        questionnaire_answers_select = (
+            session.query(*column_map.values())
+            .select_from(Participant)
+            .join(QuestionnaireResponse)
+            .join(
+                QuestionnaireConcept,
+                and_(
+                    QuestionnaireConcept.questionnaireId
+                    == QuestionnaireResponse.questionnaireId,
+                    QuestionnaireConcept.questionnaireVersion
+                    == QuestionnaireResponse.questionnaireVersion,
+                ),
             )
-        ).join(
-            QuestionnaireResponseAnswer
-        ).join(
-            QuestionnaireQuestion,
-            QuestionnaireQuestion.questionnaireQuestionId == QuestionnaireResponseAnswer.questionId
-        ).join(
-            QuestionnaireHistory,
-            and_(
-                QuestionnaireHistory.questionnaireId == QuestionnaireResponse.questionnaireId,
-                QuestionnaireHistory.version == QuestionnaireResponse.questionnaireVersion
+            .join(QuestionnaireResponseAnswer)
+            .join(
+                QuestionnaireQuestion,
+                QuestionnaireQuestion.questionnaireQuestionId
+                == QuestionnaireResponseAnswer.questionId,
             )
-        ).join(
-            question_code,
-            question_code.codeId == QuestionnaireQuestion.codeId
-        ).outerjoin(
-            answer_code,
-            answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId
-        ).outerjoin(
-            module_code,
-            module_code.codeId == QuestionnaireConcept.codeId
-        ).filter(
-            or_(
-                and_(QuestionnaireResponseAnswer.valueCodeId.isnot(None), answer_code.codeId.isnot(None)),
-                QuestionnaireResponseAnswer.valueInteger.isnot(None),
-                QuestionnaireResponseAnswer.valueDecimal.isnot(None),
-                QuestionnaireResponseAnswer.valueBoolean.isnot(None),
-                QuestionnaireResponseAnswer.valueDate.isnot(None),
-                QuestionnaireResponseAnswer.valueDateTime.isnot(None),
-                QuestionnaireResponseAnswer.valueString.isnot(None)
-            ),
-            QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
-            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.INVALID,
-            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.PROFILE_UPDATE,
-
-            not_(QuestionnaireConcept.codeId.in_(
-                session.query(CdrExcludedCode.codeId).filter(
-                    CdrExcludedCode.codeType == CdrEtlCodeType.MODULE).subquery())),
-            not_(QuestionnaireQuestion.codeId.in_(
-                session.query(CdrExcludedCode.codeId).filter(
-                    CdrExcludedCode.codeType == CdrEtlCodeType.QUESTION).subquery())),
-            or_(
-                QuestionnaireResponseAnswer.valueCodeId.is_(None),
-                not_(QuestionnaireResponseAnswer.valueCodeId.in_(
-                    session.query(CdrExcludedCode.codeId).filter(
-                        CdrExcludedCode.codeType == CdrEtlCodeType.ANSWER).subquery()))
-            ),
-            QuestionnaireResponse.participantId.in_(pid_list)
+            .join(
+                QuestionnaireHistory,
+                and_(
+                    QuestionnaireHistory.questionnaireId
+                    == QuestionnaireResponse.questionnaireId,
+                    QuestionnaireHistory.version
+                    == QuestionnaireResponse.questionnaireVersion,
+                ),
+            )
+            .join(question_code, question_code.codeId == QuestionnaireQuestion.codeId)
+            .outerjoin(
+                answer_code,
+                answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId,
+            )
+            .outerjoin(module_code, module_code.codeId == QuestionnaireConcept.codeId)
+            .filter(
+                or_(
+                    and_(
+                        QuestionnaireResponseAnswer.valueCodeId.isnot(None),
+                        answer_code.codeId.isnot(None),
+                    ),
+                    QuestionnaireResponseAnswer.valueInteger.isnot(None),
+                    QuestionnaireResponseAnswer.valueDecimal.isnot(None),
+                    QuestionnaireResponseAnswer.valueBoolean.isnot(None),
+                    QuestionnaireResponseAnswer.valueDate.isnot(None),
+                    QuestionnaireResponseAnswer.valueDateTime.isnot(None),
+                    QuestionnaireResponseAnswer.valueString.isnot(None),
+                ),
+                QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
+                QuestionnaireResponse.classificationType
+                != QuestionnaireResponseClassificationType.DUPLICATE,
+                QuestionnaireResponse.classificationType
+                != QuestionnaireResponseClassificationType.INVALID,
+                QuestionnaireResponse.classificationType
+                != QuestionnaireResponseClassificationType.PROFILE_UPDATE,
+                not_(
+                    QuestionnaireConcept.codeId.in_(
+                        session.query(CdrExcludedCode.codeId)
+                        .filter(CdrExcludedCode.codeType == CdrEtlCodeType.MODULE)
+                        .subquery()
+                    )
+                ),
+                not_(
+                    QuestionnaireQuestion.codeId.in_(
+                        session.query(CdrExcludedCode.codeId)
+                        .filter(CdrExcludedCode.codeType == CdrEtlCodeType.QUESTION)
+                        .subquery()
+                    )
+                ),
+                or_(
+                    QuestionnaireResponseAnswer.valueCodeId.is_(None),
+                    not_(
+                        QuestionnaireResponseAnswer.valueCodeId.in_(
+                            session.query(CdrExcludedCode.codeId)
+                            .filter(CdrExcludedCode.codeType == CdrEtlCodeType.ANSWER)
+                            .subquery()
+                        )
+                    ),
+                ),
+                QuestionnaireResponse.participantId.in_(pid_list),
+            )
         )
 
         if cutoff_date is not None:
@@ -575,130 +772,196 @@ class CurationExportClass(ToolBase):
 
         return column_map, questionnaire_answers_select, module_code, question_code
 
-    def _populate_src_clean(self, session, pid_list:List[int], cutoff_date=None):
+    def _populate_src_clean(self, session, pid_list: List[int], cutoff_date=None):
 
-        self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion, ParticipantSummary,
-                                    QuestionnaireResponse, QuestionnaireResponseAnswer])
+        self._set_rdr_model_schema(
+            [
+                Code,
+                HPO,
+                Participant,
+                QuestionnaireQuestion,
+                ParticipantSummary,
+                QuestionnaireResponse,
+                QuestionnaireResponseAnswer,
+            ]
+        )
 
         # These modules should have the latest answers for each question,
         # rather than the answers from the latest response
         rolled_up_module_codes = [CONSENT_FOR_STUDY_ENROLLMENT_MODULE]
 
-        responses_by_module_subquery = session.query(
-            QuestionnaireAnswersByModule.participant_id,
-            QuestionnaireAnswersByModule.response_id,
-            QuestionnaireAnswersByModule.survey,
-            QuestionnaireAnswersByModule.authored,
-            QuestionnaireAnswersByModule.created
-        ).distinct().subquery()
+        responses_by_module_subquery = (
+            session.query(
+                QuestionnaireAnswersByModule.participant_id,
+                QuestionnaireAnswersByModule.response_id,
+                QuestionnaireAnswersByModule.survey,
+                QuestionnaireAnswersByModule.authored,
+                QuestionnaireAnswersByModule.created,
+            )
+            .distinct()
+            .subquery()
+        )
 
-        column_map, questionnaire_answers_select, module_code, question_code \
-            = self._get_base_src_clean_answers_select(session, pid_list, cutoff_date, self.include_surveys,
-                                                      self.exclude_surveys)
+        column_map, questionnaire_answers_select, module_code, question_code = (
+            self._get_base_src_clean_answers_select(
+                session,
+                pid_list,
+                cutoff_date,
+                self.include_surveys,
+                self.exclude_surveys,
+            )
+        )
 
         latest_responses_select = questionnaire_answers_select.outerjoin(
             responses_by_module_subquery,
             and_(
-                responses_by_module_subquery.c.participant_id == QuestionnaireResponse.participantId,
-                responses_by_module_subquery.c.response_id != QuestionnaireResponse.questionnaireResponseId,
-                responses_by_module_subquery.c.survey == self._module_code_or_external_id_if_cope(module_code),
+                responses_by_module_subquery.c.participant_id
+                == QuestionnaireResponse.participantId,
+                responses_by_module_subquery.c.response_id
+                != QuestionnaireResponse.questionnaireResponseId,
+                responses_by_module_subquery.c.survey
+                == self._module_code_or_external_id_if_cope(module_code),
                 case(  # If the authored date for the responses match, then join based on the created date instead
-                    [(responses_by_module_subquery.c.authored == QuestionnaireResponse.authored,
-                      responses_by_module_subquery.c.created > QuestionnaireResponse.created)],
-                    else_=(responses_by_module_subquery.c.authored > QuestionnaireResponse.authored)
-                )
-            )
+                    [
+                        (
+                            responses_by_module_subquery.c.authored
+                            == QuestionnaireResponse.authored,
+                            responses_by_module_subquery.c.created
+                            > QuestionnaireResponse.created,
+                        )
+                    ],
+                    else_=(
+                        responses_by_module_subquery.c.authored
+                        > QuestionnaireResponse.authored
+                    ),
+                ),
+            ),
         ).filter(
             responses_by_module_subquery.c.participant_id.is_(None),
             module_code.system == PPI_SYSTEM,
-            module_code.value.notin_(rolled_up_module_codes)
+            module_code.value.notin_(rolled_up_module_codes),
         )
 
-        insert_latest_responses_query = insert(SrcClean).from_select(column_map.keys(), latest_responses_select)
+        insert_latest_responses_query = insert(SrcClean).from_select(
+            column_map.keys(), latest_responses_select
+        )
         session.execute(insert_latest_responses_query)
 
-        street_address_1_code = session.query(Code).filter(Code.value == STREET_ADDRESS_QUESTION_CODE).one()
+        street_address_1_code = (
+            session.query(Code).filter(Code.value == STREET_ADDRESS_QUESTION_CODE).one()
+        )
 
         rolled_up_responses_select = questionnaire_answers_select.outerjoin(
             QuestionnaireAnswersByModule,
             and_(
-                QuestionnaireAnswersByModule.participant_id == QuestionnaireResponse.participantId,
-                QuestionnaireAnswersByModule.response_id != QuestionnaireResponse.questionnaireResponseId,
-                QuestionnaireAnswersByModule.survey == self._module_code_or_external_id_if_cope(module_code),
+                QuestionnaireAnswersByModule.participant_id
+                == QuestionnaireResponse.participantId,
+                QuestionnaireAnswersByModule.response_id
+                != QuestionnaireResponse.questionnaireResponseId,
+                QuestionnaireAnswersByModule.survey
+                == self._module_code_or_external_id_if_cope(module_code),
                 case(
-                    [(
-                        # Any street address 2 answers should also be ignored if there are any later
-                        # street address 1 answers
-                        question_code.value == STREET_ADDRESS2_QUESTION_CODE,
-                        QuestionnaireAnswersByModule.question_code_id.in_([
-                            QuestionnaireQuestion.codeId,
-                            street_address_1_code.codeId
-                        ])
-                    )],
-                    else_=QuestionnaireAnswersByModule.question_code_id == QuestionnaireQuestion.codeId
+                    [
+                        (
+                            # Any street address 2 answers should also be ignored if there are any later
+                            # street address 1 answers
+                            question_code.value == STREET_ADDRESS2_QUESTION_CODE,
+                            QuestionnaireAnswersByModule.question_code_id.in_(
+                                [
+                                    QuestionnaireQuestion.codeId,
+                                    street_address_1_code.codeId,
+                                ]
+                            ),
+                        )
+                    ],
+                    else_=QuestionnaireAnswersByModule.question_code_id
+                    == QuestionnaireQuestion.codeId,
                 ),
                 case(  # If the authored date for the responses match, then join based on the created date instead
-                    [(QuestionnaireAnswersByModule.authored == QuestionnaireResponse.authored,
-                      QuestionnaireAnswersByModule.created > QuestionnaireResponse.created)],
-                    else_=(QuestionnaireAnswersByModule.authored > QuestionnaireResponse.authored)
-                )
-            )
+                    [
+                        (
+                            QuestionnaireAnswersByModule.authored
+                            == QuestionnaireResponse.authored,
+                            QuestionnaireAnswersByModule.created
+                            > QuestionnaireResponse.created,
+                        )
+                    ],
+                    else_=(
+                        QuestionnaireAnswersByModule.authored
+                        > QuestionnaireResponse.authored
+                    ),
+                ),
+            ),
         ).filter(
             QuestionnaireAnswersByModule.id.is_(None),
             module_code.system == PPI_SYSTEM,
-            module_code.value.in_(rolled_up_module_codes)
+            module_code.value.in_(rolled_up_module_codes),
         )
 
-        insert_query = insert(SrcClean).from_select(column_map.keys(), rolled_up_responses_select)
+        insert_query = insert(SrcClean).from_select(
+            column_map.keys(), rolled_up_responses_select
+        )
         session.execute(insert_query)
 
-    def _select_participant_ids(self, session, origin:str, cutoff_date:datetime=None) -> None:
-        """ Generates a list of PIDs to build the src_clean tables with"""
+    def _select_participant_ids(
+        self, session, origin: str, cutoff_date: datetime = None
+    ) -> None:
+        """Generates a list of PIDs to build the src_clean tables with"""
         self._set_rdr_model_schema([HPO, Participant, ParticipantSummary])
-        query = session.query(
-            Participant.participantId
-        ).join(
-            ParticipantSummary,
-            Participant.participantId == ParticipantSummary.participantId
-        ).join(
-            HPO,
-            Participant.hpoId == HPO.hpoId
-        ).filter(
-            or_(
-                Participant.isGhostId.isnot(True),
-                and_(
-                    ParticipantSummary.participantId.isnot(None),
-                    Participant.dateAddedGhost > datetime(2022, 3, 18),
-                    or_(
-                        ParticipantSummary.consentForElectronicHealthRecords != QuestionnaireStatus.UNSET,
-                        ParticipantSummary.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
-                    )
-                )
-            ),
-            Participant.isTestParticipant.isnot(True),
-            HPO.name != 'TEST',
-            ParticipantSummary.dateOfBirth.isnot(None),
-            ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored.isnot(None)
+        query = (
+            session.query(Participant.participantId)
+            .join(
+                ParticipantSummary,
+                Participant.participantId == ParticipantSummary.participantId,
+            )
+            .join(HPO, Participant.hpoId == HPO.hpoId)
+            .filter(
+                or_(
+                    Participant.isGhostId.isnot(True),
+                    and_(
+                        ParticipantSummary.participantId.isnot(None),
+                        Participant.dateAddedGhost > datetime(2022, 3, 18),
+                        or_(
+                            ParticipantSummary.consentForElectronicHealthRecords
+                            != QuestionnaireStatus.UNSET,
+                            ParticipantSummary.questionnaireOnTheBasics
+                            == QuestionnaireStatus.SUBMITTED,
+                        ),
+                    ),
+                ),
+                Participant.isTestParticipant.isnot(True),
+                HPO.name != "TEST",
+                ParticipantSummary.dateOfBirth.isnot(None),
+                ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored.isnot(
+                    None
+                ),
+            )
         )
 
         # Apply age restriction unless participants under 18 are explicitly included
         if not self.include_participants_under_18:
             query = query.filter(
-                func.timestampdiff(text('YEAR'), ParticipantSummary.dateOfBirth,
-                                   ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored) >= 18
+                func.timestampdiff(
+                    text("YEAR"),
+                    ParticipantSummary.dateOfBirth,
+                    ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored,
+                )
+                >= 18
             )
         if cutoff_date:
             query = query.filter(
                 or_(
                     and_(
-                        ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored < cutoff_date,
-                        ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE
+                        ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored
+                        < cutoff_date,
+                        ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE,
                     ),
                     and_(
-                        ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored < cutoff_date,
+                        ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored
+                        < cutoff_date,
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NO_USE,
-                        ParticipantSummary.withdrawalAuthored >= cutoff_date
-                    )
+                        ParticipantSummary.withdrawalAuthored >= cutoff_date,
+                    ),
                 )
             )
         else:
@@ -706,14 +969,10 @@ class CurationExportClass(ToolBase):
                 ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE
             )
 
-        if origin == 'vibrent':
-            query = query.filter(
-                Participant.participantOrigin == 'vibrent'
-            )
-        elif origin == 'careevolution':
-            query = query.filter(
-                Participant.participantOrigin == 'careevolution'
-            )
+        if origin == "vibrent":
+            query = query.filter(Participant.participantOrigin == "vibrent")
+        elif origin == "careevolution":
+            query = query.filter(Participant.participantOrigin == "careevolution")
         if self.exclude_pid_list:
             query = query.filter(
                 Participant.participantId.notin_(self.exclude_pid_list)
@@ -725,23 +984,27 @@ class CurationExportClass(ToolBase):
         # Populates death table from deceased_report
         self._set_rdr_model_schema([DeceasedReport])
         column_map = {
-            Death.id: literal("0"),  # Auto-increment column, database will use next sequence number
+            Death.id: literal(
+                "0"
+            ),  # Auto-increment column, database will use next sequence number
             Death.person_id: DeceasedReport.participantId,
             Death.death_date: DeceasedReport.dateOfDeath,
-            Death.death_datetime: DeceasedReport.dateOfDeath.label('date_of_death_datetime'),
-            Death.death_type_concept_id: literal("32809"),  # 32809 is the Case Report Form concept id
-            Death.cause_concept_id: 'NULL',  # CDR requires the text value of these columns to be 'NULL'
-            Death.cause_source_value: 'NULL',
-            Death.cause_source_concept_id: 'NULL',
-            Death.src_id: literal("healthpro")
+            Death.death_datetime: DeceasedReport.dateOfDeath.label(
+                "date_of_death_datetime"
+            ),
+            Death.death_type_concept_id: literal(
+                "32809"
+            ),  # 32809 is the Case Report Form concept id
+            Death.cause_concept_id: "NULL",  # CDR requires the text value of these columns to be 'NULL'
+            Death.cause_source_value: "NULL",
+            Death.cause_source_concept_id: "NULL",
+            Death.src_id: literal("healthpro"),
         }
-        deceased_select = session.query(*column_map.values()).select_from(
-            DeceasedReport
-        ).join(
-            Person,
-            DeceasedReport.participantId == Person.person_id
-        ).filter(
-            DeceasedReport.status == DeceasedReportStatus.APPROVED
+        deceased_select = (
+            session.query(*column_map.values())
+            .select_from(DeceasedReport)
+            .join(Person, DeceasedReport.participantId == Person.person_id)
+            .filter(DeceasedReport.status == DeceasedReportStatus.APPROVED)
         )
 
         if self.cutoff_date:
@@ -752,9 +1015,17 @@ class CurationExportClass(ToolBase):
         session.execute(insert_query)
 
     def _populate_wear_consent(self, session):
-        self._set_rdr_model_schema([Participant, Code, Questionnaire, QuestionnaireResponse,
-                                    QuestionnaireResponseAnswer, QuestionnaireQuestion,
-                                    QuestionnaireConcept])
+        self._set_rdr_model_schema(
+            [
+                Participant,
+                Code,
+                Questionnaire,
+                QuestionnaireResponse,
+                QuestionnaireResponseAnswer,
+                QuestionnaireQuestion,
+                QuestionnaireConcept,
+            ]
+        )
         question_code = aliased(Code)
         answer_code = aliased(Code)
         column_map = {
@@ -764,50 +1035,55 @@ class CurationExportClass(ToolBase):
             WearConsent.consent_status: answer_code.value,
             WearConsent.src_id: case(
                 [
-                    (Participant.participantOrigin == 'careevolution', 'ce'),
-                    (Participant.participantOrigin == 'vibrent', 'vibrent'),
+                    (Participant.participantOrigin == "careevolution", "ce"),
+                    (Participant.participantOrigin == "vibrent", "vibrent"),
                 ],
-                else_=Participant.participantOrigin
-            )
+                else_=Participant.participantOrigin,
+            ),
         }
 
-        wear_consent_select = session.query(
-            *column_map.values()
-        ).select_from(
-            Participant
-        ).join(
-            QuestionnaireResponse,
-            QuestionnaireResponse.participantId == Participant.participantId
-        ).join(
-            QuestionnaireResponseAnswer,
-            QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
-        ).join(
-            QuestionnaireQuestion,
-            QuestionnaireResponseAnswer.questionId == QuestionnaireQuestion.questionnaireQuestionId
-        ).join(
-            question_code,
-            QuestionnaireQuestion.codeId == question_code.codeId
-        ).outerjoin(
-            answer_code,
-            QuestionnaireResponseAnswer.valueCodeId == answer_code.codeId
-        ).join(
-            Questionnaire,
-            QuestionnaireResponse.questionnaireId == Questionnaire.questionnaireId
-        ).join(
-            QuestionnaireConcept,
-            and_(Questionnaire.questionnaireId == QuestionnaireConcept.questionnaireId,
-            Questionnaire.version == QuestionnaireConcept.questionnaireVersion)
-        ).join(
-            Code,
-            QuestionnaireConcept.codeId == Code.codeId
-        ).filter(
-            answer_code.value is not None,
-            Code.value == WEAR_CONSENT_MODULE,
-            question_code.value == WEAR_CONSENT_QUESTION_CODE,
-            Participant.participantId.in_(self.pid_list)
-        ).order_by(
-            Participant.participantId,
-            QuestionnaireResponse.authored
+        wear_consent_select = (
+            session.query(*column_map.values())
+            .select_from(Participant)
+            .join(
+                QuestionnaireResponse,
+                QuestionnaireResponse.participantId == Participant.participantId,
+            )
+            .join(
+                QuestionnaireResponseAnswer,
+                QuestionnaireResponseAnswer.questionnaireResponseId
+                == QuestionnaireResponse.questionnaireResponseId,
+            )
+            .join(
+                QuestionnaireQuestion,
+                QuestionnaireResponseAnswer.questionId
+                == QuestionnaireQuestion.questionnaireQuestionId,
+            )
+            .join(question_code, QuestionnaireQuestion.codeId == question_code.codeId)
+            .outerjoin(
+                answer_code,
+                QuestionnaireResponseAnswer.valueCodeId == answer_code.codeId,
+            )
+            .join(
+                Questionnaire,
+                QuestionnaireResponse.questionnaireId == Questionnaire.questionnaireId,
+            )
+            .join(
+                QuestionnaireConcept,
+                and_(
+                    Questionnaire.questionnaireId
+                    == QuestionnaireConcept.questionnaireId,
+                    Questionnaire.version == QuestionnaireConcept.questionnaireVersion,
+                ),
+            )
+            .join(Code, QuestionnaireConcept.codeId == Code.codeId)
+            .filter(
+                answer_code.value is not None,
+                Code.value == WEAR_CONSENT_MODULE,
+                question_code.value == WEAR_CONSENT_QUESTION_CODE,
+                Participant.participantId.in_(self.pid_list),
+            )
+            .order_by(Participant.participantId, QuestionnaireResponse.authored)
         )
 
         if self.cutoff_date:
@@ -815,35 +1091,57 @@ class CurationExportClass(ToolBase):
                 QuestionnaireResponse.authored < self.cutoff_date
             )
 
-        insert_query = insert(WearConsent).from_select(column_map.keys(), wear_consent_select)
+        insert_query = insert(WearConsent).from_select(
+            column_map.keys(), wear_consent_select
+        )
         session.execute(insert_query)
 
     def populate_cdm_database(self):
-        """ Generates the src_clean table which is used to populate the rest of the ETL tables """
+        """Generates the src_clean table which is used to populate the rest of the ETL tables.
+
+        .. deprecated::
+            This Cloud SQL / SQLAlchemy ORM-based pipeline is superseded by the
+            ``curation-bq`` tool (``rdr_service/tools/tool_libs/curation_bq.py``),
+            which runs the entire ETL against BigQuery using MySQL-replicated tables.
+            Prefer ``curation-bq --run-etl`` for new runs.  This method will be
+            removed in a future release.
+        """
+        _logger.warning(
+            "populate_cdm_database (curation cdm-data) is deprecated.  "
+            "Use the 'curation-bq --run-etl' command instead, which runs entirely "
+            "in BigQuery against replicated MySQL tables without a Cloud SQL connection."
+        )
         surveys_file_name = None
         include_flag = False
         filter_options = {}
 
         if self.args.cutoff:
-            cutoff_date = api_util.parse_date(self.args.cutoff, '%Y-%m-%d')
+            cutoff_date = api_util.parse_date(self.args.cutoff, "%Y-%m-%d")
             self.cutoff_date = cutoff_date.replace(tzinfo=pytz.UTC)
             _logger.info(f"populating cdm data with cutoff date {self.args.cutoff}...")
         else:
             _logger.info("populating cdm data without cutoff date")
         _logger.info(f"{self.args}")
         if not any((self.args.participant_origin, self.args.participant_list_file)):
-            raise NameError("One of parameters participant-origin or participant-list-file is required")
+            raise NameError(
+                "One of parameters participant-origin or participant-list-file is required"
+            )
         elif all((self.args.participant_origin, self.args.participant_list_file)):
             raise NameError(
-                "Only one of parameters participant-origin or participant-list-file may be used")
+                "Only one of parameters participant-origin or participant-list-file may be used"
+            )
 
         if all((self.args.include_surveys, self.args.exclude_surveys)):
             raise NameError("Cannot use both --include-surveys and --exclude-surveys")
 
         if self.args.participant_list_file:
             if not os.path.exists(self.args.participant_list_file):
-                raise NameError(f'File {self.args.participant_list_file} was not found.')
-            with open(self.args.participant_list_file, encoding='utf-8-sig') as pid_file:
+                raise NameError(
+                    f"File {self.args.participant_list_file} was not found."
+                )
+            with open(
+                self.args.participant_list_file, encoding="utf-8-sig"
+            ) as pid_file:
                 lines = pid_file.readlines()
                 for line in lines:
                     self.pid_list.append(int(line.strip()))
@@ -853,8 +1151,8 @@ class CurationExportClass(ToolBase):
 
         if self.args.exclude_participants:
             if not os.path.exists(self.args.exclude_participants):
-                raise NameError(f'File {self.args.exclude_participants} was not found.')
-            with open(self.args.exclude_participants, encoding='utf-8-sig') as pid_file:
+                raise NameError(f"File {self.args.exclude_participants} was not found.")
+            with open(self.args.exclude_participants, encoding="utf-8-sig") as pid_file:
                 lines = pid_file.readlines()
                 for line in lines:
                     self.exclude_pid_list.append(int(line.strip()))
@@ -869,8 +1167,8 @@ class CurationExportClass(ToolBase):
         if surveys_file_name:
             surveys = []
             if not os.path.exists(surveys_file_name):
-                raise NameError(f'File {surveys_file_name} was not found.')
-            with open(surveys_file_name, encoding='utf-8-sig') as surveys_file:
+                raise NameError(f"File {surveys_file_name} was not found.")
+            with open(surveys_file_name, encoding="utf-8-sig") as surveys_file:
                 lines = surveys_file.readlines()
                 for line in lines:
                     surveys.append(line.strip())
@@ -907,36 +1205,50 @@ class CurationExportClass(ToolBase):
         # save ETL running info into ETL history table
         if not self.args.vocabulary:
             raise NameError(
-                "parameter vocabulary must be set, example: gs://curation-vocabulary/aou_vocab_20220201/")
+                "parameter vocabulary must be set, example: gs://curation-vocabulary/aou_vocab_20220201/"
+            )
 
         with self.get_session() as session:
-            etl_history = self.cdr_etl_run_history_dao.create_etl_history_record(session, self.cutoff_date,
-                                                                                 self.args.vocabulary, filter_options)
+            etl_history = self.cdr_etl_run_history_dao.create_etl_history_record(
+                session, self.cutoff_date, self.args.vocabulary, filter_options
+            )
         # Create cdm tables
         self._initialize_cdm()
 
         # using alembic here to get the database_factory code to set up a connection to the CDM database
-        with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
+        with self.get_session(
+            database_name="cdm", alembic=True, isolation_level="READ UNCOMMITTED"
+        ) as session:
             if not self.args.participant_list_file:
                 _logger.debug("Selecting participant IDs")
-                self._select_participant_ids(session, self.args.participant_origin, self.cutoff_date)
+                self._select_participant_ids(
+                    session, self.args.participant_origin, self.cutoff_date
+                )
 
             _logger.debug(f"Populating with {len(self.pid_list)} PIDs")
             _logger.debug("Populating src_clean")
             self.run_function_on_pids(self._build_src_clean, session, "src_clean")
             if not self.args.omit_measurements:
                 _logger.debug("Populating measurements")
-                self._populate_measurements(session, self.cutoff_date, self.include_in_person_pm,
-                                            self.include_remote_pm)
+                self._populate_measurements(
+                    session,
+                    self.cutoff_date,
+                    self.include_in_person_pm,
+                    self.include_remote_pm,
+                )
 
             if self.args.prep_bq:
                 return
 
             self._finalize_src_clean(session)
 
-            self.run_function_on_pids(self._filter_question, session, "filtering src_clean")
+            self.run_function_on_pids(
+                self._filter_question, session, "filtering src_clean"
+            )
             _logger.debug("Populating src_participant")
-            self.run_function_on_pids(self._populate_src_participant, session, "src_participant")
+            self.run_function_on_pids(
+                self._populate_src_participant, session, "src_participant"
+            )
             self.run_function_on_pids(self._populate_src_mapped, session, "src_mapped")
 
             self._populate_src_tables(session)
@@ -945,7 +1257,11 @@ class CurationExportClass(ToolBase):
                 self._finish_measurements(session)
             if not self.args.omit_surveys:
                 _logger.debug("Populating observation survey data")
-                self.run_function_on_pids(self._populate_observation_surveys, session, "observation survey data")
+                self.run_function_on_pids(
+                    self._populate_observation_surveys,
+                    session,
+                    "observation survey data",
+                )
                 self._populate_questionnaire_response_additional_info(session)
             self._populate_death_table(session)
             self._populate_ehr_consent(session)
@@ -955,49 +1271,74 @@ class CurationExportClass(ToolBase):
 
         _logger.debug("Saving ETL run history")
         with self.get_session() as session:
-            self.cdr_etl_survey_history_dao.save_include_exclude_code_history_for_etl_run(session, etl_history.id)
+            self.cdr_etl_survey_history_dao.save_include_exclude_code_history_for_etl_run(
+                session, etl_history.id
+            )
             self.cdr_etl_run_history_dao.update_etl_end_time(session, etl_history.id)
 
         return 0
 
-    def _build_src_clean(self, session:sqlalchemy.orm.session.Session, participant_id_subset:List[int]):
-        self._populate_questionnaire_answers_by_module(session, participant_id_subset, self.cutoff_date)
+    def _build_src_clean(
+        self, session: sqlalchemy.orm.session.Session, participant_id_subset: List[int]
+    ):
+        self._populate_questionnaire_answers_by_module(
+            session, participant_id_subset, self.cutoff_date
+        )
         self._populate_src_clean(session, participant_id_subset, self.cutoff_date)
 
-    def run_function_on_pids(self, _func: Callable, session: sqlalchemy.orm.session.Session, description: str,
-                             chunk_size=1000):
+    def run_function_on_pids(
+        self,
+        _func: Callable,
+        session: sqlalchemy.orm.session.Session,
+        description: str,
+        chunk_size=1000,
+    ):
         chunk = 1
         full_pid_list_len = len(self.pid_list)
         chunks = int(full_pid_list_len / chunk_size) + 1
-        for participant_id_subset in list_chunks(lst=self.pid_list, chunk_size=chunk_size):
+        for participant_id_subset in list_chunks(
+            lst=self.pid_list, chunk_size=chunk_size
+        ):
             _logger.debug(f"{description}: Chunk {chunk} of {chunks}")
             chunk += 1
             _func(session, participant_id_subset)
 
     def manage_etl_exclude_code(self):
-        if not self.args.operation or self.args.operation not in ['add', 'remove']:
-            raise NameError("parameter operation must be set for exclude-code command "
-                            "and the value should be add or remove")
+        if not self.args.operation or self.args.operation not in ["add", "remove"]:
+            raise NameError(
+                "parameter operation must be set for exclude-code command "
+                "and the value should be add or remove"
+            )
         if not self.args.code_value:
             raise NameError("parameter code-value must be set for manage-code command")
-        if not self.args.code_type or self.args.code_type not in ['module', 'question', 'answer']:
-            raise NameError("parameter code-type must be set for manage-code command "
-                            "and the value should be module, question or answer")
+        if not self.args.code_type or self.args.code_type not in [
+            "module",
+            "question",
+            "answer",
+        ]:
+            raise NameError(
+                "parameter code-type must be set for manage-code command "
+                "and the value should be module, question or answer"
+            )
 
-        code_values = self.args.code_value.split(',')
+        code_values = self.args.code_value.split(",")
         code_type_map = {
-            'module': CdrEtlCodeType.MODULE,
-            'question': CdrEtlCodeType.QUESTION,
-            'answer': CdrEtlCodeType.ANSWER
+            "module": CdrEtlCodeType.MODULE,
+            "question": CdrEtlCodeType.QUESTION,
+            "answer": CdrEtlCodeType.ANSWER,
         }
         dao = CdrExcludedCodeDao()
         with self.get_session() as session:
-            if self.args.operation == 'remove':
+            if self.args.operation == "remove":
                 for value in code_values:
-                    dao.remove_excluded_code(session, value, code_type_map[self.args.code_type])
-            elif self.args.operation == 'add':
+                    dao.remove_excluded_code(
+                        session, value, code_type_map[self.args.code_type]
+                    )
+            elif self.args.operation == "add":
                 for value in code_values:
-                    dao.add_excluded_code(session, value, code_type_map[self.args.code_type])
+                    dao.add_excluded_code(
+                        session, value, code_type_map[self.args.code_type]
+                    )
 
         return 0
 
@@ -1008,68 +1349,75 @@ class CurationExportClass(ToolBase):
         """
         super(CurationExportClass, self).run()
 
-        if self.args.command == 'export':
+        if self.args.command == "export":
             return self.run_curation_export()
-        elif self.args.command == 'cdm-data':
+        elif self.args.command == "cdm-data":
             return self.populate_cdm_database()
-        elif self.args.command == 'exclude-code':
+        elif self.args.command == "exclude-code":
             return self.manage_etl_exclude_code()
 
         return 0
 
     def _initialize_cdm(self):
-        with self.get_session(database_name='cdm', alembic=True) as session:  # using alembic to get CREATE permission
-            self._create_tables(session, [
-                QuestionnaireAnswersByModule,
-                SrcClean,
-                SrcParticipant,
-                Note,
-                DrugExposure,
-                DeviceExposure,
-                Cost,
-                FactRelationship,
-                ConditionEra,
-                DrugEra,
-                DoseEra,
-                Metadata,
-                NoteNlp,
-                VisitDetail,
-                Location,
-                CareSite,
-                Provider,
-                Person,
-                Death,
-                ObservationPeriod,
-                PayerPlanPeriod,
-                VisitOccurrence,
-                ConditionOccurrence,
-                ProcedureOccurrence,
-                Observation,
-                Measurement,
-                SrcMapped,
-                SrcPersonLocation,
-                SrcGender,
-                SrcRace,
-                SrcEthnicity,
-                SrcMeas,
-                MeasurementCodeMap,
-                MeasurementValueCodeMap,
-                SrcMeasMapped,
-                SrcVisits,
-                TempObsTarget,
-                TempObsEndUnion,
-                TempObsEndUnionPart,
-                TempObsEnd,
-                TempObs,
-                TempFactRelSd,
-                PidRidMapping,
-                QuestionnaireResponseAdditionalInfo,
-                EHRConsentStatus,
-                QuestionnaireResponseAdditionalInfo,
-                WearConsent
-            ])
+        with self.get_session(
+            database_name="cdm", alembic=True
+        ) as session:  # using alembic to get CREATE permission
+            self._create_tables(
+                session,
+                [
+                    QuestionnaireAnswersByModule,
+                    SrcClean,
+                    SrcParticipant,
+                    Note,
+                    DrugExposure,
+                    DeviceExposure,
+                    Cost,
+                    FactRelationship,
+                    ConditionEra,
+                    DrugEra,
+                    DoseEra,
+                    Metadata,
+                    NoteNlp,
+                    VisitDetail,
+                    Location,
+                    CareSite,
+                    Provider,
+                    Person,
+                    Death,
+                    ObservationPeriod,
+                    PayerPlanPeriod,
+                    VisitOccurrence,
+                    ConditionOccurrence,
+                    ProcedureOccurrence,
+                    Observation,
+                    Measurement,
+                    SrcMapped,
+                    SrcPersonLocation,
+                    SrcGender,
+                    SrcRace,
+                    SrcEthnicity,
+                    SrcMeas,
+                    MeasurementCodeMap,
+                    MeasurementValueCodeMap,
+                    SrcMeasMapped,
+                    SrcVisits,
+                    TempObsTarget,
+                    TempObsEndUnion,
+                    TempObsEndUnionPart,
+                    TempObsEnd,
+                    TempObs,
+                    TempFactRelSd,
+                    PidRidMapping,
+                    QuestionnaireResponseAdditionalInfo,
+                    EHRConsentStatus,
+                    QuestionnaireResponseAdditionalInfo,
+                    WearConsent,
+                ],
+            )
 
-    def _finalize_cdm(self, session, drop_tables: bool = False, drop_columns: bool = True):
+    def _finalize_cdm(
+        self, session, drop_tables: bool = False, drop_columns: bool = True
+    ):
         # -- In patient surveys data only organs transplantation information
         # -- fits the procedure_occurrence table.
         session.execute("""INSERT INTO cdm.procedure_occurrence
@@ -1103,9 +1451,6 @@ class CurationExportClass(ToolBase):
                                 AND vc.standard_concept = 'S'
                                 AND vc.invalid_reason IS NULL
                                 """)
-
-
-
 
         session.execute("""INSERT INTO cdm.temp_obs_target
                             -- VISIT_OCCURENCE
@@ -1170,9 +1515,11 @@ class CurationExportClass(ToolBase):
                                 COALESCE( drug_exposure_end_date, drug_exposure_start_date) AS end_date
                             FROM cdm.drug_exposure
                                     """)
-        session.execute("""CREATE INDEX temp_obs_target_idx_start ON cdm.temp_obs_target (person_id, start_date);
+        session.execute(
+            """CREATE INDEX temp_obs_target_idx_start ON cdm.temp_obs_target (person_id, start_date);
                            CREATE INDEX temp_obs_target_idx_end ON cdm.temp_obs_target (person_id, end_date);
-                        """)
+                        """
+        )
         session.execute("""SELECT NULL INTO @partition_expr;
                             SELECT NULL INTO @last_part_expr;
                             SELECT NULL INTO @row_number;
@@ -1276,7 +1623,9 @@ class CurationExportClass(ToolBase):
                             WHERE
                                 (2 * e.start_ordinal) - e.overall_ord = 0
                         """)
-        session.execute("""CREATE INDEX temp_obs_end_idx ON cdm.temp_obs_end (person_id, end_date)""")
+        session.execute(
+            """CREATE INDEX temp_obs_end_idx ON cdm.temp_obs_end (person_id, end_date)"""
+        )
         # -- Here we form observations start and end dates. For each start_date
         # -- we look for minimal end_date for the particular person observation.
         session.execute("""INSERT INTO cdm.temp_obs
@@ -1293,7 +1642,9 @@ class CurationExportClass(ToolBase):
                                 dt.person_id,
                                 dt.start_date
                                     """)
-        session.execute("""CREATE INDEX temp_obs_idx ON cdm.temp_obs (person_id, observation_end_date)""")
+        session.execute(
+            """CREATE INDEX temp_obs_idx ON cdm.temp_obs (person_id, observation_end_date)"""
+        )
 
         # -- observation_period is formed as merged possibly intersecting
         # -- tmp_obs intervals
@@ -1312,9 +1663,6 @@ class CurationExportClass(ToolBase):
                                 person_id,
                                 observation_end_date
                                     """)
-
-
-
 
         session.execute("""INSERT INTO cdm.pid_rid_mapping
                             SELECT DISTINCT sc.participant_id, sc.research_id, sc.external_id, sc.src_id
@@ -1341,7 +1689,8 @@ class CurationExportClass(ToolBase):
 
         if drop_columns:
             # Drop columns only used for ETL purposes
-            session.execute("""ALTER TABLE cdm.care_site DROP COLUMN unit_id, DROP COLUMN id;
+            session.execute(
+                """ALTER TABLE cdm.care_site DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.condition_era DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.condition_occurrence DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.cost DROP COLUMN unit_id, DROP COLUMN id;
@@ -1349,7 +1698,8 @@ class CurationExportClass(ToolBase):
                                 ALTER TABLE cdm.dose_era DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.drug_era DROP COLUMN unit_id, DROP COLUMN id;
                                 ALTER TABLE cdm.drug_exposure DROP COLUMN unit_id, DROP COLUMN id;
-                                ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id, DROP COLUMN id;""")
+                                ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id, DROP COLUMN id;"""
+            )
             session.execute("""
                                 ALTER TABLE cdm.location DROP COLUMN unit_id;
                                 ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN parent_id, DROP COLUMN id;
@@ -1369,9 +1719,13 @@ class CurationExportClass(ToolBase):
     @staticmethod
     def _finalize_src_clean(session):
 
-        session.execute("Delete from voc.concept WHERE concept_id IN (1585549, 1585565, 1585548)")
+        session.execute(
+            "Delete from voc.concept WHERE concept_id IN (1585549, 1585565, 1585548)"
+        )
         # Update cdm.src_clean to filter specific surveys.
-        session.execute("UPDATE combined_survey_filter SET survey_name = REPLACE(survey_name, '\r', '');")
+        session.execute(
+            "UPDATE combined_survey_filter SET survey_name = REPLACE(survey_name, '\r', '');"
+        )
         session.execute("""UPDATE cdm.src_clean
                             INNER JOIN cdm.combined_survey_filter ON
                                 cdm.src_clean.survey_name = cdm.combined_survey_filter.survey_name
@@ -1379,17 +1733,21 @@ class CurationExportClass(ToolBase):
                             WHERE TRUE""")
 
         # Update cdm.src_clean to filter specific survey questions.
-        session.execute("UPDATE combined_question_filter SET question_ppi_code = REPLACE(question_ppi_code, '\r', '')")
+        session.execute(
+            "UPDATE combined_question_filter SET question_ppi_code = REPLACE(question_ppi_code, '\r', '')"
+        )
         session.execute("""CREATE INDEX src_cln_p_id ON cdm.src_clean (participant_id);
                            CREATE INDEX src_cln_filter ON cdm.src_clean (filter)""")
 
     @staticmethod
     def _filter_question(session, pid_list):
-        session.execute(f"""UPDATE cdm.src_clean
+        session.execute(
+            f"""UPDATE cdm.src_clean
                             INNER JOIN cdm.combined_question_filter ON
                                 cdm.src_clean.question_ppi_code = cdm.combined_question_filter.question_ppi_code
                             SET cdm.src_clean.filter = 1
-                            WHERE cdm.src_clean.participant_id IN ({",".join([str(pid) for pid in pid_list])})""")
+                            WHERE cdm.src_clean.participant_id IN ({",".join([str(pid) for pid in pid_list])})"""
+        )
 
     @staticmethod
     def _populate_src_participant(session, pid_list):
@@ -1543,7 +1901,9 @@ class CurationExportClass(ToolBase):
             FROM cdm.src_person_location src
         """)
 
-        session.execute("CREATE INDEX location_address ON cdm.location (address_1, zip)")
+        session.execute(
+            "CREATE INDEX location_address ON cdm.location (address_1, zip)"
+        )
 
         session.execute("""UPDATE cdm.src_person_location person_loc, cdm.location loc
                            SET person_loc.location_id = loc.location_id
@@ -1727,17 +2087,23 @@ class CurationExportClass(ToolBase):
                             DROP TABLE cdm.tmp_person;
                             """)
 
-
-    def _populate_measurements(self, session, cutoff_date: Union[None, datetime], include_onsite: bool = True,
-                               include_remote: bool = True):
-        cutoff_filter = ''
+    def _populate_measurements(
+        self,
+        session,
+        cutoff_date: Union[None, datetime],
+        include_onsite: bool = True,
+        include_remote: bool = True,
+    ):
+        cutoff_filter = ""
         if cutoff_date:
             cutoff_filter = f"AND pm.finalized < '{cutoff_date.strftime('%Y-%m-%d')}'"
 
         if include_onsite and include_remote:
             collect_type_filter = ""
         elif include_onsite:
-            collect_type_filter = "AND (pm.collect_type <> 2 OR pm.collect_type IS NULL)"
+            collect_type_filter = (
+                "AND (pm.collect_type <> 2 OR pm.collect_type IS NULL)"
+            )
         elif include_remote:
             collect_type_filter = "AND pm.collect_type = 2"
 
@@ -1854,11 +2220,13 @@ class CurationExportClass(ToolBase):
                             WHERE
                                 meas.code_value <> 'notes'
                                     """)
-        session.execute("""alter table cdm.src_meas_mapped add key (physical_measurements_id);
+        session.execute(
+            """alter table cdm.src_meas_mapped add key (physical_measurements_id);
                            alter table cdm.src_meas_mapped add key (measurement_id);
                            CREATE INDEX src_meas_pm_ids ON cdm.src_meas_mapped
                                         (physical_measurements_id, measurement_id);
-                        """)
+                        """
+        )
 
         session.execute("""DROP TABLE IF EXISTS cdm.tmp_care_site;
                             CREATE TABLE cdm.tmp_care_site LIKE cdm.care_site;
@@ -2098,7 +2466,9 @@ class CurationExportClass(ToolBase):
                                  )
                                  AND m.parent_id IS NOT NULL
                                      """)
-        session.execute("""ALTER TABLE cdm.tmp_fact_rel_sd ADD KEY (person_id, parent_id)""")
+        session.execute(
+            """ALTER TABLE cdm.tmp_fact_rel_sd ADD KEY (person_id, parent_id)"""
+        )
 
         # -- unit: syst.diast.*[1,2] - to link systolic and diastolic blood pressure
         # -- Insert into fact_relationship table systolic to disatolic blood pressure
@@ -2182,7 +2552,7 @@ class CurationExportClass(ToolBase):
                              WHERE cdm_meas.parent_id IS NOT NULL
                                      """)
 
-    def _populate_observation_surveys(self, session, pid_list:List[int]):
+    def _populate_observation_surveys(self, session, pid_list: List[int]):
         # -- units: observ.code, observ.str, observ.num, observ.bool
         # -- 'observation' table consists of 2 parts:
         # -- 1) patient's questionnaires
@@ -2239,142 +2609,273 @@ class CurationExportClass(ToolBase):
                                     """)
 
         # remove special character
-        session.execute("""update cdm.observation set value_as_string = replace(value_as_string, '\0', '')
-                           where value_as_string like '%\0%'""")
+        session.execute(
+            """update cdm.observation set value_as_string = replace(value_as_string, '\0', '')
+                           where value_as_string like '%\0%'"""
+        )
 
     @staticmethod
     def _populate_questionnaire_response_additional_info(session):
         # Preventing locks on questionnaire_response table when reading data
         session.execute("""SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED""")
 
-        session.execute("""INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
+        session.execute(
+            """INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
                             0 AS id,
-                            qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, qr.non_participant_author as value,
+                            qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type,
+                            qr.non_participant_author as value,
                             p.participant_origin src_id
                             from rdr.questionnaire_response qr
-                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
+                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+                            ON qr.questionnaire_response_id = qri.questionnaire_response_id
                             JOIN rdr.participant p ON qr.participant_id = p.participant_id
-                            where qr.non_participant_author is not null and qr.questionnaire_response_id=qri.questionnaire_response_id
-                                    """)
-        session.execute("""INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
+                            where qr.non_participant_author is not null
+                              and qr.questionnaire_response_id=qri.questionnaire_response_id
+                                    """
+        )
+        session.execute(
+            """INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
                             0 AS id,
-                            qr.questionnaire_response_id, 'LANGUAGE' as type, qr.language as value, p.participant_origin src_id
+                            qr.questionnaire_response_id, 'LANGUAGE' as type, qr.language as value,
+                            p.participant_origin src_id
                             from rdr.questionnaire_response qr
-                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
+                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+                                ON qr.questionnaire_response_id = qri.questionnaire_response_id
                             JOIN rdr.participant p ON qr.participant_id = p.participant_id
                             where qr.language is not null and qr.questionnaire_response_id=qri.questionnaire_response_id
-                                    """)
-        session.execute("""INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
+                                    """
+        )
+        session.execute(
+            """INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
                             0 AS id,
                             qr.questionnaire_response_id, 'CODE' as type, c.value as value, p.participant_origin src_id
                             from rdr.questionnaire_response qr
-                            JOIN rdr.questionnaire_concept qc ON qr.questionnaire_id = qc.questionnaire_id AND qr.questionnaire_version = qc.questionnaire_version
+                            JOIN rdr.questionnaire_concept qc ON qr.questionnaire_id = qc.questionnaire_id
+                                AND qr.questionnaire_version = qc.questionnaire_version
                             JOIN rdr.code c ON qc.code_id = c.code_id
-                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri ON qr.questionnaire_response_id = qri.questionnaire_response_id
+                            JOIN (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+                                ON qr.questionnaire_response_id = qri.questionnaire_response_id
                             JOIN rdr.participant p ON qr.participant_id = p.participant_id
                             where qr.questionnaire_id=qc.questionnaire_id
                             and qc.code_id=c.code_id
                             and qr.questionnaire_response_id=qri.questionnaire_response_id
-                                    """)
+                                    """
+        )
         # Reset ISOLATION level to previous setting (assuming here that it was MySql's default)
         session.execute("""SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ""")
 
     def _populate_ehr_consent(self, session):
         self._set_rdr_model_schema([ConsentFile, ConsentResponse])
         if self.cutoff_date:
-            case_cutoff = (and_(SrcClean.value_ppi_code == 'Yes', ConsentFile.created > self.cutoff_date),
-                 'SUBMITTED_NOT_VALIDATED')
+            case_cutoff = (
+                and_(
+                    SrcClean.value_ppi_code == "Yes",
+                    ConsentFile.created > self.cutoff_date,
+                ),
+                "SUBMITTED_NOT_VALIDATED",
+            )
         else:
-            case_cutoff = (text("False"), 'NOT_REACHED') # Noop case statement when cutoff date is not used
+            case_cutoff = (
+                text("False"),
+                "NOT_REACHED",
+            )  # Noop case statement when cutoff date is not used
 
         column_map = {
             EHRConsentStatus.person_id: SrcClean.participant_id,
             EHRConsentStatus.research_id: SrcClean.research_id,
-            EHRConsentStatus.consent_for_electronic_health_records: case([
-                (SrcClean.value_ppi_code == 'No', 'SUBMITTED_NO'),
-                (and_(SrcClean.value_ppi_code == 'Yes', ConsentResponse.created.is_(None)), 'SUBMITTED'),
-                # Consents submitted before validation was implemented
-                (and_(SrcClean.value_ppi_code == 'Yes', ConsentResponse.created.isnot(None),
-                      ConsentFile.created.is_(None)), 'SUBMITTED_NOT_VALIDATED'),
-                # If ConsentFile hasn't been created then the consent has not been validated
-                case_cutoff,  # If ConsentFile was created after cutoff date then status at the cutoff is unvalidated
-                (and_(SrcClean.value_ppi_code == 'Yes',
-                      ConsentFile.sync_status.in_((ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE))),
-                 # Only validated consents will be synced
-                 'SUBMITTED'),
-                (and_(SrcClean.value_ppi_code == 'Yes', ConsentFile.sync_status.notin_(
-                    (ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE))), 'SUBMITTED_INVALID')
-            ]),
+            EHRConsentStatus.consent_for_electronic_health_records: case(
+                [
+                    (SrcClean.value_ppi_code == "No", "SUBMITTED_NO"),
+                    (
+                        and_(
+                            SrcClean.value_ppi_code == "Yes",
+                            ConsentResponse.created.is_(None),
+                        ),
+                        "SUBMITTED",
+                    ),
+                    # Consents submitted before validation was implemented
+                    (
+                        and_(
+                            SrcClean.value_ppi_code == "Yes",
+                            ConsentResponse.created.isnot(None),
+                            ConsentFile.created.is_(None),
+                        ),
+                        "SUBMITTED_NOT_VALIDATED",
+                    ),
+                    # If ConsentFile hasn't been created then the consent has not been validated
+                    case_cutoff,  # If ConsentFile was created after cutoff date
+                                  # then status at the cutoff is unvalidated
+                    (
+                        and_(
+                            SrcClean.value_ppi_code == "Yes",
+                            ConsentFile.sync_status.in_(
+                                (
+                                    ConsentSyncStatus.READY_FOR_SYNC,
+                                    ConsentSyncStatus.SYNC_COMPLETE,
+                                )
+                            ),
+                        ),
+                        # Only validated consents will be synced
+                        "SUBMITTED",
+                    ),
+                    (
+                        and_(
+                            SrcClean.value_ppi_code == "Yes",
+                            ConsentFile.sync_status.notin_(
+                                (
+                                    ConsentSyncStatus.READY_FOR_SYNC,
+                                    ConsentSyncStatus.SYNC_COMPLETE,
+                                )
+                            ),
+                        ),
+                        "SUBMITTED_INVALID",
+                    ),
+                ]
+            ),
             EHRConsentStatus.consent_for_electronic_health_records_authored: SrcClean.date_of_survey,
-            EHRConsentStatus.src_id: SrcClean.src_id
+            EHRConsentStatus.src_id: SrcClean.src_id,
         }
-        ehr_consent_select = session.query(
-            *column_map.values()
-        ).select_from(
-            SrcClean
-        ).outerjoin(
-            ConsentResponse,
-            SrcClean.questionnaire_response_id == ConsentResponse.questionnaire_response_id
-        ).outerjoin(
-            ConsentFile,
-            ConsentResponse.id == ConsentFile.consent_response_id
-        ).filter(
-            SrcClean.survey_name == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
-            SrcClean.question_ppi_code == EHR_CONSENT_QUESTION_CODE
+        ehr_consent_select = (
+            session.query(*column_map.values())
+            .select_from(SrcClean)
+            .outerjoin(
+                ConsentResponse,
+                SrcClean.questionnaire_response_id
+                == ConsentResponse.questionnaire_response_id,
+            )
+            .outerjoin(
+                ConsentFile, ConsentResponse.id == ConsentFile.consent_response_id
+            )
+            .filter(
+                SrcClean.survey_name == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
+                SrcClean.question_ppi_code == EHR_CONSENT_QUESTION_CODE,
+            )
         )
 
-        ehr_insert = insert(EHRConsentStatus).from_select(column_map.keys(), ehr_consent_select)
+        ehr_insert = insert(EHRConsentStatus).from_select(
+            column_map.keys(), ehr_consent_select
+        )
         session.execute(ehr_insert)
 
 
 def add_additional_arguments(parser):
-    parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
-    parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
+    parser.add_argument(
+        "--debug", help="enable debug output", default=False, action="store_true"
+    )  # noqa
+    parser.add_argument(
+        "--log-file",
+        help="write output to a log file",
+        default=False,
+        action="store_true",
+    )  # noqa
 
-    subparsers = parser.add_subparsers(dest='command')
+    subparsers = parser.add_subparsers(dest="command")
 
-    export_parser = subparsers.add_parser('export')
-    export_parser.add_argument("--export-path", help="Bucket path to export to", required=True, type=str)  # noqa
-    export_parser.add_argument("--table", help="Export a specific table", type=str, default=None)  # noqa
+    export_parser = subparsers.add_parser("export")
+    export_parser.add_argument(
+        "--export-path", help="Bucket path to export to", required=True, type=str
+    )  # noqa
+    export_parser.add_argument(
+        "--table", help="Export a specific table", type=str, default=None
+    )  # noqa
 
-    cdm_parser = subparsers.add_parser('cdm-data')
-    cdm_parser.add_argument("--cutoff", help="populate cdm with cut off date, example: 2022-04-01",
-                    type=str, default=None)  # noqa
-    cdm_parser.add_argument("--vocabulary", help="the path of the vocabulary of this run, "
-                                         "example: gs://curation-vocabulary/aou_vocab_20220201/",
-                    type=str, default=None)  # noqa
-    cdm_parser.add_argument("--participant-origin",
-                    help="Participant origin for run, accepts vibrent, careevolution, or all",
-                    type=str, default=None)
-    cdm_parser.add_argument("--participant-list-file",
-                    help="Path to a file containing a list of PIDs to run the ETL process with",
-                    type=str, default=None)
-    cdm_parser.add_argument("--include-surveys", help="Path to a file containing list of survey names to include",
-                    type=str, default=None)
-    cdm_parser.add_argument("--exclude-surveys", help="Path to a file containing list of survey names to exclude",
-                    type=str, default=None)
-    cdm_parser.add_argument("--omit-surveys", help="Observation table won't include survey data",
-                     action="store_true", default=False)
-    cdm_parser.add_argument("--omit-measurements", help="Observation table won't include physical measurements",
-                         action="store_true", default=False)
-    cdm_parser.add_argument("--exclude-participants", help="Path to a file containing a list of PIDs to exclude",
-                         type=str, default=None)
-    cdm_parser.add_argument("--exclude-in-person-pm", help="Excludes in-person physical measurements",
-                         action="store_true", default=False)
-    cdm_parser.add_argument("--exclude-remote-pm", help="Excludes remote physical measurements",
-                         action="store_true", default=False)
-    cdm_parser.add_argument("--include-participants-under-18",
-                         help="Include participants under 18 years old in the ETL process",
-                         action="store_true", default=False)
-    cdm_parser.add_argument("--prep-bq", help="Only create src tables to load to BigQuery", action="store_true",
-                         default=False)
+    cdm_parser = subparsers.add_parser("cdm-data")
+    cdm_parser.add_argument(
+        "--cutoff",
+        help="populate cdm with cut off date, example: 2022-04-01",
+        type=str,
+        default=None,
+    )  # noqa
+    cdm_parser.add_argument(
+        "--vocabulary",
+        help="the path of the vocabulary of this run, "
+        "example: gs://curation-vocabulary/aou_vocab_20220201/",
+        type=str,
+        default=None,
+    )  # noqa
+    cdm_parser.add_argument(
+        "--participant-origin",
+        help="Participant origin for run, accepts vibrent, careevolution, or all",
+        type=str,
+        default=None,
+    )
+    cdm_parser.add_argument(
+        "--participant-list-file",
+        help="Path to a file containing a list of PIDs to run the ETL process with",
+        type=str,
+        default=None,
+    )
+    cdm_parser.add_argument(
+        "--include-surveys",
+        help="Path to a file containing list of survey names to include",
+        type=str,
+        default=None,
+    )
+    cdm_parser.add_argument(
+        "--exclude-surveys",
+        help="Path to a file containing list of survey names to exclude",
+        type=str,
+        default=None,
+    )
+    cdm_parser.add_argument(
+        "--omit-surveys",
+        help="Observation table won't include survey data",
+        action="store_true",
+        default=False,
+    )
+    cdm_parser.add_argument(
+        "--omit-measurements",
+        help="Observation table won't include physical measurements",
+        action="store_true",
+        default=False,
+    )
+    cdm_parser.add_argument(
+        "--exclude-participants",
+        help="Path to a file containing a list of PIDs to exclude",
+        type=str,
+        default=None,
+    )
+    cdm_parser.add_argument(
+        "--exclude-in-person-pm",
+        help="Excludes in-person physical measurements",
+        action="store_true",
+        default=False,
+    )
+    cdm_parser.add_argument(
+        "--exclude-remote-pm",
+        help="Excludes remote physical measurements",
+        action="store_true",
+        default=False,
+    )
+    cdm_parser.add_argument(
+        "--include-participants-under-18",
+        help="Include participants under 18 years old in the ETL process",
+        action="store_true",
+        default=False,
+    )
+    cdm_parser.add_argument(
+        "--prep-bq",
+        help="Only create src tables to load to BigQuery",
+        action="store_true",
+        default=False,
+    )
 
-    manage_code_parser = subparsers.add_parser('exclude-code')
-    manage_code_parser.add_argument("--operation", help="operation type for exclude code command: add or remove",
-                                type=str, default=None)  # noqa
-    manage_code_parser.add_argument("--code-value", help="code values, split by comma", type=str, default=None)  # noqa
-    manage_code_parser.add_argument("--code-type", help="code type: module, question or answer",
-                                type=str, default=None)  # noqa
+    manage_code_parser = subparsers.add_parser("exclude-code")
+    manage_code_parser.add_argument(
+        "--operation",
+        help="operation type for exclude code command: add or remove",
+        type=str,
+        default=None,
+    )  # noqa
+    manage_code_parser.add_argument(
+        "--code-value", help="code values, split by comma", type=str, default=None
+    )  # noqa
+    manage_code_parser.add_argument(
+        "--code-type",
+        help="code type: module, question or answer",
+        type=str,
+        default=None,
+    )  # noqa
 
 
 def run():
