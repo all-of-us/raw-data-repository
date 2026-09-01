@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Optional, Union
 from uuid import uuid4
@@ -25,7 +26,7 @@ class CurationBQ(ToolBase):
     Usage workflow:
         1. Ensure ``--rdr-dataset`` and ``--voc-dataset`` replicated datasets are
            up-to-date and contain all required tables.
-        2. Run with ``--load-data`` to copy vocabulary / RDR lookup tables from the
+        2. Run with ``--load-data`` to copy vocabulary tables from the
            replicated datasets into the working ETL dataset.
         3. Run with ``--run-etl`` to execute the full CDM transformation pipeline.
         4. Run with ``--export`` to push final tables to a BQ dataset.
@@ -259,6 +260,37 @@ class CurationBQ(ToolBase):
             "audit_run_id": audit_run_id,
         }
 
+    def _read_participant_ids_file(self, file_path: str) -> list[int]:
+        """Read participant ids from a text file.
+
+        Args:
+            file_path: Path to a UTF-8 text file containing one participant id per line.
+
+        Returns:
+            Parsed participant ids in file order.
+
+        Raises:
+            ValueError: If the file does not exist or contains a non-integer id.
+        """
+        expanded_path = os.path.expanduser(file_path)
+        if not os.path.exists(expanded_path):
+            raise ValueError(f"File {file_path} was not found.")
+
+        participant_ids: list[int] = []
+        with open(expanded_path, encoding="utf-8-sig") as participant_file:
+            for raw_line in participant_file:
+                line = raw_line.strip()
+                if not line:
+                    continue
+                try:
+                    participant_ids.append(int(line))
+                except ValueError as exc:
+                    raise ValueError(
+                        f"File {file_path} contains a non-integer participant_id: {line}"
+                    ) from exc
+
+        return participant_ids
+
     def _ensure_audit_snapshot_table(self, audit_dataset_id: str, source_table: str) -> None:
         """Create a snapshot table if it does not already exist."""
         snapshot_table = f"{source_table}_snapshot"
@@ -335,11 +367,11 @@ class CurationBQ(ToolBase):
         self.run_query(sql, job_config)
 
     def import_tables_to_bq(self) -> None:
-        """Load vocabulary and RDR lookup tables into the working ETL dataset.
+        """Load vocabulary tables into the working ETL dataset.
 
         The tables imported here are those referenced by downstream ETL queries
-        as ``{dataset_id}.<table>`` (e.g. concept, site).  The source data comes
-        from the BigQuery-replicated datasets (``--rdr-dataset`` / ``--voc-dataset``)
+        as ``{dataset_id}.<table>`` (e.g. concept).  The source data comes
+        from the BigQuery-replicated datasets (``--voc-dataset``)
         rather than from Cloud SQL via EXTERNAL_QUERY.
 
         ``src_clean`` and ``src_meas`` are **not** imported here; they are
@@ -347,8 +379,6 @@ class CurationBQ(ToolBase):
         """
         for table in self._VOC_IMPORT_TABLES:
             self.import_table(table, self.voc_dataset)
-        for table in self._RDR_IMPORT_TABLES:
-            self.import_table(table, self.rdr_dataset)
 
     # ------------------------------------------------------------------
     # ETL execution
@@ -409,8 +439,22 @@ class CurationBQ(ToolBase):
         else:
             origin_filter = ""
 
+        participant_list_file: Optional[str] = getattr(args, "participant_list_file", None)
+        if participant_list_file:
+            participant_ids = self._read_participant_ids_file(participant_list_file)
+            if participant_ids:
+                participant_csv = ", ".join(str(pid) for pid in participant_ids)
+                participant_selection_filter = f"AND p.participant_id IN ({participant_csv})"
+            else:
+                participant_selection_filter = "AND FALSE"
+        else:
+            participant_selection_filter = ""
+
         # ── excluded PID list ───────────────────────────────────────────
-        exclude_pids: list[int] = getattr(args, "exclude_pid_list", []) or []
+        exclude_pids: list[int] = list(getattr(args, "exclude_pid_list", []) or [])
+        exclude_participants_file: Optional[str] = getattr(args, "exclude_participants", None)
+        if exclude_participants_file:
+            exclude_pids.extend(self._read_participant_ids_file(exclude_participants_file))
         if exclude_pids:
             pid_csv = ", ".join(str(p) for p in exclude_pids)
             exclude_pid_filter = f"AND p.participant_id NOT IN ({pid_csv})"
@@ -460,6 +504,7 @@ class CurationBQ(ToolBase):
             age_filter=age_filter,
             withdrawal_filter=withdrawal_filter,
             origin_filter=origin_filter,
+            participant_selection_filter=participant_selection_filter,
             exclude_pid_filter=exclude_pid_filter,
             cutoff_authored_filter=cutoff_authored_filter,
             cutoff_finalized_filter=cutoff_finalized_filter,
@@ -565,7 +610,7 @@ def add_additional_arguments(parser) -> None:
             "(e.g. rdr_replica).  Used as the source for participant, "
             "questionnaire_response, physical_measurements, etc."
         ),
-        required=True,
+        required=False,
     )
 
     # ── data sources ────────────────────────────────────────────────────
@@ -590,7 +635,7 @@ def add_additional_arguments(parser) -> None:
     # ── operations ──────────────────────────────────────────────────────
     parser.add_argument(
         "--load-data",
-        help="Copy vocabulary and RDR lookup tables into the working dataset",
+        help="Copy vocabulary tables into the working dataset",
         default=False, action="store_true",
     )
     parser.add_argument(
@@ -646,6 +691,14 @@ def add_additional_arguments(parser) -> None:
         default="all",
     )
     parser.add_argument(
+        "--participant-list-file",
+        help=(
+            "Text file containing one participant_id per line. When used with --run-etl, "
+            "participant_filter is populated from this file instead of origin-based selection."
+        ),
+        default=None,
+    )
+    parser.add_argument(
         "--include-surveys",
         help="Comma-separated list of survey names to include (mutually exclusive with "
              "--exclude-surveys).",
@@ -681,6 +734,14 @@ def add_additional_arguments(parser) -> None:
         "--include-participants-under-18",
         help="Include participants who were under 18 at consent",
         default=False, action="store_true",
+    )
+    parser.add_argument(
+        "--exclude-participants",
+        help=(
+            "Text file containing one participant_id per line to exclude from "
+            "participant_filter during --run-etl."
+        ),
+        default=None,
     )
 
     # ── export options ──────────────────────────────────────────────────

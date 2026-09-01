@@ -66,6 +66,7 @@ queries = {
             {age_filter}
             {withdrawal_filter}
             {origin_filter}
+            {participant_selection_filter}
             {exclude_pid_filter}
             ORDER BY p.participant_id
         """,
@@ -503,7 +504,7 @@ queries = {
                 -- Observation to Measurement
                 cdm_obs.src_id AS src_id
             FROM `{dataset_id}.observation` cdm_obs
-                INNER JOIN `{dataset_id}.rdr_measurement_to_qualifier` mtq ON mtq.qualifier_id = cdm_obs.meas_id
+                INNER JOIN `{rdr_dataset}.rdr_measurement_to_qualifier` mtq ON mtq.qualifier_id = cdm_obs.meas_id
             UNION ALL
             SELECT 21 AS domain_concept_id_1,
                 -- Measurement
@@ -515,7 +516,7 @@ queries = {
                 -- Measurement to Observation
                 cdm_obs.src_id AS src_id
             FROM `{dataset_id}.observation` cdm_obs
-                INNER JOIN `{dataset_id}.rdr_measurement_to_qualifier` mtq ON mtq.qualifier_id = cdm_obs.meas_id""",
+                INNER JOIN `{rdr_dataset}.rdr_measurement_to_qualifier` mtq ON mtq.qualifier_id = cdm_obs.meas_id""",
         "destination": "fact_relationship",
         "append": False,
     },
@@ -635,7 +636,7 @@ queries = {
               CAST(NULL AS STRING) AS place_of_service_source_value,
               'vibrent' AS src_id
             FROM
-              `{dataset_id}.rdr_site` site""",
+              `{rdr_dataset}.rdr_site` site""",
         "destination": "care_site",
         "append": False,
     },
@@ -1294,7 +1295,7 @@ queries = {
               CAST(NULL AS INT64) AS cause_source_concept_id,
               'healthpro' AS src_id
             FROM
-              `{dataset_id}.rdr_deceased_report` dr
+              `{rdr_dataset}.rdr_deceased_report` dr
             JOIN
               `{dataset_id}.person` per
             ON
