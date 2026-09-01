@@ -23,6 +23,8 @@ def _build_args(**overrides):
         "exclude_remote_pm": False,
         "include_participants_under_18": False,
         "exclude_pid_list": [],
+        "participant_list_file": None,
+        "exclude_participants": None,
         "omit_measurements": False,
         "omit_surveys": False,
         "dry_run": True,
@@ -68,6 +70,71 @@ class CurationBQTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "cannot both be specified"):
             tool._build_format_args()
+
+    def test_participant_list_file_adds_include_filter(self):
+        tool = self._create_tool(_build_args(participant_list_file="participants.txt"))
+
+        with mock.patch.object(
+            tool,
+            "_read_participant_ids_file",
+            return_value=[123, 456],
+        ) as read_mock:
+            fmt = tool._build_format_args()
+
+        self.assertEqual(
+            "AND p.participant_id IN (123, 456)",
+            fmt["participant_selection_filter"],
+        )
+        read_mock.assert_called_once_with("participants.txt")
+
+    def test_empty_participant_list_file_disables_participant_filter_selection(self):
+        tool = self._create_tool(_build_args(participant_list_file="participants.txt"))
+
+        with mock.patch.object(
+            tool,
+            "_read_participant_ids_file",
+            return_value=[],
+        ):
+            fmt = tool._build_format_args()
+
+        self.assertEqual("AND FALSE", fmt["participant_selection_filter"])
+
+    def test_exclude_participants_file_extends_exclude_filter(self):
+        tool = self._create_tool(
+            _build_args(exclude_pid_list=[111], exclude_participants="exclude.txt")
+        )
+
+        with mock.patch.object(
+            tool,
+            "_read_participant_ids_file",
+            return_value=[222, 333],
+        ) as read_mock:
+            fmt = tool._build_format_args()
+
+        self.assertEqual(
+            "AND p.participant_id NOT IN (111, 222, 333)",
+            fmt["exclude_pid_filter"],
+        )
+        read_mock.assert_called_once_with("exclude.txt")
+
+    def test_participant_filter_query_includes_file_filters(self):
+        tool = self._create_tool(
+            _build_args(
+                participant_list_file="participants.txt",
+                exclude_participants="exclude.txt",
+            )
+        )
+
+        with mock.patch.object(
+            tool,
+            "_read_participant_ids_file",
+            side_effect=[[123, 456], [222]],
+        ):
+            fmt = tool._build_format_args()
+
+        participant_filter_query = queries.queries["participant_filter"]["query"].format(**fmt)
+        self.assertIn("AND p.participant_id IN (123, 456)", participant_filter_query)
+        self.assertIn("AND p.participant_id NOT IN (222)", participant_filter_query)
 
     def test_omit_measurements_uses_empty_src_meas_query_and_truncates_table(self):
         tool = self._create_tool(_build_args(omit_measurements=True))
@@ -146,7 +213,6 @@ class CurationBQTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
 
 
 
