@@ -61,7 +61,9 @@ class G2pConsentClient:
         }
 
         record_data = {}
+        total_count = 0
         for record in recent_records:
+            total_count += 1
             mapped_data = {}
             for mapped_name, redcap_name in field_name_map.items():
                 if redcap_name in record:
@@ -74,7 +76,7 @@ class G2pConsentClient:
         passed_validation = []
         all_passed = True
 
-        total_count = 0
+        consent_count = 0
         already_validated_count = 0
         for record_id, metadata in record_data.items():
             if (
@@ -82,7 +84,7 @@ class G2pConsentClient:
                 or metadata['consent_status'] != '1'  # skip any records that don't provide consent
             ):
                 continue
-            total_count += 1
+            consent_count += 1
             if metadata['validation_status'] == '1':  # skip any that have already been validated
                 already_validated_count += 1
                 continue
@@ -114,7 +116,8 @@ class G2pConsentClient:
                         'consent_validation': 1
                     })
 
-        logging.info(f'found {total_count} records ({already_validated_count} were already validated)')
+        logging.info(f'showing {total_count} records')
+        logging.info(f'found {consent_count} consents ({already_validated_count} were already validated)')
 
     def _record_result(self, data, error_message_list, session: Session):
         consent_record = PrsConsentResponse(
