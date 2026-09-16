@@ -38,34 +38,35 @@ queries = {
     # ---------------------------------------------------------------------------
     "participant_filter": {
         # Replicates _select_participant_ids() from curation.py
+        # Uses ppsc_awardee_insite table where columns exist, falls back to RDR tables for unavailable columns
         # Enum values: WithdrawalStatus.NO_USE=2, QuestionnaireStatus.SUBMITTED=1, UNSET=0
         "destination": "participant_filter",
         "append": False,
         "query": """
-            SELECT DISTINCT p.participant_id
-            FROM `{rdr_dataset}.rdr_participant` p
-            JOIN `{rdr_dataset}.rdr_participant_summary` ps
-                ON p.participant_id = ps.participant_id
+            SELECT DISTINCT ppsc.participant_id
+            FROM `{dataset_id}.ppsc_awardee_insite` ppsc
+            LEFT JOIN `{rdr_dataset}.rdr_participant` p
+                ON ppsc.participant_id = p.participant_id
             WHERE (
                 IFNULL(p.is_ghost_id, 0) != 1
                 OR (
-                    ps.participant_id IS NOT NULL
+                    ppsc.participant_id IS NOT NULL
                     AND SAFE_CAST(p.date_added_ghost AS TIMESTAMP) > TIMESTAMP('2022-03-18')
                     AND (
-                        ps.consent_for_electronic_health_records != 0
-                        OR ps.questionnaire_on_the_basics = 1
+                        ppsc.consent_for_electronic_health_records != 'no'
+                        OR ppsc.questionnaire_on_the_basics = 'submitted_complete'
                     )
                 )
             )
             AND p.is_test_participant != 1
-            AND ps.date_of_birth IS NOT NULL
-            AND ps.consent_for_study_enrollment_first_yes_authored IS NOT NULL
+            AND ppsc.date_of_birth IS NOT NULL
+            AND ppsc.consent_for_study_enrollment_authored IS NOT NULL
             {age_filter}
             {withdrawal_filter}
             {origin_filter}
             {participant_selection_filter}
             {exclude_pid_filter}
-            ORDER BY p.participant_id
+            ORDER BY ppsc.participant_id
         """,
     },
     "questionnaire_answers_by_module": {

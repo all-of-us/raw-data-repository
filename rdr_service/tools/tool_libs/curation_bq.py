@@ -398,21 +398,21 @@ class CurationBQ(ToolBase):
         else:
             age_filter = (
                 "AND DATE_DIFF("
-                "DATE(ps.consent_for_study_enrollment_first_yes_authored), "
-                "DATE(ps.date_of_birth), YEAR) >= 18"
+                "DATE(ppsc.consent_for_study_enrollment_authored), "
+                "DATE(ppsc.date_of_birth), YEAR) >= 18"
             )
 
         # ── withdrawal + cutoff filter ──────────────────────────────────
         cutoff: Optional[str] = getattr(args, "cutoff", None)
         if cutoff:
             withdrawal_filter = (
-                f"AND SAFE_CAST(ps.consent_for_study_enrollment_first_yes_authored AS TIMESTAMP)"
+                f"AND SAFE_CAST(ppsc.consent_for_study_enrollment_authored AS TIMESTAMP)"
                 f" < TIMESTAMP('{cutoff}')\n"
                 "AND (\n"
-                "    ps.withdrawal_status != 2\n"  # NOT NO_USE
+                "    ppsc.withdrawal_status != 'withdrawn'\n"
                 "    OR (\n"
-                "        ps.withdrawal_status = 2\n"
-                f"       AND SAFE_CAST(ps.withdrawal_authored AS TIMESTAMP) >= TIMESTAMP('{cutoff}')\n"
+                "        ppsc.withdrawal_status = 'withdrawn'\n"
+                f"       AND SAFE_CAST(ppsc.withdrawal_time AS TIMESTAMP) >= TIMESTAMP('{cutoff}')\n"
                 "    )\n"
                 ")"
             )
@@ -425,7 +425,7 @@ class CurationBQ(ToolBase):
                 f"AND SAFE_CAST(ec.cf_created AS TIMESTAMP) > TIMESTAMP('{cutoff}')"
             )
         else:
-            withdrawal_filter = "AND ps.withdrawal_status != 2"  # NOT NO_USE
+            withdrawal_filter = "AND ppsc.withdrawal_status != 'withdrawn'"
             cutoff_authored_filter = ""
             cutoff_finalized_filter = ""
             cutoff_death_filter = ""
