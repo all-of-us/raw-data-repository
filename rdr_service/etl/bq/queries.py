@@ -46,8 +46,6 @@ queries = {
             FROM `{rdr_dataset}.rdr_participant` p
             JOIN `{rdr_dataset}.rdr_participant_summary` ps
                 ON p.participant_id = ps.participant_id
-            JOIN `{rdr_dataset}.rdr_hpo` h
-                ON p.hpo_id = h.hpo_id
             WHERE (
                 IFNULL(p.is_ghost_id, 0) != 1
                 OR (
@@ -60,7 +58,6 @@ queries = {
                 )
             )
             AND p.is_test_participant != 1
-            AND h.name != 'TEST'
             AND ps.date_of_birth IS NOT NULL
             AND ps.consent_for_study_enrollment_first_yes_authored IS NOT NULL
             {age_filter}
