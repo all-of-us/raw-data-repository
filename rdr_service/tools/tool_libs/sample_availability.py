@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 import csv
 from dataclasses import dataclass, field
@@ -79,8 +80,6 @@ class AliquotData:
     extraction_date: datetime = None
     treatment_type: str = None
     treatment_date: str = None
-    wgs_sequenced: bool = False
-    array_sequenced: bool = False
 
     def meets_quantity_reqs(self) -> bool:
         if not running_3a_dataset:
@@ -202,7 +201,6 @@ class SampleAvailabilityDatasetTool(ToolBase):
             aliquot_list = self.retrieve_potential_aliquot_list(session)
             self.process_dataset_info(session, aliquot_list)
             self.load_treatment_data(session, aliquot_list)
-            self.load_sequencing_data(session, aliquot_list)
             bmt_ids = self._load_bmt_ids(session)
 
             eligible_participant_id_list = sorted(self.retrieve_eligible_participant_ids(session))
@@ -251,8 +249,6 @@ class SampleAvailabilityDatasetTool(ToolBase):
             participant_export_data = None
             for sample_type in participant_aliquot_data:
                 collection_date = None
-                wgs_source = None
-                array_source = None
                 for aliquot_data in participant_aliquot_data[sample_type]:
                     if (
                         aliquot_data.meets_quantity_reqs()
@@ -265,14 +261,6 @@ class SampleAvailabilityDatasetTool(ToolBase):
                         collection_date = aliquot_data.collection_timestamp
                         aliquot_data_to_export.append(aliquot_data)
 
-                        if aliquot_data.array_sequenced or aliquot_data.wgs_sequenced:
-                            distinct_sequence_sources[sample_type] += 1
-                            source = 'blood' if sample_type == SampleType.blood_dna else 'saliva'
-                            if aliquot_data.array_sequenced:
-                                array_source = source
-                            if aliquot_data.wgs_sequenced:
-                                wgs_source = source
-
                 if collection_date:
                     if participant_export_data is None:
                         participant_export_data = ParticipantData(participant_id)
@@ -280,19 +268,17 @@ class SampleAvailabilityDatasetTool(ToolBase):
                         participant_data_to_export.append(participant_export_data)
 
                     participant_export_data.set_type_as_available(sample_type, collection_date)
-                    if not participant_export_data.wgs_status and wgs_source:
-                        participant_export_data.wgs_status = True
-                        participant_export_data.wgs_source_blood = wgs_source == 'blood'
-                    if not participant_export_data.array_status and array_source:
-                        participant_export_data.array_status = True
-                        participant_export_data.array_source_blood = array_source == 'blood'
+
+        logging.info('starting to load participant sequencing data')
+        with self.get_session() as session:
+            self.load_sequencing_data(session, participant_data_to_export)
 
         print(datetime.now(), 'writing to csv')
         if running_3a_dataset:
             self._export_participant_3a_data_as_csv(participant_data_to_export)
         else:
             self._export_participant_data_as_csv(participant_data_to_export)
-            self._export_aliquot_data_as_csv(aliquot_data_to_export)
+            # self._export_aliquot_data_as_csv(aliquot_data_to_export)
         # self._upload_to_bq(data_to_export)
 
         print()
@@ -339,7 +325,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
 
     @classmethod
     def _export_participant_data_as_csv(cls, data_to_export: List[ParticipantData]):
-        with open('participant_export.csv', 'w') as file:
+        with open('test_participant_export.csv', 'w') as file:
             writer = csv.DictWriter(file, [
                 'participant_id',
                 'pst_plasma_availability',
@@ -736,44 +722,68 @@ class SampleAvailabilityDatasetTool(ToolBase):
             print(datetime.now(), f'completed {current_count} of {total_count}')
 
     @classmethod
-    def load_sequencing_data(cls, session: Session, aliquot_list: List[AliquotData]):
-        batch_size = 8000
-        current_count = 0
-        total_count = len(aliquot_list)
+    def load_sequencing_data(cls, session: Session, participant_list: List[ParticipantData]):
+        a4_data = session.query(
+            genomics.GenomicAW4Raw.genome_type,
+            genomics.GenomicAW4Raw.biobank_id,
+            BiobankSpecimen.testCode
+        ).join(
+            genomics.GenomicAW1Raw,
+            genomics.GenomicAW4Raw.sample_id == genomics.GenomicAW1Raw.sample_id
+        ).join(
+            BiobankAliquot,
+            BiobankAliquot.rlimsId == genomics.GenomicAW1Raw.parent_sample_id
+        ).join(
+            BiobankSpecimen,
+            BiobankAliquot.specimen_rlims_id == BiobankSpecimen.rlimsId
+        ).filter(
+            genomics.GenomicAW4Raw.qc_status.like('pass'),
+            genomics.GenomicAW4Raw.ignore_flag == False,
+            genomics.GenomicAW1Raw.ignore_flag == False
+        )
+        cleaned_a4_data = []
+        for datum in a4_data:
+            biobank_id: str = datum.biobank_id
+            if biobank_id[0].lower() == 'a':
+                biobank_id = biobank_id[1:]
 
-        for aliquot_subset in list_chunks(aliquot_list, batch_size):
-            print(datetime.now(), 'retrieving sequencing data...')
-            aliquot_id_list = []
-            aliquot_map: Dict[str, AliquotData] = {}
-            for aliquot in aliquot_subset:
-                aliquot_map[aliquot.aliquot_rlims_id] = aliquot
-                aliquot_id_list.append(aliquot.aliquot_rlims_id)
+            cleaned_a4_data.append((biobank_id, datum.genome_type, datum.testCode))
 
-            query = session.query(
-                genomics.GenomicAW4Raw.genome_type,
-                genomics.GenomicAW1Raw.parent_sample_id
-            ).join(
-                genomics.GenomicAW1Raw,
-                genomics.GenomicAW4Raw.sample_id == genomics.GenomicAW1Raw.sample_id
-            ).filter(
-                genomics.GenomicAW4Raw.qc_status.like('pass'),
-                genomics.GenomicAW1Raw.parent_sample_id.in_(aliquot_id_list),
-                genomics.GenomicAW4Raw.ignore_flag == False,
-                genomics.GenomicAW1Raw.ignore_flag == False
-            )
-            qc_success_data: Collection[genomics.GenomicAW4Raw] = query.all()
+        biobank_id_query = session.query(
+            Participant.biobankId,
+            Participant.participantId
+        )
+        biobank_id_map = {}
+        for datum in biobank_id_query.all():
+            biobank_id_map[str(datum.biobankId)] = datum.participantId
 
-            for genome_type, aliquot_rlims_id in qc_success_data:
-                aliquot = aliquot_map[aliquot_rlims_id]
-                if genome_type is None:
+        sequencing_data = defaultdict(set)
+        for biobank_id, genome_type, test_code in cleaned_a4_data:
+            participant_id = biobank_id_map[biobank_id]
+            sequencing_data[participant_id].add((genome_type, test_code))
+
+        for participant_data in participant_list:
+            sequencing_info = sequencing_data[participant_data.participant_id]
+            wgs_source = ''
+            array_source = ''
+            for aou_type, code in sequencing_info:
+                if not aou_type:
                     continue
-                if genome_type.lower().endswith('wgs'):
-                    aliquot.wgs_sequenced = True
-                else:
-                    aliquot.array_sequenced = True
+                if 'array' in aou_type:
+                    if code in SalivaSampleCodes:
+                        array_source = 'saliva'
+                    elif code in BloodSampleCodes:
+                        array_source = 'blood'
+                elif 'wgs' in aou_type:
+                    if code in SalivaSampleCodes:
+                        wgs_source = 'saliva'
+                    elif code in BloodSampleCodes:
+                        wgs_source = 'blood'
 
-            current_count += len(aliquot_subset)
-            print(datetime.now(), f'completed {current_count} of {total_count}')
+            participant_data.wgs_status = wgs_source != ''
+            participant_data.wgs_source_blood = wgs_source == 'blood'
+            participant_data.array_status = array_source != ''
+            participant_data.array_source_blood = array_source == 'blood'
 
     @classmethod
     def organize_aliquots(cls, aliquot_list: List[AliquotData]) -> Dict[int, Dict[SampleType, List[AliquotData]]]:
