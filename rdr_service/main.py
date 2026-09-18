@@ -48,6 +48,7 @@ from rdr_service.api.research_projects_directory_api import ResearchProjectsDire
 from rdr_service.api.redcap_workbench_audit_api import RedcapResearcherAuditApi, RedcapWorkbenchAuditApi
 from rdr_service.api.message_broker_api import MessageBrokerApi
 from rdr_service.api.onsite_verification_api import OnsiteVerificationApi
+from rdr_service.api.privacy_api import PrivacyLookupApi
 from rdr_service.api.nph_participant_biobank_order_api import NphOrderApi, DlwDosageApi
 from rdr_service.api.nph_participant_api import nph_participant
 from rdr_service.api.site_hierarchy_api import SiteHierarchyApi
@@ -478,6 +479,14 @@ api.add_resource(
     AwardeeInSiteApi,
     API_PREFIX + 'AwardeeInSite',
     endpoint='awardeeinsite',
+    methods=['GET']
+)
+
+# Privacy Lookup API (sandbox only)
+api.add_resource(
+    PrivacyLookupApi,
+    API_PREFIX + 'PrivacyLookup/<string:concept_id>',
+    endpoint='privacy.lookup',
     methods=['GET']
 )
 
