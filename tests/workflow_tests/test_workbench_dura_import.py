@@ -26,7 +26,25 @@ class WorkbenchDuraImporterTest(BaseTestCase):
                 "agreement_end_date": "2024-05-01",
                 "contractoutcome": "1",
                 "country_institution": "US",
-                "peer_integration_complete": "0"
+                "peer_integration_complete": "0",
+                "document_status___1": "0",
+                "document_status___2": "1",
+                "tier_access___1": "1",
+                "tier_access___2": "0",
+                "tier_access___3": "1",
+                "tier_access___4": "0",
+                "preapproval_tier___1": "1",
+                "preapproval_tier___2": "0",
+                "original_dura_completion": "0",
+                "dura_type_active": "1",
+                "currentdura_agreementstatus": "1",
+                "currentdura_closed_reason": None,
+                "currentdura_other_reason": None,
+                "currentdura_peerconfirmationdate": "2024-05-29",
+                "registration_form_checklist___1": "1",
+                "dura_checklist___3": "3",
+                "dura_checklist_3___2": "2",
+                "currentdura_dura_checklist___4": "4"
             },
             {
                 "record_id": "2",
@@ -34,7 +52,21 @@ class WorkbenchDuraImporterTest(BaseTestCase):
                 "agreement_end_date": "2024-05-29",
                 "contractoutcome": "1",
                 "country_institution": "GB",
-                "peer_integration_complete": "0"
+                "peer_integration_complete": "0",
+                "document_status___1": "1",
+                "document_status___2": "0",
+                "tier_access___1": "0",
+                "tier_access___2": "0",
+                "tier_access___3": "1",
+                "tier_access___4": "0",
+                "preapproval_tier___1": "0",
+                "preapproval_tier___2": "1",
+                "original_dura_completion": "0",
+                "dura_type_active": "1",
+                "currentdura_agreementstatus": "3",
+                "currentdura_closed_reason": "2",
+                "currentdura_other_reason": None,
+                "currentdura_peerconfirmationdate": ""
             }
         ]
 
@@ -57,10 +89,35 @@ class WorkbenchDuraImporterTest(BaseTestCase):
         self.assertEqual(dura_datetime_1, dura_data_1.agreement_end_date)
         self.assertEqual('1', dura_data_1.contractoutcome)
         self.assertEqual('US', dura_data_1.country_institution_code)
+        self.assertEqual('1', dura_data_1.document_status___2)
+        self.assertEqual('1', dura_data_1.tier_access___1)
+        self.assertEqual('0', dura_data_1.tier_access___2)
+        self.assertEqual('1', dura_data_1.tier_access___3)
+        self.assertEqual('1', dura_data_1.preapproval_tier___1)
+        self.assertEqual('0', dura_data_1.preapproval_tier___2)
+        self.assertEqual(0, dura_data_1.original_dura_completion)
+        self.assertEqual(1, dura_data_1.currentdura_agreementstatus)
+        self.assertEqual(None, dura_data_1.currentdura_closed_reason)
+        self.assertEqual(dura_datetime_2, dura_data_1.currentdura_peerconfirmationdate)
+        self.assertEqual('1', dura_data_1.registration_form_checklist___1)
+        self.assertEqual('3', dura_data_1.dura_checklist___3)
+        self.assertEqual('2', dura_data_1.dura_checklist_3___2)
+        self.assertEqual('4', dura_data_1.currentdura_dura_checklist___4)
+
         self.assertEqual('1', dura_data_2.access_method)
         self.assertEqual(dura_datetime_2, dura_data_2.agreement_end_date)
         self.assertEqual('GB', dura_data_2.country_institution_code)
         self.assertEqual('0', dura_data_2.peer_integration_complete)
+        self.assertEqual('1', dura_data_2.document_status___1)
+        self.assertEqual('1', dura_data_2.tier_access___3)
+        self.assertEqual('0', dura_data_2.tier_access___4)
+        self.assertEqual('0', dura_data_2.preapproval_tier___1)
+        self.assertEqual('1', dura_data_2.preapproval_tier___2)
+        self.assertEqual(1, dura_data_2.dura_type_active)
+        self.assertEqual(3, dura_data_2.currentdura_agreementstatus)
+        self.assertEqual(2, dura_data_2.currentdura_closed_reason)
+        self.assertEqual(None, dura_data_2.currentdura_other_reason)
+        self.assertEqual(None, dura_data_2.currentdura_peerconfirmationdate)
 
     def test_dura_data_updates_imported(self, redcap_class):
         redcap_class.return_value.send_request.return_value = [
