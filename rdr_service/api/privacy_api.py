@@ -19,7 +19,7 @@ class PrivacyLookupApi(BaseApi):
     """
 
     method_decorators = [
-        auth_required('awardee'),
+        auth_required(['rdr']),
         restrict_to_gae_project([RdrEnvironment.SANDBOX.value, 'sandbox'])
     ]
 
