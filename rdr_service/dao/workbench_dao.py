@@ -49,7 +49,8 @@ DURA_TIMESTAMP_FIELDS = ['agreement_end_date', 'agreement_start_date', 'ct_reque
                          'peerconfirmationdate', 'peersubmissionstatusdate', 'preapproval_discussion_date',
                          'preapproval_projectcreation_date', 'preapproval_requestform_date', 'presentation_date',
                          'reviewconfirmationdate', 'reviewrequestdate_ct', 'reviewrequestdate_ct_2',
-                         'signedriderdate_ct', 'signing_official_contact_date']
+                         'signedriderdate_ct', 'signing_official_contact_date', 'currentdura_peerconfirmationdate',
+                         'agreement_expiration_date']
 
 class WorkbenchWorkspaceDao(UpdatableDao):
     def __init__(self):
