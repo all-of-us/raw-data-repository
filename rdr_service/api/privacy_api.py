@@ -47,20 +47,39 @@ class PrivacyLookupApi(BaseApi):
             session = db.make_session()
 
             try:
-                result = session.execute(
-                    text("SELECT * FROM privacy.privacy_risk_lookup WHERE concept_id = :concept_id"),
+                row = session.execute(
+                    text("""
+                         SELECT
+                            privacy_risk_id,
+                            concept_id,
+                            privacy_entity_id,
+                            source_origin,
+                            workflow_status,
+                            final_decision,
+                            rule_version
+                         FROM
+                             `privacy`.privacy_risk_lookup
+                         WHERE concept_id = :concept_id
+                         """),
                     {"concept_id": concept_id}
                 ).fetchone()
 
-                # For now, return a placeholder structure
-                result = {
-                    "concept_id": concept_id,
-                    "data": {}
-                    # Add your fields here
-                }
-
-                if not result or not result.get('data'):
+                # Check if result exists before parsing
+                if not row:
                     raise NotFound(f"Privacy data not found for concept_id {concept_id}")
+
+                # Parse the Row object into a dictionary
+                result = {
+                    "concept_id": row.concept_id,
+                    "data": {
+                        "privacy_risk_id": row.privacy_risk_id,
+                        "privacy_entity_id": row.privacy_entity_id,
+                        "source_origin": row.source_origin,
+                        "workflow_status": row.workflow_status,
+                        "final_decision": row.final_decision,
+                        "rule_version": row.rule_version
+                    }
+                }
 
                 return result
 
