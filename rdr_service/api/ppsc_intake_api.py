@@ -223,6 +223,7 @@ class PPSCIntakeAPI(BaseApi):
                 ParticipantEventActivity.activity_id == activity_id,
                 ParticipantEventActivity.ignore_flag == 0
             ).all()
+            events = []
             if len(activity_events) > 0 and activity == 'Withdrawal':
                 events = session.query(WithdrawalEvent).filter(
                     WithdrawalEvent.participant_id == participant_id,
