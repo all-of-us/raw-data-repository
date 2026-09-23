@@ -694,11 +694,6 @@ class PPSCIntakeAPITest(BaseTestCase):
         with clock.FakeClock(test_time):
             self.send_post('Intake', request_data=payload, expected_status=http.client.OK)
 
-        #test duplicate withdrawal validation
-        with clock.FakeClock(test_time):
-            dupe_check = self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
-            self.assertEqual(dupe_check.status_code, 400)
-
         participant_event_activities = self.ppsc_participant_activity_dao.get_all()
         participant_event_activities = self.filter_events_by_type(participant_event_activities, 5)
 
@@ -725,6 +720,11 @@ class PPSCIntakeAPITest(BaseTestCase):
         self.assertEqual('Withdrawal', withdrawal_events[1].event_type_name)
         self.assertEqual('activity_date_time', withdrawal_events[1].data_element_name)
         self.assertEqual("2024-05-20T14:30:00.000Z", withdrawal_events[1].data_element_value)
+
+        #test duplicate withdrawal validation
+        with clock.FakeClock(test_time):
+            dupe_check = self.send_post('Intake', request_data=payload, expected_status=http.client.BAD_REQUEST)
+            self.assertEqual(dupe_check.status_code, 400)
 
     def test_intake_deactivation_event_type_validation(self):
         participant = self.ppsc_data_gen.create_database_participant()

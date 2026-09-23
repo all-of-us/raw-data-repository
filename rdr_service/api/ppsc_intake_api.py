@@ -223,17 +223,17 @@ class PPSCIntakeAPI(BaseApi):
                 ParticipantEventActivity.activity_id == activity_id,
                 ParticipantEventActivity.ignore_flag == 0
             ).all()
-            if activity_events and activity == 'Withdrawal':
+            if len(activity_events) > 0 and activity == 'Withdrawal':
                 events = session.query(WithdrawalEvent).filter(
                     WithdrawalEvent.participant_id == participant_id,
                     WithdrawalEvent.ignore_flag == 0
                 ).all()
-            elif activity_events and activity == 'Deactivation':
+            elif len(activity_events) > 0 and activity == 'Deactivation':
                 events = session.query(DeactivationEvent).filter(
                     DeactivationEvent.participant_id == participant_id,
                     DeactivationEvent.ignore_flag == 0
                 ).all()
-            if events:
+            if len(events) > 0:
                 raise BadRequest(f'Invalid Intake API Payload: {activity} already exists.')
 
 
