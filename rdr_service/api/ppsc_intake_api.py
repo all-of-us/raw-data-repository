@@ -135,6 +135,10 @@ class PPSCIntakeAPI(BaseApi):
             if age_group == '7-12' and assent_status is None:
                 raise UnprocessableEntity('Missing pediatric assent')
 
+        #Check for previous withdrawal/deactivation
+        if req_data['activity'] == 'Withdrawal' or req_data['activity'] == ['Deactivation']:
+            self.check_withdrawal(participant_id, req_data['activity'])
+
     def handle_event_insert(self, *, req_data: dict):
         activity_record = list(filter(lambda x: x.name.lower() == req_data['activity'].lower(),
                                       self.activity_records))
@@ -210,6 +214,28 @@ class PPSCIntakeAPI(BaseApi):
                 ConsentEvent.data_element_name == data_element_name,
                 ConsentEvent.data_element_value.ilike(data_element_value)
             ).first()
+
+    def check_withdrawal(self, participant_id, activity):
+        activity_id = 5 if activity == 'Withdrawal' else 6
+        with self.dao.session() as session:
+            activity_events = session.query(ParticipantEventActivity).filter(
+                ParticipantEventActivity.participant_id == participant_id,
+                ParticipantEventActivity.activity_id == activity_id,
+                ParticipantEventActivity.ignore_flag == 0
+            ).all()
+            if activity_events and activity == 'Withdrawal':
+                events = session.query(WithdrawalEvent).filter(
+                    WithdrawalEvent.participant_id == participant_id,
+                    WithdrawalEvent.ignore_flag == 0
+                ).all()
+            elif activity_events and activity == 'Deactivation':
+                events = session.query(DeactivationEvent).filter(
+                    DeactivationEvent.participant_id == participant_id,
+                    DeactivationEvent.ignore_flag == 0
+                ).all()
+            if events:
+                raise BadRequest(f'Invalid Intake API Payload: {activity} already exists.')
+
 
     def get_pediatric_assent(self, participant_id):
         with self.dao.session() as session:
