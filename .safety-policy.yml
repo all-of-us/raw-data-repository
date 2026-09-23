@@ -26,6 +26,21 @@ security: # configuration for the `safety check` command
         SFTY-20260724-05622:
           reason: httplib2 version 0.19.1 has a vulnerability
           expires: '2027-07-31'
+        SFTY-20260803-51569:
+          reason: "cryptography Bleichenbacher Oracle vulnerability - to be addressed in dependency update"
+          until: 2027-07-31
+        SFTY-20260817-30743:
+          reason: "sqlparse DoS vulnerability - to be addressed in dependency update"
+          until: 2027-07-31
+        SFTY-20260817-11494:
+          reason: "sqlparse Code Injection vulnerability - to be addressed in dependency update"
+          until: 2027-07-31
+        SFTY-20260817-28425:
+          reason: "sqlparse DoS vulnerability - to be addressed in dependency update"
+          until: 2027-07-31
+        SFTY-20260817-52376:
+          reason: "sqlparse ReDoS vulnerability - to be addressed in dependency update"
+          until: 2027-07-31
     continue-on-vulnerability-error: False # Suppress non-zero exit codes when vulnerabilities are found. Enable this in pipelines and CI/CD processes if you want to pass builds that have vulnerabilities. We recommend you set this to False.
 alert: # configuration for the `safety alert` command
     security:
