@@ -432,6 +432,16 @@ class CurationBQ(ToolBase):
             # Disable cutoff-specific branch when no cutoff is supplied.
             ehr_consent_cutoff_not_validated_filter = "AND FALSE"
 
+        # ── minimum survey date filter ───────────────────────────────────
+        min_survey_date: Optional[str] = getattr(args, "min_survey_date", None)
+        if min_survey_date:
+            min_survey_date_filter = (
+                f"AND SAFE_CAST(COALESCE(qr.authored, qr.created) AS TIMESTAMP)"
+                f" >= TIMESTAMP('{min_survey_date}')"
+            )
+        else:
+            min_survey_date_filter = ""
+
         # ── participant origin filter ───────────────────────────────────
         origin: Optional[str] = getattr(args, "origin", None)
         if origin and origin != "all":
@@ -511,6 +521,7 @@ class CurationBQ(ToolBase):
             cutoff_death_filter=cutoff_death_filter,
             ehr_consent_cutoff_not_validated_filter=ehr_consent_cutoff_not_validated_filter,
             survey_filter=survey_filter,
+            min_survey_date_filter=min_survey_date_filter,
             pm_collect_type_filter=pm_collect_type_filter,
         )
 
@@ -680,6 +691,12 @@ def add_additional_arguments(parser) -> None:
         "--cutoff",
         help="Data cut-off date (YYYY-MM-DD).  Only data authored before this date "
              "is included.  Also controls withdrawal eligibility logic.",
+        default=None,
+    )
+    parser.add_argument(
+        "--min-survey-date",
+        help="Minimum survey date (YYYY-MM-DD).  Survey responses authored before "
+             "this date are excluded.",
         default=None,
     )
     parser.add_argument(

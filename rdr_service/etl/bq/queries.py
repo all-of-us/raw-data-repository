@@ -44,7 +44,7 @@ queries = {
         "append": False,
         "query": """
             SELECT DISTINCT ppsc.participant_id
-            FROM `{dataset_id}.ppsc_awardee_insite` ppsc
+            FROM `{rdr_dataset}.ppsc_awardee_insite` ppsc
             LEFT JOIN `{rdr_dataset}.rdr_participant` p
                 ON ppsc.participant_id = p.participant_id
             WHERE (
@@ -103,6 +103,7 @@ queries = {
                 SELECT participant_id FROM `{dataset_id}.participant_filter`
             )
             {cutoff_authored_filter}
+            {min_survey_date_filter}
             {survey_filter}
         """,
     },
@@ -254,6 +255,7 @@ queries = {
                     SELECT participant_id FROM `{dataset_id}.participant_filter`
                 )
                 {cutoff_authored_filter}
+                {min_survey_date_filter}
                 {survey_filter}
             ),
             -- ------------------------------------------------------------------
