@@ -136,7 +136,7 @@ class PPSCIntakeAPI(BaseApi):
                 raise UnprocessableEntity('Missing pediatric assent')
 
         #Check for previous withdrawal/deactivation
-        if req_data['activity'] == 'Withdrawal' or req_data['activity'] == ['Deactivation']:
+        if req_data['activity'] == 'Withdrawal' or req_data['activity'] == 'Deactivation':
             self.check_withdrawal(participant_id, req_data['activity'])
 
     def handle_event_insert(self, *, req_data: dict):
