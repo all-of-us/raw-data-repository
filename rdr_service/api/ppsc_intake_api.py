@@ -216,24 +216,12 @@ class PPSCIntakeAPI(BaseApi):
             ).first()
 
     def check_withdrawal(self, participant_id, activity):
-        activity_id = 5 if activity == 'Withdrawal' else 6
+        event_type = WithdrawalEvent if activity == 'Withdrawal' else DeactivationEvent
         with self.dao.session() as session:
-            activity_events = session.query(ParticipantEventActivity).filter(
-                ParticipantEventActivity.participant_id == participant_id,
-                ParticipantEventActivity.activity_id == activity_id,
-                ParticipantEventActivity.ignore_flag == 0
+            events = session.query(event_type).filter(
+                event_type.participant_id == participant_id,
+                event_type.ignore_flag == 0
             ).all()
-            events = []
-            if len(activity_events) > 0 and activity == 'Withdrawal':
-                events = session.query(WithdrawalEvent).filter(
-                    WithdrawalEvent.participant_id == participant_id,
-                    WithdrawalEvent.ignore_flag == 0
-                ).all()
-            elif len(activity_events) > 0 and activity == 'Deactivation':
-                events = session.query(DeactivationEvent).filter(
-                    DeactivationEvent.participant_id == participant_id,
-                    DeactivationEvent.ignore_flag == 0
-                ).all()
             if len(events) > 0:
                 raise BadRequest(f'Invalid Intake API Payload: {activity} already exists.')
 
