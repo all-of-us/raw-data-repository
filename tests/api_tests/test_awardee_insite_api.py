@@ -305,6 +305,8 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "race": "Black",
             "ageRange": "36-45",
             "enrollmentStatusTime": "UNSET",
+            "active_ehr_consent": "UNSET",
+            "passive_ehr_consent": "UNSET",
         }
 
         response = self.send_get("AwardeeInSite")

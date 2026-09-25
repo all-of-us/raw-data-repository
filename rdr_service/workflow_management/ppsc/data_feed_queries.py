@@ -441,6 +441,8 @@ def insert_awardee_insite_data(
           , race
           , age_range
           , enrollment_status_time
+          , active_ehr_consent
+          , passive_ehr_consent
         )
         WITH
           participant_cte AS (
@@ -893,7 +895,8 @@ def insert_awardee_insite_data(
                 'personal and family health history update',
                 'pediatric basics 0to6',
                 'pediatric overall health 0to6',
-                'pediatric environmental health 0to6'
+                'pediatric environmental health 0to6',
+                'pediatric assent'
               )
               AND ignore_flag = 0
               GROUP BY participant_id, event_type_name, event_id
@@ -975,6 +978,13 @@ def insert_awardee_insite_data(
             FROM survey_completion_latest_submitted
             GROUP BY participant_id
           ),
+          pediatric_assent_cte AS (
+            SELECT participant_id
+              , MAX(CASE WHEN LOWER(event_type_name) = 'pediatric assent' THEN LOWER(activity_status) END) AS pediatric_assent
+              , MAX(CASE WHEN LOWER(event_type_name) = 'pediatric assent' THEN event_authored_time END) AS pediatric_assent_authored
+            FROM survey_completion_latest_submitted
+            GROUP BY participant_id
+          ),
           retention_cte AS (
             SELECT participant_id
               , MAX(CASE WHEN data_element_name = 'activity_status' THEN data_element_value END) AS retention_eligible_status
@@ -1032,6 +1042,50 @@ def insert_awardee_insite_data(
               , DATE_DIFF(CURRENT_DATE(), SAFE_CAST(date_of_birth AS DATE), YEAR) - IF(EXTRACT(MONTH FROM SAFE_CAST(date_of_birth AS DATE)) * 100 + EXTRACT(DAY FROM SAFE_CAST(date_of_birth AS DATE)) > EXTRACT(MONTH FROM CURRENT_DATE()) * 100 + EXTRACT(DAY FROM CURRENT_DATE()), 1, 0) AS age
               FROM profile_pivot
             )
+          ),
+          final_primary_consent_cte AS (
+              SELECT participant_id
+              , CASE
+                  WHEN age_range = '7-12' THEN
+                    CASE
+                      WHEN consent_for_study_enrollment = 'yes' AND pediatric_assent IN ('yes', 'n/a') THEN 'yes'
+                      ELSE 'no'
+                    END
+                  ELSE consent_for_study_enrollment
+                END AS consent_for_study_enrollment
+              FROM primary_consent_latest_submitted
+              LEFT JOIN pediatric_assent_cte
+              USING (participant_id)
+              LEFT JOIN age_range_cte
+              USING (participant_id)
+          ),
+          ehr_collection_flags_cte AS (
+              SELECT participant_id
+              , CASE
+                  WHEN age_range = '0-6' THEN consent_for_electronic_health_records
+                  WHEN age_range = '7-12' THEN
+                    CASE
+                      WHEN consent_for_electronic_health_records = 'yes' AND pediatric_assent IN ('yes', 'n/a') THEN 'yes'
+                      ELSE 'no'
+                    END
+                  ELSE NULL
+                END AS active_ehr_consent
+              , CASE
+                  WHEN age_range = '0-6' THEN consent_for_electronic_health_records
+                  WHEN age_range = '7-12' THEN
+                    CASE
+                      WHEN consent_for_electronic_health_records = 'yes' THEN 'yes'
+                      ELSE 'no'
+                    END
+                  ELSE NULL
+                END AS passive_ehr_consent
+              FROM participant_cte
+              LEFT JOIN age_range_cte
+              USING (participant_id)
+              LEFT JOIN ehr_latest_submitted
+              USING (participant_id)
+              LEFT JOIN pediatric_assent_cte
+              USING (participant_id)
           ),
           default_filled_columns AS (
             SELECT
@@ -1164,6 +1218,8 @@ def insert_awardee_insite_data(
               , COALESCE(duplicate_account_status, 'no') AS duplicate_account_status
               , COALESCE(race, 'unset') AS race
               , age_range
+              , COALESCE(active_ehr_consent, 'unset') AS active_ehr_consent
+              , COALESCE(passive_ehr_consent, 'unset') AS passive_ehr_consent
             FROM participant_cte
             LEFT JOIN profile_pivot
             USING (participant_id)
@@ -1179,7 +1235,7 @@ def insert_awardee_insite_data(
             USING (participant_id)
             LEFT JOIN ehr_first_yes_submitted
             USING (participant_id)
-            LEFT JOIN primary_consent_latest_submitted
+            LEFT JOIN final_primary_consent_cte
             USING (participant_id)
             LEFT JOIN participant_summary_cte
             USING (participant_id)
@@ -1210,6 +1266,8 @@ def insert_awardee_insite_data(
             LEFT JOIN race_cte
             USING (participant_id)
             LEFT JOIN age_range_cte
+            USING (participant_id)
+            LEFT JOIN ehr_collection_flags_cte
             USING (participant_id)
           ),
           withdrawn_update AS (
@@ -1301,6 +1359,8 @@ def insert_awardee_insite_data(
               , IF(withdrawal_status = 'withdrawn', NULL, duplicate_account_status) AS duplicate_account_status
               , IF(withdrawal_status = 'withdrawn', NULL, race) AS race
               , IF(withdrawal_status = 'withdrawn', NULL, age_range) AS age_range
+              , IF(withdrawal_status = 'withdrawn', NULL, active_ehr_consent) AS active_ehr_consent
+              , IF(withdrawal_status = 'withdrawn', NULL, passive_ehr_consent) AS passive_ehr_consent
             FROM default_filled_columns
           ),
           -- creating surrogate key to detect changes
@@ -1410,6 +1470,8 @@ def insert_awardee_insite_data(
           , race
           , age_range
           , enrollment_status_time
+          , active_ehr_consent
+          , passive_ehr_consent
         FROM final_result_with_surrogate_key fr
         WHERE NOT EXISTS (
             SELECT 1

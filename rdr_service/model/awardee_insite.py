@@ -181,7 +181,9 @@ class AwardeeInSite(PPSCBase):
         "consent_for_study_enrollment", String(10), nullable=False, default="no"
     )
     """
-    Indicates whether enrollment consent, or pediatric permission, has been received.
+    Indicates whether enrollment consent, or pediatric permission, has been received. For participants ages 7-12,
+    this requires both Pediatric Permission and Pediatric Assent (or assent marked as N/A). For participants ages 0-6,
+    this requires only Pediatric Permission.
 
     Values:
 
@@ -710,7 +712,7 @@ class AwardeeInSite(PPSCBase):
     * no
     """
 
-    race = Column("race", String(32), nullable=True, default='unset')
+    race = Column("race", String(32), nullable=True, default="unset")
     """
     A race is a grouping of humans based on shared physical or social qualities into categories generally viewed as
     distinct by society. First used to refer to speakers of a common language and then to denote national affiliations,
@@ -749,6 +751,36 @@ class AwardeeInSite(PPSCBase):
     * 76-85
     * 86+
     """
+
+    activeEhrConsent = Column(
+        "active_ehr_consent", String(10), nullable=True, default="unset"
+    )
+    """
+    Indicates whether the participant has authorized collection of their electronic health records
+    (e.g., surveys, physical measurements). For participants ages 7-12, this requires both Pediatric EHR
+    Authorization and Pediatric Assent (or assent marked as N/A). For participants ages 0-6, this requires only
+    Pediatric EHR Authorization. It is unset for all other age groups.
+
+    Values:
+
+    * yes
+    * no
+    * unset
+    """
+
+    passiveEhrConsent = Column(
+        "passive_ehr_consent", String(10), nullable=True, default="unset"
+    )
+    """
+    Indicates whether the participant's electronic health records may continue to be passively collected.
+
+    Values:
+
+    * yes
+    * no
+    * unset
+    """
+
 
     @classmethod
     def create_surrogate_key_sql(cls) -> str:
