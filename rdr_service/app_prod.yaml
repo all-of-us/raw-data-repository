@@ -1,5 +1,5 @@
 #  app_base.yaml is concatenated to the beginning of this file for deployment.
-instance_class: F4
+instance_class: F4_1G
 
 # Have 5 idle instances to prepare for sudden traffic spikes.
 # Setting target_throughput_utilization and target_cpu_utilization to test if it helps in reducing 502 errors

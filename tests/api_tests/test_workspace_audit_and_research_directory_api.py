@@ -123,6 +123,11 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "focusOnUnderrepresentedPopulations": True,
                 "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
                 "aianResearchDetails": 'string',
+                "sourcePlatform": "VWB",
+                "migrationState": "FINISHED",
+                "workspaceSourceIdV2": "efg-456",
+                "workspaceNamespace": "aou-rw-456",
+                "dataCollections": [],
                 "workspaceDemographic": {
                     "raceEthnicity": ['AIAN', 'MENA'],
                     "age": ['AGE_0_11', 'AGE_65_74'],
@@ -179,6 +184,12 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "findingsFromStudy": 'findingsFromStudy string2',
                 "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
                 "aianResearchDetails": 'string',
+                "sourcePlatform": "VWB",
+                "migrationState": "NOT_STARTED",
+                "workspaceSourceIdV2": "abc-123",
+                "workspaceNamespace": "aou-rw-123",
+                "recoveryState": "RECOVERED",
+                "dataCollections": ["All of Us Registered Tier", "ECHO Cohort - Registered Tier"]
             }
         ]
 
@@ -234,6 +245,12 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'findingsFromStudy': 'findingsFromStudy string',
                        'focusOnUnderrepresentedPopulations': True,
                        'accessTier': 'REGISTERED',
+                       'sourcePlatform': 'VWB',
+                       'migrationState': 'FINISHED',
+                       'workspaceSourceIdV2': 'efg-456',
+                       'workspaceNamespace': 'aou-rw-456',
+                       'recoveryState': None,
+                       'dataCollections': [],
                        'workspaceDemographic': {
                            "raceEthnicity": ['AIAN', 'MENA'],
                            "age": ['AGE_0_11', 'AGE_65_74'],
@@ -309,7 +326,13 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        },
                        'cdrVersion': None,
                        'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
-                       'aianResearchDetails': 'string'
+                       'aianResearchDetails': 'string',
+                       'sourcePlatform': 'VWB',
+                       'migrationState': 'NOT_STARTED',
+                       'workspaceSourceIdV2': 'abc-123',
+                       'workspaceNamespace': 'aou-rw-123',
+                       'recoveryState': 'RECOVERED',
+                       'dataCollections': ["All of Us Registered Tier", "ECHO Cohort - Registered Tier"]
                        },
                       result['data'])
         # test audit review
@@ -391,6 +414,12 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'findingsFromStudy': 'findingsFromStudy string',
                        'focusOnUnderrepresentedPopulations': True,
                        'accessTier': 'REGISTERED',
+                       'sourcePlatform': 'VWB',
+                       'migrationState': 'FINISHED',
+                       'workspaceSourceIdV2': 'efg-456',
+                       'workspaceNamespace': 'aou-rw-456',
+                       'recoveryState': None,
+                       'dataCollections': [],
                        'workspaceDemographic': {
                            "raceEthnicity": ['AIAN', 'MENA'],
                            "age": ['AGE_0_11', 'AGE_65_74'],
@@ -462,6 +491,12 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'findingsFromStudy': 'findingsFromStudy string',
                        'focusOnUnderrepresentedPopulations': True,
                        'accessTier': 'REGISTERED',
+                       'sourcePlatform': 'VWB',
+                       'migrationState': 'FINISHED',
+                       'workspaceSourceIdV2': 'efg-456',
+                       'workspaceNamespace': 'aou-rw-456',
+                       'recoveryState': None,
+                       'dataCollections': [],
                        'workspaceDemographic': {
                            "raceEthnicity": ['AIAN', 'MENA'],
                            "age": ['AGE_0_11', 'AGE_65_74'],
@@ -560,7 +595,13 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        },
                        'cdrVersion': None,
                        'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
-                       'aianResearchDetails': 'string'
+                       'aianResearchDetails': 'string',
+                       'sourcePlatform': 'VWB',
+                       'migrationState': 'NOT_STARTED',
+                       'workspaceSourceIdV2': 'abc-123',
+                       'workspaceNamespace': 'aou-rw-123',
+                       'recoveryState': 'RECOVERED',
+                       'dataCollections': ["All of Us Registered Tier", "ECHO Cohort - Registered Tier"]
                        },
                       result['data'])
 
@@ -1119,7 +1160,13 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            'accessToCare': None, 'educationLevel': None, 'incomeLevel': None, 'others': None},
                        'cdrVersion': cdr_version,
                        'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
-                       'aianResearchDetails': 'string'
+                       'aianResearchDetails': 'string',
+                       'sourcePlatform': None,
+                       'migrationState': None,
+                       'workspaceSourceIdV2': None,
+                       'workspaceNamespace': None,
+                       'recoveryState': None,
+                       'dataCollections': []
                        }, result)
 
         result = self.send_get('workbench/audit/workspace/snapshots?last_snapshot_id=2')
@@ -1396,7 +1443,13 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            'others': 'string'},
                        'cdrVersion': 'irving',
                        'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
-                       'aianResearchDetails': 'string'
+                       'aianResearchDetails': 'string',
+                       'sourcePlatform': None,
+                       'migrationState': None,
+                       'workspaceSourceIdV2': None,
+                       'workspaceNamespace': None,
+                       'recoveryState': None,
+                       'dataCollections': []
                        }, result)
         self.assertIn({'snapshotId': 2, 'workspaceId': 0, 'name': 'workspace name str',
                        'creationTime': '2019-11-25T17:43:41.085000', 'modifiedTime': '2019-11-25T17:43:41.085000',
@@ -1441,7 +1494,13 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            'others': 'string'},
                        'cdrVersion': 'irving',
                        'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
-                       'aianResearchDetails': 'string'
+                       'aianResearchDetails': 'string',
+                       'sourcePlatform': None,
+                       'migrationState': None,
+                       'workspaceSourceIdV2': None,
+                       'workspaceNamespace': None,
+                       'recoveryState': None,
+                       'dataCollections': []
                        }, result)
 
         result = self.send_get('workbench/audit/workspace/snapshots?last_snapshot_id=1')
@@ -1607,7 +1666,13 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "intendToStudy": 'intendToStudy string2',
                 "findingsFromStudy": 'findingsFromStudy string2',
                 "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
-                "aianResearchDetails": 'string'
+                "aianResearchDetails": 'string',
+                "sourcePlatform": "VWB",
+                "migrationState": "NOT_STARTED",
+                "workspaceSourceIdV2": "abc-123",
+                "workspaceNamespace": "aou-rw-123",
+                "recoveryState": "RECOVERED",
+                "dataCollections": ["All of Us Registered Tier", "ECHO Cohort - Registered Tier"]
             }
         ]
 
@@ -1668,7 +1733,13 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        },
                        'cdrVersion': None,
                        'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
-                       'aianResearchDetails': 'string'
+                       'aianResearchDetails': 'string',
+                       "sourcePlatform": "VWB",
+                       "migrationState": "NOT_STARTED",
+                       "workspaceSourceIdV2": "abc-123",
+                       "workspaceNamespace": "aou-rw-123",
+                       "recoveryState": "RECOVERED",
+                       "dataCollections": ["All of Us Registered Tier", "ECHO Cohort - Registered Tier"]
                        },
                       result['data'])
         # update researcher to add verified institution
@@ -2447,6 +2518,12 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "focusOnUnderrepresentedPopulations": True,
                 "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
                 "aianResearchDetails": 'string',
+                'sourcePlatform': 'VWB',
+                'migrationState': 'NOT_STARTED',
+                'workspaceSourceIdV2': 'abc-123',
+                'workspaceNamespace': 'aou-rw-123',
+                'recoveryState': 'RECOVERED',
+                'dataCollections': ["All of Us Registered Tier", "ECHO Cohort - Registered Tier"],
                 "workspaceDemographic": {
                     "raceEthnicity": ['AIAN', 'MENA'],
                     "age": ['AGE_0_11', 'AGE_65_74'],
@@ -2507,7 +2584,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
             },
             {
                 "workspaceId": 2,
-                "name": "data collection name str 3",
+                "name": "workspace name str 3",
                 "creationTime": "2021-02-19T10:45:41.000Z",
                 "modifiedTime": "2021-02-19T10:45:41.000Z",
                 "status": "ACTIVE",
@@ -2541,7 +2618,11 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "intendToStudy": 'intendToStudy string3',
                 "findingsFromStudy": 'findingsFromStudy string3',
                 "aianResearchType": "EXCLUSIVE_AI_AN_POPULATION",
-                "aianResearchDetails": 'string'
+                "aianResearchDetails": 'string',
+                'sourcePlatform': 'VWB',
+                'migrationState': 'FINISHED',
+                'workspaceSourceIdV2': 'abc-456',
+                'workspaceNamespace': 'aou-rw-456'
             }
         ]
 
@@ -2590,9 +2671,65 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        },
                        'cdrVersion': None,
                        'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
-                       'aianResearchDetails': 'string'
+                       'aianResearchDetails': 'string',
+                       'sourcePlatform': 'VWB',
+                       'migrationState': 'NOT_STARTED',
+                       'workspaceSourceIdV2': 'abc-123',
+                       'workspaceNamespace': 'aou-rw-123',
+                       'recoveryState': 'RECOVERED',
+                       'dataCollections': ["All of Us Registered Tier", "ECHO Cohort - Registered Tier"]
                        },
                       result['data'])
+        self.assertIn({'workspaceId': 2, 'snapshotId': 3, 'name': 'workspace name str 3',
+                       'creationTime': '2021-02-19T10:45:41', 'modifiedTime': '2021-02-19T10:45:41', 'status': 'ACTIVE',
+                       'workspaceUsers': [{'userId': 0, 'userName': 'given name 1 family name 1',
+                                           'degree': ['PHD', 'MPH'], 'affiliations':
+                                               [{'institution': 'verified institution',
+                                                 'role': 'verified institution role 1', 'isVerified': True,
+                                                 'nonAcademicAffiliation': 'UNSET'}]}],
+                       'workspaceOwner': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
+                                {'institution': 'verified institution', 'role': 'verified institution role 1',
+                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}]}],
+                       'hasVerifiedInstitution': True,
+                       'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': False,
+                       'reviewRequested': False, 'diseaseFocusedResearch': True,
+                       'diseaseFocusedResearchName': 'disease focused research name str 3',
+                       'otherPurposeDetails': 'other purpose details str 3', 'methodsDevelopment': False,
+                       'controlSet': False, 'ancestry': False, 'accessTier': 'UNSET', 'socialBehavioral': False,
+                       'populationHealth': False, 'drugDevelopment': False, 'commercialPurpose': False,
+                       'educational': False, 'otherPurpose': False,
+                       'scientificApproaches': 'reasonForInvestigation string3',
+                       'intendToStudy': 'intendToStudy string3',
+                       'findingsFromStudy': 'findingsFromStudy string3',
+                       'focusOnUnderrepresentedPopulations': None,
+                       'workspaceDemographic': {
+                           "raceEthnicity": None,
+                           "age": None,
+                           "sexAtBirth": None,
+                           "genderIdentity": None,
+                           "sexualOrientation": None,
+                           "geography": None,
+                           "disabilityStatus": None,
+                           "accessToCare": None,
+                           "educationLevel": None,
+                           "incomeLevel": None,
+                           "others": None,
+                       },
+                       'cdrVersion': None,
+                       'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+                       'aianResearchDetails': 'string',
+                       'sourcePlatform': 'VWB',
+                       'migrationState': 'FINISHED',
+                       'workspaceSourceIdV2': 'abc-456',
+                       'workspaceNamespace': 'aou-rw-456',
+                       'recoveryState': None,
+                       'dataCollections': []
+                       },
+                      result['data'])
+
+
 
         result_rc = self.send_get('workbench/audit/workspace/snapshots')
         result_rc_results = self.send_get('workbench/audit/workspace/results')
@@ -2643,7 +2780,13 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        },
                        'cdrVersion': None,
                        'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
-                       'aianResearchDetails': 'string'
+                       'aianResearchDetails': 'string',
+                       'sourcePlatform': 'VWB',
+                       'migrationState': 'NOT_STARTED',
+                       'workspaceSourceIdV2': 'abc-123',
+                       'workspaceNamespace': 'aou-rw-123',
+                       'recoveryState': 'RECOVERED',
+                       'dataCollections': ["All of Us Registered Tier", "ECHO Cohort - Registered Tier"]
                        },
                       result_rc)
         self.assertIn({'snapshotId': 1, 'workspaceId': 0, 'name': 'workspace name str',
@@ -2691,6 +2834,82 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        },
                        'cdrVersion': None,
                        'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
-                       'aianResearchDetails': 'string'
+                       'aianResearchDetails': 'string',
+                       'sourcePlatform': 'VWB',
+                       'migrationState': 'NOT_STARTED',
+                       'workspaceSourceIdV2': 'abc-123',
+                       'workspaceNamespace': 'aou-rw-123',
+                       'recoveryState': 'RECOVERED',
+                       'dataCollections': ["All of Us Registered Tier", "ECHO Cohort - Registered Tier"]
                        },
+                      result_rc_results)
+        self.assertIn({'snapshotId': 3, 'workspaceId': 2, 'name': 'workspace name str 3',
+                       'creationTime': '2021-02-19T10:45:41', 'modifiedTime': '2021-02-19T10:45:41', 'status': 'ACTIVE',
+                       'workspaceUsers': [{'userId': 0, 'role': 'OWNER', 'status': 'ACTIVE', 'isCreator': True}],
+                       'workspaceResearchers': [{'userId': 0, 'creationTime': '2020-11-26T21:21:13.056000',
+                                                 'modifiedTime': '2020-11-26T21:21:13.056000',
+                                                 'givenName': 'given name 1', 'familyName': 'family name 1',
+                                                 'email': None, 'accessTier': 'NOT_REGISTERED',
+                                                 'verifiedInstitutionalAffiliation': {
+                                                     'institution': 'verified institution',
+                                                     'role': 'verified institution role 1',
+                                                     'nonAcademicAffiliation': 'UNSET'},
+                                                 'affiliations': [{'institution': 'verified institution',
+                                                                   'role': 'verified institution role 1',
+                                                                   'isVerified': True,
+                                                                   'nonAcademicAffiliation': 'UNSET'}]}],
+                       'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': False,
+                       'reviewRequested': False, 'diseaseFocusedResearch': True,
+                       'diseaseFocusedResearchName': 'disease focused research name str 3',
+                       'otherPurposeDetails': 'other purpose details str 3', 'methodsDevelopment': False,
+                       'controlSet': False, 'ancestry': False, 'socialBehavioral': False, 'populationHealth': False,
+                       'drugDevelopment': False, 'commercialPurpose': False, 'educational': False,
+                       'otherPurpose': False, 'accessTier': 'UNSET',
+                       'scientificApproaches': 'reasonForInvestigation string3',
+                       'intendToStudy': 'intendToStudy string3', 'findingsFromStudy': 'findingsFromStudy string3',
+                       'focusOnUnderrepresentedPopulations': None,
+                       'workspaceDemographic': {
+                           'raceEthnicity': None, 'age': None, 'sexAtBirth': None, 'genderIdentity': None,
+                           'sexualOrientation': None, 'geography': None, 'disabilityStatus': None, 'accessToCare': None,
+                           'educationLevel': None, 'incomeLevel': None, 'others': None
+                       },
+                       'cdrVersion': None, 'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+                       'aianResearchDetails': 'string', 'sourcePlatform': 'VWB', 'migrationState': 'FINISHED',
+                       'workspaceSourceIdV2': 'abc-456', 'workspaceNamespace': 'aou-rw-456', 'recoveryState': None,
+                       'dataCollections': []},
+                      result_rc)
+        self.assertIn({'snapshotId': 3, 'workspaceId': 2, 'name': 'workspace name str 3',
+                       'creationTime': '2021-02-19T10:45:41', 'modifiedTime': '2021-02-19T10:45:41', 'status': 'ACTIVE',
+                       'workspaceUsers': [{'userId': 0, 'role': 'OWNER', 'status': 'ACTIVE', 'isCreator': True}],
+                       'workspaceResearchers': [{'userId': 0, 'creationTime': '2020-11-26T21:21:13.056000',
+                                                 'modifiedTime': '2020-11-26T21:21:13.056000',
+                                                 'givenName': 'given name 1', 'familyName': 'family name 1',
+                                                 'email': None, 'accessTier': 'NOT_REGISTERED',
+                                                 'verifiedInstitutionalAffiliation': {
+                                                     'institution': 'verified institution',
+                                                     'role': 'verified institution role 1',
+                                                     'nonAcademicAffiliation': 'UNSET'},
+                                                 'affiliations': [{'institution': 'verified institution',
+                                                                   'role': 'verified institution role 1',
+                                                                   'isVerified': True,
+                                                                   'nonAcademicAffiliation': 'UNSET'}]}],
+                       'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': False,
+                       'reviewRequested': False, 'diseaseFocusedResearch': True,
+                       'diseaseFocusedResearchName': 'disease focused research name str 3',
+                       'otherPurposeDetails': 'other purpose details str 3', 'methodsDevelopment': False,
+                       'controlSet': False, 'ancestry': False, 'socialBehavioral': False, 'populationHealth': False,
+                       'drugDevelopment': False, 'commercialPurpose': False, 'educational': False,
+                       'otherPurpose': False, 'accessTier': 'UNSET',
+                       'scientificApproaches': 'reasonForInvestigation string3',
+                       'intendToStudy': 'intendToStudy string3', 'findingsFromStudy': 'findingsFromStudy string3',
+                       'focusOnUnderrepresentedPopulations': None,
+                       'workspaceDemographic': {
+                           'raceEthnicity': None, 'age': None, 'sexAtBirth': None, 'genderIdentity': None,
+                           'sexualOrientation': None, 'geography': None, 'disabilityStatus': None, 'accessToCare': None,
+                           'educationLevel': None, 'incomeLevel': None, 'others': None
+                       },
+                       'cdrVersion': None, 'aianResearchType': 'EXCLUSIVE_AI_AN_POPULATION',
+                       'aianResearchDetails': 'string', 'sourcePlatform': 'VWB', 'migrationState': 'FINISHED',
+                       'workspaceSourceIdV2': 'abc-456', 'workspaceNamespace': 'aou-rw-456', 'recoveryState': None,
+                       'dataCollections': []},
                       result_rc_results)

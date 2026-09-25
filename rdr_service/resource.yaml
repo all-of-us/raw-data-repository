@@ -5,7 +5,7 @@ service: resource
 entrypoint: gunicorn -c rdr_service/services/gunicorn_config.py --timeout 600 rdr_service.resource.main:app
 
 # Changing to Automatic Scaling based on recommendation from Google Support
-instance_class: F4
+instance_class: F4_1G
 
 inbound_services:
 - warmup

@@ -11,8 +11,12 @@ class ResearchIdBackfillTool(ToolBase):
     def run(self):
         super().run()
         id_map_dao = ParticipantResearchIdsDao()
-        participants = id_map_dao.get_new_participants(self.args.participant_count)
-        id_map_dao.insert_new_participants(participants)
+        if self.args.backfill_missing_controlled_tier_plus_ids:
+            missing_ids = id_map_dao.get_participants_missing_controlled_tier_plus_ids(self.args.participant_count)
+            id_map_dao.insert_missing_controlled_tier_plus_ids(missing_ids)
+        else:
+            participants = id_map_dao.get_new_participants(self.args.participant_count)
+            id_map_dao.insert_new_participants(participants)
 
 def add_additional_arguments(parser: argparse.ArgumentParser):
     parser.add_argument(
@@ -20,6 +24,11 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
         type=int,
         help='Number of participants to backfill',
         required=True
+    )
+    parser.add_argument(
+        '--backfill-missing-controlled-tier-plus-ids',
+        action='store_true',
+        help='Generate controlled_tier_plus_id for participants that already have participant_research_ids rows'
     )
 
 

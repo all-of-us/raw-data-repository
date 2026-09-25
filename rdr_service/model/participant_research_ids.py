@@ -15,6 +15,7 @@ class ParticipantResearchIds(Base):
     research_id = Column("research_id", Integer, unique=True)
     external_id = Column("external_id", BigInteger)
     registered_tier_id = Column('registered_tier_id', BigInteger, unique=True)
+    controlled_tier_plus_id = Column("controlled_tier_plus_id", BigInteger, unique=True)
 
 event.listen(ParticipantResearchIds, 'before_insert', model_insert_listener)
 event.listen(ParticipantResearchIds, 'before_update', model_update_listener)

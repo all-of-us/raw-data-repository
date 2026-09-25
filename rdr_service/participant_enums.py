@@ -772,6 +772,12 @@ class WorkbenchWorkspaceAccessTier(messages.Enum):
     CONTROLLED = 2
 
 
+class WorkbenchWorkspaceSourcePlatform(messages.Enum):
+    UNSET = 0
+    RWB = 1
+    VWB = 2
+
+
 class WorkbenchWorkspaceUserRole(messages.Enum):
     """Status of Workbench Workspace User Role"""
 

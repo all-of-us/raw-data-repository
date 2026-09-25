@@ -8,7 +8,7 @@ from typing import List, Optional, Union
 from geometry import Rect
 from google.cloud.storage.blob import Blob
 from pdfminer.high_level import extract_pages, extract_text
-from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTRect, LTTextBox
+from pdfminer.layout import LTChar, LTCurve, LTFigure, LTLine, LTImage, LTRect, LTTextBox
 
 from rdr_service import config
 from rdr_service.storage import GoogleCloudStorageProvider
@@ -1232,9 +1232,13 @@ class CeWearConsentFile(WearConsentFile):
         return self.pdf_wrapper.get_date_signed_str()
 
 
+class PdfReadError(Exception):
+    pass
+
+
 class Pdf:
 
-    def __init__(self, pages, blob: Blob):
+    def __init__(self, pages, blob: Blob = None):
         self.pages = pages
         self._pdf_text = None
         self._blob = blob
@@ -1244,6 +1248,11 @@ class Pdf:
         file_bytes = BytesIO(blob.download_as_string())
         pages = list(extract_pages(file_bytes))
         return Pdf(pages, blob)
+
+    @classmethod
+    def from_stream(cls, data_stream: BytesIO):
+        pages = list(extract_pages(data_stream))
+        return Pdf(pages)
 
     @classmethod
     def rect_for_element(cls, element) -> Optional[Rect]:
@@ -1339,3 +1348,40 @@ class Pdf:
     @classmethod
     def _get_text_for_comparison(cls, text: str):
         return ''.join(text.lower().split())
+
+    def has_x_stroke_at(self, bounds: Rect, page_num: int) -> bool:
+        elements = self.get_elements_intersecting_box(bounds, page_num)
+
+        if not all([
+            (isinstance(element, LTLine) or isinstance(element, LTRect))
+            and element.stroke and element.linewidth > 0.0
+            for element in elements
+        ]):
+            raise PdfReadError('Unexpected elements encountered when verifying checkmark')
+
+        # expecting two elements to exist that are individual lines
+        return sum([
+            1
+            for element in elements
+            if isinstance(element, LTLine) and len(element.original_path) == 2
+        ]) == 2
+
+    def get_text_at(self, bounds: Rect, page_num: int) -> Optional[str]:
+        for element in self.get_elements_intersecting_box(bounds, page_num):
+            # skip image figures
+            if any(isinstance(child, LTImage) for child in element):
+                continue
+
+            return ''.join([char_child.get_text() for char_child in element]).strip()
+
+        return None
+
+    def has_image_at(self, bounds: Rect, page_num) -> bool:
+        elements = self.get_elements_intersecting_box(bounds, page_num)
+        if len(elements) != 1:
+            return False
+
+        for child_element in elements[0]:
+            return isinstance(child_element, LTImage)
+
+        return False

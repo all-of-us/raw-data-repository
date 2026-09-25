@@ -128,7 +128,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
                                 participant_origin='all', participant_list_file=None, include_surveys=None,
                                 exclude_surveys=None, exclude_participants=None, omit_surveys=False,
                                 omit_measurements=False, exclude_in_person_pm=False, exclude_remote_pm=False,
-                                prep_bq=False):
+                                prep_bq=False, include_participants_under_18=False):
         CurationEtlTest.run_tool(CurationExportClass, tool_args={
             'command': 'cdm-data',
             'cutoff': cutoff,
@@ -142,7 +142,8 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             'omit_measurements': omit_measurements,
             "exclude_in_person_pm": exclude_in_person_pm,
             "exclude_remote_pm": exclude_remote_pm,
-            "prep_bq": prep_bq
+            "prep_bq": prep_bq,
+            "include_participants_under_18": include_participants_under_18
         })
 
     @staticmethod
@@ -496,6 +497,34 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.run_cdm_data_generation(omit_measurements=True)  # PM query errors out when no PIDs are supplied.
         src_clean_answers = self.session.query(SrcClean).all()
         self.assertEqual(0, len(src_clean_answers))
+
+    def test_include_participants_age_under_18(self):
+        """
+        Under-18 participants should be included when the command-line option is enabled.
+        """
+        self._create_consent_questionnaire()
+
+        # Make participant under 18 at consent time.
+        self.data_generator.create_database_participant_summary(
+            participant=self.participant,
+            dateOfBirth=datetime(1982, 1, 11)
+        )
+
+        self._setup_pm(self.participant.participantId, datetime(1992, 1, 11))
+
+        self.run_cdm_data_generation(omit_measurements=False, include_participants_under_18=True)
+        src_clean_answers = self.session.query(SrcClean).all()
+        self.assertEqual(4, len(src_clean_answers))
+
+        # Ensure measurements taken under age 18 exist
+        measurement_src_id = self.session.query(
+            Measurement.src_id
+        ).filter(
+            Measurement.person_id == self.participant.participantId,
+            Measurement.measurement_type_concept_id == 44818701
+        ).first()[0]
+
+        self.assertEqual('healthpro', measurement_src_id)
 
     def test_etl_exclude_code(self):
         self.run_cdm_data_generation()
@@ -1038,11 +1067,12 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
         self.assertEqual('ce', obs_src_id)
 
-    def _setup_pm(self, participant_id: int):
-        """ Creates in-person and remote physical measurements for a participant_id"""
+    def _setup_pm(self, participant_id: int, measurement_time: datetime = None):
+        """Creates in-person and remote physical measurements for a participant_id."""
+        measurement_time = measurement_time or datetime.now()
         resource = {"entry": [
             {"resource":
-                 {"date": datetime.now().isoformat()}
+                 {"date": measurement_time.isoformat()}
              }
         ]}
 
@@ -1065,7 +1095,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             physicalMeasurementsId=pm_record.physicalMeasurementsId,
             codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
             codeValue="height",
-            measurementTime=datetime.now(),
+            measurementTime=measurement_time,
             valueDecimal=162.0,
             valueUnit="cm",
         )
@@ -1074,7 +1104,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             physicalMeasurementsId=pm_record.physicalMeasurementsId,
             codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
             codeValue="weight",
-            measurementTime=datetime.now(),
+            measurementTime=measurement_time,
             valueDecimal=63.0,
             valueUnit="kg",
         )
@@ -1100,7 +1130,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             physicalMeasurementsId=pm_record.physicalMeasurementsId,
             codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
             codeValue="height",
-            measurementTime=datetime.now(),
+            measurementTime=measurement_time,
             valueDecimal=165.0,
             valueUnit="cm",
         )
@@ -1109,7 +1139,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             physicalMeasurementsId=pm_record.physicalMeasurementsId,
             codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
             codeValue="weight",
-            measurementTime=datetime.now(),
+            measurementTime=measurement_time,
             valueDecimal=62.0,
             valueUnit="kg",
         )

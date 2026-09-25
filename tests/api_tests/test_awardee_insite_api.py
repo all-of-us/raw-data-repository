@@ -35,6 +35,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
                 "dateOfBirth": "1992-06-08",
                 "organization": self.pitt_org_name,
                 "awardee": "PITT",
+                "race": "Asian",
             },
             {
                 "participantId": 2299,
@@ -51,6 +52,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
                 "dateOfBirth": "1989-05-05",
                 "organization": self.pitt_org_name,
                 "awardee": "PITT",
+                "race": "White",
             },
             {
                 "participantId": 3000,
@@ -67,6 +69,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
                 "dateOfBirth": "1984-05-08",
                 "organization": self.pitt_org_name,
                 "awardee": "PITT",
+                "race": "Black",
             },
             {
                 "participantId": 4866,
@@ -83,6 +86,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
                 "dateOfBirth": "1990-12-18",
                 "organization": self.az_org_name,
                 "awardee": "AZ_TUCSON",
+                "race": "Black",
             },
             {
                 "participantId": 5450,
@@ -99,6 +103,7 @@ class AwardeeInSiteApiTest(BaseTestCase):
                 "dateOfBirth": "1970-02-09",
                 "organization": self.pitt_org_name,
                 "awardee": "PITT",
+                "race": "AIAN",
             },
         ]
         # Insert records in awardee_insite table
@@ -204,7 +209,11 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "isEhrDataAvailable": "no",
             "questionnaireOnOverallHealth": "submitted_complete",
             "questionnaireOnOverallHealthAuthored": "2024-11-28T18:12:00",
-
+            "questionnaireOnPersonalAndFamilyHealthHistoryUpdate": "submitted_complete",
+            "questionnaireOnPersonalAndFamilyHealthHistoryUpdateAuthored": "2025-10-28T18:12:00",
+            "retentionEligibleStatus": "not_eligible",
+            "duplicateAccountStatus": "no",
+            "ageRange": "36-45",
         }
         self.awardee_insite_dao.upsert(AwardeeInSite(**awardee_insite_values))
 
@@ -272,6 +281,30 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "questionnaireOnEmotionalHealthHistoryAndWellBeingAuthored": "UNSET",
             "questionnaireOnBehavioralHealthAndPersonality": "UNSET",
             "questionnaireOnBehavioralHealthAndPersonalityAuthored": "UNSET",
+            "questionnaireOnSocialFactorsUpdate": "UNSET",
+            "questionnaireOnSocialFactorsUpdateAuthored": "UNSET",
+            "questionnaireOnHealthAndWellnessUpdate": "UNSET",
+            "questionnaireOnHealthAndWellnessUpdateAuthored": "UNSET",
+            "questionnaireOnMentalHealthAndWellBeingUpdate": "UNSET",
+            "questionnaireOnMentalHealthAndWellBeingUpdateAuthored": "UNSET",
+            "questionnaireOnPersonalAndFamilyHealthHistoryUpdate": "submitted_complete",
+            "questionnaireOnPersonalAndFamilyHealthHistoryUpdateAuthored": "2025-10-28T18:12:00",
+            "questionnaireOnPediatricBasics": "UNSET",
+            "questionnaireOnPediatricBasicsAuthored": "UNSET",
+            "questionnaireOnPediatricOverallHealth": "UNSET",
+            "questionnaireOnPediatricOverallHealthAuthored": "UNSET",
+            "questionnaireOnPediatricEnvironmentalHealth": "UNSET",
+            "questionnaireOnPediatricEnvironmentalHealthAuthored": "UNSET",
+            "retentionEligibleStatus": "not_eligible",
+            "retentionEligibleTime": "UNSET",
+            "lastActiveRetentionActivityTime": "UNSET",
+            "retentionType": "UNSET",
+            "signUpTime": "UNSET",
+            "withdrawalReason": "UNSET",
+            "duplicateAccountStatus": "no",
+            "race": "Black",
+            "ageRange": "36-45",
+            "enrollmentStatusTime": "UNSET",
         }
 
         response = self.send_get("AwardeeInSite")

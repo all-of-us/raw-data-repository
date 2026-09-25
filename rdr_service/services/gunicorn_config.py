@@ -32,19 +32,21 @@ raw_env = [
 ]
 
 
-# GAE F4 instances allow for up to 1G of memory to be used.
-# So each worker will need to stay under a limit to prevent the sum of their used memory to go over GAE's limit.
-# If a worker is using too much, then we'll restart it to release what it's gathered back to the OS.
-# That way we can gracefully limit our memory rather than have Google killing us forcefully
-# (and potentially in the middle of handling a request).
+# GAE F4_1G / B4_1G instances allow up to 3072 MB of memory to be used
+# So each worker needs to stay under a limit to prevent the sum of their used memory from
+# exceeding GAE's hard limit. If a worker is using too much, we'll restart it to release memory
+# back to the OS. That way we can gracefully limit our memory rather than have Google killing
+# us forcefully (and potentially in the middle of handling a request), which shows up as a 503.
 def post_request(worker, request, environment, response):  # pylint: disable=unused-argument
     # Sum up memory used for the calling worker
     memory_used_kilobytes = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
-    # Our instance is killed if it is using more than 1024 megabytes.
-    # To leave enough room to handle memory intensive requests, let's restart each worker if
-    # they're using more than their share of memory a total of 1000 megabytes for the server.
-    memory_threshold_kilobytes = 1024000 / workers  # 1000 megabytes (1000 x 1024) shared between the number of workers
+    # The instance's total memory limit depends on the app.yaml instance_class:
+    #   F4_1G / B4_1G / B8 = 3072 MB
+    # Using an F4_1G (3072 MB) instance and leaving ~500 MB of headroom for in-flight
+    # spikes / non-worker overhead, each worker should stay under (2560 MB / workers).
+    total_worker_budget_mb = 2560
+    memory_threshold_kilobytes = (total_worker_budget_mb * 1024) / max(workers, 1)
     if memory_used_kilobytes > memory_threshold_kilobytes:
         memory_used_megabytes = round(memory_used_kilobytes / 1024, 2)
         # Logs from the worker appear beside the normal app logs, but without log levels attached to them.

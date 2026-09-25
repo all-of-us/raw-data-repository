@@ -597,7 +597,6 @@ class SurveyDataImport(ToolBase):
 
         return result
 
-
 def add_additional_arguments(parser):
     parser.add_argument(
         '--path',

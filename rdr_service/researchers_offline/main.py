@@ -7,6 +7,7 @@ from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
 from rdr_service.config import GAE_PROJECT
+from rdr_service.researchers_offline.import_workbench_dura_data import WorkbenchDuraImporter
 from rdr_service.researchers_offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.services.flask import RESEARCHERS_OFFLINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
@@ -33,10 +34,18 @@ def participant_counts_over_time():
 
 @app_util.auth_required_scheduler
 def workbench_workspaces_input_feed():
-    logging.info('Starting workbench workspaces datafeed...')
+    logging.info('Starting 2.0 workbench workspaces datafeed...')
     datafeed = request.get_json().get("datafeed")
     input_feed = WorkbenchWorkspacesFeed(project=GAE_PROJECT)
     input_feed.run_datafeed(datafeed)
+    return '{ "success": "true" }'
+
+@app_util.auth_required_scheduler
+def legacy_workbench_workspaces_input_feed():
+    logging.info('Starting legacy 1.0 workbench workspaces datafeed...')
+    datafeed = request.get_json().get("datafeed")
+    input_feed = WorkbenchWorkspacesFeed(project=GAE_PROJECT)
+    input_feed.run_legacy_datafeed(datafeed)
     return '{ "success": "true" }'
 
 @app_util.auth_required_scheduler
@@ -45,6 +54,14 @@ def workbench_researchers_input_feed():
     datafeed = request.get_json().get("datafeed")
     input_feed = WorkbenchResearchersFeed(project=GAE_PROJECT)
     input_feed.run_datafeed(datafeed)
+    return '{ "success": "true" }'
+
+@app_util.auth_required_scheduler
+def workbench_institutional_dura_import():
+    logging.info('Starting workbench institutional DURA import...')
+    since_date = request.get_json().get("since_date")
+    importer = WorkbenchDuraImporter()
+    importer.import_reports(since_date)
     return '{ "success": "true" }'
 
 
@@ -75,10 +92,24 @@ def _build_pipeline_app():
     )
 
     researchers_offline.add_url_rule(
+        RESEARCHERS_OFFLINE_PREFIX + "WorkbenchWorkspacesLegacyInputFeed",
+        endpoint="legacy_workbench_workspaces_input_feed",
+        view_func=legacy_workbench_workspaces_input_feed,
+        methods=["GET", "POST"]
+    )
+
+    researchers_offline.add_url_rule(
         RESEARCHERS_OFFLINE_PREFIX + "WorkbenchResearchersInputFeed",
         endpoint="workbench_researchers_input_feed",
         view_func=workbench_researchers_input_feed,
         methods=["GET", "POST"]
+    )
+
+    researchers_offline.add_url_rule(
+        RESEARCHERS_OFFLINE_PREFIX + "WorkbenchInstitutionalDuraImport",
+        endpoint="workbench_institutional_dura_import",
+        view_func=workbench_institutional_dura_import,
+        methods=["GET", "POST"],
     )
 
     researchers_offline.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])

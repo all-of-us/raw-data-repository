@@ -9,7 +9,8 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceEducationLevel, \
     WorkbenchWorkspaceIncomeLevel, WorkbenchWorkspaceAianResearchType, WorkbenchWorkspaceAccessTier, \
     WorkbenchResearcherEthnicity, WorkbenchResearcherEducation, WorkbenchResearcherDisability, \
-    WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2, WorkbenchResearcherEducationV2
+    WorkbenchResearcherYesNoPreferNot, WorkbenchResearcherSexAtBirthV2, WorkbenchResearcherEducationV2, \
+    WorkbenchWorkspaceSourcePlatform
 from rdr_service.workflow_management.researchers_offline.workbench_data_transfer_input_feed import \
     WorkbenchWorkspacesFeed, WorkbenchResearchersFeed
 from tests.helpers.unittest_base import BaseTestCase
@@ -70,7 +71,13 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
                 "aianResearchType": WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'),
                 "aianResearchDetails": "Test research details",
                 "resource": "No resource payload. Data from VWB 2.0",
-                "isDataCollection": False
+                "isDataCollection": False,
+                "sourcePlatform": WorkbenchWorkspaceSourcePlatform('VWB'),
+                "migrationState": "FINISHED",
+                "workspaceSourceIdV2": "abc-123",
+                "workspaceNamespace": "aou-rw-0123a4b5",
+                "recoveryState": "RECOVERED",
+                "dataCollections": ["CONTROLLED", "ECHO Cohort - Controlled Tier"]
             },
             {
                 "created": time_2,
@@ -116,7 +123,13 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
                 "aianResearchType": WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'),
                 "aianResearchDetails": "Test research details 2",
                 "resource": "No resource payload. Data from VWB 2.0",
-                "isDataCollection": False
+                "isDataCollection": False,
+                "sourcePlatform": WorkbenchWorkspaceSourcePlatform('RWB'),
+                "migrationState": "NOT_STARTED",
+                "workspaceSourceIdV2": "",
+                "workspaceNamespace": "",
+                "recoveryState": "NOT_STARTED",
+                "dataCollections": []
             },
             {
                 "created": time_2,
@@ -183,6 +196,13 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
         self.assertEqual(actual_rows[0].aianResearchDetails, "Test research details")
         self.assertEqual(actual_rows[0].resource, "No resource payload. Data from VWB 2.0")
         self.assertEqual(actual_rows[0].isDataCollection, False)
+        self.assertEqual(actual_rows[0].sourcePlatform, WorkbenchWorkspaceSourcePlatform('VWB'))
+        self.assertEqual(actual_rows[0].migrationState, "FINISHED")
+        self.assertEqual(actual_rows[0].workspaceSourceIdV2, "abc-123")
+        self.assertEqual(actual_rows[0].workspaceNamespace, "aou-rw-0123a4b5")
+        self.assertEqual(actual_rows[0].recoveryState, "RECOVERED")
+        self.assertEqual(actual_rows[0].dataCollections[0], "CONTROLLED")
+        self.assertEqual(actual_rows[0].dataCollections[1], "ECHO Cohort - Controlled Tier")
 
         self.assertEqual(actual_rows[1].workspaceSourceId, 22222)
         self.assertEqual(actual_rows[1].name, "Test Workspace Name 2")
@@ -217,7 +237,13 @@ class WorkbenchWorkspacesDataFeedTest(BaseTestCase):
         self.assertEqual(actual_rows[1].aianResearchType, WorkbenchWorkspaceAianResearchType('NO_AI_AN_ANALYSIS'))
         self.assertEqual(actual_rows[1].aianResearchDetails, "Test research details 2")
         self.assertEqual(actual_rows[1].resource, "No resource payload. Data from VWB 2.0")
-        self.assertEqual(actual_rows[0].isDataCollection, False)
+        self.assertEqual(actual_rows[1].isDataCollection, False)
+        self.assertEqual(actual_rows[1].sourcePlatform, WorkbenchWorkspaceSourcePlatform('RWB'))
+        self.assertEqual(actual_rows[1].migrationState, "NOT_STARTED")
+        self.assertEqual(actual_rows[1].workspaceSourceIdV2, "")
+        self.assertEqual(actual_rows[1].workspaceNamespace, "")
+        self.assertEqual(actual_rows[1].recoveryState, "NOT_STARTED")
+        self.assertEqual(len(actual_rows[1].dataCollections), 0)
 
     @mock.patch("rdr_service.dao.workbench_dao.WorkbenchResearcherDao.bq_row_to_dict")
     @mock.patch("google.cloud.bigquery.Client")
