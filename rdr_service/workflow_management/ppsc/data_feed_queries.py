@@ -1062,7 +1062,7 @@ def insert_awardee_insite_data(
           ehr_collection_flags_cte AS (
               SELECT participant_id
               , CASE
-                  WHEN age_range = '0-6' THEN consent_for_electronic_health_records
+                  WHEN age_range = '0-6' THEN COALESCE(consent_for_electronic_health_records, 'no')
                   WHEN age_range = '7-12' THEN
                     CASE
                       WHEN consent_for_electronic_health_records = 'yes' AND pediatric_assent IN ('yes', 'n/a') THEN 'yes'
@@ -1071,7 +1071,7 @@ def insert_awardee_insite_data(
                   ELSE NULL
                 END AS active_ehr_consent
               , CASE
-                  WHEN age_range = '0-6' THEN consent_for_electronic_health_records
+                  WHEN age_range = '0-6' THEN COALESCE(consent_for_electronic_health_records, 'no')
                   WHEN age_range = '7-12' THEN
                     CASE
                       WHEN consent_for_electronic_health_records = 'yes' THEN 'yes'
