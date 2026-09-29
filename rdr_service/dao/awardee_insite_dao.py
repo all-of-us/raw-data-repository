@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.query import Query as SQLAlchemyQuery
 from werkzeug.exceptions import BadRequest
 
+from rdr_service import config
 from rdr_service.code_constants import UNSET
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.model.hpo import HPO
@@ -156,7 +157,7 @@ class AwardeeInSiteDao(UpsertableDao):
         """
         result = model.asdict()
 
-        for field in AwardeeInSite.internal_fields:
+        for field in AwardeeInSite.internal_fields + config.getSettingList('awardee_insite_hidden_fields', default=[]):
             del result[field]
 
         result["participantId"] = to_client_participant_id(result["participantId"])

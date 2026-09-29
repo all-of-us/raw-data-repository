@@ -305,12 +305,13 @@ class AwardeeInSiteApiTest(BaseTestCase):
             "race": "Black",
             "ageRange": "36-45",
             "enrollmentStatusTime": "UNSET",
+            "activeEhrConsent": "UNSET",
+            "passiveEhrConsent": "UNSET",
         }
 
         response = self.send_get("AwardeeInSite")
         result = response.get("entry")[0]["resource"]
-
-        self.assertEqual(result, expected_result)
+        self.assertEqual(expected_result, result)
 
 
     @patch(
