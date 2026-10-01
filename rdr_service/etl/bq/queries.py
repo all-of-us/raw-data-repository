@@ -516,7 +516,20 @@ queries = {
                 -- Measurement to Observation
                 cdm_obs.src_id AS src_id
             FROM `{dataset_id}.observation` cdm_obs
-                INNER JOIN `{rdr_dataset}.rdr_measurement_to_qualifier` mtq ON mtq.qualifier_id = cdm_obs.meas_id""",
+                INNER JOIN `{rdr_dataset}.rdr_measurement_to_qualifier` mtq ON mtq.qualifier_id = cdm_obs.meas_id
+            UNION ALL
+            -- Create Pediatric relationship entries
+            SELECT 33 AS domain_concept_id_1,
+                1001 AS fact_id_1,
+                33 AS domain_concept_id_2,
+                2001 AS fact_id_2,
+                4053608 AS relationship_concept_id
+            UNION ALL
+            SELECT 33 AS domain_concept_id_1,
+                2001 AS fact_id_1,
+                33 AS domain_concept_id_2,
+                1001 AS fact_id_2,
+                4326600 AS relationship_concept_id""",
         "destination": "fact_relationship",
         "append": False,
     },
