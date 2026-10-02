@@ -350,7 +350,7 @@ class BiospecimenExport(ToolBase):
         # there should only be one dataset for a given name, so use the latest one we have
         name_map = dict()
         final_dataset_id_list: List[str] = []
-        for db_dataset in sorted(dataset_list, key=lambda dataset: dataset.id):
+        for db_dataset in sorted(dataset_list, key=lambda dataset: dataset.rlimsId):
             name_map[db_dataset.name] = db_dataset
 
         for db_dataset in name_map.values():
