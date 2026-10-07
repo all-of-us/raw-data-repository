@@ -81,24 +81,45 @@ class AliquotData:
     treatment_type: str = None
     treatment_date: str = None
 
-    def meets_quantity_reqs(self) -> bool:
-        if not running_3a_dataset:
-            return self.total_rna_concentration is not None if self.sample_type == SampleType.rna else True
+    def meets_data_reqs(self) -> bool:
+        if running_3a_dataset:
+            if self.sample_type in [SampleType.saliva_dna, SampleType.blood_dna]:
+                return self.ds_dna_mass is not None and self.ds_dna_mass >= 2500
+            else:
+                if self.volume is None:
+                    return False
 
-        if self.sample_type in [SampleType.saliva_dna, SampleType.blood_dna]:
-            return self.ds_dna_mass is not None and self.ds_dna_mass >= 2500
+                match self.volume_units.lower():
+                    case 'ul':
+                        ul_volume = self.volume
+                    case 'ml':
+                        ul_volume = self.volume * 1000
+                    case _:
+                        raise Exception(f'Unexpected volume units "{self.volume_units}"')
+                return ul_volume >= 100
         else:
-            if self.volume is None:
+            if not self._is_value_greater_than_zero(self.volume):
                 return False
+            if self.sample_type in [SampleType.saliva_dna, SampleType.blood_dna]:
+                return (
+                    self._is_value_greater_than_zero(self.total_dna_mass)
+                    and self._is_value_greater_than_zero(self.ds_dna_mass)
+                    and self._is_value_greater_than_zero(self.total_dna_concentration)
+                    and self._is_value_greater_than_zero(self.ds_concentration)
+                )
+            elif self.sample_type == SampleType.rna:
+                return (
+                    self._is_value_greater_than_zero(self.total_rna_mass)
+                    and self._is_value_greater_than_zero(self.total_rna_concentration)
+                )
 
-            match self.volume_units.lower():
-                case 'ul':
-                    ul_volume = self.volume
-                case 'ml':
-                    ul_volume = self.volume * 1000
-                case _:
-                    raise Exception(f'Unexpected volume units "{self.volume_units}"')
-            return ul_volume >= 100
+            return True
+
+    @classmethod
+    def _is_value_greater_than_zero(cls, value):
+        if value is None:
+            return False
+        return value > 0
 
     def __str__(self):
         return f'{self.aliquot_id}: {self.volume} ({self.ds_dna_mass} ug) {self.sample_type}'
@@ -251,15 +272,16 @@ class SampleAvailabilityDatasetTool(ToolBase):
                 collection_date = None
                 for aliquot_data in participant_aliquot_data[sample_type]:
                     if (
-                        aliquot_data.meets_quantity_reqs()
+                        aliquot_data.meets_data_reqs()
                         and aliquot_data.collection_timestamp < SampleCollectionCutoffDate
-                        and (
+                    ):
+                        aliquot_data_to_export.append(aliquot_data)
+
+                        if (
                             collection_date is None
                             or aliquot_data.collection_timestamp < collection_date
-                        )
-                    ):
-                        collection_date = aliquot_data.collection_timestamp
-                        aliquot_data_to_export.append(aliquot_data)
+                        ):
+                            collection_date = aliquot_data.collection_timestamp
 
                 if collection_date:
                     if participant_export_data is None:
@@ -278,7 +300,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
             self._export_participant_3a_data_as_csv(participant_data_to_export)
         else:
             self._export_participant_data_as_csv(participant_data_to_export)
-            # self._export_aliquot_data_as_csv(aliquot_data_to_export)
+            self._export_aliquot_data_as_csv(aliquot_data_to_export)
         # self._upload_to_bq(data_to_export)
 
         print()
@@ -325,7 +347,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
 
     @classmethod
     def _export_participant_data_as_csv(cls, data_to_export: List[ParticipantData]):
-        with open('test_participant_export.csv', 'w') as file:
+        with open('participant_export.csv', 'w') as file:
             writer = csv.DictWriter(file, [
                 'participant_id',
                 'pst_plasma_availability',
@@ -487,18 +509,6 @@ class SampleAvailabilityDatasetTool(ToolBase):
 
     @classmethod
     def retrieve_potential_aliquot_list(cls, session: Session) -> List[AliquotData]:
-        if running_3a_dataset:
-            sample_filter_criteria = sa.and_(
-                BiobankSpecimen.testCode.in_(SampleCodesToProcess),
-                BiobankAliquot.status == 'In Circulation',
-                BiobankAliquot.location == 'Mayo_MN'
-            )
-        else:
-            sample_filter_criteria = sa.and_(
-                BiobankSpecimen.testCode.in_(SampleCodesToProcess),
-                BiobankAliquot.location == 'Mayo_MN'
-            )
-
         print(datetime.now(), 'retrieving aliquots...')
         query = session.query(
             BiobankAliquot.id,
@@ -516,7 +526,11 @@ class SampleAvailabilityDatasetTool(ToolBase):
         ).join(
             Participant, Participant.biobankId == BiobankSpecimen.biobankId
         ).filter(
-            sample_filter_criteria
+            sa.and_(
+                BiobankSpecimen.testCode.in_(SampleCodesToProcess),
+                BiobankAliquot.status == 'In Circulation',
+                BiobankAliquot.location == 'Mayo_MN'
+            )
         )
         query_results = query.all()
 
@@ -599,17 +613,17 @@ class SampleAvailabilityDatasetTool(ToolBase):
             ).filter(
                 BiobankAliquotDataset.aliquot_id.in_(aliquot_id_list)
             ).order_by(
-                BiobankAliquotDataset.id
+                BiobankAliquotDataset.rlimsId
             ).all()
 
             extraction_values = {}
 
             latest_dataset_map = {}
-            dataset_to_aliquot_map: Dict[int, int] = {}
+            dataset_to_aliquot_map: Dict[str, int] = {}
             for dataset in dataset_list:
                 key_val = (dataset.aliquot_id, dataset.name)
-                latest_dataset_map[key_val] = dataset.id
-                dataset_to_aliquot_map[dataset.id] = dataset.aliquot_id
+                latest_dataset_map[key_val] = dataset.rlimsId
+                dataset_to_aliquot_map[dataset.rlimsId] = dataset.aliquot_id
 
                 if dataset.extractionDate:
                     extraction_values[dataset.aliquot_id] = (dataset.extractionMethod, dataset.extractionDate)
@@ -618,7 +632,7 @@ class SampleAvailabilityDatasetTool(ToolBase):
             dataset_item_list = session.query(
                 BiobankAliquotDatasetItem
             ).filter(
-                BiobankAliquotDatasetItem.dataset_id.in_(latest_dataset_map.values())
+                BiobankAliquotDatasetItem.dataset_rlims_id.in_(latest_dataset_map.values())
             ).all()
 
             ds_conc_values: Dict[int, BiobankAliquotDatasetItem] = {}
@@ -627,7 +641,10 @@ class SampleAvailabilityDatasetTool(ToolBase):
             a230_values: Dict[int, BiobankAliquotDatasetItem] = {}
             a280_values: Dict[int, BiobankAliquotDatasetItem] = {}
             for dataset_item in dataset_item_list:
-                aliquot_id = dataset_to_aliquot_map[dataset_item.dataset_id]
+                if not dataset_item.displayValue:
+                    continue
+
+                aliquot_id = dataset_to_aliquot_map[dataset_item.dataset_rlims_id]
                 if dataset_item.paramId == 'dsDNA Conc':
                     ds_conc_values[aliquot_id] = dataset_item
                 elif dataset_item.paramId == 'Total DNA Conc':
