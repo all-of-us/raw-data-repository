@@ -657,16 +657,13 @@ queries = {
             UNION ALL
             -- Create Pediatric relationship entries
             SELECT 33 AS domain_concept_id_1,
-                1001 AS fact_id_1,
+                pre.subject_person_id AS fact_id_1,
                 33 AS domain_concept_id_2,
-                2001 AS fact_id_2,
-                4053608 AS relationship_concept_id
-            UNION ALL
-            SELECT 33 AS domain_concept_id_1,
-                2001 AS fact_id_1,
-                33 AS domain_concept_id_2,
-                1001 AS fact_id_2,
-                4326600 AS relationship_concept_id""",
+                pre.related_person_id AS fact_id_2,
+                pre.relationship_concept_id AS relationship_concept_id,
+                p.src_id AS src_id
+            FROM `{dataset_id}.pediatric_relationship_ext` pre
+                LEFT JOIN `{dataset_id}.person` p ON p.person_id = pre.subject_person_id""",
         "destination": "fact_relationship",
         "append": False,
     },
@@ -1573,6 +1570,60 @@ queries = {
                 FROM `{rdr_dataset}.rdr_participant`
                 WHERE external_id IS NOT NULL
             ) AS pid_map
+        """,
+    },
+    "pediatric_relationship_ext": {
+        "destination": "pediatric_relationship_ext",
+        "append": False,
+        "query": """
+            WITH inverse_map AS (
+                SELECT * FROM UNNEST([
+                    STRUCT(4053608 AS concept_id, 4326600 AS inverse_concept_id),
+                    STRUCT(4301632, 4311425),
+                    STRUCT(4218412, 4218412),
+                    STRUCT(44783070, 44783070),
+                    STRUCT(4206333, 4206333),
+                    STRUCT(903070, 903070),
+                    STRUCT(903079, 903079),
+                    STRUCT(40567635, 4032151)
+                ])
+            ),
+            relationships AS (
+                SELECT
+                    o.person_id AS subject_person_id,
+                    SAFE_CAST(REGEXP_EXTRACT(ale.data_element_value, r'^P(\\d+)$') AS INT64)
+                        AS related_person_id,
+                    o.value_source_value AS relationship_source_value,
+                    o.observation_concept_id AS relationship_concept_id,
+                    o.observation_id AS genetic_relation_observation_id,
+                    m.inverse_concept_id
+                FROM `{dataset_id}.observation` o
+                JOIN inverse_map m ON o.observation_concept_id = m.concept_id
+                JOIN `{rdr_dataset}.ppsc_account_linkage_event` ale
+                    ON ale.participant_id = o.person_id
+                    AND ale.data_element_name = 'relationship_participant_id'
+                    AND IFNULL(ale.ignore_flag, 0) = 0
+                WHERE REGEXP_CONTAINS(ale.data_element_value, r'^P\\d+$')
+            )
+            SELECT
+                subject_person_id,
+                related_person_id,
+                relationship_source_value,
+                relationship_concept_id,
+                CAST(NULL AS STRING) AS relationship_source_detail,
+                genetic_relation_observation_id,
+                CAST(NULL AS INT64) AS relationship_observation_id
+            FROM relationships
+            UNION ALL
+            SELECT
+                related_person_id,
+                subject_person_id,
+                relationship_source_value,
+                inverse_concept_id,
+                CAST(NULL AS STRING),
+                genetic_relation_observation_id,
+                CAST(NULL AS INT64)
+            FROM relationships
         """,
     },
     "finalize": {

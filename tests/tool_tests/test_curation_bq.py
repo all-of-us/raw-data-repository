@@ -234,6 +234,32 @@ class CurationBQTest(unittest.TestCase):
         self.assertIn("`test-project.rdr_replica.ppsc_consent_event`", query)
         self.assertIn("'PPSC_Consent'", query)
 
+    def test_fact_relationship_uses_pediatric_relationship_ext(self):
+        fmt = self._create_tool(_build_args())._build_format_args()
+        query = queries.queries["fact_relationship"]["query"].format(**fmt)
+
+        self.assertIn("pre.subject_person_id AS fact_id_1", query)
+        self.assertIn("pre.related_person_id AS fact_id_2", query)
+        self.assertIn("pre.relationship_concept_id AS relationship_concept_id", query)
+        for static_value in ("1001", "2001", "4326600"):
+            self.assertNotIn(static_value, query)
+
+    def test_pediatric_relationship_ext_query(self):
+        fmt = self._create_tool(_build_args())._build_format_args()
+        entry = queries.queries["pediatric_relationship_ext"]
+        query = entry["query"].format(**fmt)
+
+        self.assertEqual("pediatric_relationship_ext", entry["destination"])
+        for concept_id in (4053608, 4326600, 4301632, 4311425, 4218412, 44783070,
+                           4206333, 903070, 903079, 40567635, 4032151):
+            self.assertIn(str(concept_id), query)
+        self.assertIn("UNION ALL", query)
+        self.assertIn("`test-project.rdr_replica.ppsc_account_linkage_event`", query)
+        self.assertIn("'relationship_participant_id'", query)
+        self.assertNotIn("value_as_number", query)
+        self.assertIn("pediatric_relationship_ext", CurationBQ.etl_process_steps)
+        self.assertIn("pediatric_relationship_ext", CurationBQ.export_tables)
+
     def test_ppsc_consent_query_maps_each_consent_type(self):
         fmt = self._create_tool(_build_args())._build_format_args()
         query = queries.queries["ppsc_consent_src_clean"]["query"].format(**fmt)
