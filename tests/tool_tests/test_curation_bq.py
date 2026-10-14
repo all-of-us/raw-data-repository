@@ -210,6 +210,110 @@ class CurationBQTest(unittest.TestCase):
         self.assertTrue(any("'2026-01-01' AS etl_cutoff" in sql for sql in sql_calls))
         self.assertTrue(any("`test-project.audit_dataset.participant_filter_snapshot`" in sql for sql in sql_calls))
 
+    def test_ppsc_consent_step_runs_after_src_clean_and_before_mapping(self):
+        steps = CurationBQ.etl_process_steps
+        ppsc_index = steps.index("ppsc_consent_src_clean")
+
+        self.assertEqual(steps.index("src_clean") + 1, ppsc_index)
+        self.assertLess(ppsc_index, steps.index("filter_surveys"))
+        self.assertLess(ppsc_index, steps.index("src_mapped"))
+
+    def test_ppsc_consent_step_appends_to_src_clean(self):
+        tool = self._create_tool(_build_args())
+        tool.etl_process_steps = ["ppsc_consent_src_clean"]
+
+        with mock.patch.object(tool, "run_query") as run_query_mock:
+            tool.run_etl()
+
+        query, job_config = run_query_mock.call_args.args
+        self.assertEqual("src_clean", job_config.destination.table_id)
+        self.assertEqual(
+            bigquery.job.WriteDisposition.WRITE_APPEND,
+            job_config.write_disposition,
+        )
+        self.assertIn("`test-project.rdr_replica.ppsc_consent_event`", query)
+        self.assertIn("'PPSC_Consent'", query)
+
+    def test_ppsc_consent_query_maps_each_consent_type(self):
+        fmt = self._create_tool(_build_args())._build_format_args()
+        query = queries.queries["ppsc_consent_src_clean"]["query"].format(**fmt)
+
+        for event_type, question_code, answer_type in (
+            ("Primary Consent", "ExtraConsent_AgreeToConsent", "bool"),
+            ("Pediatric Permission", "ExtraConsent_AgreeToConsent", "bool"),
+            ("EHR Authorization", "EHRConsentPII_ConsentPermission", "code"),
+            ("Adult EHR Authorization", "PPSC_AdultEHRAuthorization", "code"),
+            ("Pediatric EHR Authorization", "PPSC_PediatricEHRAuthorization", "code"),
+        ):
+            self.assertRegex(
+                query, rf"'{event_type}'(?: AS event_type_name)?,\s*'{question_code}'"
+                       rf"(?: AS question_ppi_code)?,\s*'{answer_type}'"
+            )
+        for code in (
+            "ConsentPermission_Yes", "ConsentPermission_No",
+            "PPSC_AdultEHRAuthorization_Yes", "PPSC_AdultEHRAuthorization_No",
+            "PPSC_PediatricEHRAuthorization_Yes", "PPSC_PediatricEHRAuthorization_No",
+            "PPSC_ConsentOther",
+        ):
+            self.assertIn(f"'{code}'", query)
+        self.assertNotIn("PPSC_PrimaryConsent_Yes", query)
+        self.assertNotIn("PPSC_PediatricPermission_Yes", query)
+
+    def test_ppsc_consent_query_encodes_bool_and_code_answers(self):
+        fmt = self._create_tool(_build_args())._build_format_args()
+        query = queries.queries["ppsc_consent_src_clean"]["query"].format(**fmt)
+
+        self.assertIn("CONCAT('cln.', cc.answer_type)      AS unit_id", query)
+        self.assertRegex(
+            query,
+            r"WHEN cc\.answer_type != 'bool'\s+THEN CAST\(NULL AS INT64\)\s+"
+            r"WHEN cc\.consent_status = 'yes'\s+THEN 1\s+ELSE 0\s+END\s+AS value_boolean",
+        )
+        self.assertRegex(
+            query,
+            r"WHEN cc\.answer_type = 'bool'\s+THEN CAST\(NULL AS STRING\)\s+"
+            r"WHEN cc\.consent_status = 'yes'\s+THEN cc\.yes_ppi_code\s+"
+            r"WHEN cc\.consent_status = 'no'\s+THEN cc\.no_ppi_code",
+        )
+
+    def test_ppsc_consent_query_without_optional_filters(self):
+        fmt = self._create_tool(_build_args())._build_format_args()
+        query = queries.queries["ppsc_consent_src_clean"]["query"].format(**fmt)
+
+        self.assertNotIn("ce.event_authored_time AS TIMESTAMP", query)
+        self.assertNotIn("'PPSC_Consent' IN", query)
+
+    def test_ppsc_consent_query_applies_cutoff_and_min_date(self):
+        args = _build_args(cutoff="2025-06-01", min_survey_date="2020-01-01")
+        fmt = self._create_tool(args)._build_format_args()
+        query = queries.queries["ppsc_consent_src_clean"]["query"].format(**fmt)
+
+        self.assertIn(
+            "AND SAFE_CAST(ce.event_authored_time AS TIMESTAMP) < TIMESTAMP('2025-06-01')",
+            query,
+        )
+        self.assertIn(
+            "AND SAFE_CAST(ce.event_authored_time AS TIMESTAMP) >= TIMESTAMP('2020-01-01')",
+            query,
+        )
+
+    def test_ppsc_consent_query_respects_survey_filters(self):
+        include_fmt = self._create_tool(
+            _build_args(include_surveys="TheBasics")
+        )._build_format_args()
+        exclude_fmt = self._create_tool(
+            _build_args(exclude_surveys="PPSC_Consent")
+        )._build_format_args()
+
+        self.assertEqual(
+            "AND 'PPSC_Consent' IN ('TheBasics')",
+            include_fmt["ppsc_consent_survey_filter"],
+        )
+        self.assertEqual(
+            "AND 'PPSC_Consent' NOT IN ('PPSC_Consent')",
+            exclude_fmt["ppsc_consent_survey_filter"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

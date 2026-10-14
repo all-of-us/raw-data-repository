@@ -43,6 +43,9 @@ class CurationBQ(ToolBase):
         "rdr_deceased_report",
     ]
 
+    # Placeholder survey name used for PPSC consent rows appended to src_clean.
+    PPSC_CONSENT_SURVEY_NAME: str = "PPSC_Consent"
+
     _MEASUREMENT_STEPS = {"src_meas", "measurement"}
     _SURVEY_STEPS = {"observation", "qrai_author", "qrai_language", "qrai_code"}
     _AUDIT_SNAPSHOT_SOURCE_TABLES: list[str] = [
@@ -54,36 +57,37 @@ class CurationBQ(ToolBase):
     # ETL pipeline step order.  Each key maps to an entry in queries.queries.
     etl_process_steps: list[str] = [
         # ── Phase 1: source data generation from replicated MySQL tables ──────
-        "participant_filter",
-        "questionnaire_answers_by_module",
-        "src_clean",
-        "filter_surveys",
-        "filter_questions",
-        "src_meas",
-        # ── Phase 2: CDM table population (unchanged from before) ─────────────
-        "src_participant",
-        "src_mapped",
-        "src_gender",
-        "src_race",
-        "src_race_2",
-        "src_ethnicity",
-        "src_ethnicity_2",
-        "src_person_location",
-        "location",
-        "update_location_id",
-        "person",
-        "tmp_cv_concept_lk",
-        "tmp_vcv_concept_lk",
-        "src_meas_mapped",
-        "tmp_visits_src",
-        "visit_occurrence",
-        "observation",
-        "care_site",
-        "measurement",
-        "note",
-        "tmp_fact_rel_sd",
-        "fact_relationship",
-        "procedure_occurrence",
+        # "participant_filter",
+        # "questionnaire_answers_by_module",
+        # "src_clean",
+        # "ppsc_consent_src_clean",
+        # "filter_surveys",
+        # "filter_questions",
+        # "src_meas",
+        # # ── Phase 2: CDM table population (unchanged from before) ─────────────
+        # "src_participant",
+        # "src_mapped",
+        # "src_gender",
+        # "src_race",
+        # "src_race_2",
+        # "src_ethnicity",
+        # "src_ethnicity_2",
+        # "src_person_location",
+        # "location",
+        # "update_location_id",
+        # "person",
+        # "tmp_cv_concept_lk",
+        # "tmp_vcv_concept_lk",
+        # "src_meas_mapped",
+        # "tmp_visits_src",
+        # "visit_occurrence",
+        # "observation",
+        # "care_site",
+        # "measurement",
+        # "note",
+        # "tmp_fact_rel_sd",
+        # "fact_relationship",
+        # "procedure_occurrence",
         "death",
         "ehr_consent_temp_table",
         "ehr_consent",
@@ -424,6 +428,9 @@ class CurationBQ(ToolBase):
             ehr_consent_cutoff_not_validated_filter = (
                 f"AND SAFE_CAST(ec.cf_created AS TIMESTAMP) > TIMESTAMP('{cutoff}')"
             )
+            cutoff_ppsc_consent_filter = (
+                f"AND SAFE_CAST(ce.event_authored_time AS TIMESTAMP) < TIMESTAMP('{cutoff}')"
+            )
         else:
             withdrawal_filter = "AND ppsc.withdrawal_status != 'withdrawn'"
             cutoff_authored_filter = ""
@@ -431,6 +438,7 @@ class CurationBQ(ToolBase):
             cutoff_death_filter = ""
             # Disable cutoff-specific branch when no cutoff is supplied.
             ehr_consent_cutoff_not_validated_filter = "AND FALSE"
+            cutoff_ppsc_consent_filter = ""
 
         # ── minimum survey date filter ───────────────────────────────────
         min_survey_date: Optional[str] = getattr(args, "min_survey_date", None)
@@ -439,8 +447,13 @@ class CurationBQ(ToolBase):
                 f"AND SAFE_CAST(COALESCE(qr.authored, qr.created) AS TIMESTAMP)"
                 f" >= TIMESTAMP('{min_survey_date}')"
             )
+            min_ppsc_consent_date_filter = (
+                f"AND SAFE_CAST(ce.event_authored_time AS TIMESTAMP)"
+                f" >= TIMESTAMP('{min_survey_date}')"
+            )
         else:
             min_survey_date_filter = ""
+            min_ppsc_consent_date_filter = ""
 
         # ── participant origin filter ───────────────────────────────────
         origin: Optional[str] = getattr(args, "origin", None)
@@ -480,14 +493,18 @@ class CurationBQ(ToolBase):
                 "Only one of --include-surveys and --exclude-surveys may be specified"
             )
 
+        # PPSC consents have no module code, so they are filtered by their placeholder survey name.
         if include_surveys:
             quoted = ", ".join(f"'{s.strip()}'" for s in include_surveys.split(","))
             survey_filter = f"AND mc.value IN ({quoted})"
+            ppsc_consent_survey_filter = f"AND '{self.PPSC_CONSENT_SURVEY_NAME}' IN ({quoted})"
         elif exclude_surveys:
             quoted = ", ".join(f"'{s.strip()}'" for s in exclude_surveys.split(","))
             survey_filter = f"AND mc.value NOT IN ({quoted})"
+            ppsc_consent_survey_filter = f"AND '{self.PPSC_CONSENT_SURVEY_NAME}' NOT IN ({quoted})"
         else:
             survey_filter = ""
+            ppsc_consent_survey_filter = ""
 
         # ── physical measurement collect-type filter ────────────────────
         include_in_person: bool = not getattr(args, "exclude_in_person_pm", False)
@@ -522,6 +539,10 @@ class CurationBQ(ToolBase):
             ehr_consent_cutoff_not_validated_filter=ehr_consent_cutoff_not_validated_filter,
             survey_filter=survey_filter,
             min_survey_date_filter=min_survey_date_filter,
+            cutoff_ppsc_consent_filter=cutoff_ppsc_consent_filter,
+            min_ppsc_consent_date_filter=min_ppsc_consent_date_filter,
+            ppsc_consent_survey_filter=ppsc_consent_survey_filter,
+            ppsc_consent_survey_name=self.PPSC_CONSENT_SURVEY_NAME,
             pm_collect_type_filter=pm_collect_type_filter,
         )
 
@@ -529,7 +550,8 @@ class CurationBQ(ToolBase):
         """Execute the full ETL pipeline against BigQuery.
 
         Phase 1 steps generate ``participant_filter``, ``questionnaire_answers_by_module``,
-        ``src_clean``, and ``src_meas`` directly from the replicated RDR dataset.
+        ``src_clean`` (including PPSC consent events), and ``src_meas`` directly from the
+        replicated RDR dataset.
         Phase 2 steps transform the CDM tables exactly as before.
         """
         fmt = self._build_format_args()
