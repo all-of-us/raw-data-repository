@@ -35,6 +35,7 @@ def _build_args(**overrides):
         "audit_dataset": None,
         "audit_run_id": None,
         "snapshot_label": None,
+        "step": None,
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -154,6 +155,32 @@ class CurationBQTest(unittest.TestCase):
             bigquery.job.WriteDisposition.WRITE_TRUNCATE,
             job_config.write_disposition,
         )
+
+    def test_single_step_dry_run_only_runs_selected_step(self):
+        step = CurationBQ.etl_process_steps[0]
+        tool = self._create_tool(_build_args(run_etl=True, step=step))
+
+        with mock.patch.object(tool, "run_query") as run_query_mock:
+            tool.run_etl()
+
+        expected_sql = queries.queries[step]["query"].format(**tool._build_format_args())
+        run_query_mock.assert_called_once()
+        self.assertEqual(expected_sql, run_query_mock.call_args[0][0])
+
+    def test_step_requires_run_etl(self):
+        tool = self._create_tool(_build_args(load_data=True, step="participant_filter"))
+
+        with mock.patch("rdr_service.tools.tool_libs.curation_bq.ToolBase.run"):
+            self.assertEqual(1, tool.run())
+
+    def test_unknown_step_rejected(self):
+        tool = self._create_tool(_build_args(run_etl=True, step="nope"))
+
+        with mock.patch("rdr_service.tools.tool_libs.curation_bq.ToolBase.run"):
+            with mock.patch.object(tool, "run_etl") as etl_mock:
+                self.assertEqual(1, tool.run())
+
+        etl_mock.assert_not_called()
 
     def test_snapshot_audit_mode_dispatch(self):
         tool = self._create_tool(

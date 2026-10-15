@@ -199,6 +199,7 @@ class CurationBQ(ToolBase):
             )
         if getattr(self.args, "snapshot_audit", False) and not getattr(self.args, "audit_dataset", None):
             raise ValueError("--snapshot-audit requires --audit-dataset")
+        self._validate_step_selection()
 
         # The processes these flags execute do not work correctly on BigQuery. Disable them for now.
         if getattr(self.args, "omit_surveys", False):
@@ -210,6 +211,18 @@ class CurationBQ(ToolBase):
             raise ValueError(
                 "--omit-measurements is not currently supported and has been disabled. "
                 "Remove this flag before running the ETL."
+            )
+
+    def _validate_step_selection(self) -> None:
+        """Ensure ``--step`` is only used with ``--run-etl`` and names a known step."""
+        step = getattr(self.args, "step", None)
+        if not step:
+            return
+        if not self.args.run_etl:
+            raise ValueError("--step requires --run-etl")
+        if step not in self.etl_process_steps:
+            raise ValueError(
+                f"Unknown ETL step '{step}'. Valid steps: {', '.join(self.etl_process_steps)}"
             )
 
     # ------------------------------------------------------------------
@@ -560,7 +573,10 @@ class CurationBQ(ToolBase):
         omit_measurements: bool = getattr(self.args, "omit_measurements", False)
         omit_surveys: bool = getattr(self.args, "omit_surveys", False)
 
-        for step in self.etl_process_steps:
+        single_step: Optional[str] = getattr(self.args, "step", None)
+        steps = [single_step] if single_step else self.etl_process_steps
+
+        for step in steps:
             if omit_measurements and step in self._MEASUREMENT_STEPS:
                 _logger.debug("Skipping measurement step: %s", step)
                 if step == "src_meas":
@@ -571,27 +587,35 @@ class CurationBQ(ToolBase):
                 _logger.debug("Skipping survey step: %s", step)
                 continue
 
-            entry = queries.queries[step]
-            table_name: Optional[str] = entry["destination"]
-            query: str = entry["query"]
-            append_to_table: bool = entry.get("append", False)
+            self._run_step(step, fmt)
 
-            _logger.debug("Running ETL step: %s", step)
+    def _run_step(self, step: str, fmt: dict[str, str]) -> None:
+        """Format and execute (or dry-run) a single ETL step.
 
-            if not table_name:
-                job_config = None
-            else:
-                write_disp = (
-                    bigquery.job.WriteDisposition.WRITE_APPEND
-                    if append_to_table
-                    else bigquery.job.WriteDisposition.WRITE_TRUNCATE
-                )
-                job_config = bigquery.QueryJobConfig(
-                    destination=f"{self.dataset_id}.{table_name}",
-                    write_disposition=write_disp,
-                )
+        Args:
+            step: Key in ``queries.queries``.
+            fmt: SQL template variables from ``_build_format_args``.
+        """
+        entry = queries.queries[step]
+        table_name: Optional[str] = entry["destination"]
+        query: str = entry["query"]
+        append_to_table: bool = entry.get("append", False)
 
-            self.run_query(query.format(**fmt), job_config)
+        _logger.debug("Running ETL step: %s", step)
+
+        job_config = None
+        if table_name:
+            write_disp = (
+                bigquery.job.WriteDisposition.WRITE_APPEND
+                if append_to_table
+                else bigquery.job.WriteDisposition.WRITE_TRUNCATE
+            )
+            job_config = bigquery.QueryJobConfig(
+                destination=f"{self.dataset_id}.{table_name}",
+                write_disposition=write_disp,
+            )
+
+        self.run_query(query.format(**fmt), job_config)
 
     # ------------------------------------------------------------------
     # Export
@@ -677,6 +701,11 @@ def add_additional_arguments(parser) -> None:
         "--run-etl",
         help="Execute the full ETL pipeline against BigQuery",
         default=False, action="store_true",
+    )
+    parser.add_argument(
+        "--step",
+        help="With --run-etl, run only this ETL step (combine with --dry-run to print its SQL)",
+        default=None,
     )
     parser.add_argument(
         "--export",
