@@ -446,7 +446,7 @@ class ParticipantQuery(ObjectType):
                 deactivated_subquery.c.deactivation_status,
                 withdrawal_subquery.c.withdrawal_status,
                 ParticipantOpsDataElement,
-                AwardeeInSite
+                AwardeeInSite.aian
             ).outerjoin(
                 Site,
                 ParticipantSummary.siteId == Site.siteId
