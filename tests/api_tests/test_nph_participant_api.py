@@ -265,11 +265,9 @@ class NphParticipantAPITest(BaseTestCase):
 
             query = aian_query()
             executed = app.test_client().post("/rdr/v1/nph_participant", data=query)
-            result = json.loads(executed.data.decode("utf-8"))
-            results = (
-                result.get("participant").get("edges")[0].get("node").get("aouAianStatus")
-            )
-            print(results)
+            result = json.loads(executed.data.decode("utf-8")
+                                ).get("participant").get("edges")[0].get("node").get("aouAianStatus")
+            self.assertEqual(result, 'N')
 
     def test_client_nph_pair_site(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
