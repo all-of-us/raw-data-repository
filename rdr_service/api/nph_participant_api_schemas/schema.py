@@ -6,6 +6,7 @@ from sqlalchemy import and_
 from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElementTypes
 from rdr_service.config import NPH_PROD_BIOBANK_PREFIX, NPH_TEST_BIOBANK_PREFIX, NPH_STUDY_ID
 from rdr_service.dao.study_nph_dao import NphParticipantDao
+from rdr_service.model.awardee_insite import AwardeeInSite
 from rdr_service.model.study_nph import (
     Participant,
     Site as nphSite,
@@ -215,11 +216,13 @@ class ParticipantField(ObjectType):
         name="aouAianStatus",
         description='''
             Provides whether a participant self identifies as AIAN. Value should be a “Y” if the participant
-            identifies as AIAN, “N” otherwise. This can be determined from the AoU participant_summary table’s
+            identifies as AIAN, “N” otherwise. This can be determined from the AoU awardee_insite table’s
             aian column.
         ''',
-        sort_modifier=lambda context: context.set_order_expression(ParticipantSummary.aian),
-        filter_modifier=lambda context, value: context.add_filter(ParticipantSummary.aian == value)
+        sort_modifier=lambda context: context.set_order_expression(AwardeeInSite.aian),
+        filter_modifier=lambda context, value: context.add_filter(
+            'Y' if AwardeeInSite.aian == 'yes' else 'N' == value
+        )
     )
     siteId = SortableField(
         String,
@@ -442,7 +445,8 @@ class ParticipantQuery(ObjectType):
                 diet_status_subquery.c.diet_status,
                 deactivated_subquery.c.deactivation_status,
                 withdrawal_subquery.c.withdrawal_status,
-                ParticipantOpsDataElement
+                ParticipantOpsDataElement,
+                AwardeeInSite.aian
             ).outerjoin(
                 Site,
                 ParticipantSummary.siteId == Site.siteId
@@ -496,6 +500,9 @@ class ParticipantQuery(ObjectType):
                     ParticipantOpsDataElement.source_value.isnot(None),
                     ParticipantOpsDataElement.id < participant_dob.id,
                 )
+            ).outerjoin(
+                AwardeeInSite,
+                ParticipantSummary.participantId == AwardeeInSite.participantId
             ).filter(
                 pm2.id.is_(None),
                 participant_dob.id.is_(None),

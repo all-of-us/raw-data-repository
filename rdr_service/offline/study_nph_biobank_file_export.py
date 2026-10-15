@@ -10,6 +10,7 @@ from sqlalchemy import and_
 from sqlalchemy.orm import joinedload, aliased
 from google.cloud import storage
 from rdr_service import config
+from rdr_service.model.awardee_insite import AwardeeInSite
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantSummary as RdrParticipantSummary
 from rdr_service.model.rex import ParticipantMapping as RexParticipantMapping
@@ -25,6 +26,7 @@ from rdr_service.model.study_nph import (
 
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao as RdrParticipantSummaryDao
+from rdr_service.dao.awardee_insite_dao import AwardeeInSiteDao as PpscAwardeeInSiteDao
 from rdr_service.dao.rex_dao import RexParticipantMappingDao
 from rdr_service.dao.study_nph_dao import (
     _format_timestamp,
@@ -180,6 +182,12 @@ def _get_rdr_participant_summary_for_nph_participant(nph_participant_id: int) ->
             RdrParticipantSummary.participantId == rdr_participant_id
         ).first()
 
+def _get_ppsc_awardee_insite(participant_id):
+    ppsc_awardee_insite_dao = PpscAwardeeInSiteDao()
+    with ppsc_awardee_insite_dao.session() as ppsc_awardee_insite_session:
+        return ppsc_awardee_insite_session.query(AwardeeInSite).filter(
+            AwardeeInSite.participantId == participant_id
+        )
 
 def _convert_orders_to_collections(
     orders: List[Order],
@@ -302,6 +310,7 @@ def main():
             _get_rdr_participant_summary_for_nph_participant(participant_id)
         )
         participant_biobank_id = _get_nph_participant(participant_id).biobank_id
+        awardee_insite = _get_ppsc_awardee_insite(participant_id)
 
         sex_at_birth = "Unknown"
         if rdr_participant_summary.sexId is not None:
@@ -316,7 +325,7 @@ def main():
             "studyID": f"NPH Module {nph_module_id}",
             "participantID": f"{nph_biobank_prefix}{participant_biobank_id}",
             "gender": sex_at_birth,
-            "ai_an_flag": "Y" if rdr_participant_summary.aian else "N",
+            "ai_an_flag": "Y" if awardee_insite.aian == 'yes' else "N",
             "collections": _convert_orders_to_collections(orders, rdr_participant_summary)
         }
         orders_file_drop.append(json_object)
