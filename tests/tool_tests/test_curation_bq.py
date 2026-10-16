@@ -284,6 +284,8 @@ class CurationBQTest(unittest.TestCase):
         self.assertIn("`test-project.rdr_replica.ppsc_account_linkage_event`", query)
         self.assertIn("'relationship_participant_id'", query)
         self.assertNotIn("value_as_number", query)
+        self.assertIn("rel_obs.observation_type_concept_id = 1222", query)
+        self.assertIn("rel_obs.observation_id AS relationship_observation_id", query)
         self.assertIn("pediatric_relationship_ext", CurationBQ.etl_process_steps)
         self.assertIn("pediatric_relationship_ext", CurationBQ.export_tables)
 

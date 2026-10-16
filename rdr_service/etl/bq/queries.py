@@ -1596,9 +1596,13 @@ queries = {
                     o.value_source_value AS relationship_source_value,
                     o.observation_concept_id AS relationship_concept_id,
                     o.observation_id AS genetic_relation_observation_id,
+                    rel_obs.observation_id AS relationship_observation_id,
                     m.inverse_concept_id
                 FROM `{dataset_id}.observation` o
                 JOIN inverse_map m ON o.observation_concept_id = m.concept_id
+                LEFT JOIN `{dataset_id}.observation` rel_obs
+                    ON rel_obs.person_id = o.person_id
+                    AND rel_obs.observation_type_concept_id = 1222
                 JOIN `{rdr_dataset}.ppsc_account_linkage_event` ale
                     ON ale.participant_id = o.person_id
                     AND ale.data_element_name = 'relationship_participant_id'
@@ -1612,7 +1616,7 @@ queries = {
                 relationship_concept_id,
                 CAST(NULL AS STRING) AS relationship_source_detail,
                 genetic_relation_observation_id,
-                CAST(NULL AS INT64) AS relationship_observation_id
+                relationship_observation_id
             FROM relationships
             UNION ALL
             SELECT
@@ -1622,7 +1626,7 @@ queries = {
                 inverse_concept_id,
                 CAST(NULL AS STRING),
                 genetic_relation_observation_id,
-                CAST(NULL AS INT64)
+                relationship_observation_id
             FROM relationships
         """,
     },
