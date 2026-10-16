@@ -1,6 +1,7 @@
 #!/bin/bash -ae
 
 # Sets up a Cloud SQL instance and sets the 5 passwords that need to be rotated (root, alembic, readonly, rdr, datastream)
+# Updates privacy db passwords (epip_app, priv_app, priv_migrate) for sandbox rdrmaindb
 # Example cmd to run on an instance different than rdrmaindb: ./tools/renew_passwords.sh --account <ACCOUNT> --project all-of-us-rdr-sandbox -i rdrsandbox-maindb
 
 USAGE="tools/renew_passwords.sh --account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>]"
@@ -90,6 +91,17 @@ elif [ "${PROJECT}" == "all-of-us-rdr-prod" ]
     then DATASTREAM_SECRET_NAME="rdrmaindb-datastream-password"
 fi
 
+# Privacy app users for sandbox
+if [ "${PROJECT}" == "all-of-us-rdr-sandbox" ] && [ "${INSTANCE_NAME}" == "rdrmaindb" ]; then
+  UPDATE_SANDBOX_PRIV_USERS=true
+  EPIP_APP_DB_USER=epip_app
+  PRIV_APP_DB_USER=priv_app
+  PRIV_MIGRATE_DB_USER=priv_migrate
+  EPIP_APP_PWD_SECRET_NAME="epip-app-password"
+  PRIV_APP_PWD_SECRET_NAME="priv-app-password"
+  PRIV_MIGRATE_PWD_SECRET_NAME="priv-migrate-password"
+fi
+
 source tools/auth_setup.sh
 
 INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
@@ -111,6 +123,18 @@ function finish {
 }
 trap finish EXIT
 
+function update_passwords_with_gcloud {
+  gcloud sql users set-password "$READONLY_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$READONLY_PASSWORD" && \
+    gcloud sql users set-password "$RDR_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$RDR_PASSWORD" && \
+    gcloud sql users set-password "$ALEMBIC_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$RDR_PASSWORD"
+
+  if [ "$UPDATE_SANDBOX_PRIV_USERS" = true ]; then
+    gcloud sql users set-password "$EPIP_APP_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$EPIP_APP_PASSWORD" && \
+      gcloud sql users set-password "$PRIV_APP_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$PRIV_APP_PASSWORD" && \
+      gcloud sql users set-password "$PRIV_MIGRATE_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$PRIV_MIGRATE_PASSWORD"
+  fi
+}
+
 run_cloud_sql_proxy
 
 echo "Updating database user passwords..."
@@ -127,6 +151,24 @@ randpw
 READONLY_PASSWORD=$new_password
 echo "readonly pw:"
 echo $READONLY_PASSWORD
+
+if [ "$UPDATE_SANDBOX_PRIV_USERS" = true ]; then
+  randpw
+  EPIP_APP_PASSWORD=$new_password
+  echo "epip_app pw:"
+  echo $EPIP_APP_PASSWORD
+
+  randpw
+  PRIV_APP_PASSWORD=$new_password
+  echo "priv_app pw:"
+  echo $PRIV_APP_PASSWORD
+
+  randpw
+  PRIV_MIGRATE_PASSWORD=$new_password
+  echo "priv_migrate pw:"
+  echo $PRIV_MIGRATE_PASSWORD
+fi
+
 if [[ ! -z "$DATASTREAM_SECRET_NAME" ]]; then
   randpw
   DATASTREAM_PASSWORD=$new_password
@@ -160,11 +202,7 @@ if mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} <
   PASSWORD_UPDATE_SUCCESS=true
 else
     echo "SQL update failed. Updating passwords using gcloud"
-    if \
-      gcloud sql users set-password "$READONLY_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$READONLY_PASSWORD" && \
-      gcloud sql users set-password "$RDR_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$RDR_PASSWORD" && \
-      gcloud sql users set-password "$ALEMBIC_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$RDR_PASSWORD"; then
-
+    if update_passwords_with_gcloud; then
       echo "Passwords updated successfully using gcloud"
       PASSWORD_UPDATE_SUCCESS=true
     else
@@ -185,6 +223,20 @@ if [ "$PASSWORD_UPDATE_SUCCESS" = true ]; then
   echo "Updating Secrets Manager's READ ONLY secrets"
   echo -n "$READONLY_PASSWORD" | gcloud secrets versions add $READONLY_PWD_SECRET_NAME --data-file=-
   gcloud secrets versions disable $(gcloud secrets versions list $READONLY_PWD_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$READONLY_PWD_SECRET_NAME
+
+  if [ "$UPDATE_SANDBOX_PRIV_USERS" = true ]; then
+    echo "Updating Secrets Manager's EPIP APP secrets"
+    echo -n "$EPIP_APP_PASSWORD" | gcloud secrets versions add $EPIP_APP_PWD_SECRET_NAME --data-file=-
+    gcloud secrets versions disable $(gcloud secrets versions list $EPIP_APP_PWD_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$EPIP_APP_PWD_SECRET_NAME
+
+    echo "Updating Secrets Manager's PRIV APP secrets"
+    echo -n "$PRIV_APP_PASSWORD" | gcloud secrets versions add $PRIV_APP_PWD_SECRET_NAME --data-file=-
+    gcloud secrets versions disable $(gcloud secrets versions list $PRIV_APP_PWD_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$PRIV_APP_PWD_SECRET_NAME
+
+    echo "Updating Secrets Manager's PRIV MIGRATE secrets"
+    echo -n "$PRIV_MIGRATE_PASSWORD" | gcloud secrets versions add $PRIV_MIGRATE_PWD_SECRET_NAME --data-file=-
+    gcloud secrets versions disable $(gcloud secrets versions list $PRIV_MIGRATE_PWD_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$PRIV_MIGRATE_PWD_SECRET_NAME
+  fi
 fi
 
 if [[ ! -z "$DATASTREAM_SECRET_NAME" ]]; then
