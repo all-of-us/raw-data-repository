@@ -55,6 +55,27 @@ def get_url():
     return make_url(os.environ["DB_CONNECTION_STRING"])
 
 
+# MySQL 8.4 users authenticate with 'caching_sha2_password'. Over the Cloud SQL proxy's plain TCP port the client
+# refuses to send the password unless it can RSA-encrypt it with the server's public key.
+# The key comes from: SHOW GLOBAL STATUS LIKE 'Caching_sha2_password_rsa_public_key';
+# Override the location with the MYSQL_SERVER_PUBLIC_KEY_PATH environment variable (e.g. per GCP project).
+# The key file is kept outside the repo so it isn't committed.
+DEFAULT_SERVER_PUBLIC_KEY_PATH = os.path.expanduser("~/mysql_server_public_key.pem")
+
+
+def get_connect_args():
+    key_path = os.path.expanduser(os.environ.get("MYSQL_SERVER_PUBLIC_KEY_PATH", DEFAULT_SERVER_PUBLIC_KEY_PATH))
+    if not os.path.isfile(key_path):
+        logger.warning("MySQL server public key not found at %s, connecting without it.", key_path)
+        return {}
+    with open(key_path) as key_file:
+        contents = key_file.read()
+    if "BEGIN PUBLIC KEY" not in contents or "PASTE_THE_KEY_BODY_HERE" in contents:
+        logger.warning("MySQL server public key file %s is not a valid PEM key, connecting without it.", key_path)
+        return {}
+    return {"server_public_key_path": key_path}
+
+
 def my_compare_type(ctx, inspected_column, metadata_column, inspected_type, metadata_type):
     # pylint: disable=unused-argument
 
@@ -145,8 +166,9 @@ def run_migrations_online():
     for name in re.split(r",\s*", db_names):
         url = get_url()
         url.database = name
-        engines[name] = {"engine": engine_from_config({"url": str(url)}, prefix="", poolclass=pool.NullPool)}
 
+        config_dict = {"url": str(url), "connect_args": get_connect_args()}
+        engines[name] = {"engine": engine_from_config(config_dict, prefix="", poolclass=pool.NullPool)}
     for name, rec in list(engines.items()):
         engine = rec["engine"]
         rec["connection"] = conn = engine.connect()
