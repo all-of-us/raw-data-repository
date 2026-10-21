@@ -423,6 +423,91 @@ class WorkbenchInstitutionalDura(Base):
     whitelisted_emails_rt = Column(Text)
     whose_data_shared = Column(Text)
     zip = Column(Text)
+    original_dura_completion = Column(Integer)
+    """Did the institution complete the original DURA"""
+    dura_type_active = Column(Integer)
+    """What DURA version is active (1=Current DURA [RT, CT, CT+, ECHO], 2=Old DURA)"""
+    currentdura_agreementstatus = Column(Integer)
+    """Current DURA (RT, CT, CT+, ECHO) Agreement Status (1=Pending,2=Contracting,3=Signed,4=Complete,5=Closed)"""
+    currentdura_closed_reason = Column(Integer)
+    """Please share the reason for closing the Current DURA [RT, CT, CT+, ECHO] request (1=Made obsolete by a master
+    agreement,2=Expired,3=Other,4=No research interest at this time,5=Not eligible due to DOJ question responses,
+    6=Signing official unresponsive to access team inquiries,7=Signing official unresponsive to Institution
+    Questionnaire,8=Signing official unresponsive to contracting team)"""
+    currentdura_other_reason = Column(Text)
+    """If currentdura_closed_reason=3 (other), please specify"""
+    currentdura_peerconfirmationdate = Column(UTCDateTime6)
+    """Final Current DURA [RT, CT, CT+, ECHO] Agreement Status Confirmation Date"""
+    peer_contract_number = Column(Text)
+    """PEER Contract Number"""
+    agreement_expiration_date = Column(UTCDateTime6)
+    """Current Agreement Expiration Date"""
+    registration_form_checklist___1 = Column(Text)
+    """Monthly user reporting contact name has been provided"""
+    registration_form_checklist___2 = Column(Text)
+    """Monthly user reporting contact email has been provided"""
+    registration_form_checklist___3 = Column(Text)
+    """Acceptable email domains have been provided"""
+    registration_form_checklist___4 = Column(Text)
+    """The acceptable email domains match the institution"""
+    dura_checklist___1 = Column(Text)
+    """The name of the institution in the DURA matches the name in REDCap"""
+    dura_checklist___2 = Column(Text)
+    """Completed Date"""
+    dura_checklist___3 = Column(Text)
+    """VUMC Signature"""
+    dura_checklist___4 = Column(Text)
+    """Institution Signature"""
+    dura_checklist_3___1 = Column(Text)
+    """Signing Official who completed the contracting process has been updated as the signing official in REDCap"""
+    dura_checklist_3___2 = Column(Text)
+    """The countries the DURA covers match what was provided in the Institutional Questionnaire (If no reach out to
+    the contracting team to clarify)"""
+    dura_checklist_3___3 = Column(Text)
+    """The access team has checked to confirm if the institution wants to use the pre-approval process and has finalized
+    the access process that will be used with the institution."""
+    additional_notes_checklist = Column(Text)
+    dura_amendment = Column(Text)
+    executedrider_ct = Column(Text)
+    currentdura_document_status___1 = Column(Text)
+    """Received registration form"""
+    currentdura_document_status___2 = Column(Text)
+    """Received completed DURA"""
+    currentdura_registration_form_checklist___1 = Column(Text)
+    """Monthly user reporting contact name has been provided"""
+    currentdura_registration_form_checklist___2 = Column(Text)
+    """Monthly user reporting contact email has been provided"""
+    currentdura_registration_form_checklist___3 = Column(Text)
+    """Acceptable email domains have been provided"""
+    currentdura_registration_form_checklist___4 = Column(Text)
+    """The acceptable email domains match the institution"""
+    currentdura_dura_checklist___1 = Column(Text)
+    """The name of the institution in the DURA matches the name in REDCap"""
+    currentdura_dura_checklist___2 = Column(Text)
+    """Completed Date"""
+    currentdura_dura_checklist___3 = Column(Text)
+    """VUMC Signature"""
+    currentdura_dura_checklist___4 = Column(Text)
+    """Institution Signature"""
+    currentdura_dura_checklist_3___1 = Column(Text)
+    """Signing Official who completed the contracting process has been updated as the signing official in REDCap"""
+    currentdura_dura_checklist_3___2 = Column(Text)
+    """The countries the DURA covers match what was provided in the Institutional Questionnaire (If no reach out to the
+    contracting team to clarify)"""
+    currentdura_dura_checklist_3___3 = Column(Text)
+    """The access team has checked to confirm if the institution wants to use the pre-approval process and has finalized
+    the access process that will be used with the institution"""
+    currentdura_additional_notes_checklist = Column(Text)
+    currentdura_executeddura = Column(Text)
+    currentdura_dura_amendment = Column(Text)
+    ror_id = Column(Text)
+    """Institution Research Organization Registry (ROR) ID"""
+    tier_access___3 = Column(Text)
+    """ECHO"""
+    tier_access___4 = Column(Text)
+    """Controlled Tier Plus"""
+    new_rtctctecho_dura_documentation_complete = Column(Integer)
+    """DURA [RT, CT, CT+, ECHO] documentation complete"""
 
 
 event.listen(WorkbenchResearcher, "before_insert", model_insert_listener)

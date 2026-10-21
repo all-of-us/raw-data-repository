@@ -13,6 +13,14 @@ class NphPairingEventTest(BaseTestCase):
         self.nph_data_gen = NphDataGenerator()
         self.participant_dao = NphParticipantDao()
 
+    def tearDown(self) -> None:
+        super().tearDown()
+        self.clear_table_after_test("nph.participant")
+        self.clear_table_after_test("nph.pairing_event")
+        self.clear_table_after_test("nph.pairing_event_type")
+        self.clear_table_after_test("nph.activity")
+        self.clear_table_after_test("nph.site")
+
     def test_get_participant_paired_site(self):
 
         self.initialize_data()
