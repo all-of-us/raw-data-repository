@@ -111,3 +111,4 @@ zope.event==4.4           # via gevent
 zope.interface==5.1.0     # via gevent
 # DA-3099 -- dchan
 graphene==3.1.0
+openpyxl==3.1.5
