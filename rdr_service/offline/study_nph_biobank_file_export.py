@@ -311,6 +311,10 @@ def main():
         )
         participant_biobank_id = _get_nph_participant(participant_id).biobank_id
         awardee_insite = _get_ppsc_awardee_insite(participant_id)
+        if awardee_insite is not None:
+            aian_flag = "Y" if awardee_insite.aian == 'yes' else 'N'
+        else:
+            aian_flag = "N"
 
         sex_at_birth = "Unknown"
         if rdr_participant_summary.sexId is not None:
@@ -325,7 +329,7 @@ def main():
             "studyID": f"NPH Module {nph_module_id}",
             "participantID": f"{nph_biobank_prefix}{participant_biobank_id}",
             "gender": sex_at_birth,
-            "ai_an_flag": "Y" if awardee_insite.aian == 'yes' else "N",
+            "ai_an_flag": aian_flag,
             "collections": _convert_orders_to_collections(orders, rdr_participant_summary)
         }
         orders_file_drop.append(json_object)
