@@ -187,7 +187,7 @@ def _get_ppsc_awardee_insite(participant_id):
     with ppsc_awardee_insite_dao.session() as ppsc_awardee_insite_session:
         return ppsc_awardee_insite_session.query(AwardeeInSite).filter(
             AwardeeInSite.participantId == participant_id
-        )
+        ).all()
 
 def _convert_orders_to_collections(
     orders: List[Order],
