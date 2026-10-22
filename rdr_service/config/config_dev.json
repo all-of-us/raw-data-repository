@@ -238,7 +238,8 @@
     "Social Factors Update",
     "Health and Wellness Update",
     "Mental Health and Wellbeing Update",
-    "Personal and Family Health History Update"
+    "Personal and Family Health History Update",
+    "Workplace Disability"
   ],
   "ppsc_intake_profile_updates_event_types": ["Profile Data"],
   "ppsc_intake_withdrawal_event_types": ["Withdrawal"],
