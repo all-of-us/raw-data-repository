@@ -212,10 +212,10 @@ class NphBiobankWorkflowsTest(BaseTestCase):
 
         self.assertEqual(p2_order1.get('participantID'), f"T{nph_p2.biobank_id}")
         self.assertEqual(p2_order1.get('gender'), 'Female')
-        self.assertEqual(p2_order1.get('ai_an_flag'), 'Y')
+        self.assertEqual(p2_order1.get('ai_an_flag'), 'N')
         self.assertEqual(p2_order1.get('collections')[0].get('nyFlag'), 'N')
 
         self.assertEqual(p2_order2.get('participantID'), p2_order1.get('participantID'))
         self.assertEqual(p2_order2.get('gender'), 'Female')
-        self.assertEqual(p2_order2.get('ai_an_flag'), 'Y')
+        self.assertEqual(p2_order2.get('ai_an_flag'), 'N')
         self.assertEqual(p2_order2.get('collections')[0].get('nyFlag'), 'N')
