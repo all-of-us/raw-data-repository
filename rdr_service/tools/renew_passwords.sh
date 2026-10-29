@@ -1,7 +1,7 @@
 #!/bin/bash -ae
 
 # Sets up a Cloud SQL instance and sets the 5 passwords that need to be rotated (root, alembic, readonly, rdr, datastream)
-# Updates privacy db passwords (epip_app, priv_app, priv_migrate) for sandbox rdrmaindb
+# Updates privacy db passwords (epip_app, epip_admin, epip_migrate, epip_readonly, priv_app, priv_migrate) for sandbox rdrmaindb
 # Example cmd to run on an instance different than rdrmaindb: ./tools/renew_passwords.sh --account <ACCOUNT> --project all-of-us-rdr-sandbox -i rdrsandbox-maindb
 
 USAGE="tools/renew_passwords.sh --account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>]"
@@ -95,9 +95,15 @@ fi
 if [ "${PROJECT}" == "all-of-us-rdr-sandbox" ] && [ "${INSTANCE_NAME}" == "rdrmaindb" ]; then
   UPDATE_SANDBOX_PRIV_USERS=true
   EPIP_APP_DB_USER=epip_app
+  EPIP_ADMIN_DB_USER=epip_admin
+  EPIP_MIGRATE_DB_USER=epip_migrate
+  EPIP_READONLY_DB_USER=epip_readonly
   PRIV_APP_DB_USER=priv_app
   PRIV_MIGRATE_DB_USER=priv_migrate
   EPIP_APP_PWD_SECRET_NAME="epip-app-password"
+  EPIP_ADMIN_PWD_SECRET_NAME="epip-admin-password"
+  EPIP_MIGRATE_PWD_SECRET_NAME="epip-migrate-password"
+  EPIP_READONLY_PWD_SECRET_NAME="epip-readonly-password"
   PRIV_APP_PWD_SECRET_NAME="priv-app-password"
   PRIV_MIGRATE_PWD_SECRET_NAME="priv-migrate-password"
 fi
@@ -130,6 +136,9 @@ function update_passwords_with_gcloud {
 
   if [ "$UPDATE_SANDBOX_PRIV_USERS" = true ]; then
     gcloud sql users set-password "$EPIP_APP_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$EPIP_APP_PASSWORD" && \
+      gcloud sql users set-password "$EPIP_ADMIN_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$EPIP_ADMIN_PASSWORD" && \
+      gcloud sql users set-password "$EPIP_MIGRATE_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$EPIP_MIGRATE_PASSWORD" && \
+      gcloud sql users set-password "$EPIP_READONLY_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$EPIP_READONLY_PASSWORD" && \
       gcloud sql users set-password "$PRIV_APP_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$PRIV_APP_PASSWORD" && \
       gcloud sql users set-password "$PRIV_MIGRATE_DB_USER" --host % --instance "$INSTANCE_NAME" --password "$PRIV_MIGRATE_PASSWORD"
   fi
@@ -157,6 +166,21 @@ if [ "$UPDATE_SANDBOX_PRIV_USERS" = true ]; then
   EPIP_APP_PASSWORD=$new_password
   echo "epip_app pw:"
   echo $EPIP_APP_PASSWORD
+
+  randpw
+  EPIP_ADMIN_PASSWORD=$new_password
+  echo "epip_admin pw:"
+  echo $EPIP_ADMIN_PASSWORD
+
+  randpw
+  EPIP_MIGRATE_PASSWORD=$new_password
+  echo "epip_migrate pw:"
+  echo $EPIP_MIGRATE_PASSWORD
+
+  randpw
+  EPIP_READONLY_PASSWORD=$new_password
+  echo "epip_readonly pw:"
+  echo $EPIP_READONLY_PASSWORD
 
   randpw
   PRIV_APP_PASSWORD=$new_password
@@ -228,6 +252,18 @@ if [ "$PASSWORD_UPDATE_SUCCESS" = true ]; then
     echo "Updating Secrets Manager's EPIP APP secrets"
     echo -n "$EPIP_APP_PASSWORD" | gcloud secrets versions add $EPIP_APP_PWD_SECRET_NAME --data-file=-
     gcloud secrets versions disable $(gcloud secrets versions list $EPIP_APP_PWD_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$EPIP_APP_PWD_SECRET_NAME
+
+    echo "Updating Secrets Manager's EPIP ADMIN secrets"
+    echo -n "$EPIP_ADMIN_PASSWORD" | gcloud secrets versions add $EPIP_ADMIN_PWD_SECRET_NAME --data-file=-
+    gcloud secrets versions disable $(gcloud secrets versions list $EPIP_ADMIN_PWD_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$EPIP_ADMIN_PWD_SECRET_NAME
+
+    echo "Updating Secrets Manager's EPIP MIGRATE secrets"
+    echo -n "$EPIP_MIGRATE_PASSWORD" | gcloud secrets versions add $EPIP_MIGRATE_PWD_SECRET_NAME --data-file=-
+    gcloud secrets versions disable $(gcloud secrets versions list $EPIP_MIGRATE_PWD_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$EPIP_MIGRATE_PWD_SECRET_NAME
+
+    echo "Updating Secrets Manager's EPIP READONLY secrets"
+    echo -n "$EPIP_READONLY_PASSWORD" | gcloud secrets versions add $EPIP_READONLY_PWD_SECRET_NAME --data-file=-
+    gcloud secrets versions disable $(gcloud secrets versions list $EPIP_READONLY_PWD_SECRET_NAME --sort-by=createTime --format="value(name)" | tail -2 | head -1) --secret=$EPIP_READONLY_PWD_SECRET_NAME
 
     echo "Updating Secrets Manager's PRIV APP secrets"
     echo -n "$PRIV_APP_PASSWORD" | gcloud secrets versions add $PRIV_APP_PWD_SECRET_NAME --data-file=-
