@@ -11,6 +11,7 @@ from rdr_service.ancillary_study_resources.nph.enums import ParticipantOpsElemen
     DietType, DietStatus, ModuleTypes
 from rdr_service.api_util import parse_date
 from rdr_service.dao.study_nph_dao import NphOrderDao
+from rdr_service.model.awardee_insite import AwardeeInSite
 from rdr_service.model.participant_summary import ParticipantSummary as ParticipantSummaryModel
 from rdr_service.participant_enums import QuestionnaireStatus
 
@@ -187,7 +188,7 @@ class NphParticipantData:
     def load_nph_participant_data(cls, query: sqlalchemy.orm.Query, biobank_prefix: str) -> List[dict]:
         results, records = [], query.all()
         for (summary, site, nph_site, mapping, nph_participant, enrollments, consents, diets, deactivated, withdrawn,
-             ops_data) in records:
+             ops_data, aian) in records:
             participant_obj = {
                 'participantNphId': mapping.ancillary_participant_id,
                 'lastModified': summary.lastModified,
@@ -215,7 +216,7 @@ class NphParticipantData:
                 'nphModule3ConsentStatus': cls.get_consent_statuses(consents, module=3),
                 'nphModule2DietStatus': cls.get_diet_statuses(diets, module=2),
                 'nphModule3DietStatus': cls.get_diet_statuses(diets, module=3),
-                'aianStatus': summary.aian,
+                'aianStatus': 'Y' if aian == 'yes' else 'N',
                 'suspensionStatus': {"value": cls.check_field_value(summary.suspensionStatus),
                                      "time": summary.suspensionTime},
                 'aouEnrollmentStatus': {"value": cls.check_field_value(summary.enrollmentStatus),
@@ -264,8 +265,8 @@ class NphParticipantData:
             field_lookup = {
                 "aouAianStatus": {
                     "field": "aian",
-                    "table": ParticipantSummaryModel,
-                    "value": ParticipantSummaryModel.aian
+                    "table": AwardeeInSite,
+                    "value": AwardeeInSite.aian
                 },
                 "aouBasicsStatus": {
                     "field": "questionnaireOnTheBasics",

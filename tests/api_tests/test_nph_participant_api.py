@@ -60,6 +60,8 @@ def condition_query(condition, sort_value, sort_field):
     return ''' { participant (%s: %s) {totalCount resultCount pageInfo
            { startCursor  endCursor hasNextPage }  edges { node { %s } } } }''' % (condition, sort_value, sort_field)
 
+def aian_query():
+    return '''{ participant { edges { node { participantNphId aouAianStatus } } } }'''
 
 class NphParticipantAPITest(BaseTestCase):
     def setUp(self):
@@ -251,6 +253,21 @@ class NphParticipantAPITest(BaseTestCase):
                 event_time,
                 msg="Should return the value with the latest time",
             )
+
+    def test_aian_source(self):
+        initial_time = datetime(2023, 3, 1, 12, 1)
+        with clock.FakeClock(initial_time):
+            self.add_consents(
+                nph_participant_ids=[self.base_participant_ids[0]],
+                created=initial_time,
+                event_authored_time=initial_time
+            )
+
+            query = aian_query()
+            executed = app.test_client().post("/rdr/v1/nph_participant", data=query)
+            result = json.loads(executed.data.decode("utf-8")
+                                ).get("participant").get("edges")[0].get("node").get("aouAianStatus")
+            self.assertEqual(result, 'N')
 
     def test_client_nph_pair_site(self):
         self.add_consents(nph_participant_ids=self.base_participant_ids)
