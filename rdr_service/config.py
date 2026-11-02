@@ -191,6 +191,9 @@ VWB_WORKSPACES_ID_MAPPING_TABLE = 'vwb_workspaces_id_mapping_table'
 WB_RESEARCHERS_SRC_TABLE = 'wb_researchers_src_table'
 WB_WORKSPACES_SRC_TABLE = 'wb_workspaces_src_table'
 WB_INSTITUTIONAL_DURA_REDCAP_TOKEN = 'wb_institutional_dura_import_key'
+WB_DURA_LABELS_TABLE = 'wb_dura_labels_table'
+WB_DURA_CODES_TABLE = 'wb_dura_codes_table'
+WB_DURA_CODES = 'wb_dura_codes'
 
 CVL_SITES_DATA_BUCKETS = {
     "bcm": "prod-genomics-data-baylor",

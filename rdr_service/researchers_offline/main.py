@@ -60,7 +60,7 @@ def workbench_researchers_input_feed():
 def workbench_institutional_dura_import():
     logging.info('Starting workbench institutional DURA import...')
     since_date = request.get_json().get("since_date")
-    importer = WorkbenchDuraImporter()
+    importer = WorkbenchDuraImporter(project=GAE_PROJECT)
     importer.import_reports(since_date)
     return '{ "success": "true" }'
 
