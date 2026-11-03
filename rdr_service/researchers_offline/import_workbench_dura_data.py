@@ -78,7 +78,7 @@ class WorkbenchDuraImporter:
         }
 
         # Import DURA data with label values
-        label_destination = f'{self.client.project}.{self.destination_dataset}.{self.label_table_id}'
+        label_destination = f'{self.client.project}.{self.destination_dataset}.{self.labels_table_id}'
         label_records = self.get_redcap_records(label_request_parameters, self.redcap_api_key, parsed_since_date)
         label_result = self.load_data_to_bigquery(label_records, label_destination)
         print(f"Loaded {len(label_records)} rows into {label_destination} with result: {label_result}")
