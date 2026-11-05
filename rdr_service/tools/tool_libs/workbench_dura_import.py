@@ -10,7 +10,7 @@ class WorkbenchInstitutionalDuraTool(ToolBase):
     def run(self):
         super(WorkbenchInstitutionalDuraTool, self).run()
 
-        importer = WorkbenchDuraImporter()
+        importer = WorkbenchDuraImporter(project=self.args.project)
         importer.import_reports(self.args.since_date)
 
 
