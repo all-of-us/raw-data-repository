@@ -35,6 +35,7 @@ def _build_args(**overrides):
         "audit_dataset": None,
         "audit_run_id": None,
         "snapshot_label": None,
+        "step": None,
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -155,6 +156,32 @@ class CurationBQTest(unittest.TestCase):
             job_config.write_disposition,
         )
 
+    def test_single_step_dry_run_only_runs_selected_step(self):
+        step = CurationBQ.etl_process_steps[0]
+        tool = self._create_tool(_build_args(run_etl=True, step=step))
+
+        with mock.patch.object(tool, "run_query") as run_query_mock:
+            tool.run_etl()
+
+        expected_sql = queries.queries[step]["query"].format(**tool._build_format_args())
+        run_query_mock.assert_called_once()
+        self.assertEqual(expected_sql, run_query_mock.call_args[0][0])
+
+    def test_step_requires_run_etl(self):
+        tool = self._create_tool(_build_args(load_data=True, step="participant_filter"))
+
+        with mock.patch("rdr_service.tools.tool_libs.curation_bq.ToolBase.run"):
+            self.assertEqual(1, tool.run())
+
+    def test_unknown_step_rejected(self):
+        tool = self._create_tool(_build_args(run_etl=True, step="nope"))
+
+        with mock.patch("rdr_service.tools.tool_libs.curation_bq.ToolBase.run"):
+            with mock.patch.object(tool, "run_etl") as etl_mock:
+                self.assertEqual(1, tool.run())
+
+        etl_mock.assert_not_called()
+
     def test_snapshot_audit_mode_dispatch(self):
         tool = self._create_tool(
             _build_args(snapshot_audit=True, audit_dataset="audit_dataset")
@@ -209,6 +236,138 @@ class CurationBQTest(unittest.TestCase):
         self.assertTrue(any("'manual' AS snapshot_label" in sql for sql in sql_calls))
         self.assertTrue(any("'2026-01-01' AS etl_cutoff" in sql for sql in sql_calls))
         self.assertTrue(any("`test-project.audit_dataset.participant_filter_snapshot`" in sql for sql in sql_calls))
+
+    def test_ppsc_consent_step_runs_after_src_clean_and_before_mapping(self):
+        steps = CurationBQ.etl_process_steps
+        ppsc_index = steps.index("ppsc_consent_src_clean")
+
+        self.assertEqual(steps.index("src_clean") + 1, ppsc_index)
+        self.assertLess(ppsc_index, steps.index("filter_surveys"))
+        self.assertLess(ppsc_index, steps.index("src_mapped"))
+
+    def test_ppsc_consent_step_appends_to_src_clean(self):
+        tool = self._create_tool(_build_args())
+        tool.etl_process_steps = ["ppsc_consent_src_clean"]
+
+        with mock.patch.object(tool, "run_query") as run_query_mock:
+            tool.run_etl()
+
+        query, job_config = run_query_mock.call_args.args
+        self.assertEqual("src_clean", job_config.destination.table_id)
+        self.assertEqual(
+            bigquery.job.WriteDisposition.WRITE_APPEND,
+            job_config.write_disposition,
+        )
+        self.assertIn("`test-project.rdr_replica.ppsc_consent_event`", query)
+        self.assertIn("'PPSC_Consent'", query)
+
+    def test_fact_relationship_uses_pediatric_relationship_ext(self):
+        fmt = self._create_tool(_build_args())._build_format_args()
+        query = queries.queries["fact_relationship"]["query"].format(**fmt)
+
+        self.assertIn("pre.subject_person_id AS fact_id_1", query)
+        self.assertIn("pre.related_person_id AS fact_id_2", query)
+        self.assertIn("pre.relationship_concept_id AS relationship_concept_id", query)
+        for static_value in ("1001", "2001", "4326600"):
+            self.assertNotIn(static_value, query)
+
+    def test_pediatric_relationship_ext_query(self):
+        fmt = self._create_tool(_build_args())._build_format_args()
+        entry = queries.queries["pediatric_relationship_ext"]
+        query = entry["query"].format(**fmt)
+
+        self.assertEqual("pediatric_relationship_ext", entry["destination"])
+        for concept_id in (4053608, 4326600, 4301632, 4311425, 4218412, 44783070,
+                           4206333, 903070, 903079, 40567635, 4032151):
+            self.assertIn(str(concept_id), query)
+        self.assertIn("UNION ALL", query)
+        self.assertIn("`test-project.rdr_replica.ppsc_account_linkage_event`", query)
+        self.assertIn("'relationship_participant_id'", query)
+        self.assertNotIn("value_as_number", query)
+        self.assertIn("rel_obs.observation_type_concept_id = 1222", query)
+        self.assertIn("rel_obs.observation_id AS relationship_observation_id", query)
+        self.assertIn("pediatric_relationship_ext", CurationBQ.etl_process_steps)
+        self.assertIn("pediatric_relationship_ext", CurationBQ.export_tables)
+
+    def test_ppsc_consent_query_maps_each_consent_type(self):
+        fmt = self._create_tool(_build_args())._build_format_args()
+        query = queries.queries["ppsc_consent_src_clean"]["query"].format(**fmt)
+
+        for event_type, question_code, answer_type in (
+            ("Primary Consent", "ExtraConsent_AgreeToConsent", "bool"),
+            ("Pediatric Permission", "ExtraConsent_AgreeToConsent", "bool"),
+            ("EHR Authorization", "EHRConsentPII_ConsentPermission", "code"),
+            ("Adult EHR Authorization", "PPSC_AdultEHRAuthorization", "code"),
+            ("Pediatric EHR Authorization", "PPSC_PediatricEHRAuthorization", "code"),
+        ):
+            self.assertRegex(
+                query, rf"'{event_type}'(?: AS event_type_name)?,\s*'{question_code}'"
+                       rf"(?: AS question_ppi_code)?,\s*'{answer_type}'"
+            )
+        for code in (
+            "ConsentPermission_Yes", "ConsentPermission_No",
+            "PPSC_AdultEHRAuthorization_Yes", "PPSC_AdultEHRAuthorization_No",
+            "PPSC_PediatricEHRAuthorization_Yes", "PPSC_PediatricEHRAuthorization_No",
+            "PPSC_ConsentOther",
+        ):
+            self.assertIn(f"'{code}'", query)
+        self.assertNotIn("PPSC_PrimaryConsent_Yes", query)
+        self.assertNotIn("PPSC_PediatricPermission_Yes", query)
+
+    def test_ppsc_consent_query_encodes_bool_and_code_answers(self):
+        fmt = self._create_tool(_build_args())._build_format_args()
+        query = queries.queries["ppsc_consent_src_clean"]["query"].format(**fmt)
+
+        self.assertIn("CONCAT('cln.', cc.answer_type)      AS unit_id", query)
+        self.assertRegex(
+            query,
+            r"WHEN cc\.answer_type != 'bool'\s+THEN CAST\(NULL AS INT64\)\s+"
+            r"WHEN cc\.consent_status = 'yes'\s+THEN 1\s+ELSE 0\s+END\s+AS value_boolean",
+        )
+        self.assertRegex(
+            query,
+            r"WHEN cc\.answer_type = 'bool'\s+THEN CAST\(NULL AS STRING\)\s+"
+            r"WHEN cc\.consent_status = 'yes'\s+THEN cc\.yes_ppi_code\s+"
+            r"WHEN cc\.consent_status = 'no'\s+THEN cc\.no_ppi_code",
+        )
+
+    def test_ppsc_consent_query_without_optional_filters(self):
+        fmt = self._create_tool(_build_args())._build_format_args()
+        query = queries.queries["ppsc_consent_src_clean"]["query"].format(**fmt)
+
+        self.assertNotIn("ce.event_authored_time AS TIMESTAMP", query)
+        self.assertNotIn("'PPSC_Consent' IN", query)
+
+    def test_ppsc_consent_query_applies_cutoff_and_min_date(self):
+        args = _build_args(cutoff="2025-06-01", min_survey_date="2020-01-01")
+        fmt = self._create_tool(args)._build_format_args()
+        query = queries.queries["ppsc_consent_src_clean"]["query"].format(**fmt)
+
+        self.assertIn(
+            "AND SAFE_CAST(ce.event_authored_time AS TIMESTAMP) < TIMESTAMP('2025-06-01')",
+            query,
+        )
+        self.assertIn(
+            "AND SAFE_CAST(ce.event_authored_time AS TIMESTAMP) >= TIMESTAMP('2020-01-01')",
+            query,
+        )
+
+    def test_ppsc_consent_query_respects_survey_filters(self):
+        include_fmt = self._create_tool(
+            _build_args(include_surveys="TheBasics")
+        )._build_format_args()
+        exclude_fmt = self._create_tool(
+            _build_args(exclude_surveys="PPSC_Consent")
+        )._build_format_args()
+
+        self.assertEqual(
+            "AND 'PPSC_Consent' IN ('TheBasics')",
+            include_fmt["ppsc_consent_survey_filter"],
+        )
+        self.assertEqual(
+            "AND 'PPSC_Consent' NOT IN ('PPSC_Consent')",
+            exclude_fmt["ppsc_consent_survey_filter"],
+        )
 
 
 if __name__ == "__main__":

@@ -384,6 +384,143 @@ queries = {
             WHERE ba._module_value = 'ConsentPII'
         """,
     },
+    "ppsc_consent_src_clean": {
+        # Appends PPSC consent statuses to src_clean.  PPSC participants submit consents
+        # through the PPSC Intake API (ppsc.consent_event) rather than as
+        # QuestionnaireResponses, so they are otherwise missing from src_clean/observation.
+        #
+        # - Only the latest 'activity_status' event per participant + consent type is used.
+        # - Each consent type has its own question_ppi_code and an answer_type matching how
+        #   the legacy module recorded the response:
+        #     'bool' (ConsentPII types): yes/no -> value_boolean 1/0, unit_id 'cln.bool',
+        #            no value_ppi_code or value_string.
+        #     'code' (EHR types): yes/no -> the type's own value_ppi_code, unit_id 'cln.code',
+        #            raw status kept in value_string.
+        # - Statuses that are neither yes nor no are recorded as code answers with
+        #   value_ppi_code PPSC_ConsentOther for every consent type.
+        # - Participants that already have the equivalent legacy module (ConsentPII /
+        #   EHRConsentPII) in src_clean are skipped, since migrated Vibrent/CE participants
+        #   also have backfilled consent_event rows.
+        "destination": "src_clean",
+        "append": True,
+        "query": """
+            WITH
+            consent_code_map AS (
+                SELECT * FROM UNNEST([
+                    STRUCT(
+                        'Primary Consent' AS event_type_name,
+                        'ExtraConsent_AgreeToConsent' AS question_ppi_code,
+                        'bool' AS answer_type,
+                        CAST(NULL AS STRING) AS yes_ppi_code,
+                        CAST(NULL AS STRING) AS no_ppi_code,
+                        'ConsentPII' AS legacy_module
+                    ),
+                    ('Pediatric Permission', 'ExtraConsent_AgreeToConsent', 'bool',
+                        CAST(NULL AS STRING), CAST(NULL AS STRING), 'ConsentPII'),
+                    ('EHR Authorization', 'EHRConsentPII_ConsentPermission', 'code',
+                        'ConsentPermission_Yes', 'ConsentPermission_No', 'EHRConsentPII'),
+                    ('Adult EHR Authorization', 'PPSC_AdultEHRAuthorization', 'code',
+                        'PPSC_AdultEHRAuthorization_Yes', 'PPSC_AdultEHRAuthorization_No', 'EHRConsentPII'),
+                    ('Pediatric EHR Authorization', 'PPSC_PediatricEHRAuthorization', 'code',
+                        'PPSC_PediatricEHRAuthorization_Yes', 'PPSC_PediatricEHRAuthorization_No',
+                        'EHRConsentPII')
+                ])
+            ),
+            latest_consent_status AS (
+                SELECT
+                    ce.participant_id,
+                    ce.event_type_name,
+                    ce.event_authored_time,
+                    ce.data_element_value AS activity_status,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY ce.participant_id, ce.event_type_name
+                        ORDER BY ce.event_authored_time DESC, ce.created DESC, ce.id DESC
+                    ) AS rn
+                FROM `{rdr_dataset}.ppsc_consent_event` ce
+                WHERE IFNULL(ce.ignore_flag, 0) = 0
+                AND REPLACE(ce.data_element_name, '\\u200B', '') = 'activity_status'
+                AND ce.participant_id IN (
+                    SELECT participant_id FROM `{dataset_id}.participant_filter`
+                )
+                {cutoff_ppsc_consent_filter}
+                {min_ppsc_consent_date_filter}
+            ),
+            classified_consent AS (
+                SELECT
+                    lcs.*,
+                    ccm.question_ppi_code,
+                    ccm.yes_ppi_code,
+                    ccm.no_ppi_code,
+                    ccm.legacy_module,
+                    CASE
+                        WHEN LOWER(lcs.activity_status) IN ('submitted_yes', 'submitted_complete', 'yes')
+                            THEN 'yes'
+                        WHEN LOWER(lcs.activity_status) IN ('submitted_no', 'no')
+                            THEN 'no'
+                        ELSE 'other'
+                    END AS consent_status,
+                    -- Only yes/no can be expressed as a boolean; other statuses fall back to a code
+                    CASE
+                        WHEN ccm.answer_type = 'bool'
+                         AND LOWER(lcs.activity_status) IN (
+                             'submitted_yes', 'submitted_complete', 'yes', 'submitted_no', 'no'
+                         )
+                            THEN 'bool'
+                        ELSE 'code'
+                    END AS answer_type
+                FROM latest_consent_status lcs
+                JOIN consent_code_map ccm
+                    ON ccm.event_type_name = lcs.event_type_name
+                WHERE lcs.rn = 1
+            )
+            SELECT
+                p.participant_id,
+                p.research_id,
+                p.external_id,
+                '{ppsc_consent_survey_name}'        AS survey_name,
+                cc.event_authored_time              AS date_of_survey,
+                cc.question_ppi_code,
+                CAST(NULL AS INT64)                 AS question_code_id,
+                CASE
+                    WHEN cc.answer_type = 'bool'    THEN CAST(NULL AS STRING)
+                    WHEN cc.consent_status = 'yes'  THEN cc.yes_ppi_code
+                    WHEN cc.consent_status = 'no'   THEN cc.no_ppi_code
+                    ELSE 'PPSC_ConsentOther'
+                END                                 AS value_ppi_code,
+                CAST(NULL AS STRING)                AS topic_value,
+                0                                   AS is_invalid,
+                CAST(NULL AS INT64)                 AS value_code_id,
+                CAST(NULL AS FLOAT64)               AS value_number,
+                CASE
+                    WHEN cc.answer_type != 'bool'   THEN CAST(NULL AS INT64)
+                    WHEN cc.consent_status = 'yes'  THEN 1
+                    ELSE 0
+                END                                 AS value_boolean,
+                CAST(NULL AS DATETIME)              AS value_date,
+                CASE
+                    WHEN cc.answer_type = 'bool'    THEN CAST(NULL AS STRING)
+                    ELSE cc.activity_status
+                END                                 AS value_string,
+                CAST(NULL AS INT64)                 AS questionnaire_response_id,
+                CONCAT('cln.', cc.answer_type)      AS unit_id,
+                0                                   AS filter,
+                CASE
+                    WHEN p.participant_origin = 'careevolution' THEN 'ce'
+                    WHEN p.participant_origin = 'vibrent'       THEN 'vibrent'
+                    ELSE p.participant_origin
+                END                                 AS src_id
+            FROM classified_consent cc
+            JOIN `{rdr_dataset}.rdr_participant` p
+                ON p.participant_id = cc.participant_id
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM `{dataset_id}.src_clean` sc
+                WHERE sc.participant_id = cc.participant_id
+                AND sc.survey_name = cc.legacy_module
+            )
+            {ppsc_consent_survey_filter}
+        """,
+    },
     "src_meas": {
         # Replicates _populate_measurements() from curation.py.
         # Reads physical measurements from the replicated RDR tables.
@@ -520,16 +657,13 @@ queries = {
             UNION ALL
             -- Create Pediatric relationship entries
             SELECT 33 AS domain_concept_id_1,
-                1001 AS fact_id_1,
+                pre.subject_person_id AS fact_id_1,
                 33 AS domain_concept_id_2,
-                2001 AS fact_id_2,
-                4053608 AS relationship_concept_id
-            UNION ALL
-            SELECT 33 AS domain_concept_id_1,
-                2001 AS fact_id_1,
-                33 AS domain_concept_id_2,
-                1001 AS fact_id_2,
-                4326600 AS relationship_concept_id""",
+                pre.related_person_id AS fact_id_2,
+                pre.relationship_concept_id AS relationship_concept_id,
+                p.src_id AS src_id
+            FROM `{dataset_id}.pediatric_relationship_ext` pre
+                LEFT JOIN `{dataset_id}.person` p ON p.person_id = pre.subject_person_id""",
         "destination": "fact_relationship",
         "append": False,
     },
@@ -1436,6 +1570,64 @@ queries = {
                 FROM `{rdr_dataset}.rdr_participant`
                 WHERE external_id IS NOT NULL
             ) AS pid_map
+        """,
+    },
+    "pediatric_relationship_ext": {
+        "destination": "pediatric_relationship_ext",
+        "append": False,
+        "query": """
+            WITH inverse_map AS (
+                SELECT * FROM UNNEST([
+                    STRUCT(4053608 AS concept_id, 4326600 AS inverse_concept_id),
+                    STRUCT(4301632, 4311425),
+                    STRUCT(4218412, 4218412),
+                    STRUCT(44783070, 44783070),
+                    STRUCT(4206333, 4206333),
+                    STRUCT(903070, 903070),
+                    STRUCT(903079, 903079),
+                    STRUCT(40567635, 4032151)
+                ])
+            ),
+            relationships AS (
+                SELECT
+                    o.person_id AS subject_person_id,
+                    SAFE_CAST(REGEXP_EXTRACT(ale.data_element_value, r'^P(\\d+)$') AS INT64)
+                        AS related_person_id,
+                    o.value_source_value AS relationship_source_value,
+                    o.observation_concept_id AS relationship_concept_id,
+                    o.observation_id AS genetic_relation_observation_id,
+                    rel_obs.observation_id AS relationship_observation_id,
+                    m.inverse_concept_id
+                FROM `{dataset_id}.observation` o
+                JOIN inverse_map m ON o.observation_concept_id = m.concept_id
+                LEFT JOIN `{dataset_id}.observation` rel_obs
+                    ON rel_obs.person_id = o.person_id
+                    AND rel_obs.observation_type_concept_id = 1222
+                JOIN `{rdr_dataset}.ppsc_account_linkage_event` ale
+                    ON ale.participant_id = o.person_id
+                    AND ale.data_element_name = 'relationship_participant_id'
+                    AND IFNULL(ale.ignore_flag, 0) = 0
+                WHERE REGEXP_CONTAINS(ale.data_element_value, r'^P\\d+$')
+            )
+            SELECT
+                subject_person_id,
+                related_person_id,
+                relationship_source_value,
+                relationship_concept_id,
+                CAST(NULL AS STRING) AS relationship_source_detail,
+                genetic_relation_observation_id,
+                relationship_observation_id
+            FROM relationships
+            UNION ALL
+            SELECT
+                related_person_id,
+                subject_person_id,
+                relationship_source_value,
+                inverse_concept_id,
+                CAST(NULL AS STRING),
+                genetic_relation_observation_id,
+                relationship_observation_id
+            FROM relationships
         """,
     },
     "finalize": {
